@@ -40,7 +40,7 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div 
-      className="relative w-full max-w-5xl mx-auto min-h-[70vh] flex flex-col items-center justify-between z-10 py-12 overflow-hidden"
+      className="relative w-full max-w-5xl mx-auto min-h-[70vh] flex flex-col items-center justify-between z-10 py-12"
       initial={{ opacity: 0, scale: 0.95, filter: 'blur(15px)' }}
       animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
       exit={{ opacity: 0, scale: 1.05, filter: 'blur(15px)' }}
@@ -78,7 +78,7 @@ export const OasisResonance: React.FC = () => {
               className="flex flex-col items-center cursor-pointer"
               onClick={togglePlay}
             >
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-serif text-slate-700 tracking-wider mb-2 px-4 line-clamp-1">
+              <h2 className="text-3xl md:text-5xl lg:text-6xl font-serif text-slate-700 tracking-wider mb-0 pb-2 px-4 truncate leading-tight">
                 {currentTrack.title}
               </h2>
               <p className="font-mono text-xs md:text-sm tracking-[0.3em] uppercase text-slate-400">

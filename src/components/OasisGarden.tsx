@@ -12,13 +12,12 @@ const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden }) => {
   
-  // 自动转场：稍微延长至 4.5 秒，给用户充分欣赏晨雾降临的时间
+  // ✅ 延长停留时间至 6 秒，给情绪渐变留出充分的绽放时间
   useEffect(() => {
     const timer = setTimeout(() => {
       onEnterGarden();
     }, 4500);
     return () => clearTimeout(timer);
-    // ✅ 修复：移除了依赖项，防止父组件偶尔重渲染导致定时器不断重置
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -65,20 +64,18 @@ export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturni
           SEGA
         </span>
         
-        {/* 会呼吸的光晕层 */}
         <motion.span
           className="absolute inset-0 text-[15vw] md:text-[180px] font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-[#39C5BB] via-[#FFB7C5] to-[#39C5BB] ml-[0.2em] leading-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0.4, 1, 0.4], textShadow: ["0px 0px 0px rgba(57,197,187,0)", "0px 0px 60px rgba(57,197,187,0.3)", "0px 0px 0px rgba(57,197,187,0)"] }}
-          // ✅ 核心手术修复：强制覆盖退场的 repeat 属性，让无限死锁瞬间终结！
           exit={{ opacity: 0, transition: { duration: 0.5, repeat: 0 } }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
+          // ✅ 提前渐变浮现时间至 1.8 秒
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }}
         >
           SEGA
         </motion.span>
       </motion.div>
 
-      {/* ✅ 视觉体验优化：将提示语升格为 text-sm，并稍微提亮至 0.6 */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.6 }}

@@ -129,11 +129,23 @@ export type PlayMode = 'loop' | 'sequence' | 'shuffle';
 const globalAudio = new Audio();
 globalAudio.volume = 0;
 
+let shuffleBag: number[] = [];
+const getNextShuffleIndex = (currentIndex: number) => {
+  if (shuffleBag.length === 0) {
+    shuffleBag = PLAYLIST.map((_, i) => i).filter(i => i !== currentIndex);
+    for (let i = shuffleBag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffleBag[i], shuffleBag[j]] = [shuffleBag[j], shuffleBag[i]];
+    }
+  }
+  return shuffleBag.pop() ?? 0;
+};
+
 const getDailyTrack = () => {
   const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
   const trackIndex = daysSinceEpoch % PLAYLIST.length;
   return PLAYLIST[trackIndex];
-};
+};;
 
 let globalCurrentTrack = getDailyTrack();
 let globalIsPlaying = false;
@@ -165,10 +177,7 @@ globalAudio.addEventListener('ended', () => {
   if (globalPlayMode === 'sequence') {
     nextIndex = (currentIndex + 1) % PLAYLIST.length;
   } else if (globalPlayMode === 'shuffle') {
-    nextIndex = Math.floor(Math.random() * PLAYLIST.length);
-    if (nextIndex === currentIndex && PLAYLIST.length > 1) {
-      nextIndex = (nextIndex + 1) % PLAYLIST.length;
-    }
+    nextIndex = getNextShuffleIndex(currentIndex);
   }
 
   const nextTrack = PLAYLIST[nextIndex];
