@@ -10,7 +10,7 @@ export type AuthMode = 'register' | 'login';
 export type BgPhase = 'cyber' | 'blooming' | 'zen';
 
 // ✅ 新增：绿洲内部的三大平行空间路由 ('welcome'为迎宾过渡态)
-export type AppView = 'welcome' | 'diary' | 'soundscape' | 'memories' | 'gallery';
+export type AppView = 'welcome' | 'diary' | 'soundscape' | 'memories' | 'gallery' | 'whispers';
 
 export interface UserSession {
   name: string;

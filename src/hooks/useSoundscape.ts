@@ -123,34 +123,48 @@ export const PLAYLIST: Track[] = [
 
 export type PlayMode = 'loop' | 'sequence' | 'shuffle';
 
-// ==========================================
-// 🛠️ 核心引擎状态
-// ==========================================
 const globalAudio = new Audio();
 globalAudio.volume = 0;
 
 let shuffleBag: number[] = [];
+
+// ✅ 防同名重复的高级洗牌算法
 const getNextShuffleIndex = (currentIndex: number) => {
   if (shuffleBag.length === 0) {
-    shuffleBag = PLAYLIST.map((_, i) => i).filter(i => i !== currentIndex);
-    for (let i = shuffleBag.length - 1; i > 0; i--) {
+    const allIndices = PLAYLIST.map((_, i) => i);
+    for (let i = allIndices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffleBag[i], shuffleBag[j]] = [shuffleBag[j], shuffleBag[i]];
+      [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
     }
+    // 确保新袋子的第一首不等于当前这首
+    if (allIndices[allIndices.length - 1] === currentIndex && allIndices.length > 1) {
+      [allIndices[0], allIndices[allIndices.length - 1]] = [allIndices[allIndices.length - 1], allIndices[0]];
+    }
+    shuffleBag = allIndices;
   }
-  return shuffleBag.pop() ?? 0;
+
+  let nextIdx = shuffleBag.pop() ?? 0;
+  
+  // 🛡️ 核心修复：防止异ID但同名（如 Album 版和 Single 版）的歌曲背靠背播放
+  if (PLAYLIST[currentIndex] && PLAYLIST[nextIdx].title === PLAYLIST[currentIndex].title && shuffleBag.length > 0) {
+    const temp = nextIdx;
+    nextIdx = shuffleBag.pop() ?? 0;
+    shuffleBag.unshift(temp); // 把同名歌塞回袋子底部
+  }
+  
+  return nextIdx;
 };
 
 const getDailyTrack = () => {
   const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
   const trackIndex = daysSinceEpoch % PLAYLIST.length;
   return PLAYLIST[trackIndex];
-};;
+};
 
 let globalCurrentTrack = getDailyTrack();
 let globalIsPlaying = false;
 let globalVolume = 0.5;
-let globalPlayMode: PlayMode = 'loop';
+let globalPlayMode: PlayMode = 'shuffle';
 
 let currentFade: number | null = null;
 const cancelFade = () => {
@@ -163,7 +177,7 @@ const cancelFade = () => {
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 
-globalAudio.loop = globalPlayMode === 'loop';
+globalAudio.loop = globalPlayMode === 'shuffle';
 
 globalAudio.addEventListener('play', () => { globalIsPlaying = true; notifyListeners(); });
 globalAudio.addEventListener('pause', () => { globalIsPlaying = false; notifyListeners(); });
