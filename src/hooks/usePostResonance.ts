@@ -35,26 +35,27 @@ export const usePostResonance = (postId: string | null) => {
   const leaveResonance = async (author_name: string, content: string, aura_color: string) => {
     if (!postId) return;
     
-    // ✨ 核心优化：乐观更新 (Optimistic UI)
-    // 假造一个临时 ID，瞬间把用户的留言渲染在屏幕上，享受 0ms 延迟的快感
     const tempId = crypto.randomUUID();
     const tempResonance: PostResonance = {
       id: tempId, post_id: postId, author_name, content, aura_color, created_at: new Date().toISOString()
     };
+    
     setResonances(prev => [...prev, tempResonance]);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('post_resonances')
-      .insert([{ post_id: postId, author_name, content, aura_color }]);
+      .insert([{ post_id: postId, author_name, content, aura_color }])
+      .select()
+      .single();
       
     if (error) {
-      // 如果写入失败，悄悄回滚
       setResonances(prev => prev.filter(r => r.id !== tempId));
+      // ✨ 核心修复：弹出警报，提示数据库问题
+      alert(`Failed to leave resonance: ${error.message}\n(Make sure you ran the Supabase SQL!)`);
       throw error;
     }
     
-    // 成功后在后台悄悄同步真实的数据库 ID
-    fetchResonances(); 
+    setResonances(prev => prev.map(r => r.id === tempId ? data : r));
   };
 
   const purifyResonance = async (id: string) => {

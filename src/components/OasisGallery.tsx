@@ -10,6 +10,10 @@ const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\
 
 interface OasisGalleryProps { isAdmin: boolean; }
 
+// ✨ 加入极简的社交图标
+const GithubIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>);
+const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>);
+
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const { posts, plantSeed, updateSeed, uprootSeed } = useGarden();
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
@@ -31,8 +35,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [isResFocused, setIsResFocused] = useState(false);
   const [isResSubmitting, setIsResSubmitting] = useState(false);
 
-  // ✨ 核心优化：输入框的物理锚点
-  const resonanceInputRef = useRef<HTMLDivElement>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     setResContent(''); setResAuthor(''); setIsResFocused(false);
@@ -49,7 +52,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   }), [selectedTag, searchQuery, posts]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setActivePost(null); setIsEditing(false); } };
+    const handleEsc = (e: KeyboardEvent) => { 
+      if (e.key === 'Escape') { 
+        setActivePost(null); setIsEditing(false); setShowProfile(false); 
+      } 
+    };
     window.addEventListener('keydown', handleEsc); return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
@@ -88,30 +95,45 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   return (
     <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }}>
       
-      {/* 🌲 左侧档案：加入了 Bob Lee 署名 */}
+      {/* 🌲 左侧档案：保留了你的美学，并精细化加入了链接 */}
       <AnimatePresence>
         {!isEditing && (
           <motion.div className="hidden lg:flex w-1/3 h-full flex-col justify-start pt-32 px-16 relative z-20 border-r border-slate-300/20" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-            <div className="relative w-24 h-24 mb-10 group cursor-default">
+            <motion.div 
+              className="relative w-24 h-24 mb-10 group cursor-pointer"
+              onClick={() => setShowProfile(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <div className="absolute inset-0 rounded-full bg-[#39C5BB] blur-xl opacity-20 group-hover:opacity-60 transition-opacity duration-700" />
               <div className="relative w-full h-full rounded-full border border-white/30 overflow-hidden shadow-2xl bg-white/10 backdrop-blur-md">
                 <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-700" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               </div>
-            </div>
-            <h1 className="font-serif text-3xl text-slate-700 mb-2 tracking-wide">The Digital Garden</h1>
-            {/* ✨ 优化排版：极其优雅的署名区 */}
-            <p className="font-mono text-[10px] tracking-[0.3em] text-[#39C5BB] uppercase mb-8 opacity-80">Curated by Bob Lee</p>
+            </motion.div>
+            
+            <h1 className="font-serif text-3xl text-slate-700 mb-2 tracking-wide">Bob Lee</h1>
+            <p className="font-mono text-[10px] tracking-[0.3em] text-[#39C5BB] uppercase mb-8 opacity-80 cursor-pointer hover:opacity-100 transition-opacity" onClick={() => setShowProfile(true)}>Welcome to my digital garden!</p>
             <p className="font-serif italic text-slate-500/80 text-sm leading-relaxed mb-8">"Exploring the intersection of human behavior, <br/> aesthetics, and software architecture."</p>
             
-            <div className="flex flex-col space-y-2 mb-16">
+            <div className="flex flex-col space-y-2 mb-10">
               <span className="font-mono text-[10px] tracking-[0.2em] text-slate-400 uppercase">CS @ UNSW · SYDNEY</span>
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#39C5BB] uppercase">FULL-STACK CRAFTSMAN</span>
+            </div>
+
+            {/* ✨ 精心排版的社交链接 */}
+            <div className="flex gap-6 mt-auto pb-32 pointer-events-auto">
+              <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 transition-colors">
+                 <GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span>
+              </a>
+              <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 transition-colors">
+                 <MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span>
+              </a>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🖼️ 右侧基础内容区 (保持原样) */}
+      {/* 🖼️ 右侧基础内容区 */}
       <motion.div className="w-full h-full overflow-y-auto no-scrollbar pt-24 pb-32 px-8 lg:px-16 relative z-10 flex flex-col" animate={{ width: isEditing ? '100%' : '66.666%' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
         <div className="absolute top-12 left-1/2 lg:left-16 -translate-x-1/2 lg:translate-x-0 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase pointer-events-none transition-opacity" style={{ opacity: isEditing ? 0 : 1 }}>Curated Thoughts</div>
 
@@ -155,7 +177,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               </motion.div>
             </motion.div>
           ) : (
-            // --- 编辑器 ---
+            // --- 编辑器区 (保持不变) ---
             <motion.div key="editor" className="w-full max-w-3xl mx-auto flex flex-col h-full pt-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                <div className="flex items-center justify-between mb-8"><div className="flex bg-slate-200/50 dark:bg-slate-800/50 rounded-lg p-1 backdrop-blur-sm shadow-inner"><button onClick={() => setIsPreviewMode(false)} className={`px-5 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono rounded-md transition-all duration-300 ${!isPreviewMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Write</button><button onClick={() => setIsPreviewMode(true)} className={`px-5 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono rounded-md transition-all duration-300 ${isPreviewMode ? 'bg-white text-[#39C5BB] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Preview</button></div><button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-slate-600"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-transparent text-4xl md:text-5xl font-serif text-slate-700 mb-6 outline-none placeholder:text-slate-300" disabled={isPreviewMode} /><div className="flex items-center space-x-6 mb-8 border-b border-slate-200 pb-8 transition-opacity" style={{ opacity: isPreviewMode ? 0.3 : 1, pointerEvents: isPreviewMode ? 'none' : 'auto' }}><input type="text" placeholder="Tags (comma separated)" value={editTags} onChange={e => setEditTags(e.target.value)} className="flex-1 bg-transparent font-mono text-xs tracking-widest text-slate-500 outline-none placeholder:text-slate-300 uppercase" /><div className="flex items-center space-x-2">{AURA_COLORS.map(c => <div key={c} onClick={() => setEditColor(c)} className={`w-4 h-4 rounded-full cursor-pointer transition-transform ${editColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: editColor === c ? `0 0 0 2px #FAFAFA, 0 0 0 4px ${c}` : 'none' }} />)}</div></div>{isPreviewMode ? (<div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 prose prose-slate prose-lg max-w-none font-serif text-slate-600 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-700 prose-a:text-[#39C5BB] prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-strong:text-slate-700 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:my-12 prose-img:mx-auto">{editContent.trim() ? <ReactMarkdown>{editContent}</ReactMarkdown> : <div className="text-slate-300 italic text-center mt-20">No content to preview...</div>}</div>) : (<><div className="text-[10px] text-slate-400 font-mono mb-4 opacity-60 tracking-widest">SUPPORT MARKDOWN & IMAGES: ![alt](/img/picture.jpg)</div><textarea value={editContent} onChange={e => setEditContent(e.target.value)} placeholder="Let your thoughts flow..." className="flex-1 w-full bg-transparent font-serif text-lg leading-loose text-slate-600 outline-none resize-none placeholder:text-slate-300/50 no-scrollbar mb-8" /></>)}<div className="flex justify-end mt-auto"><button onClick={handlePublish} className="font-mono text-xs tracking-widest uppercase px-8 py-3 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300" style={{ backgroundColor: editColor }}>{editingId ? 'Update' : 'Publish'}</button></div>
             </motion.div>
@@ -163,103 +185,154 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         </AnimatePresence>
       </motion.div>
 
-      {/* 📖 沉浸式独立阅读悬浮舱 */}
+      {/* 📖 沉浸式独立阅读悬浮舱：🚀 核心修复区 - 脱离了包裹，实现绝对居中 */}
       <AnimatePresence>
         {activePost && !isEditing && (
           <motion.div 
             key="reader-overlay"
-            className="fixed inset-0 z-[100] flex justify-center overflow-y-auto no-scrollbar bg-[#FAFAFA] dark:bg-[#0A0A0A]"
+            className="fixed inset-0 z-[100] overflow-y-auto no-scrollbar bg-[#FAFAFA] dark:bg-[#0A0A0A]"
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]" style={{ backgroundColor: activePost.color }} transition={{ duration: 1 }} />
-            </div>
-
-            <div className="relative w-full max-w-3xl mx-auto px-8 md:px-12 pt-24 pb-48">
+            {/* 居中核心轴 */}
+            <div className="min-h-screen w-full flex flex-col items-center">
               
-              <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
-                {isAdmin && <button onClick={() => activePost && startEditingPost(activePost)} className="text-slate-400 hover:text-[#39C5BB] transition-colors">Edit</button>}
-                {isAdmin && <button onClick={() => activePost && handleDelete(activePost.id)} className="text-slate-400 hover:text-red-400 transition-colors">Destroy</button>}
-                <button onClick={() => setActivePost(null)} className="text-slate-400 hover:text-slate-700 transition-colors ml-4 p-2 -mr-2 bg-white/50 rounded-full border border-slate-200/50 shadow-sm hover:bg-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+              <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]" style={{ backgroundColor: activePost.color }} transition={{ duration: 1 }} />
               </div>
 
-              <div className="font-mono text-xs tracking-[0.3em] text-slate-400 uppercase mb-8 flex items-center gap-3">
-                <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300"></span><span className="opacity-70">{calculateReadingTime(activePost.content)}</span>
-              </div>
-              
-              <h1 className="font-serif text-4xl md:text-5xl text-slate-800 leading-[1.3] mb-8">{activePost.title}</h1>
-              
-              <div className="flex space-x-4 mb-16">
-                {activePost.tags.map(tag => <span key={tag} className="font-mono text-[10px] tracking-widest text-slate-500 uppercase border-b border-slate-300 pb-1">{tag}</span>)}
-              </div>
-
-              <div className="prose prose-slate prose-lg max-w-none font-serif text-slate-600 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-700 prose-a:text-[#39C5BB] prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-strong:text-slate-700 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:my-12 prose-img:mx-auto first-letter:text-5xl first-letter:font-bold first-letter:text-slate-800 first-letter:mr-1 first-letter:float-left first-letter:leading-[0.8]">
-                <ReactMarkdown>{activePost.content}</ReactMarkdown>
-              </div>
-
-              {/* 🍂 落叶共鸣区 */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50">
-                <h3 className="font-serif text-2xl text-slate-400 mb-8 italic">Fallen Leaves</h3>
+              {/* ⚠️ pb-64 防止底部内容被悬浮胶囊遮挡 */}
+              <div className="relative w-full max-w-3xl px-8 md:px-12 pt-24 pb-64">
                 
-                <div className="flex flex-wrap gap-4 mb-16">
-                  {resonances.map(res => (
-                    <div key={res.id} className="relative group px-5 py-4 bg-white/40 backdrop-blur-md border border-white/50"
-                          style={{ borderTopRightRadius: '1.5rem', borderBottomLeftRadius: '1.5rem', borderTopLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem', borderColor: `${res.aura_color}40`, boxShadow: `0 4px 20px -5px ${res.aura_color}20` }}>
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: res.aura_color }} />
-                        <span className="font-mono text-[9px] tracking-widest uppercase text-slate-400">{res.author_name}</span>
-                        {isAdmin && (
-                          <button onClick={() => purifyResonance(res.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-500 ml-2">×</button>
-                        )}
-                      </div>
-                      <p className="font-serif text-slate-600 text-sm leading-relaxed">{res.content}</p>
-                    </div>
-                  ))}
+                <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
+                  {isAdmin && <button onClick={() => activePost && startEditingPost(activePost)} className="text-slate-400 hover:text-[#39C5BB] transition-colors">Edit</button>}
+                  {isAdmin && <button onClick={() => activePost && handleDelete(activePost.id)} className="text-slate-400 hover:text-red-400 transition-colors">Destroy</button>}
+                  <button onClick={() => setActivePost(null)} className="text-slate-400 hover:text-slate-700 transition-colors ml-4 p-2 -mr-2 bg-white/50 rounded-full border border-slate-200/50 shadow-sm hover:bg-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                 </div>
 
-                {/* ✨ 核心优化：带有物理锚点的输入框 */}
-                <div 
-                  ref={resonanceInputRef} 
-                  className="relative bg-white/50 border border-slate-200/50 rounded-2xl p-4 transition-all duration-500" 
-                  style={{ boxShadow: isResFocused ? `0 10px 40px ${resColor}15` : 'none', borderColor: isResFocused ? `${resColor}50` : '' }}
-                >
-                  {!isResFocused ? (
-                    <input 
-                      type="text" placeholder="Leave a trace..." 
-                      onClick={() => {
-                        setIsResFocused(true);
-                        // 赋予物理锚定：给容器 100ms 展开的时间，然后平滑地把输入框推到视口中央
-                        setTimeout(() => {
-                          resonanceInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 100);
-                      }} 
-                      readOnly className="w-full bg-transparent font-serif text-slate-400 outline-none cursor-text italic" 
-                    />
-                  ) : (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col">
-                      <input type="text" placeholder="Your Alias..." value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/50 font-mono text-xs text-slate-500 pb-2 mb-4 outline-none focus:border-slate-400 transition-colors placeholder:text-slate-400" />
-                      <textarea placeholder="The leaf falls..." value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-600 h-20 outline-none resize-none mb-4 placeholder:text-slate-400" />
-                      <div className="flex items-center justify-between">
-                        <div className="flex space-x-2">
-                          {AURA_COLORS.map(c => (
-                            <div key={c} onClick={() => setResColor(c)} className={`w-3 h-3 rounded-full cursor-pointer transition-transform ${resColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: resColor === c ? `0 0 0 1.5px #FAFAFA, 0 0 0 3px ${c}` : 'none' }} />
-                          ))}
-                        </div>
-                        <div className="flex space-x-4">
-                          <button onClick={() => setIsResFocused(false)} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-slate-600">Cancel</button>
-                          <button onClick={handleResSubmit} disabled={!resAuthor.trim() || !resContent.trim() || isResSubmitting} className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: resColor, boxShadow: `0 4px 10px ${resColor}40` }}>{isResSubmitting ? '...' : 'Release'}</button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+                <div className="font-mono text-xs tracking-[0.3em] text-slate-400 uppercase mb-8 flex items-center gap-3">
+                  <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300"></span><span className="opacity-70">{calculateReadingTime(activePost.content)}</span>
                 </div>
-              </motion.div>
+                
+                <h1 className="font-serif text-4xl md:text-5xl text-slate-800 leading-[1.3] mb-8">{activePost.title}</h1>
+                
+                <div className="flex space-x-4 mb-16">
+                  {activePost.tags.map(tag => <span key={tag} className="font-mono text-[10px] tracking-widest text-slate-500 uppercase border-b border-slate-300 pb-1">{tag}</span>)}
+                </div>
 
+                <div className="prose prose-slate prose-lg max-w-none font-serif text-slate-600 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-700 prose-a:text-[#39C5BB] prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-strong:text-slate-700 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:my-12 prose-img:mx-auto first-letter:text-5xl first-letter:font-bold first-letter:text-slate-800 first-letter:mr-1 first-letter:float-left first-letter:leading-[0.8]">
+                  <ReactMarkdown>{activePost.content}</ReactMarkdown>
+                </div>
+
+                {/* 🍂 落叶共鸣区（完全移除了旧输入框） */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50">
+                  <h3 className="font-serif text-2xl text-slate-400 mb-8 italic">Fallen Leaves</h3>
+                  
+                  <div className="flex flex-wrap gap-4 mb-16">
+                    {resonances.map(res => (
+                      <div key={res.id} className="relative group px-5 py-4 bg-white/40 backdrop-blur-md border border-white/50"
+                            style={{ borderTopRightRadius: '1.5rem', borderBottomLeftRadius: '1.5rem', borderTopLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem', borderColor: `${res.aura_color}40`, boxShadow: `0 4px 20px -5px ${res.aura_color}20` }}>
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: res.aura_color }} />
+                          <span className="font-mono text-[9px] tracking-widest uppercase text-slate-400">{res.author_name}</span>
+                          {isAdmin && (
+                            <button onClick={() => purifyResonance(res.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-500 ml-2">×</button>
+                          )}
+                        </div>
+                        <p className="font-serif text-slate-600 text-sm leading-relaxed">{res.content}</p>
+                      </div>
+                    ))}
+                    {resonances.length === 0 && <span className="font-serif italic text-slate-300 text-sm">Quietly waiting for a breeze...</span>}
+                  </div>
+                </motion.div>
+              </div>
             </div>
+
+            {/* ✨ 悬浮胶囊：永远停留在视窗最底部 */}
+            <motion.div 
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90vw] max-w-2xl z-[150]"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              transition={{ delay: 0.8, duration: 0.6, type: "spring", stiffness: 200, damping: 25 }}
+            >
+              <div 
+                className="bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-3xl border border-white shadow-2xl p-4 transition-all duration-500 overflow-hidden" 
+                style={{ 
+                  borderRadius: isResFocused ? '2rem' : '3rem',
+                  boxShadow: isResFocused ? `0 20px 50px ${resColor}30` : '0 10px 30px rgba(0,0,0,0.05)', 
+                  borderColor: isResFocused ? `${resColor}50` : '' 
+                }}
+              >
+                {!isResFocused ? (
+                  <input 
+                    type="text" placeholder="Leave a falling leaf..." 
+                    onClick={() => setIsResFocused(true)} 
+                    readOnly className="w-full bg-transparent font-serif text-slate-500 outline-none cursor-pointer italic text-center" 
+                  />
+                ) : (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col px-2">
+                    <input type="text" placeholder="Your Alias..." value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 font-mono text-xs text-slate-600 pb-2 mb-4 outline-none focus:border-slate-400 transition-colors placeholder:text-slate-400" />
+                    <textarea placeholder="The leaf falls..." value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-700 h-20 outline-none resize-none mb-4 placeholder:text-slate-400" />
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex space-x-2">
+                        {AURA_COLORS.map(c => (
+                          <div key={c} onClick={() => setResColor(c)} className={`w-3.5 h-3.5 rounded-full cursor-pointer transition-transform ${resColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: resColor === c ? `0 0 0 2px #FAFAFA, 0 0 0 3px ${c}` : 'none' }} />
+                        ))}
+                      </div>
+                      <div className="flex space-x-4">
+                        <button onClick={() => setIsResFocused(false)} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-slate-600">Cancel</button>
+                        <button onClick={handleResSubmit} disabled={!resAuthor.trim() || !resContent.trim() || isResSubmitting} className="font-mono text-[10px] tracking-widest uppercase px-6 py-2 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: resColor, boxShadow: `0 4px 15px ${resColor}40` }}>{isResSubmitting ? '...' : 'Release'}</button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 🪪 Bob Lee 个人名片 */}
+      <AnimatePresence>
+        {showProfile && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-auto">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setShowProfile(false)} />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative w-[90vw] max-w-md bg-white/60 border border-white/50 p-10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center text-center"
+            >
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#39C5BB] rounded-full blur-[80px] opacity-30 pointer-events-none" />
+              <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-[#FFB7C5] rounded-full blur-[80px] opacity-30 pointer-events-none" />
+
+              <button onClick={() => setShowProfile(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+
+              <div className="w-28 h-28 rounded-full border-4 border-white shadow-xl overflow-hidden mb-6 z-10">
+                <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" />
+              </div>
+
+              <h2 className="font-serif text-3xl text-slate-800 mb-2 z-10">Bob Lee</h2>
+              <p className="font-mono text-xs tracking-[0.2em] text-[#39C5BB] uppercase mb-6 z-10">Full-Stack Craftsman</p>
+              
+              <p className="font-serif text-slate-600 leading-relaxed text-sm mb-8 z-10 px-4">
+                A 19-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces.
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-2 z-10">
+                {['CPP', 'React', 'AI / Gemini','Hatsune Miku❤️'].map(tag => (
+                  <span key={tag} className="font-mono text-[9px] tracking-widest uppercase px-3 py-1.5 rounded-full border border-slate-300/60 bg-white/40 text-slate-500">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 };

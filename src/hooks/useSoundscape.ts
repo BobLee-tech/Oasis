@@ -45,9 +45,6 @@ export const PLAYLIST: Track[] = [
   { id: 'y_19_13', title: '4_10', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 旅立ち ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/13 - 4_10.flac' },
   { id: 'y_19_14', title: '僕は音楽を辞めた', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '間違ってないよな、間違ってないよな', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - 僕は音楽を辞めた.flac' },
 
-  // 💿 2019.06.24 [Single] 心に穴が空いた (情绪色：深空天蓝 #38BDF8)
-  { id: 'y_19s_01', title: '心に穴が空いた', artist: 'Yorushika', category: 'Yorushika', color: '#38BDF8', lyric: 'ぽっかりと空いたその穴を', url: '/audio/2019.06.24 [Single] 心に穴が空いた/01. 心に穴が空いた.flac' },
-
   // 💿 2019.08.28 [Album] エルマ (情绪色：日落琥珀 #FBBF24)
   { id: 'y_19e_01', title: '車窓', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 窓の外 ---', url: '/audio/2019.08.28 [Album] エルマ/01 - 車窓.flac' },
   { id: 'y_19e_02', title: '憂一乗', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '憂鬱に乗せて', url: '/audio/2019.08.28 [Album] エルマ/02 - 憂一乗.flac' },

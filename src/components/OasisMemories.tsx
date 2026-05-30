@@ -18,8 +18,11 @@ const getTimeStyle = (timestamp: number) => {
 };
 
 export const OasisMemories: React.FC = () => {
-  const { echoes, forgetEcho } = useDiary(); // ✅ 引入 forgetEcho
+  const { echoes, forgetEcho } = useDiary(); 
   const [activeEcho, setActiveEcho] = useState<DiaryEcho | null>(null);
+  
+  // ✨ 核心修复：引入粉碎动画状态
+  const [isForgetting, setIsForgetting] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveEcho(null); };
@@ -29,11 +32,15 @@ export const OasisMemories: React.FC = () => {
 
   const handleForget = (id: string) => {
     if (window.confirm("Once forgotten, this echo is lost to the void. Proceed?")) {
-      forgetEcho(id);
-      setActiveEcho(null);
+      setIsForgetting(true);
+      // 等待 800ms 让粒子消散动画播完，再清理数据
+      setTimeout(() => {
+        forgetEcho(id);
+        setActiveEcho(null);
+        setIsForgetting(false);
+      }, 800);
     }
   };
-
   return (
     <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex flex-col pt-24 pb-32" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}>
       <div className="absolute top-12 left-1/2 -translate-x-1/2 text-slate-400/40 font-mono text-[10px] tracking-[0.5em] uppercase z-40 pointer-events-none">
@@ -67,17 +74,22 @@ export const OasisMemories: React.FC = () => {
       <AnimatePresence>
         {activeEcho && (
           <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" onClick={() => setActiveEcho(null)} />
-            <motion.div layoutId={`card-${activeEcho.id}`} className="relative w-[90vw] max-w-2xl max-h-[80vh] flex flex-col bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border border-white/50 rounded-[2rem] shadow-2xl overflow-hidden z-10">
-              
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" onClick={() => !isForgetting && setActiveEcho(null)} />
+            
+            {/* ✨ 核心修复：加入 isForgetting 动画判定 */}
+            <motion.div 
+              layoutId={`card-${activeEcho.id}`} 
+              animate={isForgetting ? { scale: 1.1, opacity: 0, filter: 'blur(20px)' } : { scale: 1, opacity: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="relative w-[90vw] max-w-2xl max-h-[80vh] flex flex-col bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border border-white/50 rounded-[2rem] shadow-2xl overflow-hidden z-10"
+            >
               <motion.div layoutId={`header-${activeEcho.id}`} className="h-2 w-full shrink-0 relative" style={{ backgroundColor: activeEcho.color || getFallbackColor(activeEcho.temperature) }} />
               
-              {/* ✅ 顶部绝对定位的遗忘按钮 */}
               <div className="absolute top-6 right-8 flex space-x-6 z-50">
-                <button onClick={() => handleForget(activeEcho.id)} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-red-400 transition-colors">
+                <button onClick={() => handleForget(activeEcho.id)} disabled={isForgetting} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-red-400 transition-colors">
                   Forget
                 </button>
-                <button onClick={() => setActiveEcho(null)} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={() => setActiveEcho(null)} disabled={isForgetting} className="font-mono text-[10px] tracking-widest uppercase text-slate-400 hover:text-slate-600 transition-colors">
                   Close
                 </button>
               </div>
