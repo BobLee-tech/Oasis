@@ -41,7 +41,7 @@ export const OasisDiary: React.FC = () => {
   const handleRelease = () => {
     if (!content.trim()) return;
     setIsReleasing(true);
-    releaseEcho(content, selectedColor);
+    releaseEcho(content, selectedColor || '#39C5BB');
     setTimeout(() => {
       setContent('');
       setIsReleasing(false);
@@ -131,7 +131,7 @@ export const OasisDiary: React.FC = () => {
                       }`}
                     >
                       <span className="group-hover:opacity-0 transition-opacity duration-300">Hold</span>
-                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium" style={{ color: selectedColor }}>
+                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium" style={{ color: selectedColor || '#39C5BB' }}>
                         Release
                       </span>
                     </button>

@@ -154,14 +154,12 @@ const getNextShuffleIndex = (currentIndex: number) => {
 
 const getDailyTrack = () => {
   const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-  const trackIndex = daysSinceEpoch % PLAYLIST.length;
-  return PLAYLIST[trackIndex];
+  return PLAYLIST[daysSinceEpoch % PLAYLIST.length];
 };
-
-let globalCurrentTrack = getDailyTrack();
+let globalCurrentTrack = getDailyTrack(); // 用回每日一首
+let globalPlayMode: PlayMode = 'sequence'; // 默认顺序播放，让情绪自然流淌
 let globalIsPlaying = false;
 let globalVolume = 0.5;
-let globalPlayMode: PlayMode = 'shuffle';
 
 let currentFade: number | null = null;
 const cancelFade = () => {
@@ -174,7 +172,7 @@ const cancelFade = () => {
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 
-globalAudio.loop = globalPlayMode === 'shuffle';
+globalAudio.loop = globalPlayMode === 'sequence';
 
 globalAudio.addEventListener('play', () => { globalIsPlaying = true; notifyListeners(); });
 globalAudio.addEventListener('pause', () => { globalIsPlaying = false; notifyListeners(); });

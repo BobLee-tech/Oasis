@@ -4,15 +4,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { usePostResonance } from '../hooks/usePostResonance';
+import { useSoundscape } from '../hooks/useSoundscape'; // 🎵 引入音乐引擎
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\s+/).length / 200)} min read`;
 
+// 🍂 治愈、清醒而有力量的每日共鸣文案
+const DAILY_QUOTES = [
+  "我忘记了昨日的痛苦与泪，现在的脚步很轻快",
+  "在难以窥见全貌的世界里，保留一寸自己的净土。",
+  "时光有自己的流速，一些事物，有自己的归宿",
+  "就让心里空着一个洞，继续向前走吧",
+  "不必追赶别人的步调，按自己的节奏开花结果。",
+  "真相或许深邃，但此刻的宁静是真实的。",
+  "这个世界并不爱我们，却也不恨我们",
+  "小满即是全"
+];
+
 interface OasisGalleryProps { isAdmin: boolean; }
 
-// ✨ 加入极简的社交图标
+// ✨ 极简社交图标与黑胶唱片图标
 const GithubIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>);
 const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>);
+const DiscIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 animate-[spin_4s_linear_infinite]"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>);
 
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const { posts, plantSeed, updateSeed, uprootSeed } = useGarden();
@@ -36,6 +50,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [isResSubmitting, setIsResSubmitting] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
+  const resonanceInputRef = useRef<HTMLDivElement>(null);
+
+  // 🎵 获取每日旋律与诗句的算子
+  const { playlist, switchTrack } = useSoundscape();
+  const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
+  const dailyQuote = useMemo(() => DAILY_QUOTES[dailyIndex % DAILY_QUOTES.length], [dailyIndex]);
+  const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
 
   useEffect(() => {
     setResContent(''); setResAuthor(''); setIsResFocused(false);
@@ -95,7 +116,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   return (
     <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }}>
       
-      {/* 🌲 左侧档案：保留了你的美学，并精细化加入了链接 */}
+      {/* 🌲 左侧档案：加入了每日共鸣模块，排版精准对齐 */}
       <AnimatePresence>
         {!isEditing && (
           <motion.div className="hidden lg:flex w-1/3 h-full flex-col justify-start pt-32 px-16 relative z-20 border-r border-slate-300/20" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
@@ -113,14 +134,33 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             
             <h1 className="font-serif text-3xl text-slate-700 mb-2 tracking-wide">Bob Lee</h1>
             <p className="font-mono text-[10px] tracking-[0.3em] text-[#39C5BB] uppercase mb-8 opacity-80 cursor-pointer hover:opacity-100 transition-opacity" onClick={() => setShowProfile(true)}>Welcome to my digital garden!</p>
-            <p className="font-serif italic text-slate-500/80 text-sm leading-relaxed mb-8">"Exploring the intersection of human behavior, <br/> aesthetics, and software architecture."</p>
+            <p className="font-serif italic text-slate-500/80 text-sm leading-relaxed mb-6">"Exploring the intersection of human behavior, <br/> aesthetics, and software architecture."</p>
             
-            <div className="flex flex-col space-y-2 mb-10">
+            <div className="flex flex-col space-y-2 mb-8">
               <span className="font-mono text-[10px] tracking-[0.2em] text-slate-400 uppercase">CS @ UNSW · SYDNEY</span>
               <span className="font-mono text-[10px] tracking-[0.2em] text-[#39C5BB] uppercase">FULL-STACK CRAFTSMAN</span>
             </div>
 
-            {/* ✨ 精心排版的社交链接 */}
+            {/* ✨ 每日共鸣 (Today's Resonance) 模块 */}
+            <div className="mt-4 mb-8 pt-8 border-t border-slate-300/30 pointer-events-auto w-full max-w-[240px]">
+              <div className="font-mono text-[9px] tracking-[0.2em] text-slate-400 uppercase mb-4 flex items-center gap-2">
+                <span>[ Today's Resonance ]</span>
+              </div>
+              <p className="font-serif text-xs leading-[1.8] text-slate-500 italic mb-5 pr-4">
+                "{dailyQuote}"
+              </p>
+              <div 
+                className="flex items-center gap-3 text-slate-400/80 hover:text-[#39C5BB] transition-colors cursor-pointer group"
+                onClick={() => switchTrack(dailyTrack)}
+              >
+                <span className="text-[#39C5BB]/60 group-hover:text-[#39C5BB] transition-colors"><DiscIcon /></span>
+                <span className="font-mono text-[10px] tracking-wider truncate w-[200px]">
+                  {dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* 🔗 社交链接，自然沉底 */}
             <div className="flex gap-6 mt-auto pb-32 pointer-events-auto">
               <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 transition-colors">
                  <GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span>
@@ -177,7 +217,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               </motion.div>
             </motion.div>
           ) : (
-            // --- 编辑器区 (保持不变) ---
+            // --- 编辑器区 ---
             <motion.div key="editor" className="w-full max-w-3xl mx-auto flex flex-col h-full pt-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                <div className="flex items-center justify-between mb-8"><div className="flex bg-slate-200/50 dark:bg-slate-800/50 rounded-lg p-1 backdrop-blur-sm shadow-inner"><button onClick={() => setIsPreviewMode(false)} className={`px-5 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono rounded-md transition-all duration-300 ${!isPreviewMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Write</button><button onClick={() => setIsPreviewMode(true)} className={`px-5 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono rounded-md transition-all duration-300 ${isPreviewMode ? 'bg-white text-[#39C5BB] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Preview</button></div><button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-slate-600"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-transparent text-4xl md:text-5xl font-serif text-slate-700 mb-6 outline-none placeholder:text-slate-300" disabled={isPreviewMode} /><div className="flex items-center space-x-6 mb-8 border-b border-slate-200 pb-8 transition-opacity" style={{ opacity: isPreviewMode ? 0.3 : 1, pointerEvents: isPreviewMode ? 'none' : 'auto' }}><input type="text" placeholder="Tags (comma separated)" value={editTags} onChange={e => setEditTags(e.target.value)} className="flex-1 bg-transparent font-mono text-xs tracking-widest text-slate-500 outline-none placeholder:text-slate-300 uppercase" /><div className="flex items-center space-x-2">{AURA_COLORS.map(c => <div key={c} onClick={() => setEditColor(c)} className={`w-4 h-4 rounded-full cursor-pointer transition-transform ${editColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: editColor === c ? `0 0 0 2px #FAFAFA, 0 0 0 4px ${c}` : 'none' }} />)}</div></div>{isPreviewMode ? (<div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 prose prose-slate prose-lg max-w-none font-serif text-slate-600 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-700 prose-a:text-[#39C5BB] prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-strong:text-slate-700 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:my-12 prose-img:mx-auto">{editContent.trim() ? <ReactMarkdown>{editContent}</ReactMarkdown> : <div className="text-slate-300 italic text-center mt-20">No content to preview...</div>}</div>) : (<><div className="text-[10px] text-slate-400 font-mono mb-4 opacity-60 tracking-widest">SUPPORT MARKDOWN & IMAGES: ![alt](/img/picture.jpg)</div><textarea value={editContent} onChange={e => setEditContent(e.target.value)} placeholder="Let your thoughts flow..." className="flex-1 w-full bg-transparent font-serif text-lg leading-loose text-slate-600 outline-none resize-none placeholder:text-slate-300/50 no-scrollbar mb-8" /></>)}<div className="flex justify-end mt-auto"><button onClick={handlePublish} className="font-mono text-xs tracking-widest uppercase px-8 py-3 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300" style={{ backgroundColor: editColor }}>{editingId ? 'Update' : 'Publish'}</button></div>
             </motion.div>
@@ -185,7 +225,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         </AnimatePresence>
       </motion.div>
 
-      {/* 📖 沉浸式独立阅读悬浮舱：🚀 核心修复区 - 脱离了包裹，实现绝对居中 */}
+      {/* 📖 沉浸式独立阅读悬浮舱 */}
       <AnimatePresence>
         {activePost && !isEditing && (
           <motion.div 
@@ -194,14 +234,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* 居中核心轴 */}
             <div className="min-h-screen w-full flex flex-col items-center">
               
               <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none">
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]" style={{ backgroundColor: activePost.color }} transition={{ duration: 1 }} />
               </div>
 
-              {/* ⚠️ pb-64 防止底部内容被悬浮胶囊遮挡 */}
               <div className="relative w-full max-w-3xl px-8 md:px-12 pt-24 pb-64">
                 
                 <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
@@ -224,7 +262,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <ReactMarkdown>{activePost.content}</ReactMarkdown>
                 </div>
 
-                {/* 🍂 落叶共鸣区（完全移除了旧输入框） */}
+                {/* 🍂 落叶共鸣区 */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50">
                   <h3 className="font-serif text-2xl text-slate-400 mb-8 italic">Fallen Leaves</h3>
                   
