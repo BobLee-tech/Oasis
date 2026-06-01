@@ -11,14 +11,15 @@ const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\
 
 // 🍂 治愈、清醒而有力量的每日共鸣文案
 const DAILY_QUOTES = [
-  "我忘记了昨日的痛苦与泪，现在的脚步很轻快",
-  "在难以窥见全貌的世界里，保留一寸自己的净土。",
-  "时光有自己的流速，一些事物，有自己的归宿",
-  "就让心里空着一个洞，继续向前走吧",
-  "不必追赶别人的步调，按自己的节奏开花结果。",
-  "真相或许深邃，但此刻的宁静是真实的。",
-  "这个世界并不爱我们，却也不恨我们",
-  "小满即是全"
+  "忘记了昨日的痛苦与泪，现在的脚步很轻快",
+  "Sometimes life is scary and dark, that's why we must find the light",
+  "时光有自己的流速，事物有自己的归宿",
+  "心里空着一个洞，继续向前走",
+  "花有花期，人亦是",
+  "早点休息🌙",
+  "这个世界不爱我们，也不恨我们，就这么简单",
+  "小满即是全",
+  "早安，午安，晚安"
 ];
 
 interface OasisGalleryProps { isAdmin: boolean; }

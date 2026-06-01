@@ -10,9 +10,8 @@ import { OasisResonance } from './components/OasisResonance';
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden'; 
-import { OasisDiary } from './components/OasisDiary'; 
 import { OasisDock } from './components/OasisDock'; 
-import { OasisMemories } from './components/OasisMemories';
+
 import type { BgPhase, AppView } from './types/auth';
 
 const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -26,7 +25,6 @@ const NoiseOverlay = () => (
   </div>
 );
 
-// 🛠️ 提取出来的时间组件，避免整个 HUD 重新渲染
 const Clock = () => {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -65,19 +63,14 @@ function App() {
   const [bgPhase, setBgPhase] = useState<BgPhase>('cyber');
   const [appView, setAppView] = useState<AppView>('welcome');
   
-  // 💡 模拟访客状态
   const [simulateGuest, setSimulateGuest] = useState(false);
-  
-  // 💡 动态结算实际权限：必须是 Admin 且 没有开启访客模拟
   const effectiveIsAdmin = isAdmin && !simulateGuest;
   
   const hasTriggeredBGM = useRef(false);
 
-  // 1. 初始化进入检测：彻底解除与 Terminal 动画的冲突
   useEffect(() => {
     if (!isLoading) {
       if (isAdmin && terminalStatus === 'checking') {
-        // 只有最初进入网站且发现已经登录时，才自动放行
         setTerminalStatus('granted');
         setBgPhase('zen');
       } else if (!isAdmin) {
@@ -89,7 +82,6 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading]); 
 
-  // 2. 音乐触发钩子
   useEffect(() => {
     if (appView !== 'welcome' && terminalStatus === 'granted' && !hasTriggeredBGM.current) {
       hasTriggeredBGM.current = true;
@@ -97,14 +89,12 @@ function App() {
     }
   }, [appView, terminalStatus, playBGM]);
 
-  // 3. 终端通过事件 (让终端主动释放控制权，保证过渡丝滑)
   const handleTerminalSuccess = () => {
     setTerminalStatus('granted');
     setBgPhase('blooming');
     setTimeout(() => setBgPhase('zen'), 2500);
   };
 
-  // 4. 登出系统
   const handleLogout = async () => {
     await logout();
     setSimulateGuest(false);
@@ -123,7 +113,6 @@ function App() {
       <NoiseOverlay />
       <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} />
 
-      {/* 🚀 造物主控制面板 (仅 Admin 可见) */}
       <AnimatePresence>
         {isAdmin && terminalStatus === 'granted' && bgPhase === 'zen' && (
           <motion.div 
@@ -157,10 +146,9 @@ function App() {
           )}
 
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            // ✅ 将名字换成了 Bob Lee
             <OasisGarden 
               key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} 
-              onEnterGarden={() => setAppView('gallery')} 
+              onEnterGarden={() => setAppView('garden')} // ✨ 修复：修正为跳转至 garden
             />
           )}
 
@@ -170,19 +158,12 @@ function App() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}
             >
               <AnimatePresence mode="wait">
-                {/* 🛡️ 根据 effectiveIsAdmin 进行真正的权限渲染 */}
-                {appView === 'diary' && effectiveIsAdmin && (
-                  <motion.div key="diary-space" className="w-full" initial={{ opacity: 0, y: 15, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(10px)' }} transition={{ duration: 0.8, ease: customEase }}>
-                    <OasisDiary />
-                  </motion.div>
-                )}
+                {/* ✨ 纯粹的三大视图 */}
                 {appView === 'soundscape' && <OasisResonance key="sound-space" />}
-                {appView === 'memories' && effectiveIsAdmin && <OasisMemories key="memory-space" />}
-                {appView === 'gallery' && <OasisGallery key="gallery-space" isAdmin={effectiveIsAdmin} />}
+                {appView === 'garden' && <OasisGallery key="garden-space" isAdmin={effectiveIsAdmin} />}
                 {appView === 'whispers' && <OasisWhispers key="whispers-space" isAdmin={effectiveIsAdmin} />}
               </AnimatePresence>
               
-              {/* 🚢 将虚拟的沙盒权限向下传递给底座 */}
               <OasisDock currentView={appView} onViewChange={setAppView} isAdmin={effectiveIsAdmin} />
             </motion.div>
           )}
