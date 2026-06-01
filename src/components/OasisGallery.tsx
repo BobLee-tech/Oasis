@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { usePostResonance } from '../hooks/usePostResonance';
-import { useSoundscape } from '../hooks/useSoundscape'; // 🎵 引入音乐引擎
+import { useSoundscape } from '../hooks/useSoundscape'; 
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\s+/).length / 200)} min read`;
@@ -43,24 +43,28 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [editContent, setEditContent] = useState('');
   const [editColor, setEditColor] = useState('#39C5BB');
 
-  const { resonances, leaveResonance, purifyResonance } = usePostResonance(activePost ? activePost.id : null);
+  // ✨ 引入回复算子 replyResonance
+  const { resonances, leaveResonance, replyResonance, purifyResonance } = usePostResonance(activePost ? activePost.id : null);
   const [resAuthor, setResAuthor] = useState('');
   const [resContent, setResContent] = useState('');
   const [resColor, setResColor] = useState('#39C5BB');
   const [isResFocused, setIsResFocused] = useState(false);
   const [isResSubmitting, setIsResSubmitting] = useState(false);
 
+  // ✨ 作者回复状态舱
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyInput, setReplyInput] = useState('');
+
   const [showProfile, setShowProfile] = useState(false);
   const resonanceInputRef = useRef<HTMLDivElement>(null);
 
-  // 🎵 获取每日旋律与诗句的算子
   const { playlist, switchTrack } = useSoundscape();
   const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
   const dailyQuote = useMemo(() => DAILY_QUOTES[dailyIndex % DAILY_QUOTES.length], [dailyIndex]);
   const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
 
   useEffect(() => {
-    setResContent(''); setResAuthor(''); setIsResFocused(false);
+    setResContent(''); setResAuthor(''); setIsResFocused(false); setReplyingToId(null); setReplyInput('');
   }, [activePost?.id]);
 
   const allTags = useMemo(() => {
@@ -91,6 +95,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     } finally {
       setIsResSubmitting(false);
     }
+  };
+
+  // ✨ 回复提交算子
+  const handleReplySubmit = async (id: string) => {
+    if (!replyInput.trim()) return;
+    await replyResonance(id, replyInput);
+    setReplyingToId(null); setReplyInput('');
   };
 
   const startEditingPost = (post: BlogPost) => {
@@ -263,25 +274,69 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <ReactMarkdown>{activePost.content}</ReactMarkdown>
                 </div>
 
-                {/* 🍂 落叶共鸣区 */}
+                {/* 🍂 落叶共鸣区（包含作者回音系统） */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50">
                   <h3 className="font-serif text-2xl text-slate-400 mb-8 italic">Fallen Leaves</h3>
                   
-                  <div className="flex flex-wrap gap-4 mb-16">
+                  <div className="flex flex-col gap-6 mb-16">
                     {resonances.map(res => (
-                      <div key={res.id} className="relative group px-5 py-4 bg-white/40 backdrop-blur-md border border-white/50"
+                      <div key={res.id} className="relative group px-6 py-5 bg-white/40 backdrop-blur-md border border-white/50"
                             style={{ borderTopRightRadius: '1.5rem', borderBottomLeftRadius: '1.5rem', borderTopLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem', borderColor: `${res.aura_color}40`, boxShadow: `0 4px 20px -5px ${res.aura_color}20` }}>
-                        <div className="flex items-center space-x-3 mb-2">
+                        
+                        {/* 留言基础信息 */}
+                        <div className="flex items-center space-x-3 mb-3">
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: res.aura_color }} />
-                          <span className="font-mono text-[9px] tracking-widest uppercase text-slate-400">{res.author_name}</span>
-                          {isAdmin && (
-                            <button onClick={() => purifyResonance(res.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-500 ml-2">×</button>
-                          )}
+                          <span className="font-mono text-[10px] tracking-widest uppercase text-slate-500">{res.author_name}</span>
+                          <span className="font-mono text-[9px] text-slate-400/60 ml-auto">
+                            {new Date(res.created_at).toLocaleDateString()}
+                          </span>
                         </div>
                         <p className="font-serif text-slate-600 text-sm leading-relaxed">{res.content}</p>
+
+                        {/* ✨ 作者回音区 (Author's Reply) */}
+                        {res.reply && (
+                          <div className="mt-5 pt-4 border-t border-slate-200/50 border-dashed">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-4 h-4 rounded-full overflow-hidden border border-[#39C5BB]/30"><img src="/avatar.jpg" alt="Bob" className="w-full h-full object-cover"/></div>
+                              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#39C5BB]">Bob Lee</span>
+                            </div>
+                            <p className="font-serif text-slate-500 text-sm leading-[1.8] italic pl-5 border-l-2 border-[#39C5BB]/30">
+                              "{res.reply}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 🛠️ Admin 管理悬浮面板 */}
+                        {isAdmin && (
+                          <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-3 bg-white/50 backdrop-blur-md px-2 py-1 rounded-md">
+                            <button onClick={() => setReplyingToId(replyingToId === res.id ? null : res.id)} className="font-mono text-[9px] tracking-widest uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">
+                              Echo
+                            </button>
+                            <button onClick={() => purifyResonance(res.id)} className="font-mono text-[9px] tracking-widest uppercase text-red-400 hover:text-red-500 transition-colors">
+                              Purify
+                            </button>
+                          </div>
+                        )}
+
+                        {/* ✍️ Admin 回复丝滑展开舱 */}
+                        <AnimatePresence>
+                          {isAdmin && replyingToId === res.id && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 overflow-hidden">
+                              <textarea 
+                                autoFocus placeholder="Whisper back..." value={replyInput} onChange={e => setReplyInput(e.target.value)} 
+                                className="w-full bg-white/60 font-serif text-slate-600 text-sm p-3 rounded-xl outline-none border border-slate-200/50 resize-none h-20 placeholder:text-slate-400 mb-2 focus:border-[#39C5BB]/50 transition-colors shadow-inner"
+                              />
+                              <div className="flex justify-end gap-3">
+                                <button onClick={() => { setReplyingToId(null); setReplyInput(''); }} className="font-mono text-[9px] uppercase tracking-widest text-slate-400 hover:text-slate-600">Cancel</button>
+                                <button onClick={() => handleReplySubmit(res.id)} className="font-mono text-[9px] uppercase tracking-widest text-white bg-[#39C5BB] px-4 py-1.5 rounded-full shadow-sm hover:bg-[#2da098] transition-colors">Send</button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                       </div>
                     ))}
-                    {resonances.length === 0 && <span className="font-serif italic text-slate-300 text-sm">Quietly waiting for a breeze...</span>}
+                    {resonances.length === 0 && <span className="font-serif italic text-slate-300 text-sm pl-2">Quietly waiting for a breeze...</span>}
                   </div>
                 </motion.div>
               </div>

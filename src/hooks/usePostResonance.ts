@@ -9,6 +9,7 @@ export interface PostResonance {
   content: string;
   aura_color: string;
   created_at: string;
+  reply?: string; // ✨ 新增：作者的回音
 }
 
 export const usePostResonance = (postId: string | null) => {
@@ -50,22 +51,35 @@ export const usePostResonance = (postId: string | null) => {
       
     if (error) {
       setResonances(prev => prev.filter(r => r.id !== tempId));
-      // ✨ 核心修复：弹出警报，提示数据库问题
-      alert(`Failed to leave resonance: ${error.message}\n(Make sure you ran the Supabase SQL!)`);
       throw error;
     }
     
     setResonances(prev => prev.map(r => r.id === tempId ? data : r));
   };
 
-  const purifyResonance = async (id: string) => {
+  // ✨ 新增：赋予造物主留下回音的能力
+  const replyResonance = async (id: string, replyContent: string) => {
+    // 乐观更新：瞬间显示回复
+    setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: replyContent } : r));
+
     const { error } = await supabase
       .from('post_resonances')
-      .delete()
+      .update({ reply: replyContent })
       .eq('id', id);
+
+    if (error) {
+      // 失败则回滚
+      alert("Failed to leave echo. Connection unstable.");
+      setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: undefined } : r));
+      throw error;
+    }
+  };
+
+  const purifyResonance = async (id: string) => {
+    const { error } = await supabase.from('post_resonances').delete().eq('id', id);
     if (error) throw error;
     setResonances(prev => prev.filter(r => r.id !== id));
   };
 
-  return { resonances, isLoading, leaveResonance, purifyResonance };
+  return { resonances, isLoading, leaveResonance, replyResonance, purifyResonance };
 };
