@@ -43,7 +43,7 @@ export const PLAYLIST: Track[] = [
   { id: 'y_19_11', title: 'パレード', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'このままどこか遠くへ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/11 - パレード.flac' },
   { id: 'y_19_12', title: 'エルマ', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'エルマ、君なんだよ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/12 - エルマ.flac' },
   { id: 'y_19_13', title: '4_10', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 旅立ち ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/13 - 4_10.flac' },
-  { id: 'y_19_14', title: '僕は音楽を辞めた', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '間違ってないよな、間違ってないよな', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - 僕は音楽を辞めた.flac' },
+  { id: 'y_19_14', title: '僕は音楽を辞めた', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '間違ってないよな、間違ってないよな', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - だから僕は音楽を辞めた.flac' },
 
   // 💿 2019.08.28 [Album] エルマ (情绪色：日落琥珀 #FBBF24)
   { id: 'y_19e_01', title: '車窓', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 窓の外 ---', url: '/audio/2019.08.28 [Album] エルマ/01 - 車窓.flac' },
