@@ -12,22 +12,25 @@ const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden }) => {
   useEffect(() => {
-    const timer = setTimeout(() => onEnterGarden(), 4500);
+    const timer = setTimeout(() => onEnterGarden(), 3000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+return (
     <motion.div
       key="zen-garden"
       className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer select-none"
       onClick={onEnterGarden} 
       initial={{ opacity: 0, y: 30, filter: 'blur(20px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, transition: { duration: 0.6 } }} // ✨ 修复：极速退场，解除等待阻塞
       transition={{ duration: 2.5, ease: customEase }}
     >
       <motion.div 
-        initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }} transition={{ duration: 1.5, delay: 0.4, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} 
+        exit={{ opacity: 0, y: -10, filter: 'blur(10px)', transition: { duration: 0.5 } }} // ✨ 隔离退场动画
+        transition={{ duration: 1.5, delay: 0.4, ease: "easeOut" }}
         className="flex items-center text-3xl md:text-5xl font-serif text-slate-600 mb-6"
       >
         <span className="text-[#39C5BB] font-mono italic mr-4">Hello,</span>
@@ -35,18 +38,18 @@ export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturni
       </motion.div>
 
       <motion.div 
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5, filter: 'blur(10px)' }} transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} 
+        exit={{ opacity: 0, y: -5, filter: 'blur(10px)', transition: { duration: 0.5 } }} // ✨ 隔离退场动画
+        transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" }}
         className="text-xs md:text-sm text-slate-400 font-light tracking-[0.5em] uppercase mb-12"
       >
         {isReturningUser ? 'Welcome back to our' : 'Welcome to our'}
       </motion.div>
 
-      {/* ✨ 核心重塑：剔除灰色底色，采用纯粹的发光玻璃质感 */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, filter: 'blur(30px)' }}
-        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)' }}
-        transition={{ duration: 3, delay: 1, ease: customEase }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 3, delay: 1, ease: customEase } }} // ✨ 将原本的长入场动画移入 animate 对象内部
+        exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)', transition: { duration: 0.6 } }} // ✨ 修复：退场只需 0.6s
         className="relative flex items-center justify-center mix-blend-screen"
       >
         <motion.span
@@ -60,7 +63,9 @@ export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturni
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 0.6 }} exit={{ opacity: 0, transition: { duration: 0.3 } }} transition={{ duration: 1.5, delay: 2.5 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 0.6 }} 
+        exit={{ opacity: 0, transition: { duration: 0.3 } }} 
+        transition={{ duration: 1.5, delay: 2.5 }}
         className="absolute bottom-12 text-sm text-slate-400 font-mono tracking-widest"
       >
         [ Click anywhere to step into the oasis ]

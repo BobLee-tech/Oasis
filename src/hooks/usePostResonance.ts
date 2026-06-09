@@ -9,7 +9,7 @@ export interface PostResonance {
   content: string;
   aura_color: string;
   created_at: string;
-  reply?: string; // ✨ 新增：作者的回音
+  reply?: string; // 作者的回音
 }
 
 export const usePostResonance = (postId: string | null) => {
@@ -25,7 +25,9 @@ export const usePostResonance = (postId: string | null) => {
       .eq('post_id', postId)
       .order('created_at', { ascending: true }); 
 
-    if (!error && data) setResonances(data);
+    if (!error && data) {
+      setResonances(data);
+    }
     setIsLoading(false);
   }, [postId]);
 
@@ -42,7 +44,7 @@ export const usePostResonance = (postId: string | null) => {
     };
     
     setResonances(prev => [...prev, tempResonance]);
-
+    
     const { data, error } = await supabase
       .from('post_resonances')
       .insert([{ post_id: postId, author_name, content, aura_color }])
@@ -57,20 +59,21 @@ export const usePostResonance = (postId: string | null) => {
     setResonances(prev => prev.map(r => r.id === tempId ? data : r));
   };
 
-  // ✨ 新增：赋予造物主留下回音的能力
   const replyResonance = async (id: string, replyContent: string) => {
-    // 乐观更新：瞬间显示回复
+    // 乐观更新：瞬间让回复显示在屏幕上
     setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: replyContent } : r));
 
+    // 正规的数据列更新
     const { error } = await supabase
       .from('post_resonances')
-      .update({ reply: replyContent })
+      .update({ reply: replyContent }) 
       .eq('id', id);
 
     if (error) {
-      // 失败则回滚
-      alert("Failed to leave echo. Connection unstable.");
+      console.error("Failed to update reply:", error);
+      // 若云端更新失败，回滚乐观更新，避免前后端状态脱节
       setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: undefined } : r));
+      alert("Failed to leave echo. Please check Supabase 'reply' column and RLS policies.");
       throw error;
     }
   };

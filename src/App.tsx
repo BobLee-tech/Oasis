@@ -67,6 +67,15 @@ function App() {
   const effectiveIsAdmin = isAdmin && !simulateGuest;
   
   const hasTriggeredBGM = useRef(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -103,37 +112,53 @@ function App() {
     setAppView('welcome');
   };
 
-  const containerBg = bgPhase === 'cyber' ? '#050505' : '#FAFAFA';
+  // ✨ 更优雅的昼夜底色：白天暖白纸张，夜晚深邃蓝灰 (Midnight Navy)
+  const containerBg = bgPhase === 'cyber' ? '#050505' : (isDarkMode ? '#0A0F1D' : '#F8FAFC');
 
   return (
     <motion.div 
-      className="relative w-screen h-screen overflow-hidden flex items-center justify-center"
+      className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-1000 ease-in-out ${isDarkMode ? 'dark' : ''}`}
       animate={{ backgroundColor: containerBg }} transition={{ duration: 2.5, ease: customEase }}
     >
       <NoiseOverlay />
       <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} />
 
+      {/* ✨ 优化1 & 2：只有正式进入花园，才并排显示统一风格的控制台 */}
       <AnimatePresence>
-        {isAdmin && terminalStatus === 'granted' && bgPhase === 'zen' && (
+        {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="absolute top-8 left-8 z-50 flex items-center gap-6 font-mono text-[9px] tracking-widest uppercase"
+            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
+            className="absolute top-8 left-8 z-[100] flex flex-wrap items-center gap-3"
           >
             <button 
-              onClick={() => setSimulateGuest(!simulateGuest)} 
-              className={`transition-colors border border-slate-200 px-3 py-1 rounded-full ${simulateGuest ? 'bg-[#39C5BB] text-white border-[#39C5BB]' : 'bg-white/50 text-slate-500 hover:border-slate-400'}`}
+              onClick={() => setIsDarkMode(!isDarkMode)} 
+              className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-[#111827]/60 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
             >
-              {simulateGuest ? '[ Visitor Mode : ON ]' : '[ Visitor Mode : OFF ]'}
+              {isDarkMode ? '☼ LIGHT' : '☽ DARK'}
             </button>
-            <button onClick={handleLogout} className="text-slate-400 hover:text-[#FFB7C5] transition-colors">
-              Disconnect
-            </button>
+
+            {isAdmin && (
+              <>
+                <button 
+                  onClick={() => setSimulateGuest(!simulateGuest)} 
+                  className={`flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${simulateGuest ? 'bg-[#39C5BB] text-white border-[#39C5BB]' : 'bg-white/40 dark:bg-[#111827]/60 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                >
+                  {simulateGuest ? '[ VISITOR : ON ]' : '[ VISITOR : OFF ]'}
+                </button>
+                <button 
+                  onClick={handleLogout} 
+                  className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border border-transparent transition-all duration-700 outline-none text-slate-400 hover:text-[#FFB7C5] hover:bg-white/40 dark:hover:bg-white/5"
+                >
+                  DISCONNECT
+                </button>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)]" />
-      <OasisBackground phase={bgPhase} />
+      <OasisBackground phase={bgPhase} isDark={isDarkMode} />
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
@@ -148,7 +173,7 @@ function App() {
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
             <OasisGarden 
               key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} 
-              onEnterGarden={() => setAppView('garden')} // ✨ 修复：修正为跳转至 garden
+              onEnterGarden={() => setAppView('garden')}
             />
           )}
 
@@ -158,7 +183,6 @@ function App() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}
             >
               <AnimatePresence mode="wait">
-                {/* ✨ 纯粹的三大视图 */}
                 {appView === 'soundscape' && <OasisResonance key="sound-space" />}
                 {appView === 'garden' && <OasisGallery key="garden-space" isAdmin={effectiveIsAdmin} />}
                 {appView === 'whispers' && <OasisWhispers key="whispers-space" isAdmin={effectiveIsAdmin} />}
