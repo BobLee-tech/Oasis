@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks/useAuth';
 import { useSoundscape } from './hooks/useSoundscape'; 
 
-import { OasisWhispers } from './components/OasisWhispers';
+import { OasisOrchard } from './components/OasisOrchard';
 import { OasisGallery } from './components/OasisGallery';
 import { OasisResonance } from './components/OasisResonance';
 import { OasisTerminal } from './components/OasisTerminal';
@@ -22,6 +22,66 @@ const NoiseOverlay = () => (
     </svg>
   </div>
 );
+
+// 🫧 全局点击涟漪：每次点击在落点晕开一圈舒缓的水波，与绿洲的呼吸美学呼应。
+type Ripple = { id: number; x: number; y: number; color: string };
+const ClickRipples = () => {
+  const [ripples, setRipples] = useState<Ripple[]>([]);
+
+  useEffect(() => {
+    // 与界面主色调呼应的柔和色板：初音绿 / 樱粉 / 月白
+    const palette = ['rgba(57,197,187,0.55)', 'rgba(255,183,197,0.5)', 'rgba(226,232,240,0.55)'];
+    let i = 0;
+    let last = 0;
+    const handler = (e: PointerEvent) => {
+      // 舒缓的节奏：太密集的点击不再叠成一团，让每圈水波都从容荡开
+      const now = performance.now();
+      if (now - last < 140) return;
+      last = now;
+      const id = now + Math.random();
+      const color = palette[i++ % palette.length];
+      setRipples(prev => [...prev.slice(-4), { id, x: e.clientX, y: e.clientY, color }]);
+      window.setTimeout(() => setRipples(prev => prev.filter(r => r.id !== id)), 3200);
+    };
+    window.addEventListener('pointerdown', handler);
+    return () => window.removeEventListener('pointerdown', handler);
+  }, []);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[300] overflow-hidden">
+      <AnimatePresence>
+        {ripples.map(r => (
+          <span key={r.id} className="absolute" style={{ left: r.x, top: r.y }}>
+            {/* 落点的一点柔光，像水珠触面后缓缓晕开 */}
+            <motion.span
+              className="absolute rounded-full blur-[4px]"
+              style={{ x: '-50%', y: '-50%', background: `radial-gradient(circle, ${r.color} 0%, transparent 72%)` }}
+              initial={{ width: 14, height: 14, opacity: 0.55 }}
+              animate={{ width: 78, height: 78, opacity: 0 }}
+              transition={{ duration: 1.7, ease: 'easeOut' }}
+            />
+            {/* 主涟漪细环：从容地荡开，长长的尾韵 */}
+            <motion.span
+              className="absolute rounded-full"
+              style={{ x: '-50%', y: '-50%', border: `1.5px solid ${r.color}` }}
+              initial={{ width: 6, height: 6, opacity: 0.55 }}
+              animate={{ width: 230, height: 230, opacity: 0 }}
+              transition={{ duration: 2.5, ease: [0.22, 0.61, 0.36, 1] }}
+            />
+            {/* 第二圈延迟扩散，水波荡开的余韵 */}
+            <motion.span
+              className="absolute rounded-full"
+              style={{ x: '-50%', y: '-50%', border: `1px solid ${r.color}` }}
+              initial={{ width: 6, height: 6, opacity: 0 }}
+              animate={{ width: 168, height: 168, opacity: [0, 0.32, 0] }}
+              transition={{ duration: 2.8, ease: [0.22, 0.61, 0.36, 1], delay: 0.35, times: [0, 0.25, 1] }}
+            />
+          </span>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const Clock = () => {
   const [time, setTime] = useState(new Date());
@@ -104,6 +164,7 @@ function App() {
   return (
     <div className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
       <NoiseOverlay />
+      <ClickRipples />
       <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} />
 
       <AnimatePresence>
@@ -154,7 +215,7 @@ function App() {
               <AnimatePresence mode="wait">
                 {appView === 'soundscape' && <OasisResonance key="sound-space" />}
                 {appView === 'garden' && <OasisGallery key="garden-space" isAdmin={effectiveIsAdmin} />}
-                {appView === 'whispers' && <OasisWhispers key="whispers-space" isAdmin={effectiveIsAdmin} />}
+                {appView === 'orchard' && <OasisOrchard key="orchard-space" isAdmin={effectiveIsAdmin} />}
               </AnimatePresence>
               <OasisDock currentView={appView} onViewChange={setAppView} isAdmin={effectiveIsAdmin} />
             </motion.div>

@@ -1,8 +1,8 @@
 // src/components/OasisGallery.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
 import { useGarden, type BlogPost, type PostType } from '../hooks/useGarden';
+import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
 
@@ -57,7 +57,23 @@ const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const DiscIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 animate-[spin_4s_linear_infinite]"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>);
 
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
-  const { posts, plantSeed, updateSeed, uprootSeed } = useGarden();
+  const { posts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
+  // ☁️ 本地 → 云端一键迁移状态：idle / syncing / 结果文案
+  const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
+  const [syncMsg, setSyncMsg] = useState('');
+  const handleSyncToCloud = async () => {
+    if (syncState === 'syncing') return;
+    setSyncState('syncing'); setSyncMsg('');
+    try {
+      const { count } = await syncToCloud();
+      setSyncMsg(count ? `已同步 ${count} 篇到云端 ✓` : '本地暂无文章');
+    } catch {
+      setSyncMsg('同步失败 · 请先建表并登录');
+    } finally {
+      setSyncState('idle');
+      setTimeout(() => setSyncMsg(''), 3200);
+    }
+  };
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<PostType | null>(null);
@@ -93,6 +109,45 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setEditType(t);
     if (!editingId && pristine && editContent !== getTemplate(t)) setEditContent(getTemplate(t));
   };
+
+  // ✍️ Markdown 格式工具栏：选中文字 → 包裹语法；无选区 → 插入占位并选中
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const applyFormat = (before: string, after: string = before, placeholder = '') => {
+    const ta = editorRef.current;
+    if (!ta) return;
+    const { selectionStart: s, selectionEnd: e } = ta;
+    const sel = editContent.slice(s, e) || placeholder;
+    const next = editContent.slice(0, s) + before + sel + after + editContent.slice(e);
+    setEditContent(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+    });
+  };
+  const applyLinePrefix = (prefix: string) => {
+    const ta = editorRef.current;
+    if (!ta) return;
+    const { selectionStart: s } = ta;
+    const lineStart = editContent.lastIndexOf('\n', s - 1) + 1;
+    const next = editContent.slice(0, lineStart) + prefix + editContent.slice(lineStart);
+    setEditContent(next);
+    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + prefix.length, s + prefix.length); });
+  };
+
+  const FORMAT_TOOLS: { label: string; title: string; run: () => void }[] = [
+    { label: 'B', title: '粗体 **text**', run: () => applyFormat('**', '**', 'bold') },
+    { label: 'i', title: '斜体 *text*', run: () => applyFormat('*', '*', 'italic') },
+    { label: 'S̶', title: '删除线 ~~text~~', run: () => applyFormat('~~', '~~', 'strike') },
+    { label: 'H', title: '标题 ## ', run: () => applyLinePrefix('## ') },
+    { label: '❝', title: '引用 > ', run: () => applyLinePrefix('> ') },
+    { label: '•', title: '列表 - ', run: () => applyLinePrefix('- ') },
+    { label: '☑', title: '任务 - [ ] ', run: () => applyLinePrefix('- [ ] ') },
+    { label: '</>', title: '行内代码 `code`', run: () => applyFormat('`', '`', 'code') },
+    { label: '{ }', title: '代码块 ```', run: () => applyFormat('\n```\n', '\n```\n', 'code') },
+    { label: '🔗', title: '链接 [text](url)', run: () => applyFormat('[', '](https://)', 'text') },
+    { label: '🖼', title: '图片 ![alt](url)', run: () => applyFormat('![', '](/img/picture.jpg)', 'alt') },
+    { label: '—', title: '分割线', run: () => applyLinePrefix('\n---\n') },
+  ];
 
   const insertTemplate = () => {
     const tpl = getTemplate(editType);
@@ -279,7 +334,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     {/* ✨ 优化输入框：夜间高对比高透玻璃态 */}
                     <input type="text" placeholder="Search thoughts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/40 dark:bg-white/5 border border-slate-300/30 dark:border-white/10 text-slate-600 dark:text-slate-200 font-serif text-sm rounded-full py-1.5 pl-9 pr-4 outline-none focus:border-slate-400/60 dark:focus:border-white/30 focus:bg-white/60 dark:focus:bg-white/10 backdrop-blur-sm transition-colors duration-[1500ms] ease-in-out placeholder:text-slate-400/50 dark:placeholder:text-slate-500" />
                   </div>
-                  {isAdmin && <button onClick={startNewPost} className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full border border-[#39C5BB]/50 text-[#39C5BB] hover:bg-[#39C5BB] hover:text-white transition-all duration-300">[ + Seed ]</button>}
+                  {isAdmin && (
+                    <div className="flex items-center gap-3">
+                      <AnimatePresence>
+                        {syncMsg && <motion.span initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="font-mono text-[9px] tracking-wider text-[#39C5BB] normal-case">{syncMsg}</motion.span>}
+                      </AnimatePresence>
+                      <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full border border-slate-300/60 dark:border-white/15 text-slate-500 dark:text-slate-300 hover:border-[#39C5BB]/50 hover:text-[#39C5BB] transition-all duration-300 disabled:opacity-40">{syncState === 'syncing' ? '[ ☁ … ]' : '[ ☁ Sync ]'}</button>
+                      <button onClick={startNewPost} className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full border border-[#39C5BB]/50 text-[#39C5BB] hover:bg-[#39C5BB] hover:text-white transition-all duration-300">[ + Seed ]</button>
+                    </div>
+                  )}
                 </div>
 
                 {/* 🌱 类型过滤：周报 / 学习笔记 / 成长 / 随笔 —— 书写用途的主导维度 */}
@@ -389,8 +452,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                </div>
 
                {isPreviewMode ? (
-                 <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 prose prose-slate dark:prose-invert prose-lg max-w-none font-serif text-slate-700 dark:text-slate-300 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-800 dark:prose-headings:text-slate-100 prose-a:text-[#39C5BB] prose-strong:font-bold prose-strong:text-slate-800 dark:prose-strong:text-white transition-colors duration-[1500ms] ease-in-out">
-                   {editContent.trim() ? <ReactMarkdown>{editContent}</ReactMarkdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">No content to preview...</div>}
+                 <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8">
+                   {editContent.trim() ? <Markdown>{editContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">No content to preview...</div>}
                  </div>
                ) : (
                  <>
@@ -398,7 +461,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 font-mono text-[9px] tracking-[0.18em] uppercase">
                      <span className="text-slate-300 dark:text-slate-600 select-none">Template ·</span>
                      {getTemplate(editType) && (
-                       <button onClick={insertTemplate} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors">+ Insert 插入</button>
+                       <button onClick={insertTemplate} title={`把「${TYPE_MAP[editType]?.zh}」的写作骨架追加到正文`} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors">+ Insert 插入骨架</button>
                      )}
                      <button onClick={saveAsTemplate} disabled={!editContent.trim()} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-30 disabled:hover:text-slate-400">Save As 存为模板</button>
                      {customTemplates[editType] != null && (
@@ -410,8 +473,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        )}
                      </AnimatePresence>
                    </div>
-                   <div className="text-[10px] text-slate-400 font-mono mb-4 opacity-60 tracking-widest">SUPPORT MARKDOWN & IMAGES: ![alt](/img/picture.jpg)</div>
-                   <textarea value={editContent} onChange={e => setEditContent(e.target.value)} placeholder="Let your thoughts flow..." className="flex-1 w-full bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar mb-8 transition-colors duration-[1500ms] ease-in-out" />
+                   {/* ✍️ Markdown 格式工具栏：选中文字点按钮即插入对应语法 */}
+                   <div className="flex flex-wrap items-center gap-1 mb-3 pb-3 border-b border-slate-200/60 dark:border-white/5">
+                     {FORMAT_TOOLS.map(t => (
+                       <button key={t.label} type="button" onClick={t.run} title={t.title}
+                         className="min-w-[30px] h-7 px-2 flex items-center justify-center font-mono text-[12px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
+                         {t.label}
+                       </button>
+                     ))}
+                     <span className="ml-auto font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 uppercase">Markdown · GFM · 表格/代码/任务</span>
+                   </div>
+                   <textarea ref={editorRef} value={editContent} onChange={e => setEditContent(e.target.value)} placeholder="Let your thoughts flow..." className="flex-1 w-full bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar mb-8 transition-colors duration-[1500ms] ease-in-out" />
                  </>
                )}
                
@@ -469,9 +541,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </div>
 
                 {/* ✨ 核心修复四：强力介入并定义 Markdown 的全级夜间排版字色，保证多层嵌套下渲染坚固不丢失 */}
-                <div className="prose prose-slate dark:prose-invert prose-lg max-w-none font-serif text-slate-700 dark:text-slate-300 leading-[2.2] tracking-wide prose-headings:font-serif prose-headings:font-normal prose-headings:text-slate-800 dark:prose-headings:text-white prose-a:text-[#39C5BB] prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-strong:text-slate-800 dark:prose-strong:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-li:text-slate-700 dark:prose-li:text-slate-300 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:my-12 prose-img:mx-auto first-letter:text-5xl first-letter:font-bold first-letter:text-slate-800 dark:first-letter:text-white first-letter:mr-1 first-letter:float-left first-letter:leading-[0.8] transition-colors duration-[1500ms] ease-in-out">
-                  <ReactMarkdown>{activePost.content}</ReactMarkdown>
-                </div>
+                <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{activePost.content}</Markdown>
 
                 {/* 🍂 Fallen Leaves 评论交互区 */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]">

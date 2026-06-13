@@ -69,3 +69,66 @@ body {
         scroll-behavior: auto !important;
     }
 }
+
+/* ✍️ Markdown 排版细节：代码块 / 行内代码 / 表格的明暗双态外观 */
+@layer components {
+    /* 代码块容器：柔和卡片，去掉 prose 默认深黑底 */
+    .prose pre {
+        background: rgba(241, 245, 249, 0.7);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 0.9rem;
+        padding: 1.1rem 1.25rem;
+        overflow-x: auto;
+        font-size: 0.85em;
+        line-height: 1.7;
+    }
+    .dark .prose pre {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    /* 行内代码微底色，区别于代码块 */
+    .prose :not(pre) > code {
+        background: rgba(57, 197, 187, 0.1);
+        padding: 0.12em 0.4em;
+        border-radius: 0.35rem;
+    }
+    /* 表格：细线 + 表头微底，符合治愈系玻璃质感 */
+    .prose table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+    }
+    .prose th, .prose td {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 0.55rem 0.85rem;
+        text-align: left;
+    }
+    .dark .prose th, .dark .prose td {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    .prose thead th {
+        background: rgba(148, 163, 184, 0.12);
+        font-weight: 600;
+    }
+    .dark .prose thead th {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    /* GFM 任务列表：复选框不缩进、对齐文字 */
+    .prose ul.contains-task-list { list-style: none; padding-left: 0.25rem; }
+    .prose .task-list-item { list-style: none; }
+    .prose .task-list-item input { margin-right: 0.5rem; accent-color: #39C5BB; }
+}
+
+/* 🌈 highlight.js 极简主题：贴合 Oasis 调性的语法着色（明暗自适应） */
+.hljs-comment, .hljs-quote { color: #94a3b8; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-name, .hljs-tag { color: #c026d3; }
+.hljs-string, .hljs-title, .hljs-section, .hljs-attribute, .hljs-literal, .hljs-template-tag, .hljs-template-variable, .hljs-type, .hljs-addition { color: #0d9488; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link, .hljs-meta, .hljs-deletion { color: #ea580c; }
+.hljs-function .hljs-title, .hljs-title.function_ { color: #2563eb; }
+.hljs-variable, .hljs-params, .hljs-attr { color: #475569; }
+.dark .hljs-comment, .dark .hljs-quote { color: #64748b; }
+.dark .hljs-keyword, .dark .hljs-selector-tag, .dark .hljs-built_in, .dark .hljs-name, .dark .hljs-tag { color: #f0abfc; }
+.dark .hljs-string, .dark .hljs-title, .dark .hljs-section, .dark .hljs-attribute, .dark .hljs-literal, .dark .hljs-type, .dark .hljs-addition { color: #6EE7B7; }
+.dark .hljs-number, .dark .hljs-symbol, .dark .hljs-bullet, .dark .hljs-link, .dark .hljs-meta, .dark .hljs-deletion { color: #fdba74; }
+.dark .hljs-function .hljs-title, .dark .hljs-title.function_ { color: #93c5fd; }
+.dark .hljs-variable, .dark .hljs-params, .dark .hljs-attr { color: #cbd5e1; }

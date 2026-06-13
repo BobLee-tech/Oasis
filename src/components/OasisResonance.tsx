@@ -1,8 +1,129 @@
 // src/components/OasisResonance.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSoundscape } from '../hooks/useSoundscape';
+import { useSoundscape, getSpectrum } from '../hooks/useSoundscape';
 import type { MusicCategory } from '../types/music';
+
+// 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
+// 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
+const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number }> = ({ color, isPlaying, bars = 11 }) => {
+  const [levels, setLevels] = useState<number[]>(() => new Array(bars).fill(0));
+
+  // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
+  // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      setLevels(getSpectrum(bars));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [bars]);
+
+  // 镜像波形：声条以中线为基准上下对称生长，比单边触底更具音乐性与美感
+  return (
+    <div className="relative flex items-center justify-center gap-[3px] h-12 w-full">
+      {/* 静息中线，暂停时声条柔和落回这条线 */}
+      <span className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-current to-transparent opacity-10 pointer-events-none" style={{ color }} />
+      {levels.map((lv, i) => {
+        const e = Math.pow(lv, 0.82); // 轻微提亮中段，弱信号也可见
+        return (
+          <span
+            key={i}
+            className="w-[3px] rounded-full"
+            style={{
+              height: `${6 + e * 94}%`,
+              backgroundColor: color,
+              opacity: isPlaying ? 0.28 + e * 0.72 : 0.18,
+              boxShadow: e > 0.6 ? `0 0 9px ${color}` : 'none',
+              transition: 'height 120ms cubic-bezier(0.22,0.61,0.36,1), opacity 240ms linear, box-shadow 240ms linear',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+// 🌫️ 环境光晕：随音乐整体能量呼吸，让氛围与声波同步起伏。
+// 用 ref 直接改样式而非 state，60fps 也不触发 React 重渲染。
+const AmbientGlow: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPlaying }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let raf = 0;
+    let smooth = 0;
+    const tick = () => {
+      const el = ref.current;
+      if (el) {
+        if (isPlaying) {
+          const spec = getSpectrum(24);
+          // 偏重低频做「节拍包络」：鼓点一来迅速点亮，再缓缓回落，呼吸跟着节奏走
+          const bass = (spec[0] + spec[1] + spec[2] + spec[3]) / 4;
+          const energy = spec.reduce((a, b) => a + b, 0) / spec.length;
+          const beat = Math.max(bass, energy);
+          const rate = beat > smooth ? 0.4 : 0.05; // 快起慢落
+          smooth += (beat - smooth) * rate;
+          el.style.transform = `translate(-50%, -50%) scale(${1 + smooth * 0.24})`;
+          el.style.opacity = `${0.08 + smooth * 0.55}`;
+        } else {
+          smooth += (0 - smooth) * 0.04;
+          el.style.transform = `translate(-50%, -50%) scale(${1 + smooth * 0.24})`;
+          el.style.opacity = `${0.05 + smooth * 0.3}`;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isPlaying]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-1/2 left-1/2 rounded-full blur-[100px] dark:blur-[130px] mix-blend-multiply dark:mix-blend-screen pointer-events-none"
+      style={{ width: '115%', height: '115%', backgroundColor: color, transform: 'translate(-50%, -50%)', opacity: 0.06, transition: 'background-color 2000ms ease' }}
+    />
+  );
+};
+
+// 2 位十六进制透明度
+const alphaHex = (a: number) => Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0');
+
+// 🎶 歌名本身：随音乐能量轻轻呼吸晕光，让标题成为律动的主角而非静态文字。
+const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean }> = ({ title, color, isPlaying }) => {
+  const ref = React.useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    let raf = 0;
+    let smooth = 0;
+    const tick = () => {
+      const el = ref.current;
+      if (el) {
+        const spec = isPlaying ? getSpectrum(16) : [];
+        const energy = spec.length ? spec.reduce((a, b) => a + b, 0) / spec.length : 0;
+        smooth += (energy - smooth) * 0.14;
+        const glow = isPlaying ? 0.18 + smooth * 0.55 : 0;
+        el.style.textShadow = glow > 0.01
+          ? `0 0 ${10 + smooth * 38}px ${color}${alphaHex(glow)}`
+          : 'none';
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [color, isPlaying]);
+
+  return (
+    <h2
+      ref={ref}
+      className="text-[2.6rem] md:text-6xl font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance transition-colors duration-[1500ms]"
+    >
+      {title}
+    </h2>
+  );
+};
 
 const Icons = {
   sequence: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>),
@@ -73,23 +194,20 @@ export const OasisResonance: React.FC = () => {
         {/* ================= 左侧 (6/12)：拟真转盘唱机 ================= */}
         <div className="col-span-1 lg:col-span-6 flex flex-col items-center justify-center relative">
 
-          {/* 超大环境光晕 */}
-          <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[100px] dark:blur-[130px] mix-blend-multiply dark:mix-blend-screen pointer-events-none transition-colors duration-[2000ms]"
-            style={{ width: '115%', height: '115%' }}
-            animate={{ backgroundColor: currentTrack.color, scale: isPlaying ? [1, 1.05, 1] : 1, opacity: isPlaying ? [0.10, 0.18, 0.10] : 0.05 }}
-            transition={{ scale: { duration: 8, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 8, repeat: Infinity, ease: "easeInOut" } }}
-          />
+          {/* 超大环境光晕：随声波能量呼吸 */}
+          <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} />
 
           {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
-          <div className="relative w-full max-w-[380px] lg:max-w-[500px] aspect-[10/8.6] rounded-[2rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_30px_70px_rgba(0,0,0,0.12)] dark:shadow-[0_30px_70px_rgba(0,0,0,0.55)] transition-colors duration-[1500ms]">
+          <div className="relative w-full max-w-[400px] lg:max-w-[520px] aspect-[10/8.4] rounded-[2.25rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
 
             {/* 台面微光拉丝 */}
-            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/30 via-transparent to-white/5 dark:from-white/[0.06] dark:to-transparent pointer-events-none" />
+            <div className="absolute inset-0 rounded-[2.25rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent pointer-events-none" />
+            {/* 台面顶缘高光，增强玻璃质感 */}
+            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 dark:via-white/20 to-transparent pointer-events-none" />
 
             {/* 💿 转盘 + 黑胶：偏左放置，给唱臂留出呼吸位 */}
             <div
-              className="absolute left-[5.5%] top-1/2 -translate-y-1/2 w-[70%] aspect-square cursor-pointer group"
+              className="absolute left-[6%] top-1/2 -translate-y-1/2 w-[71%] aspect-square cursor-pointer group"
               onClick={togglePlay} role="button" aria-label={isPlaying ? '暂停' : '播放'}
             >
               {/* 转盘底缘 */}
@@ -107,7 +225,15 @@ export const OasisResonance: React.FC = () => {
                 {/* 唱片贴纸 */}
                 <div className="absolute inset-[31%] rounded-full flex items-center justify-center shadow-inner overflow-hidden transition-colors duration-[1500ms]" style={{ backgroundColor: currentTrack.color }}>
                   <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
-                  <span className="font-mono text-[7px] tracking-[0.3em] uppercase text-white/80 rotate-[-12deg] select-none px-2 text-center leading-relaxed line-clamp-2">{currentTrack.artist}</span>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={currentTrack.id}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6, ease: 'easeInOut' }}
+                      className="font-mono text-[7px] tracking-[0.3em] uppercase text-white/80 rotate-[-12deg] select-none px-2 text-center leading-relaxed line-clamp-2"
+                    >
+                      {currentTrack.artist}
+                    </motion.span>
+                  </AnimatePresence>
                 </div>
                 {/* 中轴 */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[4.5%] h-[4.5%] bg-[#F8FAFC] dark:bg-[#0A0F1D] rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] z-20" />
@@ -169,8 +295,11 @@ export const OasisResonance: React.FC = () => {
                 {formatTime(currentTime)}
               </span>
               <div className="relative flex-1 group/seek h-4 flex items-center">
-                <div className="absolute inset-x-0 h-[3px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-colors duration-[1500ms]">
-                  <div className="h-full rounded-full transition-colors duration-[1500ms]" style={{ width: `${progress}%`, backgroundColor: currentTrack.color }} />
+                <div className="absolute inset-x-0 h-[3px] group-hover/seek:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
+                  <div className="h-full rounded-full transition-colors duration-[1500ms] relative" style={{ width: `${progress}%`, backgroundColor: currentTrack.color, boxShadow: `0 0 10px ${currentTrack.color}90` }}>
+                    {/* 进度末端流动微光，增强律动感 */}
+                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-full bg-gradient-to-r from-transparent to-white/40 mix-blend-overlay" />
+                  </div>
                 </div>
                 <div
                   className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-0 group-hover/seek:opacity-100 transition-opacity pointer-events-none ring-2"
@@ -213,38 +342,56 @@ export const OasisResonance: React.FC = () => {
           </div>
         </div>
 
-        {/* ================= 右侧 (6/12)：曲目信息 + 选碟架 ================= */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left w-full h-full relative z-20">
+        {/* ================= 右侧 (6/12)：曲目信息（居中） + 选碟架 ================= */}
+        <div className="col-span-1 lg:col-span-6 flex flex-col items-center text-center w-full h-full relative z-20">
 
-          <AnimatePresence mode="wait">
-            <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.8, ease: "easeOut" }} className="flex flex-col items-center lg:items-start w-full">
+          {/* 🎶 正在共鸣 · 居中置于歌单上方中央，声波 → 歌名 → 艺术家 → 歌词 自上而下 */}
+          <div className="w-full max-w-[480px] flex flex-col items-center">
 
-              {/* 全息跳动频谱 */}
-              <div className="flex items-end justify-center lg:justify-start space-x-[3px] h-8 mb-6 w-full">
-                {[...Array(6)].map((_, i) => (
-                  <motion.div key={i} className="w-[3px] rounded-full transition-colors duration-[1500ms]" style={{ backgroundColor: currentTrack.color }} animate={{ height: isPlaying ? ['20%', '100%', '40%', '80%', '50%', '90%'][i] : '15%', opacity: isPlaying ? 1 : 0.3 }} transition={{ duration: 0.5 + i * 0.1, repeat: isPlaying ? Infinity : 0, repeatType: "mirror", ease: "easeInOut" }} />
-                ))}
-              </div>
+            {/* 状态标签：左右对称细线，更具仪式感 */}
+            <div className="flex items-center gap-3 w-full max-w-[280px] mb-3">
+              <span className="h-px flex-1 bg-gradient-to-l from-slate-300/50 dark:from-white/10 to-transparent" />
+              <span className="font-mono text-[8px] tracking-[0.45em] uppercase text-slate-400/80 dark:text-slate-500 whitespace-nowrap select-none">
+                {isPlaying ? 'Now Resonating' : 'Paused'}
+              </span>
+              <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
+            </div>
 
-              <h2 className="text-4xl md:text-5xl font-serif text-slate-800 dark:text-slate-50 tracking-wide mb-4 text-balance leading-[1.15] w-full transition-colors duration-[1500ms]">
-                {currentTrack.title}
-              </h2>
-              <p className="font-mono text-[11px] md:text-xs tracking-[0.4em] uppercase text-slate-500 dark:text-slate-400 w-full transition-colors duration-[1500ms]">
-                {currentTrack.artist}
-              </p>
+            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={32} />
 
-              {currentTrack.lyric && (
-                <div className="mt-8 mb-4 relative pl-5 lg:pl-6 border-l-2 transition-colors duration-[1500ms]" style={{ borderColor: `${currentTrack.color}60` }}>
-                  <motion.p animate={{ opacity: isPlaying ? 1 : 0.6 }} transition={{ duration: 1.5, ease: "easeOut" }} className="font-serif italic text-slate-600 dark:text-slate-300 tracking-wider text-sm md:text-base leading-relaxed transition-colors duration-[1500ms]">
-                    "{currentTrack.lyric}"
-                  </motion.p>
+            <AnimatePresence mode="wait">
+              <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-4">
+
+                <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} />
+
+                <div className="flex items-center justify-center gap-3 mt-5">
+                  <motion.span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: currentTrack.color }}
+                    animate={{ opacity: isPlaying ? [1, 0.35, 1] : 0.4, scale: isPlaying ? [1, 0.85, 1] : 1 }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <p className="font-mono text-[11px] md:text-xs tracking-[0.4em] uppercase text-slate-500 dark:text-slate-400 transition-colors duration-[1500ms]">
+                    {currentTrack.artist}
+                  </p>
                 </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
 
-          {/* 分类栏 */}
-          <div className="flex space-x-8 mt-8 mb-8 w-full justify-center lg:justify-start border-b border-slate-200/50 dark:border-white/5 pb-4">
+                {currentTrack.lyric && (
+                  <motion.p
+                    animate={{ opacity: isPlaying ? 1 : 0.55 }} transition={{ duration: 1.5, ease: 'easeOut' }}
+                    className="mt-7 max-w-[420px] font-serif italic text-slate-600 dark:text-slate-300 tracking-wider text-base md:text-lg leading-loose transition-colors duration-[1500ms]"
+                  >
+                    <span className="mr-0.5 text-xl align-[-0.15em] opacity-60" style={{ color: currentTrack.color }}>“</span>
+                    {currentTrack.lyric}
+                    <span className="ml-0.5 text-xl align-[-0.15em] opacity-60" style={{ color: currentTrack.color }}>”</span>
+                  </motion.p>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* 分类栏（居中） */}
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mt-9 mb-7 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-4">
             {CATEGORIES.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`relative flex items-baseline gap-1.5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-700 outline-none pb-2 ${activeCategory === cat.id ? 'text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {cat.label}
@@ -257,7 +404,7 @@ export const OasisResonance: React.FC = () => {
           </div>
 
           {/* 💿 选碟架：每首歌是一张迷你唱片，点击即「换碟上盘」 */}
-          <div className="w-full flex-1 relative min-h-[350px]">
+          <div className="w-full max-w-[560px] mx-auto flex-1 relative min-h-[350px]">
             <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#F8FAFC] dark:from-[#0A0F1D] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
             <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#F8FAFC] dark:from-[#0A0F1D] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
 

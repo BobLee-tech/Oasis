@@ -171,6 +171,65 @@ const cancelFade = () => {
   }
 };
 
+// 🌊 通用音量缓动：用于播放/暂停/切歌的丝滑淡入淡出
+const fadeVolume = (target: number, duration: number, onDone?: () => void) => {
+  cancelFade();
+  const from = globalAudio.volume;
+  const start = performance.now();
+  const step = (now: number) => {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    globalAudio.volume = Math.max(0, Math.min(1, from + (target - from) * ease));
+    if (p < 1) {
+      currentFade = requestAnimationFrame(step);
+    } else {
+      currentFade = null;
+      onDone?.();
+    }
+  };
+  currentFade = requestAnimationFrame(step);
+};
+
+// 🔊 实时频谱分析：把黑胶声波接入 Web Audio，让可视化与真实音乐律动同步
+let audioCtx: AudioContext | null = null;
+let analyser: AnalyserNode | null = null;
+let freqData: Uint8Array<ArrayBuffer> | null = null;
+
+const ensureAnalyser = () => {
+  if (analyser) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return;
+  }
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    audioCtx = new Ctx();
+    const source = audioCtx.createMediaElementSource(globalAudio);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    analyser.smoothingTimeConstant = 0.82; // 平滑，声波起伏舒缓自然
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    freqData = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+  } catch (e) {
+    console.warn('Analyser init failed', e);
+  }
+};
+
+// 取 N 段归一化频谱能量（0~1），无音频时回退到柔和的伪波形
+export const getSpectrum = (bars: number): number[] => {
+  if (!analyser || !freqData || !globalIsPlaying) return new Array(bars).fill(0);
+  analyser.getByteFrequencyData(freqData);
+  const usable = Math.floor(freqData.length * 0.7); // 丢弃最高频的噪声段
+  const out: number[] = [];
+  const bucket = Math.max(1, Math.floor(usable / bars));
+  for (let i = 0; i < bars; i++) {
+    let sum = 0;
+    for (let j = 0; j < bucket; j++) sum += freqData[i * bucket + j] ?? 0;
+    out.push(Math.min(1, (sum / bucket / 255) * 1.4));
+  }
+  return out;
+};
+
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 
@@ -201,7 +260,7 @@ const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
   globalCurrentTime = 0;
 
   globalAudio.load();
-  globalAudio.play().catch(e => console.warn("Auto-next play error", e));
+  globalAudio.play().then(() => ensureAnalyser()).catch(e => console.warn("Auto-next play error", e));
   notifyListeners();
 };
 
@@ -254,6 +313,7 @@ export const useSoundscape = () => {
     notifyListeners();
 
     globalAudio.play().then(() => {
+      ensureAnalyser();
       const startTime = performance.now();
       const fadeIn = (currentTime: number) => {
         const elapsed = currentTime - startTime;
@@ -278,14 +338,17 @@ export const useSoundscape = () => {
       globalAudio.load();
       notifyListeners();
     }
-    
-    globalAudio.volume = globalVolume;
-    globalAudio.play().catch(e => console.warn("Play error (Path mismatch or Codec):", e));
+
+    globalAudio.volume = 0;
+    globalAudio.play().then(() => {
+      ensureAnalyser();
+      fadeVolume(globalVolume, 900); // 🌅 落针淡入
+    }).catch(e => console.warn("Play error (Path mismatch or Codec):", e));
   }, []);
 
-  const pauseTrack = useCallback(() => { 
-    cancelFade();
-    globalAudio.pause(); 
+  const pauseTrack = useCallback(() => {
+    // 🌇 抬针淡出后再真正暂停，避免突兀的咔哒断音
+    fadeVolume(0, 650, () => globalAudio.pause());
   }, []);
 
   const togglePlay = useCallback(() => {
@@ -323,8 +386,8 @@ export const useSoundscape = () => {
           globalAudio.load();
           notifyListeners();
           
-          globalAudio.play().catch(e => console.warn("Play error", e));
-          
+          globalAudio.play().then(() => ensureAnalyser()).catch(e => console.warn("Play error", e));
+
           const startInTime = performance.now();
           const targetVol = globalVolume;
           const fadeIn = (inTime: number) => {

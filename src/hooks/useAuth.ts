@@ -9,11 +9,19 @@ export const useAuth = () => {
   // 初始化时检查当前是否已经登录
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAdmin(!!session);
-      setIsLoading(false);
+      try {
+        // 某些受限/内嵌浏览器里 supabase 依赖的 navigator.locks 可能永不返回，
+        // 用超时兜底，避免应用永远卡在「checking」黑屏上。
+        const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
+        const result = await Promise.race([supabase.auth.getSession(), timeout]);
+        setIsAdmin(!!result?.data?.session);
+      } catch {
+        setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    
+
     checkSession();
 
     // 监听登录状态的变化
