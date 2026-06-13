@@ -2,268 +2,238 @@
 import React, { useEffect, useRef } from 'react';
 import type { BgPhase } from '../types/auth';
 
-interface OasisBackgroundProps {
-  phase: BgPhase;
-  isDark: boolean; 
-}
+interface OasisBackgroundProps { phase: BgPhase; isDark: boolean; }
 
 export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const phaseRef = useRef(phase);
-  const isDarkRef = useRef(isDark); 
-  const hasBursted = useRef(false);
+  const isDarkRef = useRef(isDark);
   const isRunningRef = useRef(false);
   const renderRef = useRef<() => void>(undefined);
 
   useEffect(() => {
-    phaseRef.current = phase;
-    isDarkRef.current = isDark;
-    if (renderRef.current && !isRunningRef.current && !document.hidden) {
-      renderRef.current();
-    }
+    phaseRef.current = phase; isDarkRef.current = isDark;
+    if (renderRef.current && !isRunningRef.current && !document.hidden) renderRef.current();
   }, [phase, isDark]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: true }); if (!ctx) return;
 
-    hasBursted.current = false;
     let animationFrameId: number;
-    let particles: Particle[] = [];
-    let ripples: Ripple[] = [];
     let isPaused = document.hidden;
     isRunningRef.current = false;
 
-    const mouse = { x: -1000, y: -1000 };
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    // ♿ 晕动症友好：偏好减少动效时只渲染一帧静态画面
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let globalNightFactor = isDarkRef.current ? 1 : 0;
+    let time = 0;
+
+    const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+    // 🌸 花瓣色阶：从樱白到深粉，每片花瓣随机取一档，画面层次更自然
+    const PETAL_TONES = [
+      { light: '255, 228, 235', deep: '255, 170, 190' },
+      { light: '255, 218, 228', deep: '255, 150, 175' },
+      { light: '255, 235, 240', deep: '255, 190, 205' },
+    ];
 
     class Particle {
-      x: number; y: number; size: number;
-      vx: number; vy: number;
-      mode: 'dust' | 'sakura';
-      opacity: number; targetOpacity: number;
-      angle: number; angularVelocity: number; offset: number;
+      x = 0; y = 0;
+      z: number;                 // 景深 0.2~1
+      baseSize: number; size: number;
+      vx = 0; vy = 0;
+      opacity = 0; targetOpacity: number;
+      offset: number;
+      isBokeh: boolean;          // 远景虚化光斑
+      // 花瓣形态参数
+      angle: number;             // 朝向
+      spin: number;              // 自旋速度
+      tumbleSpeed: number;       // 翻飞频率（绕长轴翻转）
+      tone: { light: string; deep: string };
 
-      constructor() {
+      constructor(scatter = true) {
+        this.z = Math.random() * 0.8 + 0.2;
+        // 约 1/3 是远景虚化光斑，其余是实体花瓣/星萤
+        this.isBokeh = Math.random() < 0.34;
+        this.baseSize = this.isBokeh ? Math.random() * 38 + 22 : Math.random() * 5 + 4.5;
+        this.size = this.baseSize * this.z;
+
+        this.targetOpacity = this.isBokeh ? (Math.random() * 0.14 + 0.05) : (Math.random() * 0.35 + 0.4);
+        this.offset = Math.random() * 10000;
+
+        this.angle = Math.random() * Math.PI * 2;
+        this.spin = (Math.random() - 0.5) * 0.01;
+        this.tumbleSpeed = Math.random() * 0.0012 + 0.0006;
+        this.tone = PETAL_TONES[Math.floor(Math.random() * PETAL_TONES.length)];
+
+        this.respawn(scatter);
+      }
+
+      respawn(scatter: boolean) {
         this.x = Math.random() * canvas!.width;
-        this.y = Math.random() * canvas!.height;
-        this.mode = 'dust';
-        this.size = Math.random() * 3 + 2;
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.vy = (Math.random() - 0.5) * 0.3 - 0.1;
-        this.targetOpacity = Math.random() * 0.3 + 0.1;
-        this.opacity = this.targetOpacity;
-        this.angle = 0;
-        this.angularVelocity = 0;
-        this.offset = Math.random() * 100;
-      }
-
-      burst() {
-        this.mode = 'sakura';
-        const isNight = isDarkRef.current;
-        this.size = Math.random() * 6 + 6;
-        this.targetOpacity = Math.random() * 0.4 + 0.3;
-        this.opacity = 0; // 渐入
-        this.angle = Math.random() * Math.PI;
-        this.angularVelocity = (Math.random() - 0.5) * 0.02;
-        
-        // ✨ 根据昼夜初始化不同的爆发生命力
-        if (isNight) {
-            this.vx = (Math.random() - 0.5) * 0.5;
-            this.vy = -(Math.random() * 0.2 + 0.05); // 极轻微的上升力
+        this.opacity = 0;
+        if (scatter) {
+          // 初始铺满全屏，避免开场一片空白
+          this.y = Math.random() * canvas!.height;
+        } else if (globalNightFactor > 0.5) {
+          this.y = canvas!.height + 40;        // 夜晚星萤自下而上
         } else {
-            this.vx = (Math.random() - 0.5) * 1.5;
-            this.vy = Math.random() * 1 + 0.5; // 轻缓下落
+          this.y = -40 - Math.random() * 80;   // 白天花瓣自上而下
         }
+        this.vx = 0;
+        this.vy = globalNightFactor > 0.5 ? -(Math.random() * 0.12 + 0.06) : (Math.random() * 0.2 + 0.15);
       }
 
-      update() {
-        const isNight = isDarkRef.current; 
+      update(nightFactor: number, wind: number) {
+        const t = time + this.offset;
 
-        if (this.mode === 'dust') {
-          const dx = mouse.x - this.x;
-          const dy = mouse.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 150) {
-            const force = (150 - dist) / 150;
-            this.x -= (dx / dist) * force * 1.5;
-            this.y -= (dy / dist) * force * 1.5;
-          }
-          this.x += Math.sin(Date.now() * 0.0005 + this.offset) * 0.1;
-        }
+        if (nightFactor < 0.5) {
+          // 🌸 白天：落叶式翻飞物理
+          // 翻转相位：花瓣绕长轴翻转，翻转到侧面时下落加快、正面时受风兜住变慢
+          const tumble = Math.sin(t * this.tumbleSpeed);
+          const fallBase = this.isBokeh ? 0.08 : (0.22 + 0.1 * this.z);
+          const targetVy = fallBase * (0.65 + 0.35 * Math.abs(tumble));
+          // 横向：全局风 + 个体摇曳（与翻转联动，飘出 S 形轨迹）
+          const sway = Math.sin(t * 0.0006) * 0.35 * this.z;
+          const targetVx = (wind * (0.6 + this.z) + sway) * (this.isBokeh ? 0.3 : 1);
 
-        if (this.mode === 'sakura') {
-          if (isNight) {
-            // ✨ 流萤/星光模式：极其舒缓的向上漂浮与横向正弦摇摆
-            this.vx *= 0.98; // 阻力
-            this.vy -= 0.001; // 极小的浮力叠加
-            if (this.vy < -0.3) this.vy = -0.3; // 限制最大上升速度
-            
-            // 缓慢的横向摇摆，如同萤火虫探路
-            this.x += Math.sin(Date.now() * 0.0003 + this.offset) * 0.15; 
-          } else {
-            // ✨ 樱花模式：传统的缓落与旋转
-            this.vx *= 0.98;
-            if (this.vy < 0) this.vy += 0.02; // 重力加速度
-            if (this.vy > 0 && this.vy < 0.6) this.vy += 0.005; // 限制下落极速
-            this.x += Math.sin(Date.now() * 0.001 + this.offset) * 0.3;
-            this.angle += this.angularVelocity;
-          }
-        }
-
-        this.x += this.vx;
-        this.y += this.vy;
-
-        // 边缘循环重置
-        if (this.y > canvas!.height + 50 || this.y < -50 || this.x > canvas!.width + 50 || this.x < -50) {
-          this.x = Math.random() * canvas!.width;
-          if (this.mode === 'sakura') {
-            if (isNight) {
-              this.y = canvas!.height + 20; 
-              this.vx = (Math.random() - 0.5) * 0.5;
-              this.vy = -(Math.random() * 0.1 + 0.05); 
-            } else {
-              this.y = -20; 
-              this.vx = 0;
-              this.vy = Math.random() * 0.3 + 0.2; 
-            }
-          } else {
-            this.y = Math.random() * canvas!.height;
-          }
-        }
-
-        this.opacity += (this.targetOpacity - this.opacity) * 0.02;
-      }
-
-      draw(ctx: CanvasRenderingContext2D) {
-        const isNight = isDarkRef.current;
-
-        if (this.mode === 'dust') {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-          ctx.fillStyle = isNight ? `rgba(57, 197, 187, ${this.opacity * 0.3})` : `rgba(57, 197, 187, ${this.opacity})`;
-          ctx.fill();
+          this.vx += (targetVx - this.vx) * 0.02;
+          this.vy += (targetVy - this.vy) * 0.02;
+          this.angle += this.spin + tumble * 0.004;
         } else {
-          if (isNight) {
-            // ✨ 手绘双层流萤：性能远超 shadowBlur，视觉却更通透
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(57, 197, 187, ${this.opacity * 0.15})`; // 外层弥散光
-            ctx.fill();
+          // 🌌 夜晚：星萤极缓上浮 + 微弱布朗漂移
+          const drift = Math.sin(t * 0.0004) * 0.06 * this.z;
+          const rise = -(0.05 + 0.06 * this.z);
+          this.vx += (wind * 0.3 * this.z + drift - this.vx) * 0.015;
+          this.vy += (rise - this.vy) * 0.015;
+        }
 
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 0.3, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.8})`; // 内核高光
-            ctx.fill();
+        this.x += this.vx; this.y += this.vy;
+
+        const m = 120;
+        if (this.y > canvas!.height + m || this.y < -m) {
+          this.z = Math.random() * 0.8 + 0.2;
+          this.size = this.baseSize * this.z;
+          this.respawn(false);
+        }
+        // 左右出界：从另一侧温柔回卷，而不是凭空消失
+        if (this.x > canvas!.width + m) this.x = -m;
+        else if (this.x < -m) this.x = canvas!.width + m;
+
+        this.opacity += (this.targetOpacity - this.opacity) * 0.012;
+      }
+
+      // 经典五瓣樱花的单片花瓣：圆润基部 + 顶端浅凹槽
+      tracePetal(ctx: CanvasRenderingContext2D, s: number) {
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.bezierCurveTo(s * 0.85, -s * 0.55, s * 0.65, s * 0.45, s * 0.18, s * 0.82);
+        ctx.lineTo(0, s * 0.62); // 顶端凹槽
+        ctx.lineTo(-s * 0.18, s * 0.82);
+        ctx.bezierCurveTo(-s * 0.65, s * 0.45, -s * 0.85, -s * 0.55, 0, -s);
+        ctx.closePath();
+      }
+
+      draw(ctx: CanvasRenderingContext2D, nightFactor: number) {
+        if (this.opacity < 0.01) return;
+
+        const dayOp = (1 - nightFactor) * this.opacity;
+        const nightOp = nightFactor * this.opacity;
+        const t = time + this.offset;
+
+        if (dayOp > 0.01) {
+          if (this.isBokeh) {
+            // 远景：水蜜桃柔光斑
+            const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+            grad.addColorStop(0, `rgba(${this.tone.deep}, ${dayOp * 0.8})`);
+            grad.addColorStop(1, `rgba(${this.tone.deep}, 0)`);
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = grad; ctx.fill();
           } else {
-            // ✨ 白日樱花
-            ctx.fillStyle = `rgba(255, 183, 197, ${this.opacity})`;
+            // 实体花瓣：随翻转压扁横轴，模拟三维翻飞
+            const tumble = Math.cos(t * this.tumbleSpeed);
+            const squash = 0.45 + 0.55 * Math.abs(tumble);
             ctx.save();
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, this.size / 2, this.size / 4, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.scale(squash, 1);
+            const grad = ctx.createLinearGradient(0, -this.size, 0, this.size);
+            grad.addColorStop(0, `rgba(${this.tone.light}, ${dayOp})`);
+            grad.addColorStop(1, `rgba(${this.tone.deep}, ${dayOp * 0.9})`);
+            this.tracePetal(ctx, this.size);
+            ctx.fillStyle = grad; ctx.fill();
             ctx.restore();
           }
+        }
+
+        if (nightOp > 0.01) {
+          const pulse = (Math.sin(t * 0.001) + 1) / 2;
+          const currentSize = (this.isBokeh ? this.size : this.size * 0.8) * (0.8 + 0.4 * pulse);
+          const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, currentSize);
+          if (this.isBokeh) {
+            grad.addColorStop(0, `rgba(57, 197, 187, ${nightOp * 0.5})`);
+            grad.addColorStop(1, 'rgba(57, 197, 187, 0)');
+          } else {
+            grad.addColorStop(0, `rgba(255, 255, 255, ${nightOp * (0.6 + 0.4 * pulse)})`);
+            grad.addColorStop(0.2, `rgba(57, 197, 187, ${nightOp * (0.4 + 0.2 * pulse)})`);
+            grad.addColorStop(1, 'rgba(57, 197, 187, 0)');
+          }
+          ctx.beginPath(); ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
+          ctx.fillStyle = grad; ctx.fill();
         }
       }
     }
 
-    // 涟漪类保持精简
-    class Ripple {
-      x: number; y: number; radius: number; opacity: number; active: boolean;
-      constructor(x: number, y: number) {
-        this.x = x; this.y = y; this.radius = 0; this.opacity = 0.4; this.active = true;
-      }
-      update() {
-        this.radius += 0.8;
-        this.opacity -= 0.005;
-        if (this.opacity <= 0) this.active = false;
-      }
-      draw(ctx: CanvasRenderingContext2D) {
-        if (!this.active) return;
-        const color = isDarkRef.current ? '57, 197, 187' : '57, 197, 187'; 
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${color}, ${this.opacity})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    }
-
-    for (let i = 0; i < 70; i++) particles.push(new Particle()); // 略微减少粒子数，追求呼吸感
+    // 🌸 数量随视口面积自适应：小屏不挤，大屏不空
+    const particleCount = Math.min(85, Math.max(42, Math.round((canvas.width * canvas.height) / 26000)));
+    const particles: Particle[] = [];
+    for (let i = 0; i < particleCount; i++) particles.push(new Particle(true));
 
     const render = () => {
-      if (isPaused) {
-        isRunningRef.current = false;
-        return;
-      }
+      if (isPaused) { isRunningRef.current = false; return; }
       isRunningRef.current = true;
-      const currentPhase = phaseRef.current;
+      time = performance.now();
 
-      if (currentPhase === 'blooming' && !hasBursted.current) {
-        particles.forEach(p => p.burst());
-        hasBursted.current = true;
-      } else if (currentPhase === 'zen' && !hasBursted.current) {
-        particles.forEach(p => p.burst());
-        hasBursted.current = true;
-      }
-
-      if (['cyber'].includes(currentPhase)) {
-        ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const targetNight = isDarkRef.current ? 1 : 0;
+      if (reduceMotion) {
+        // 静态模式：直接定格到目标状态，只画一帧
+        globalNightFactor = targetNight;
+        particles.forEach(p => { p.opacity = p.targetOpacity; });
       } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        globalNightFactor += (targetNight - globalNightFactor) * 0.02;
       }
 
-      particles.forEach(p => { p.update(); p.draw(ctx); });
-      ripples.forEach(r => { r.update(); r.draw(ctx); });
-      ripples = ripples.filter(r => r.active);
+      // 🍃 双频叠加的呼吸风 + 偶发的温柔阵风，告别单调正弦
+      const gust = Math.max(0, Math.sin(time * 0.000037)) ** 3 * 0.45;
+      const globalWind = Math.sin(time * 0.0001) * 0.15 + Math.sin(time * 0.00023 + 2) * 0.1 + gust;
 
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = globalNightFactor > 0.5 ? 'screen' : 'source-over';
+
+      particles.forEach(p => { p.update(globalNightFactor, globalWind); p.draw(ctx, globalNightFactor); });
+
+      if (reduceMotion) { isRunningRef.current = false; return; }
       animationFrameId = requestAnimationFrame(render);
     };
 
     renderRef.current = render;
     if (!isPaused) render();
 
-    const handleMouseMove = (e: MouseEvent) => { mouse.x = e.clientX; mouse.y = e.clientY; };
-    const handleClick = (e: MouseEvent) => {
-      if (['blooming', 'zen'].includes(phaseRef.current)) ripples.push(new Ripple(e.clientX, e.clientY));
-    };
-
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        isPaused = true;
-        cancelAnimationFrame(animationFrameId);
-        isRunningRef.current = false;
-      } else {
-        isPaused = false;
-        if (!isRunningRef.current) render();
-      }
+      if (document.hidden) { isPaused = true; cancelAnimationFrame(animationFrameId); isRunningRef.current = false; }
+      else { isPaused = false; if (!isRunningRef.current) render(); }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('click', handleClick);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('click', handleClick);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      isPaused = true;
-      cancelAnimationFrame(animationFrameId);
-      isRunningRef.current = false;
+      isPaused = true; cancelAnimationFrame(animationFrameId); isRunningRef.current = false;
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none filter blur-[0.5px] transition-all duration-1000" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-[1500ms] opacity-80" />;
 };

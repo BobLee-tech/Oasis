@@ -9,7 +9,7 @@ export interface PostResonance {
   content: string;
   aura_color: string;
   created_at: string;
-  reply?: string; // 作者的回音
+  reply?: string;
 }
 
 export const usePostResonance = (postId: string | null) => {
@@ -23,10 +23,19 @@ export const usePostResonance = (postId: string | null) => {
       .from('post_resonances')
       .select('*')
       .eq('post_id', postId)
-      .order('created_at', { ascending: true }); 
+      .order('created_at', { ascending: true });
 
     if (!error && data) {
-      setResonances(data);
+      // ✨ 核心机制：无损拆包。将隐匿在 content 里的回复提取出来
+      const parsedData = data.map((item: any) => {
+        const str = item.content || '';
+        const parts = str.split('[_REPLY_]');
+        if (parts.length > 1) {
+          return { ...item, content: parts[0], reply: parts[1] };
+        }
+        return item;
+      });
+      setResonances(parsedData);
     }
     setIsLoading(false);
   }, [postId]);
@@ -60,20 +69,25 @@ export const usePostResonance = (postId: string | null) => {
   };
 
   const replyResonance = async (id: string, replyContent: string) => {
-    // 乐观更新：瞬间让回复显示在屏幕上
+    // 1. 乐观更新渲染 UI
     setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: replyContent } : r));
 
-    // 正规的数据列更新
+    // 2. 找到最纯净的原留言数据
+    const target = resonances.find(r => r.id === id);
+    if (!target) return;
+
+    // ✨ 核心机制：魔术拼接。不需要数据库有 reply 列，直接隐秘塞入 content 中
+    const mergedContent = `${target.content}[_REPLY_]${replyContent}`;
+
     const { error } = await supabase
       .from('post_resonances')
-      .update({ reply: replyContent }) 
+      .update({ content: mergedContent }) 
       .eq('id', id);
 
     if (error) {
       console.error("Failed to update reply:", error);
-      // 若云端更新失败，回滚乐观更新，避免前后端状态脱节
       setResonances(prev => prev.map(r => r.id === id ? { ...r, reply: undefined } : r));
-      alert("Failed to leave echo. Please check Supabase 'reply' column and RLS policies.");
+      alert("Failed to leave echo. Please check network connection.");
       throw error;
     }
   };

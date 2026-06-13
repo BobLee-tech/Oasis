@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks/useAuth';
 import { useSoundscape } from './hooks/useSoundscape'; 
@@ -13,8 +13,6 @@ import { OasisGarden } from './components/OasisGarden';
 import { OasisDock } from './components/OasisDock'; 
 
 import type { BgPhase, AppView } from './types/auth';
-
-const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 const NoiseOverlay = () => (
   <div className="pointer-events-none absolute inset-0 z-50 opacity-[0.03] mix-blend-overlay">
@@ -70,22 +68,16 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (isDarkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
   useEffect(() => {
     if (!isLoading) {
       if (isAdmin && terminalStatus === 'checking') {
-        setTerminalStatus('granted');
-        setBgPhase('zen');
+        setTerminalStatus('granted'); setBgPhase('zen');
       } else if (!isAdmin) {
-        setTerminalStatus('locked');
-        setBgPhase('cyber');
-        setAppView('welcome');
+        setTerminalStatus('locked'); setBgPhase('cyber'); setAppView('welcome');
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -93,37 +85,27 @@ function App() {
 
   useEffect(() => {
     if (appView !== 'welcome' && terminalStatus === 'granted' && !hasTriggeredBGM.current) {
-      hasTriggeredBGM.current = true;
-      playBGM(0.4, 2500); 
+      hasTriggeredBGM.current = true; playBGM(0.4, 2500); 
     }
   }, [appView, terminalStatus, playBGM]);
 
   const handleTerminalSuccess = () => {
-    setTerminalStatus('granted');
-    setBgPhase('blooming');
+    setTerminalStatus('granted'); setBgPhase('blooming');
     setTimeout(() => setBgPhase('zen'), 2500);
   };
 
   const handleLogout = async () => {
-    await logout();
-    setSimulateGuest(false);
-    setTerminalStatus('locked');
-    setBgPhase('cyber');
-    setAppView('welcome');
+    await logout(); setSimulateGuest(false); setTerminalStatus('locked'); setBgPhase('cyber'); setAppView('welcome');
   };
 
-  // ✨ 更优雅的昼夜底色：白天暖白纸张，夜晚深邃蓝灰 (Midnight Navy)
-  const containerBg = bgPhase === 'cyber' ? '#050505' : (isDarkMode ? '#0A0F1D' : '#F8FAFC');
+  // ✨ 核心修复：纯原生 CSS 类名驱动背景，彻底解放 transition
+  const bgClass = bgPhase === 'cyber' ? 'bg-[#050505]' : 'bg-[#F8FAFC] dark:bg-[#0A0F1D]';
 
   return (
-    <motion.div 
-      className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-1000 ease-in-out ${isDarkMode ? 'dark' : ''}`}
-      animate={{ backgroundColor: containerBg }} transition={{ duration: 2.5, ease: customEase }}
-    >
+    <div className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
       <NoiseOverlay />
       <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} />
 
-      {/* ✨ 优化1 & 2：只有正式进入花园，才并排显示统一风格的控制台 */}
       <AnimatePresence>
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
           <motion.div 
@@ -132,7 +114,7 @@ function App() {
           >
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
-              className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-[#111827]/60 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+              className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
             >
               {isDarkMode ? '☼ LIGHT' : '☽ DARK'}
             </button>
@@ -141,13 +123,13 @@ function App() {
               <>
                 <button 
                   onClick={() => setSimulateGuest(!simulateGuest)} 
-                  className={`flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${simulateGuest ? 'bg-[#39C5BB] text-white border-[#39C5BB]' : 'bg-white/40 dark:bg-[#111827]/60 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md shadow-sm ${simulateGuest ? 'bg-[#39C5BB] text-white border-[#39C5BB]' : 'bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-slate-600 dark:hover:text-white'}`}
                 >
                   {simulateGuest ? '[ VISITOR : ON ]' : '[ VISITOR : OFF ]'}
                 </button>
                 <button 
                   onClick={handleLogout} 
-                  className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border border-transparent transition-all duration-700 outline-none text-slate-400 hover:text-[#FFB7C5] hover:bg-white/40 dark:hover:bg-white/5"
+                  className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border border-transparent transition-all duration-700 outline-none text-slate-400 dark:text-slate-500 hover:text-[#FFB7C5] dark:hover:text-[#FFB7C5] hover:bg-white/40 dark:hover:bg-white/5"
                 >
                   DISCONNECT
                 </button>
@@ -157,37 +139,23 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)]" />
+      <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
-          {terminalStatus === 'checking' && (
-            <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />
-          )}
-
-          {terminalStatus === 'locked' && (
-            <OasisTerminal key="terminal" onSuccess={handleTerminalSuccess} />
-          )}
-
+          {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
+          {terminalStatus === 'locked' && <OasisTerminal key="terminal" onSuccess={handleTerminalSuccess} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            <OasisGarden 
-              key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} 
-              onEnterGarden={() => setAppView('garden')}
-            />
+            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} onEnterGarden={() => setAppView('garden')} />
           )}
-
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
-            <motion.div 
-              key="oasis-arena" className="w-full h-full flex items-center justify-center"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}
-            >
+            <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}>
               <AnimatePresence mode="wait">
                 {appView === 'soundscape' && <OasisResonance key="sound-space" />}
                 {appView === 'garden' && <OasisGallery key="garden-space" isAdmin={effectiveIsAdmin} />}
                 {appView === 'whispers' && <OasisWhispers key="whispers-space" isAdmin={effectiveIsAdmin} />}
               </AnimatePresence>
-              
               <OasisDock currentView={appView} onViewChange={setAppView} isAdmin={effectiveIsAdmin} />
             </motion.div>
           )}
@@ -195,11 +163,9 @@ function App() {
       </div>
 
       <AnimatePresence>
-        {bgPhase === 'blooming' && (
-          <motion.div className="absolute inset-0 z-[5] pointer-events-none bg-gradient-to-tr from-[#39C5BB]/15 via-transparent to-[#FFB7C5]/15" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2.5, ease: "easeInOut" }} />
-        )}
+        {bgPhase === 'blooming' && <motion.div className="absolute inset-0 z-[5] pointer-events-none bg-gradient-to-tr from-[#39C5BB]/15 via-transparent to-[#FFB7C5]/15" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2.5, ease: "easeInOut" }} />}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 

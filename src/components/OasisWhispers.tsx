@@ -37,6 +37,14 @@ export const OasisWhispers: React.FC<OasisWhispersProps> = ({ isAdmin }) => {
       <div className="relative w-[90vw] h-[80vh] border border-white/5 rounded-3xl overflow-hidden bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)]">
         {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-mono text-xs tracking-widest animate-pulse">Resonating...</div>
+        ) : whispers.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5 }}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none px-8 text-center"
+          >
+            <span className="font-serif italic text-slate-400 text-lg tracking-wide">The sky is quiet tonight.</span>
+            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-slate-600">Be the first to light a star</span>
+          </motion.div>
         ) : (
           whispers.map((whisper) => {
             const isHovered = hoveredId === whisper.id;

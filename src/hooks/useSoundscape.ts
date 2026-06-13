@@ -1,6 +1,6 @@
 // src/hooks/useSoundscape.ts
 import { useState, useCallback, useEffect } from 'react';
-import type { Track, MusicCategory } from '../types/music';
+import type { Track } from '../types/music';
 
 // 💽 极致高保真本地黑胶曲库 (83首 · 歌词与编码终极校对版)
 export const PLAYLIST: Track[] = [
@@ -157,9 +157,11 @@ const getDailyTrack = () => {
   return PLAYLIST[daysSinceEpoch % PLAYLIST.length];
 };
 let globalCurrentTrack = getDailyTrack(); // 用回每日一首
-let globalPlayMode: PlayMode = 'sequence'; // 默认顺序播放，让情绪自然流淌
+let globalPlayMode: PlayMode = 'shuffle'; // 默认顺序播放，让情绪自然流淌
 let globalIsPlaying = false;
 let globalVolume = 0.5;
+let globalCurrentTime = 0;
+let globalDuration = 0;
 
 let currentFade: number | null = null;
 const cancelFade = () => {
@@ -172,30 +174,48 @@ const cancelFade = () => {
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 
-globalAudio.loop = globalPlayMode === 'sequence';
+globalAudio.loop = (globalPlayMode as string) === 'loop';
 
 globalAudio.addEventListener('play', () => { globalIsPlaying = true; notifyListeners(); });
 globalAudio.addEventListener('pause', () => { globalIsPlaying = false; notifyListeners(); });
 
-globalAudio.addEventListener('ended', () => {
-  if (globalPlayMode === 'loop') return; 
-
+// 🎼 统一的「切到相邻曲目」逻辑，供 ended 自动续播与上一首/下一首手动操作复用
+const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
   const currentIndex = PLAYLIST.findIndex(t => t.id === globalCurrentTrack.id);
   let nextIndex = 0;
 
-  if (globalPlayMode === 'sequence') {
-    nextIndex = (currentIndex + 1) % PLAYLIST.length;
+  if (respectLoop && globalPlayMode === 'loop') {
+    // 单曲循环：自然结束时重头再放
+    nextIndex = currentIndex;
   } else if (globalPlayMode === 'shuffle') {
     nextIndex = getNextShuffleIndex(currentIndex);
+  } else {
+    // loop（手动切歌时）与 sequence 都走顺序逻辑
+    nextIndex = (currentIndex + direction + PLAYLIST.length) % PLAYLIST.length;
   }
 
   const nextTrack = PLAYLIST[nextIndex];
   globalCurrentTrack = nextTrack;
   globalAudio.src = nextTrack.url;
-  globalAudio.setAttribute('data-track-id', nextTrack.id); 
-  
+  globalAudio.setAttribute('data-track-id', nextTrack.id);
+  globalCurrentTime = 0;
+
   globalAudio.load();
   globalAudio.play().catch(e => console.warn("Auto-next play error", e));
+  notifyListeners();
+};
+
+globalAudio.addEventListener('ended', () => {
+  if (globalPlayMode === 'loop') return; // loop 由原生 audio.loop 处理
+  advanceTrack(1);
+});
+
+globalAudio.addEventListener('timeupdate', () => {
+  globalCurrentTime = globalAudio.currentTime;
+  notifyListeners();
+});
+globalAudio.addEventListener('loadedmetadata', () => {
+  globalDuration = globalAudio.duration || 0;
   notifyListeners();
 });
 
@@ -204,6 +224,8 @@ export const useSoundscape = () => {
   const [isPlaying, setIsPlaying] = useState(globalIsPlaying);
   const [volume, setVolume] = useState(globalVolume);
   const [playMode, setPlayMode] = useState<PlayMode>(globalPlayMode);
+  const [currentTime, setCurrentTime] = useState(globalCurrentTime);
+  const [duration, setDuration] = useState(globalDuration);
 
   useEffect(() => {
     const updateState = () => {
@@ -211,6 +233,8 @@ export const useSoundscape = () => {
       setIsPlaying(globalIsPlaying);
       setVolume(globalVolume);
       setPlayMode(globalPlayMode);
+      setCurrentTime(globalCurrentTime);
+      setDuration(globalDuration);
     };
     listeners.add(updateState);
     return () => { listeners.delete(updateState); };
@@ -225,6 +249,9 @@ export const useSoundscape = () => {
 
     cancelFade();
     globalAudio.volume = 0;
+    // 同步全局音量，让 UI 滑轨与实际淡入目标一致
+    globalVolume = targetVolume;
+    notifyListeners();
 
     globalAudio.play().then(() => {
       const startTime = performance.now();
@@ -321,10 +348,36 @@ export const useSoundscape = () => {
   }, [playTrack, globalIsPlaying]);
 
   const changeVolume = useCallback((val: number) => {
+    cancelFade(); // 用户手动调音量时，立刻终止进行中的淡入淡出，避免被覆盖
     globalVolume = val;
     globalAudio.volume = val;
     notifyListeners();
   }, []);
+
+  const seek = useCallback((time: number) => {
+    if (!isFinite(time)) return;
+    globalAudio.currentTime = time;
+    globalCurrentTime = time;
+    notifyListeners();
+  }, []);
+
+  const playNext = useCallback(() => {
+    cancelFade();
+    globalAudio.volume = globalVolume;
+    advanceTrack(1);
+  }, []);
+
+  const playPrev = useCallback(() => {
+    cancelFade();
+    // 播放超过 3 秒时，上一首先回到本曲开头（符合主流播放器直觉）
+    if (globalAudio.currentTime > 3) {
+      seek(0);
+      if (!globalIsPlaying) playTrack(globalCurrentTrack);
+      return;
+    }
+    globalAudio.volume = globalVolume;
+    advanceTrack(-1);
+  }, [seek, playTrack]);
 
   const togglePlayMode = useCallback(() => {
     const modes: PlayMode[] = ['loop', 'sequence', 'shuffle'];
@@ -336,15 +389,20 @@ export const useSoundscape = () => {
   }, []);
 
   return { 
-    currentTrack: track, 
-    isPlaying, 
-    volume, 
-    playMode, 
-    playBGM, 
-    togglePlay, 
-    switchTrack, 
-    changeVolume, 
+    currentTrack: track,
+    isPlaying,
+    volume,
+    playMode,
+    currentTime,
+    duration,
+    playBGM,
+    togglePlay,
+    switchTrack,
+    changeVolume,
     togglePlayMode,
-    playlist: PLAYLIST 
+    seek,
+    playNext,
+    playPrev,
+    playlist: PLAYLIST
   };
 };
