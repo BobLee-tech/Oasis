@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSoundscape, getSpectrum } from '../hooks/useSoundscape';
-import type { MusicCategory } from '../types/music';
+import type { MusicCategory, Track } from '../types/music';
 
 // 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
 // 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
@@ -212,8 +212,21 @@ const CATEGORIES: { id: MusicCategory; label: string }[] = [
 // 💿 黑胶纹理：主唱盘的同心声槽
 const VINYL_GROOVES = 'repeating-radial-gradient(circle at 50% 50%, #111 0px, #111 3px, #1b1b1f 4px, #111 5px)';
 
+// 💽 从音轨 url 推导专辑信息（曲库未单列 album 字段，按 /audio/<专辑文件夹>/<文件> 解析）。
+// 用于「选碟台」按专辑分组陈列，让翻阅像在碟箱里一张张翻碟。
+const albumOf = (url: string): { key: string; name: string; year: string } => {
+  const folder = (url.split('/')[2] || '').trim();
+  const year = (folder.match(/\b(?:19|20)\d{2}\b/) || [])[0] || '';
+  let name = folder
+    .replace(/^\d{4}\.\d{2}\.\d{2}\s*/, '')   // 去日期前缀
+    .replace(/\[[^\]]*\]\s*/g, '')             // 去 [Album]/[Single] 标记
+    .trim();
+  if (name.includes(' - ')) name = name.split(' - ').slice(1).join(' - ').trim(); // "Artist - Album" → 取专辑
+  return { key: folder, name: name || folder, year };
+};
+
 export const OasisResonance: React.FC = () => {
-  const { currentTrack, isPlaying, playMode, currentTime, duration, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, playlist } = useSoundscape();
+  const { currentTrack, isPlaying, playMode, currentTime, duration, volume, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, changeVolume, playlist } = useSoundscape();
   const [activeCategory, setActiveCategory] = useState<MusicCategory>('All Tracks');
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -254,6 +267,31 @@ export const OasisResonance: React.FC = () => {
     return playlist.filter(track => track.category === activeCategory);
   }, [activeCategory, playlist]);
 
+  // 📀 按专辑分组陈列：曲库本就按专辑顺序排列，相邻同专辑聚为一组
+  const albumGroups = useMemo(() => {
+    const groups: { key: string; name: string; year: string; tracks: Track[] }[] = [];
+    filteredPlaylist.forEach(track => {
+      const info = albumOf(track.url);
+      const last = groups[groups.length - 1];
+      if (last && last.key === info.key) last.tracks.push(track);
+      else groups.push({ ...info, tracks: [track] });
+    });
+    return groups;
+  }, [filteredPlaylist]);
+
+  // ⌨️ 键盘快捷键：空格 播放/暂停、← → 切歌（聚焦输入框时不拦截）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      else if (e.code === 'ArrowRight') { e.preventDefault(); playNext(); }
+      else if (e.code === 'ArrowLeft') { e.preventDefault(); playPrev(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [togglePlay, playNext, playPrev]);
+
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { 'All Tracks': playlist.length };
     playlist.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
@@ -262,7 +300,7 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div
-      className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-24 lg:pb-28 px-6 md:px-16 lg:px-24 xl:px-32"
+      className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-24 lg:pb-28 pl-6 pr-6 md:pl-14 md:pr-20 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
@@ -279,7 +317,7 @@ export const OasisResonance: React.FC = () => {
           <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} />
 
           {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
-          <div className="relative w-full max-w-[440px] lg:max-w-[560px] xl:max-w-[600px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
+          <div className="relative w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
 
             {/* 台面微光拉丝 */}
             <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent pointer-events-none" />
@@ -372,7 +410,7 @@ export const OasisResonance: React.FC = () => {
           </div>
 
           {/* ✨ 播放控制台：进度 + 走带，收束于唱机正下方 */}
-          <div className="w-full max-w-[440px] lg:max-w-[520px] mt-10 lg:mt-12 relative z-20 flex flex-col gap-6">
+          <div className="w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] mt-10 lg:mt-12 relative z-20 flex flex-col gap-6">
 
             {/* 进度条 */}
             <div className="flex items-center gap-4 px-2">
@@ -423,6 +461,43 @@ export const OasisResonance: React.FC = () => {
               <span className="flex items-center justify-center w-10 h-10 font-mono text-[9px] tracking-[0.15em] text-slate-300 dark:text-slate-600 select-none shrink-0 transition-colors duration-[1500ms]">
                 {modeDisplay.text}
               </span>
+            </div>
+
+            {/* 🔊 音量：点击图标静音/恢复，细滑轨染当前情绪色 */}
+            <div className="flex items-center gap-3.5 px-4">
+              <button
+                onClick={() => changeVolume(volume > 0 ? 0 : 0.5)}
+                aria-label={volume > 0 ? '静音' : '取消静音'}
+                className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors outline-none"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
+                  {volume <= 0.001 ? (
+                    <path d="M23 9l-6 6M17 9l6 6" />
+                  ) : (
+                    <>
+                      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                      {volume > 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
+                    </>
+                  )}
+                </svg>
+              </button>
+              <div className="relative flex-1 group/vol h-4 flex items-center">
+                <div className="absolute inset-x-0 h-[3px] group-hover/vol:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
+                  <div className="h-full rounded-full transition-colors duration-[1500ms]" style={{ width: `${volume * 100}%`, backgroundColor: currentTrack.color }} />
+                </div>
+                <div
+                  className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-0 group-hover/vol:opacity-100 transition-opacity pointer-events-none ring-2"
+                  style={{ left: `${volume * 100}%`, ['--tw-ring-color' as string]: currentTrack.color }}
+                />
+                <input
+                  type="range" min={0} max={1} step={0.01} value={volume}
+                  onChange={(e) => changeVolume(Number(e.target.value))}
+                  aria-label="音量"
+                  className="absolute inset-x-0 w-full h-4 appearance-none bg-transparent cursor-pointer opacity-0"
+                />
+              </div>
+              <span className="font-mono text-[9px] tabular-nums text-slate-400 dark:text-slate-500 w-7 text-right select-none">{Math.round(volume * 100)}</span>
             </div>
           </div>
         </div>
@@ -489,12 +564,10 @@ export const OasisResonance: React.FC = () => {
           </div>
 
           {/* 💿 选碟台 The Crate：一台拟真选碟箱，碟片在其中陈列，点选即「换碟上盘」 */}
-          <div className="w-full max-w-[520px] mx-auto flex flex-col h-[52vh] lg:h-auto lg:flex-1 lg:min-h-0 rounded-[1.75rem] border border-white/45 dark:border-white/[0.06] bg-gradient-to-b from-white/40 to-white/[0.06] dark:from-white/[0.035] dark:to-transparent backdrop-blur-xl overflow-hidden shadow-[0_18px_56px_-16px_rgba(15,23,42,0.22)] dark:shadow-[0_18px_56px_-16px_rgba(0,0,0,0.65)] transition-colors duration-[1500ms]">
-            {/* 顶缘高光 */}
-            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/65 dark:via-white/15 to-transparent pointer-events-none z-30" />
+          <div className="w-full max-w-[520px] mx-auto flex flex-col h-[52vh] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden">
 
-            {/* 🏷️ 选碟台铭牌：身份标识 + 碟数，让歌单成为一台「设备」而非裸列表 */}
-            <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-white/40 dark:border-white/[0.05] bg-white/25 dark:bg-white/[0.02] transition-colors duration-[1500ms]">
+            {/* 🏷️ 极简标签行：身份标识 + 碟数，去卡片化——直接坐落背景上，仅留一道渐变细线收束 */}
+            <div className="shrink-0 flex items-center justify-between px-1 pb-3 mb-1 border-b border-transparent [border-image:linear-gradient(to_right,transparent,rgba(148,163,184,0.25),transparent)_1] dark:[border-image:linear-gradient(to_right,transparent,rgba(255,255,255,0.12),transparent)_1]">
               <div className="flex items-center gap-2.5">
                 <motion.span
                   className="w-1.5 h-1.5 rounded-full"
@@ -504,73 +577,84 @@ export const OasisResonance: React.FC = () => {
                 />
                 <span className="font-mono text-[9px] tracking-[0.32em] uppercase text-slate-500 dark:text-slate-400">The Crate · 选碟台</span>
               </div>
-              <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400/70 dark:text-slate-600 tabular-nums">{filteredPlaylist.length} 张</span>
+              <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400/70 dark:text-slate-600 tabular-nums">{filteredPlaylist.length} 首</span>
             </div>
 
-            {/* 碟槽区：上下淡出 + 隐藏滚动条，碟片如在槽中翻阅 */}
+            {/* 碟槽区：用 mask 让内容上下淡出成透明，无论背景或光晕都自然融入（不再有色带） */}
             <div className="relative flex-1 min-h-0">
-              <div className="absolute top-0 left-0 right-0 h-7 bg-gradient-to-b from-white/35 dark:from-white/[0.02] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
-              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white/35 dark:from-white/[0.02] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
+              <div
+                className="absolute inset-0 overflow-y-auto pb-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 56px), transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 56px), transparent 100%)',
+                }}
+              >
+                {/* 🎼 按专辑分组的曲目索引：每张专辑一道极淡标头，翻阅如在碟箱中一张张翻碟 */}
+                {albumGroups.map(group => (
+                  <section key={group.key}>
+                    {/* 专辑分组标头：情绪色点 · 专辑名 · 年份 · 碟数 */}
+                    <div className="flex items-center gap-2.5 px-5 pt-6 pb-2 first:pt-3 select-none">
+                      <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: group.tracks[0].color }} />
+                      <span className="font-serif text-[13px] text-slate-500 dark:text-slate-400 truncate">{group.name}</span>
+                      {group.year && <span className="font-mono text-[8px] tracking-[0.2em] text-slate-300 dark:text-slate-600 shrink-0">{group.year}</span>}
+                      <span className="h-px flex-1 bg-gradient-to-r from-slate-200/70 dark:from-white/10 to-transparent" />
+                      <span className="font-mono text-[8px] text-slate-300 dark:text-slate-600 tabular-nums shrink-0">{group.tracks.length}</span>
+                    </div>
 
-              {/* 🎼 排版式曲目索引：以发丝细线分隔，去卡片化；序号 / 标题 / 艺术家 三栏对齐，
-                  正在播放者以情绪色微光自左晕染 + 均衡器，安静而高级 */}
-              <div className="absolute inset-0 overflow-y-auto pt-2 pb-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <AnimatePresence mode="popLayout">
-                {filteredPlaylist.map((track, index) => {
-                  const isActive = currentTrack.id === track.id;
-                  return (
-                    <motion.button
-                      layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 28 }}
-                      key={track.id} onClick={() => switchTrack(track)}
-                      className="group relative w-full flex items-center gap-4 pl-5 pr-5 py-[13px] text-left outline-none border-b border-slate-200/45 dark:border-white/[0.05] last:border-b-0 hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-300"
-                      // 激活：情绪色从左缘柔和晕染的渐变带，非框形卡片
-                      style={isActive ? { background: `linear-gradient(90deg, ${track.color}1f, ${track.color}08 35%, transparent 75%)` } : undefined}
-                    >
-                      {/* 左缘情绪色细标 */}
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] rounded-full transition-all duration-500" style={{ height: isActive ? '62%' : '0%', backgroundColor: track.color, boxShadow: isActive ? `0 0 8px ${track.color}` : 'none' }} />
+                    {group.tracks.map((track, i) => {
+                      const isActive = currentTrack.id === track.id;
+                      return (
+                        <button
+                          key={track.id} onClick={() => switchTrack(track)}
+                          className="group relative w-full flex items-center gap-4 pl-5 pr-5 py-[11px] text-left outline-none hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-300"
+                          style={isActive ? { background: `linear-gradient(90deg, ${track.color}1f, ${track.color}08 35%, transparent 75%)` } : undefined}
+                        >
+                          {/* 左缘情绪色细标 */}
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] rounded-full transition-all duration-500" style={{ height: isActive ? '62%' : '0%', backgroundColor: track.color, boxShadow: isActive ? `0 0 8px ${track.color}` : 'none' }} />
 
-                      {/* 序号槽：常态序号 → 悬停播放标 → 在播均衡器 */}
-                      <span className="relative w-5 shrink-0 flex items-center justify-center self-start mt-1">
-                        {isActive ? (
-                          isPlaying ? (
-                            <span className="flex items-end gap-[2px] h-3">
-                              {[0, 0.2, 0.4].map((d, i) => (
-                                <motion.span key={i} className="w-[2px] rounded-full" style={{ backgroundColor: track.color }} animate={{ height: ['28%', '100%', '28%'] }} transition={{ duration: 0.7, repeat: Infinity, delay: d, ease: 'easeInOut' }} />
-                              ))}
+                          {/* 序号槽：碟内曲序 → 悬停播放标 → 在播均衡器 */}
+                          <span className="relative w-5 shrink-0 flex items-center justify-center self-start mt-1">
+                            {isActive ? (
+                              isPlaying ? (
+                                <span className="flex items-end gap-[2px] h-3">
+                                  {[0, 0.2, 0.4].map((d, k) => (
+                                    <motion.span key={k} className="w-[2px] rounded-full" style={{ backgroundColor: track.color }} animate={{ height: ['28%', '100%', '28%'] }} transition={{ duration: 0.7, repeat: Infinity, delay: d, ease: 'easeInOut' }} />
+                                  ))}
+                                </span>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: track.color, boxShadow: `0 0 6px ${track.color}` }} />
+                              )
+                            ) : (
+                              <>
+                                <span className="font-mono text-[10px] tabular-nums text-slate-400/55 dark:text-slate-600 group-hover:opacity-0 transition-opacity duration-200 select-none">{String(i + 1).padStart(2, '0')}</span>
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-500 dark:text-slate-300"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                              </>
+                            )}
+                          </span>
+
+                          {/* 标题 + 艺术家 */}
+                          <span className="flex-1 min-w-0 flex flex-col">
+                            <span className={`font-serif text-[15px] md:text-base leading-snug tracking-wide truncate transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100'}`}>
+                              {track.title}
                             </span>
-                          ) : (
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: track.color, boxShadow: `0 0 6px ${track.color}` }} />
-                          )
-                        ) : (
-                          <>
-                            <span className="font-mono text-[10px] tabular-nums text-slate-400/55 dark:text-slate-600 group-hover:opacity-0 transition-opacity duration-200 select-none">{String(index + 1).padStart(2, '0')}</span>
-                            <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-500 dark:text-slate-300"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                          </>
-                        )}
-                      </span>
+                            <span className="font-mono text-[9px] tracking-[0.22em] uppercase mt-1 truncate text-slate-400/80 dark:text-slate-500">
+                              {track.artist}
+                            </span>
+                          </span>
 
-                      {/* 标题 + 艺术家 */}
-                      <span className="flex-1 min-w-0 flex flex-col">
-                        <span className={`font-serif text-[15px] md:text-base leading-snug tracking-wide truncate transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100'}`}>
-                          {track.title}
-                        </span>
-                        <span className="font-mono text-[9px] tracking-[0.22em] uppercase mt-1 truncate text-slate-400/80 dark:text-slate-500">
-                          {track.artist}
-                        </span>
-                      </span>
+                          {/* 右栏：在播标识 */}
+                          {isActive && (
+                            <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap" style={{ color: track.color }}>On Deck</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </section>
+                ))}
 
-                      {/* 右栏：在播标识 / 悬停时浮出类目 */}
-                      <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap">
-                        {isActive ? (
-                          <span style={{ color: track.color }}>On Deck</span>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">{track.category}</span>
-                        )}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </AnimatePresence>
+                {filteredPlaylist.length === 0 && (
+                  <div className="pt-16 text-center font-serif italic text-slate-400 dark:text-slate-600 text-sm">碟箱里没有匹配的碟片…</div>
+                )}
               </div>
             </div>
           </div>

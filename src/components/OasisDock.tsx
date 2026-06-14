@@ -18,8 +18,8 @@ interface DockItem {
 
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
   const dockItems: DockItem[] = [
-    { view: 'garden', label: 'Garden', emoji: '🌿', glowColor: 'rgba(167,243,208,0.8)' }, 
     { view: 'soundscape', label: 'Resonance', emoji: '🎧', glowColor: 'rgba(14,165,233,0.8)' },
+    { view: 'garden', label: 'Garden', emoji: '🌿', glowColor: 'rgba(167,243,208,0.8)' },
     { view: 'orchard', label: 'Constellation', emoji: '🌌', glowColor: 'rgba(110,231,183,0.8)' }
   ];
 

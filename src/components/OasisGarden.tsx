@@ -58,7 +58,7 @@ return (
           animate={{ opacity: [0.6, 1, 0.6], textShadow: ["0px 0px 20px rgba(57,197,187,0)", "0px 0px 80px rgba(255,183,197,0.4)", "0px 0px 20px rgba(57,197,187,0)"] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         >
-          SEGA
+          OASIS
         </motion.span>
       </motion.div>
 

@@ -277,44 +277,66 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       {/* 🌲 左侧策展人名片面板 */}
       <AnimatePresence>
         {!isEditing && (
-          <motion.div className="hidden lg:flex w-1/3 h-full flex-col justify-start pt-32 px-16 relative z-20 border-r border-slate-300/20 dark:border-white/5 transition-colors duration-[1500ms] ease-in-out" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-            <motion.div 
-              className="relative w-24 h-24 mb-10 group cursor-pointer"
-              onClick={() => setShowProfile(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="absolute inset-0 rounded-full bg-[#39C5BB] blur-xl opacity-20 group-hover:opacity-60 transition-opacity duration-1000" />
-              <div className="relative w-full h-full rounded-full border border-white/30 dark:border-white/10 overflow-hidden shadow-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md transition-colors duration-[1500ms] ease-in-out">
-                <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              </div>
-            </motion.div>
-            
-            <h1 className="font-serif text-3xl text-slate-700 dark:text-slate-100 mb-2 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</h1>
-            <p className="font-mono text-[10px] tracking-[0.3em] text-[#39C5BB] uppercase mb-8 opacity-80 cursor-pointer hover:opacity-100 transition-opacity" onClick={() => setShowProfile(true)}>Welcome to my digital garden!</p>
-            <p className="font-serif italic text-slate-600/90 dark:text-slate-300 text-sm leading-relaxed mb-6 transition-colors duration-[1500ms] ease-in-out">"Exploring the intersection of human behavior, <br/> aesthetics, and software architecture."</p>
-            
-            <div className="flex flex-col space-y-2 mb-8">
-              <span className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase transition-colors duration-[1500ms]">CS @ UNSW · SYDNEY</span>
-              <span className="font-mono text-[10px] tracking-[0.2em] text-[#39C5BB] uppercase">FULL-STACK CRAFTSMAN</span>
-            </div>
+          <motion.div className="hidden lg:flex w-1/3 h-full flex-col justify-center items-center px-10 relative z-20 transition-colors duration-[1500ms] ease-in-out" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
+            {/* 右缘渐变细线：列分隔，向上下自然淡出 */}
+            <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-slate-300/40 dark:via-white/10 to-transparent pointer-events-none" />
 
-            <div className="mt-4 mb-8 pt-8 border-t border-slate-300/30 dark:border-white/5 pointer-events-auto w-full max-w-[240px] transition-colors duration-[1500ms] ease-in-out">
-              <div className="font-mono text-[9px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]">
-                <span>[ Today's Resonance ]</span>
-              </div>
-              <p className="font-serif text-xs leading-[1.8] text-slate-600 dark:text-slate-300 italic mb-5 pr-4 transition-colors duration-[1500ms] ease-in-out">
-                "{dailyQuote}"
-              </p>
-              <div className="flex items-center gap-3 text-slate-400/80 dark:text-slate-400/60 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group" onClick={() => switchTrack(dailyTrack)}>
-                <span className="text-[#39C5BB]/60 group-hover:text-[#39C5BB] transition-colors"><DiscIcon /></span>
-                <span className="font-mono text-[10px] tracking-wider truncate w-[200px] transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
-              </div>
-            </div>
+            {/* 🪪 紧凑居中的磨砂名片：卡片刚好包住内容，垂直居中、节奏紧致，不再松散空旷 */}
+            <div className="relative w-full max-w-[340px] flex flex-col items-center text-center rounded-[2.25rem] px-9 pt-11 pb-9 bg-white/55 dark:bg-white/[0.04] backdrop-blur-2xl border border-white/60 dark:border-white/[0.07] shadow-[0_30px_80px_-44px_rgba(15,23,42,0.3)] dark:shadow-[0_30px_80px_-44px_rgba(0,0,0,0.75)] overflow-hidden transition-colors duration-[1500ms]">
+              {/* 卡内柔光：teal → sakura 一抹氛围 */}
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-52 h-52 rounded-full bg-[#39C5BB]/20 dark:bg-[#39C5BB]/14 blur-[70px] pointer-events-none" />
+              <div className="absolute top-24 -right-6 w-40 h-40 rounded-full bg-[#FFB7C5]/16 dark:bg-[#FFB7C5]/10 blur-[70px] pointer-events-none" />
 
-            <div className="flex gap-6 mt-auto pb-32 pointer-events-auto">
-              <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
-              <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
+              <div className="relative z-10 flex flex-col items-center w-full">
+                {/* 头像 */}
+                <motion.div
+                  className="relative w-[88px] h-[88px] mb-6 group cursor-pointer"
+                  onClick={() => setShowProfile(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="absolute inset-0 rounded-full bg-[#39C5BB] blur-xl opacity-25 group-hover:opacity-60 transition-opacity duration-1000" />
+                  <div className="relative w-full h-full rounded-full border border-white/60 dark:border-white/10 overflow-hidden shadow-xl bg-white/10 dark:bg-white/5 backdrop-blur-md transition-colors duration-[1500ms] ease-in-out">
+                    <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-85 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  </div>
+                </motion.div>
+
+                {/* 名字 */}
+                <h1 className="font-serif text-[2.4rem] leading-none text-slate-700 dark:text-slate-100 mb-3.5 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</h1>
+
+                {/* 身份：两行 */}
+                <div className="flex flex-col items-center gap-1.5 mb-6 font-mono text-[10px] tracking-[0.2em] uppercase">
+                  <span className="text-[#39C5BB]">Full-Stack Craftsman</span>
+                  <span className="text-slate-400 dark:text-slate-500">CS · UNSW · Sydney</span>
+                </div>
+
+                {/* 签名 */}
+                <p className="font-serif italic text-slate-600/90 dark:text-slate-300 text-sm leading-relaxed mb-6 transition-colors duration-[1500ms] ease-in-out">“Exploring the intersection of human behavior, aesthetics &amp; software architecture.”</p>
+
+                {/* 兴趣标签：柔和无框小胶囊 */}
+                <div className="flex flex-wrap justify-center gap-1.5 mb-7">
+                  {['C++', 'AI', 'Claude', '初音ミク❤'].map(tag => (
+                    <span key={tag} className="font-mono text-[9px] tracking-[0.12em] px-2.5 py-1 rounded-full bg-slate-500/[0.07] dark:bg-white/[0.05] text-slate-500 dark:text-slate-400 transition-colors duration-[1500ms]">{tag}</span>
+                  ))}
+                </div>
+
+                {/* 分割线 */}
+                <span className="w-10 h-px bg-slate-300/60 dark:bg-white/10 mb-6 transition-colors duration-[1500ms]" />
+
+                {/* Today's Resonance */}
+                <div className="font-mono text-[9px] tracking-[0.25em] text-slate-400 dark:text-slate-500 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
+                <p className="font-serif text-xs leading-[1.75] text-slate-600 dark:text-slate-300 italic mb-3.5 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
+                <div className="flex items-center justify-center gap-2.5 mb-7 text-slate-400/80 dark:text-slate-400/60 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
+                  <span className="text-[#39C5BB]/60 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
+                  <span className="font-mono text-[10px] tracking-wider truncate transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
+                </div>
+
+                {/* 链接 */}
+                <div className="flex gap-8 pointer-events-auto">
+                  <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
+                  <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -322,11 +344,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
       {/* 🖼️ 右侧基础内容画廊区 */}
       <motion.div className="w-full h-full overflow-y-auto no-scrollbar pt-24 pb-32 px-8 lg:px-16 relative z-10 flex flex-col" animate={{ width: isEditing ? '100%' : '66.666%' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-        <div className="absolute top-12 left-1/2 lg:left-16 -translate-x-1/2 lg:translate-x-0 text-slate-400/30 dark:text-slate-500/30 font-mono text-[10px] tracking-[0.5em] uppercase pointer-events-none transition-opacity" style={{ opacity: isEditing ? 0 : 1 }}>Curated Thoughts</div>
-
         <AnimatePresence mode="wait">
           {!isEditing ? (
             <motion.div key="gallery" className="w-full h-full flex flex-col" exit={{ opacity: 0 }}>
+              {/* 📰 栏目报头：与左栏头像同高起步、居中，让两侧基线与对齐方式一致 */}
+              <div className="mb-9 text-center">
+                <div className="font-mono text-[9px] tracking-[0.5em] uppercase text-[#39C5BB]/70 mb-3">The Garden · 数字花园</div>
+                <h1 className="font-serif text-4xl text-slate-700 dark:text-slate-100 tracking-wide transition-colors duration-[1500ms] ease-in-out">Curated Thoughts</h1>
+                <p className="font-serif italic text-slate-400 dark:text-slate-500 text-sm mt-2.5 transition-colors duration-[1500ms] ease-in-out">A quiet record of learning, growth &amp; small wonders.</p>
+              </div>
+
               <div className="flex flex-col gap-6 mb-10">
                 <div className="flex items-center justify-between">
                   <div className="relative w-64 group">
@@ -392,8 +419,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
                             <motion.div key={post.id} className="break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border border-white/40 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:dark:bg-white/[0.08] transition-colors duration-[1500ms] ease-in-out" style={{ backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
-                              <div className="h-32 w-full relative overflow-hidden bg-slate-50/50 dark:bg-white/5 transition-colors duration-[1500ms] ease-in-out">
-                                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-40 dark:opacity-20 transition-all duration-[1500ms] ease-in-out" style={{ backgroundColor: post.color }} />
+                              <div className="h-28 w-full relative overflow-hidden">
+                                {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
+                                <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
+                                {/* 大类型图标水印：淡化的情绪色，去占位感 */}
+                                <div className="absolute -right-3 -bottom-6 w-28 h-28 opacity-[0.13] dark:opacity-[0.16] pointer-events-none transition-opacity duration-[1500ms]" style={{ color: post.color }}>{TypeIcons[post.type]}</div>
                                 {/* 类型徽章：左上角，图标 + 名称，染类型微光色 */}
                                 <div className="absolute top-4 left-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-white/60 dark:border-white/10" style={{ color: meta?.color }}>
                                   <span className="w-3 h-3">{TypeIcons[post.type]}</span>
