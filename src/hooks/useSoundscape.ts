@@ -120,7 +120,21 @@ export const PLAYLIST: Track[] = [
 
 export type PlayMode = 'loop' | 'sequence' | 'shuffle';
 
+// 🎧 音频地址解析：曲库里登记的是 /audio/...flac|mp3 源路径。
+//   · 线上：设置 VITE_AUDIO_BASE 指向对象存储（Cloudflare R2），统一改用转码后的 .m4a，
+//     并对路径段做转义（空格/日文/括号），从 CDN 流式拉取。
+//   · 本地开发：未设 VITE_AUDIO_BASE 时回退到 public/audio 下的原始文件。
+const AUDIO_BASE = (import.meta.env.VITE_AUDIO_BASE ?? '').replace(/\/$/, '');
+export const resolveAudioUrl = (rawUrl: string): string => {
+  if (!AUDIO_BASE) return rawUrl; // 本地：直接用 public/audio 原文件
+  const rel = rawUrl.replace(/^\/audio\//, '').replace(/\.(flac|mp3)$/i, '.m4a');
+  return `${AUDIO_BASE}/${rel.split('/').map(encodeURIComponent).join('/')}`;
+};
+
 const globalAudio = new Audio();
+// 跨域音频（Cloudflare R2）接入 Web Audio 频谱分析器必须声明 CORS，
+// 否则浏览器会把音频判为「污染源」而静音/拒绝播放。需配合 R2 桶的 CORS 策略放行本站域名。
+globalAudio.crossOrigin = 'anonymous';
 globalAudio.volume = 0;
 
 let shuffleBag: number[] = [];
@@ -255,7 +269,7 @@ const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
 
   const nextTrack = PLAYLIST[nextIndex];
   globalCurrentTrack = nextTrack;
-  globalAudio.src = nextTrack.url;
+  globalAudio.src = resolveAudioUrl(nextTrack.url);
   globalAudio.setAttribute('data-track-id', nextTrack.id);
   globalCurrentTime = 0;
 
@@ -301,7 +315,7 @@ export const useSoundscape = () => {
 
   const playBGM = useCallback((targetVolume = 0.4, fadeDuration = 2500) => {
     if (globalAudio.getAttribute('data-track-id') !== globalCurrentTrack.id) {
-      globalAudio.src = globalCurrentTrack.url;
+      globalAudio.src = resolveAudioUrl(globalCurrentTrack.url);
       globalAudio.setAttribute('data-track-id', globalCurrentTrack.id);
       globalAudio.load();
     }
@@ -332,7 +346,7 @@ export const useSoundscape = () => {
     cancelFade();
 
     if (globalAudio.getAttribute('data-track-id') !== t.id) {
-      globalAudio.src = t.url;
+      globalAudio.src = resolveAudioUrl(t.url);
       globalAudio.setAttribute('data-track-id', t.id);
       globalCurrentTrack = t;
       globalAudio.load();
@@ -381,7 +395,7 @@ export const useSoundscape = () => {
           globalAudio.pause();
           
           globalCurrentTrack = t;
-          globalAudio.src = t.url;
+          globalAudio.src = resolveAudioUrl(t.url);
           globalAudio.setAttribute('data-track-id', t.id);
           globalAudio.load();
           notifyListeners();
@@ -403,7 +417,7 @@ export const useSoundscape = () => {
       currentFade = requestAnimationFrame(fadeOut);
     } else {
       globalCurrentTrack = t;
-      globalAudio.src = t.url;
+      globalAudio.src = resolveAudioUrl(t.url);
       globalAudio.setAttribute('data-track-id', t.id);
       globalAudio.load();
       notifyListeners();

@@ -1,5 +1,5 @@
 // src/components/OasisResonance.tsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSoundscape, getSpectrum } from '../hooks/useSoundscape';
 import type { MusicCategory } from '../types/music';
@@ -11,10 +11,19 @@ const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number 
 
   // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
   // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
+  // 对称布局：低频置于正中央、向两侧镜像生长，能量「从中间开始」而非自左铺开。
   useEffect(() => {
     let raf = 0;
+    const half = Math.ceil(bars / 2);
+    const center = (bars - 1) / 2;
     const tick = () => {
-      setLevels(getSpectrum(bars));
+      const spec = getSpectrum(half);            // 低→高
+      const mirrored = new Array(bars);
+      for (let i = 0; i < bars; i++) {
+        const d = Math.round(Math.abs(i - center)); // 到中心的距离 → 频段（中心=低频）
+        mirrored[i] = spec[Math.min(half - 1, d)];
+      }
+      setLevels(mirrored);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -23,26 +32,77 @@ const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number 
 
   // 镜像波形：声条以中线为基准上下对称生长，比单边触底更具音乐性与美感
   return (
-    <div className="relative flex items-center justify-center gap-[3px] h-12 w-full">
+    <div className="relative flex items-center justify-center gap-[2px] h-16 w-full">
       {/* 静息中线，暂停时声条柔和落回这条线 */}
       <span className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-current to-transparent opacity-10 pointer-events-none" style={{ color }} />
       {levels.map((lv, i) => {
-        const e = Math.pow(lv, 0.82); // 轻微提亮中段，弱信号也可见
+        const e = Math.pow(lv, 0.72); // 更大的动态范围，弱信号也清晰可辨
         return (
           <span
             key={i}
-            className="w-[3px] rounded-full"
+            className="w-[2px] rounded-full flex-shrink-0"
             style={{
-              height: `${6 + e * 94}%`,
+              height: `${3 + e * 97}%`,
               backgroundColor: color,
-              opacity: isPlaying ? 0.28 + e * 0.72 : 0.18,
-              boxShadow: e > 0.6 ? `0 0 9px ${color}` : 'none',
-              transition: 'height 120ms cubic-bezier(0.22,0.61,0.36,1), opacity 240ms linear, box-shadow 240ms linear',
+              opacity: isPlaying ? 0.22 + e * 0.78 : 0.16,
+              boxShadow: e > 0.55 ? `0 0 ${5 + e * 8}px ${color}` : 'none',
+              transition: 'height 90ms cubic-bezier(0.22,0.61,0.36,1), opacity 200ms linear, box-shadow 200ms linear',
             }}
           />
         );
       })}
     </div>
+  );
+};
+
+// 💿 唱片光晕：染当前曲目情绪色。播放时随频谱节拍律动（鼓点点亮、缓落呼吸），
+//    暂停时丝滑淡出、重新播放时丝滑淡入——常驻 rAF + presence 包络做无缝渐变，
+//    而非 isPlaying 切换时重启动画造成的生硬跳变。
+const DiscHalo: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPlaying }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const playingRef = React.useRef(isPlaying);
+  playingRef.current = isPlaying;
+
+  useEffect(() => {
+    let raf = 0;
+    let fast = 0;       // 快包络：锐利捕捉鼓点/瞬态，毫秒级起跳
+    let slow = 0;       // 慢包络：沉稳的呼吸底色
+    let presence = 0;   // 播放存在度 0→1，驱动丝滑淡入淡出
+    const tick = () => {
+      const el = ref.current;
+      if (el) {
+        const playing = playingRef.current;
+        presence += ((playing ? 1 : 0) - presence) * 0.05; // 柔和淡入淡出（约数百毫秒）
+        let beat = 0;
+        if (playing) {
+          // 高分辨率取谱，低频加权——鼓点的力度被更细腻地拾取
+          const spec = getSpectrum(32);
+          let bass = 0, mid = 0;
+          for (let i = 0; i < 6; i++) bass += spec[i];
+          for (let i = 6; i < 18; i++) mid += spec[i];
+          bass /= 6; mid /= 12;
+          const energy = spec.reduce((a, b) => a + b, 0) / spec.length;
+          beat = Math.max(bass * 1.15, mid * 0.85, energy);
+        }
+        // 双包络：快包络抓节奏的「点」，慢包络铺律动的「线」，叠加后既灵动又不闪烁
+        fast += (beat - fast) * (beat > fast ? 0.55 : 0.16);
+        slow += (beat - slow) * (beat > slow ? 0.22 : 0.05);
+        const level = slow * 0.62 + fast * 0.5;
+        el.style.opacity = `${presence * (0.15 + level * 0.62)}`;
+        el.style.transform = `scale(${1 + level * 0.16 * presence})`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute -inset-[12%] rounded-full blur-3xl pointer-events-none z-0"
+      style={{ backgroundColor: color, opacity: 0, transition: 'background-color 1500ms ease' }}
+    />
   );
 };
 
@@ -149,9 +209,8 @@ const CATEGORIES: { id: MusicCategory; label: string }[] = [
   { id: 'Miku', label: 'MIKU' }
 ];
 
-// 💿 唱片纹理：列表迷你碟与主唱盘共用同一套视觉语言
+// 💿 黑胶纹理：主唱盘的同心声槽
 const VINYL_GROOVES = 'repeating-radial-gradient(circle at 50% 50%, #111 0px, #111 3px, #1b1b1f 4px, #111 5px)';
-const MINI_GROOVES = 'repeating-radial-gradient(circle at 50% 50%, #14141a 0px, #14141a 1.5px, #22222a 2px, #14141a 2.5px)';
 
 export const OasisResonance: React.FC = () => {
   const { currentTrack, isPlaying, playMode, currentTime, duration, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, playlist } = useSoundscape();
@@ -161,6 +220,28 @@ export const OasisResonance: React.FC = () => {
 
   // 🦾 唱臂角度：播放时落针并随进度缓缓内移（外圈→内圈），暂停/停止时抬臂归位
   const armAngle = isPlaying ? 16 + (progress / 100) * 13 : -14;
+
+  // 💿 真实唱盘惯性：用 rAF 让转速平滑趋近目标，播放时缓缓启转、暂停时自然滑停，
+  //    取代 CSS animationPlayState 的「咔哒」式骤停骤起。
+  const discRef = useRef<HTMLDivElement>(null);
+  const spin = useRef({ angle: 0, vel: 0 });        // 当前角度(deg) 与角速度(deg/s)
+  const targetVel = useRef(0);                       // 目标角速度：播放 20deg/s(≈18s 一圈)，暂停 0
+  useEffect(() => { targetVel.current = isPlaying ? 20 : 0; }, [isPlaying]);
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const s = spin.current;
+      // 指数趋近：时间常数 ≈1.4s，启转与滑停都舒缓自然
+      s.vel += (targetVel.current - s.vel) * (1 - Math.exp(-dt / 1.4));
+      s.angle = (s.angle + s.vel * dt) % 360;
+      if (discRef.current) discRef.current.style.transform = `rotate(${s.angle}deg)`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const modeDisplay = useMemo(() => {
     if (playMode === 'loop') return { icon: Icons.loop, text: 'LOOP' };
@@ -181,27 +262,27 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div
-      className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] flex flex-col z-10 pt-12 pb-8 px-6 md:px-16 lg:px-24 xl:px-32"
+      className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-24 lg:pb-28 px-6 md:px-16 lg:px-24 xl:px-32"
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
         Resonance Chamber
       </div>
 
-      {/* ✨ 核心排版：左侧唱机 / 右侧选碟架 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-16 lg:gap-x-24 xl:gap-x-32 w-full h-full mt-10 items-center">
+      {/* ✨ 核心排版：左侧唱机（7/12，主角）/ 右侧选碟台（5/12），整屏锁定、底部留 Dock 安全区 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-14 lg:gap-x-20 xl:gap-x-28 w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
 
-        {/* ================= 左侧 (6/12)：拟真转盘唱机 ================= */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col items-center justify-center relative">
+        {/* ================= 左侧 (7/12)：拟真转盘唱机（主角） ================= */}
+        <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center relative h-full min-h-0">
 
           {/* 超大环境光晕：随声波能量呼吸 */}
           <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} />
 
           {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
-          <div className="relative w-full max-w-[400px] lg:max-w-[520px] aspect-[10/8.4] rounded-[2.25rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
+          <div className="relative w-full max-w-[440px] lg:max-w-[560px] xl:max-w-[600px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
 
             {/* 台面微光拉丝 */}
-            <div className="absolute inset-0 rounded-[2.25rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent pointer-events-none" />
+            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent pointer-events-none" />
             {/* 台面顶缘高光，增强玻璃质感 */}
             <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 dark:via-white/20 to-transparent pointer-events-none" />
 
@@ -210,12 +291,16 @@ export const OasisResonance: React.FC = () => {
               className="absolute left-[6%] top-1/2 -translate-y-1/2 w-[71%] aspect-square cursor-pointer group"
               onClick={togglePlay} role="button" aria-label={isPlaying ? '暂停' : '播放'}
             >
-              {/* 转盘底缘 */}
-              <div className="absolute -inset-[3.5%] rounded-full bg-slate-300/40 dark:bg-black/40 shadow-inner border border-white/40 dark:border-white/5 transition-colors duration-[1500ms]" />
+              {/* 💿 唱片光晕：随音乐律动，暂停丝滑淡出、重播丝滑淡入 */}
+              <DiscHalo color={currentTrack.color} isPlaying={isPlaying} />
+              {/* 🎛️ 拉丝金属转盘（platter）：黑胶坐落其上，带柔和径向高光与内阴影，质感更真实 */}
+              <div className="absolute -inset-[4.5%] rounded-full bg-gradient-to-br from-slate-200/70 via-slate-300/45 to-slate-400/40 dark:from-white/[0.07] dark:via-black/30 dark:to-black/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.18)] border border-white/50 dark:border-white/[0.06] transition-colors duration-[1500ms]" />
+              {/* 转盘边缘细圈，分隔黑胶与盘面 */}
+              <div className="absolute -inset-[0.5%] rounded-full border border-white/25 dark:border-white/[0.05] pointer-events-none z-10" />
 
               <div
-                className="relative w-full h-full rounded-full shadow-[0_18px_45px_rgba(0,0,0,0.25)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.7)] overflow-hidden border border-slate-500/20 dark:border-white/10"
-                style={{ animation: 'oasis-spin 18s linear infinite', animationPlayState: isPlaying ? 'running' : 'paused' }}
+                ref={discRef}
+                className="relative w-full h-full rounded-full shadow-[0_18px_45px_rgba(0,0,0,0.25)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.7)] overflow-hidden border border-slate-500/20 dark:border-white/10 will-change-transform"
               >
                 {/* 黑胶纹理 */}
                 <div className="absolute inset-0" style={{ background: VINYL_GROOVES }} />
@@ -287,7 +372,7 @@ export const OasisResonance: React.FC = () => {
           </div>
 
           {/* ✨ 播放控制台：进度 + 走带，收束于唱机正下方 */}
-          <div className="w-full max-w-[380px] lg:max-w-[460px] mt-12 relative z-20 flex flex-col gap-6">
+          <div className="w-full max-w-[440px] lg:max-w-[520px] mt-10 lg:mt-12 relative z-20 flex flex-col gap-6">
 
             {/* 进度条 */}
             <div className="flex items-center gap-4 px-2">
@@ -342,8 +427,8 @@ export const OasisResonance: React.FC = () => {
           </div>
         </div>
 
-        {/* ================= 右侧 (6/12)：曲目信息（居中） + 选碟架 ================= */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col items-center text-center w-full h-full relative z-20">
+        {/* ================= 右侧 (5/12)：曲目信息（居中） + 选碟台 ================= */}
+        <div className="col-span-1 lg:col-span-5 flex flex-col items-center text-center w-full h-full min-h-0 relative z-20">
 
           {/* 🎶 正在共鸣 · 居中置于歌单上方中央，声波 → 歌名 → 艺术家 → 歌词 自上而下 */}
           <div className="w-full max-w-[480px] flex flex-col items-center">
@@ -357,7 +442,7 @@ export const OasisResonance: React.FC = () => {
               <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
             </div>
 
-            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={32} />
+            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={72} />
 
             <AnimatePresence mode="wait">
               <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-4">
@@ -403,73 +488,90 @@ export const OasisResonance: React.FC = () => {
             ))}
           </div>
 
-          {/* 💿 选碟架：每首歌是一张迷你唱片，点击即「换碟上盘」 */}
-          <div className="w-full max-w-[560px] mx-auto flex-1 relative min-h-[350px]">
-            <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#F8FAFC] dark:from-[#0A0F1D] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
-            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#F8FAFC] dark:from-[#0A0F1D] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
+          {/* 💿 选碟台 The Crate：一台拟真选碟箱，碟片在其中陈列，点选即「换碟上盘」 */}
+          <div className="w-full max-w-[520px] mx-auto flex flex-col h-[52vh] lg:h-auto lg:flex-1 lg:min-h-0 rounded-[1.75rem] border border-white/45 dark:border-white/[0.06] bg-gradient-to-b from-white/40 to-white/[0.06] dark:from-white/[0.035] dark:to-transparent backdrop-blur-xl overflow-hidden shadow-[0_18px_56px_-16px_rgba(15,23,42,0.22)] dark:shadow-[0_18px_56px_-16px_rgba(0,0,0,0.65)] transition-colors duration-[1500ms]">
+            {/* 顶缘高光 */}
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/65 dark:via-white/15 to-transparent pointer-events-none z-30" />
 
-            <div className="absolute inset-0 overflow-y-auto pt-2 pb-16 pr-3 space-y-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* 🏷️ 选碟台铭牌：身份标识 + 碟数，让歌单成为一台「设备」而非裸列表 */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-white/40 dark:border-white/[0.05] bg-white/25 dark:bg-white/[0.02] transition-colors duration-[1500ms]">
+              <div className="flex items-center gap-2.5">
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: currentTrack.color }}
+                  animate={{ opacity: isPlaying ? [1, 0.4, 1] : 0.5 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <span className="font-mono text-[9px] tracking-[0.32em] uppercase text-slate-500 dark:text-slate-400">The Crate · 选碟台</span>
+              </div>
+              <span className="font-mono text-[9px] tracking-[0.2em] text-slate-400/70 dark:text-slate-600 tabular-nums">{filteredPlaylist.length} 张</span>
+            </div>
+
+            {/* 碟槽区：上下淡出 + 隐藏滚动条，碟片如在槽中翻阅 */}
+            <div className="relative flex-1 min-h-0">
+              <div className="absolute top-0 left-0 right-0 h-7 bg-gradient-to-b from-white/35 dark:from-white/[0.02] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
+              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white/35 dark:from-white/[0.02] to-transparent z-10 pointer-events-none transition-colors duration-[1500ms]" />
+
+              {/* 🎼 排版式曲目索引：以发丝细线分隔，去卡片化；序号 / 标题 / 艺术家 三栏对齐，
+                  正在播放者以情绪色微光自左晕染 + 均衡器，安静而高级 */}
+              <div className="absolute inset-0 overflow-y-auto pt-2 pb-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <AnimatePresence mode="popLayout">
                 {filteredPlaylist.map((track, index) => {
                   const isActive = currentTrack.id === track.id;
                   return (
                     <motion.button
-                      layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 28 }}
                       key={track.id} onClick={() => switchTrack(track)}
-                      className={`relative w-full pl-4 pr-4 py-2.5 rounded-xl transition-colors duration-500 outline-none flex items-center gap-4 text-left group ${
-                        isActive ? 'bg-white/55 dark:bg-white/[0.05]' : 'hover:bg-white/35 dark:hover:bg-white/[0.03]'
-                      }`}
-                      whileHover={{ x: 4 }} whileTap={{ scale: 0.985 }}
+                      className="group relative w-full flex items-center gap-4 pl-5 pr-5 py-[13px] text-left outline-none border-b border-slate-200/45 dark:border-white/[0.05] last:border-b-0 hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-300"
+                      // 激活：情绪色从左缘柔和晕染的渐变带，非框形卡片
+                      style={isActive ? { background: `linear-gradient(90deg, ${track.color}1f, ${track.color}08 35%, transparent 75%)` } : undefined}
                     >
-                      {/* 激活情绪色竖条 */}
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-full transition-all duration-500" style={{ height: isActive ? '55%' : '0%', backgroundColor: track.color, opacity: isActive ? 1 : 0 }} />
+                      {/* 左缘情绪色细标 */}
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] rounded-full transition-all duration-500" style={{ height: isActive ? '62%' : '0%', backgroundColor: track.color, boxShadow: isActive ? `0 0 8px ${track.color}` : 'none' }} />
 
-                      {/* 💿 迷你唱片：在架时静止，上盘后随播放旋转；悬停浮出播放暗示 */}
-                      <motion.span
-                        className="relative w-10 h-10 shrink-0 rounded-full overflow-hidden shadow-[0_3px_8px_rgba(0,0,0,0.25)] border border-black/20 dark:border-white/10"
-                        animate={{ scale: isActive ? 1.06 : 1 }}
-                        style={{ animation: 'oasis-spin 5s linear infinite', animationPlayState: isActive && isPlaying ? 'running' : 'paused' }}
-                      >
-                        <span className="absolute inset-0" style={{ background: MINI_GROOVES }} />
-                        <span className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent mix-blend-overlay" />
-                        <span className="absolute inset-[30%] rounded-full" style={{ backgroundColor: track.color }} />
-                        <span className="absolute inset-[45%] rounded-full bg-[#F8FAFC] dark:bg-[#0A0F1D] transition-colors duration-[1500ms]" />
-                      </motion.span>
-                      {/* 悬停播放暗示（不随碟旋转） */}
-                      {!isActive && (
-                        <span className="absolute left-4 w-10 h-10 rounded-full flex items-center justify-center bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                          <svg viewBox="0 0 24 24" fill="white" className="w-3.5 h-3.5 ml-0.5"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                        </span>
-                      )}
+                      {/* 序号槽：常态序号 → 悬停播放标 → 在播均衡器 */}
+                      <span className="relative w-5 shrink-0 flex items-center justify-center self-start mt-1">
+                        {isActive ? (
+                          isPlaying ? (
+                            <span className="flex items-end gap-[2px] h-3">
+                              {[0, 0.2, 0.4].map((d, i) => (
+                                <motion.span key={i} className="w-[2px] rounded-full" style={{ backgroundColor: track.color }} animate={{ height: ['28%', '100%', '28%'] }} transition={{ duration: 0.7, repeat: Infinity, delay: d, ease: 'easeInOut' }} />
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: track.color, boxShadow: `0 0 6px ${track.color}` }} />
+                          )
+                        ) : (
+                          <>
+                            <span className="font-mono text-[10px] tabular-nums text-slate-400/55 dark:text-slate-600 group-hover:opacity-0 transition-opacity duration-200 select-none">{String(index + 1).padStart(2, '0')}</span>
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-500 dark:text-slate-300"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          </>
+                        )}
+                      </span>
 
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`font-serif text-[15px] md:text-base leading-snug tracking-wide transition-colors duration-500 truncate ${isActive ? 'text-slate-900 dark:text-slate-50 font-semibold' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100'}`}>
+                      {/* 标题 + 艺术家 */}
+                      <span className="flex-1 min-w-0 flex flex-col">
+                        <span className={`font-serif text-[15px] md:text-base leading-snug tracking-wide truncate transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100'}`}>
                           {track.title}
                         </span>
-                        <span className={`font-mono text-[9px] md:text-[10px] tracking-[0.2em] uppercase mt-0.5 transition-colors duration-500 ${isActive ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400/80 dark:text-slate-500'}`}>
+                        <span className="font-mono text-[9px] tracking-[0.22em] uppercase mt-1 truncate text-slate-400/80 dark:text-slate-500">
                           {track.artist}
                         </span>
-                      </div>
+                      </span>
 
-                      {/* 右端状态：激活显示跳动音轨 / NOW ON DECK，常态显示序号 */}
-                      <span className="shrink-0 flex items-center gap-2.5">
+                      {/* 右栏：在播标识 / 悬停时浮出类目 */}
+                      <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap">
                         {isActive ? (
-                          <>
-                            <span className="hidden md:inline font-mono text-[8px] tracking-[0.25em] uppercase" style={{ color: track.color }}>On Deck</span>
-                            <span className="flex items-end gap-[2px] h-3.5">
-                              {isPlaying ? [0, 0.2, 0.4].map((d, i) => (
-                                <motion.span key={i} className="w-[2px] rounded-full" style={{ backgroundColor: track.color }} animate={{ height: ['30%', '100%', '30%'] }} transition={{ duration: 0.7, repeat: Infinity, delay: d }} />
-                              )) : <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: track.color }} />}
-                            </span>
-                          </>
+                          <span style={{ color: track.color }}>On Deck</span>
                         ) : (
-                          <span className="font-mono text-[10px] tabular-nums text-slate-400/60 dark:text-slate-600 select-none">{String(index + 1).padStart(2, '0')}</span>
+                          <span className="text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">{track.category}</span>
                         )}
                       </span>
                     </motion.button>
                   );
                 })}
               </AnimatePresence>
+              </div>
             </div>
           </div>
 
