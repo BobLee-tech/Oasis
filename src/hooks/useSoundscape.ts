@@ -135,7 +135,10 @@ const globalAudio = new Audio();
 // 跨域音频（Cloudflare R2）接入 Web Audio 频谱分析器必须声明 CORS，
 // 否则浏览器会把音频判为「污染源」而静音/拒绝播放。需配合 R2 桶的 CORS 策略放行本站域名。
 globalAudio.crossOrigin = 'anonymous';
-globalAudio.volume = 0;
+// 统一的音量赋值入口：缓动/浮点误差可能算出 -0.0001 这类越界值，HTMLMediaElement
+// 会直接抛 IndexSizeError，这里一律夹紧到 [0,1]。
+const setAudioVolume = (v: number) => { globalAudio.volume = Math.max(0, Math.min(1, v)); };
+setAudioVolume(0);
 
 let shuffleBag: number[] = [];
 
@@ -193,7 +196,7 @@ const fadeVolume = (target: number, duration: number, onDone?: () => void) => {
   const step = (now: number) => {
     const p = Math.min((now - start) / duration, 1);
     const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
-    globalAudio.volume = Math.max(0, Math.min(1, from + (target - from) * ease));
+    setAudioVolume(from + (target - from) * ease);
     if (p < 1) {
       currentFade = requestAnimationFrame(step);
     } else {
@@ -321,7 +324,7 @@ export const useSoundscape = () => {
     }
 
     cancelFade();
-    globalAudio.volume = 0;
+    setAudioVolume(0);
     // 同步全局音量，让 UI 滑轨与实际淡入目标一致
     globalVolume = targetVolume;
     notifyListeners();
@@ -333,7 +336,7 @@ export const useSoundscape = () => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / fadeDuration, 1);
         const ease = 1 - Math.pow(1 - progress, 3);
-        globalAudio.volume = targetVolume * ease;
+        setAudioVolume(targetVolume * ease);
         if (progress < 1) {
             currentFade = requestAnimationFrame(fadeIn);
         }
@@ -353,7 +356,7 @@ export const useSoundscape = () => {
       notifyListeners();
     }
 
-    globalAudio.volume = 0;
+    setAudioVolume(0);
     globalAudio.play().then(() => {
       ensureAnalyser();
       fadeVolume(globalVolume, 900); // 🌅 落针淡入
@@ -387,7 +390,7 @@ export const useSoundscape = () => {
 
       const fadeOut = (currentTime: number) => {
         const progress = Math.min((currentTime - startTime) / 800, 1);
-        globalAudio.volume = Math.max(0, initialVolume * (1 - progress));
+        setAudioVolume(initialVolume * (1 - progress));
         
         if (progress < 1) {
           currentFade = requestAnimationFrame(fadeOut);
@@ -406,7 +409,7 @@ export const useSoundscape = () => {
           const targetVol = globalVolume;
           const fadeIn = (inTime: number) => {
             const inProgress = Math.min((inTime - startInTime) / 1000, 1);
-            globalAudio.volume = targetVol * Math.pow(inProgress, 2);
+            setAudioVolume(targetVol * Math.pow(inProgress, 2));
             if (inProgress < 1) {
                 currentFade = requestAnimationFrame(fadeIn);
             }
@@ -427,7 +430,7 @@ export const useSoundscape = () => {
   const changeVolume = useCallback((val: number) => {
     cancelFade(); // 用户手动调音量时，立刻终止进行中的淡入淡出，避免被覆盖
     globalVolume = val;
-    globalAudio.volume = val;
+    setAudioVolume(val);
     notifyListeners();
   }, []);
 
@@ -440,7 +443,7 @@ export const useSoundscape = () => {
 
   const playNext = useCallback(() => {
     cancelFade();
-    globalAudio.volume = globalVolume;
+    setAudioVolume(globalVolume);
     advanceTrack(1);
   }, []);
 
@@ -452,7 +455,7 @@ export const useSoundscape = () => {
       if (!globalIsPlaying) playTrack(globalCurrentTrack);
       return;
     }
-    globalAudio.volume = globalVolume;
+    setAudioVolume(globalVolume);
     advanceTrack(-1);
   }, [seek, playTrack]);
 
