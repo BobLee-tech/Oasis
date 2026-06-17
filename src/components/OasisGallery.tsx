@@ -272,7 +272,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   };
 
   return (
-    <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }}>
+    <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex">
       
       {/* 🌲 左侧策展人名片面板 */}
       <AnimatePresence>

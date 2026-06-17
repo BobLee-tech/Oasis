@@ -5,8 +5,9 @@ import type { AppView } from '../types/auth';
 
 interface OasisDockProps {
   currentView: AppView;
-  onViewChange: (view: AppView) => void;
-  isAdmin: boolean; 
+  // 第二参数回传被点击图标的中心坐标，作为涟漪转场的荡开落点。
+  onViewChange: (view: AppView, origin?: { x: number; y: number }) => void;
+  isAdmin: boolean;
 }
 
 interface DockItem {
@@ -31,7 +32,11 @@ export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange 
           const isActive = currentView === item.view;
           return (
             <motion.button
-              key={item.view} onClick={() => onViewChange(item.view)}
+              key={item.view}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                onViewChange(item.view, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+              }}
               className="relative p-2 rounded-xl flex items-center justify-center cursor-pointer group outline-none"
               whileHover={{ scale: 1.2, y: -6 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}
             >

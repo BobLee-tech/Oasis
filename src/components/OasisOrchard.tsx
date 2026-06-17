@@ -239,7 +239,6 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   return (
     <motion.div
       className="absolute inset-0 w-full h-full overflow-hidden flex flex-col items-center justify-center z-10"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.2 }}
     >
       {/* 顶部标题 */}
       <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none text-center px-6">

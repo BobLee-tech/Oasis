@@ -1,18 +1,19 @@
 // src/components/OasisResonance.tsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 import { useSoundscape, getSpectrum } from '../hooks/useSoundscape';
 import type { MusicCategory, Track } from '../types/music';
 
 // 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
 // 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
-const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number }> = ({ color, isPlaying, bars = 11 }) => {
+const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number; active?: boolean }> = ({ color, isPlaying, bars = 11, active = true }) => {
   const [levels, setLevels] = useState<number[]>(() => new Array(bars).fill(0));
 
   // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
   // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
   // 对称布局：低频置于正中央、向两侧镜像生长，能量「从中间开始」而非自左铺开。
   useEffect(() => {
+    if (!active) return; // 视图非激活（含切换退场期间）时停转，避免高频刷新争用主线程
     let raf = 0;
     const half = Math.ceil(bars / 2);
     const center = (bars - 1) / 2;
@@ -28,7 +29,7 @@ const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [bars]);
+  }, [bars, active]);
 
   // 镜像波形：声条以中线为基准上下对称生长，比单边触底更具音乐性与美感
   return (
@@ -58,12 +59,13 @@ const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number 
 // 💿 唱片光晕：染当前曲目情绪色。播放时随频谱节拍律动（鼓点点亮、缓落呼吸），
 //    暂停时丝滑淡出、重新播放时丝滑淡入——常驻 rAF + presence 包络做无缝渐变，
 //    而非 isPlaying 切换时重启动画造成的生硬跳变。
-const DiscHalo: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPlaying }) => {
+const DiscHalo: React.FC<{ color: string; isPlaying: boolean; active?: boolean }> = ({ color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   const playingRef = React.useRef(isPlaying);
   playingRef.current = isPlaying;
 
   useEffect(() => {
+    if (!active) return; // 非激活时停转：避免每帧重栅格化 blur-3xl 大模糊层
     let raf = 0;
     let fast = 0;       // 快包络：锐利捕捉鼓点/瞬态，毫秒级起跳
     let slow = 0;       // 慢包络：沉稳的呼吸底色
@@ -95,7 +97,7 @@ const DiscHalo: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPl
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [active]);
 
   return (
     <div
@@ -108,10 +110,11 @@ const DiscHalo: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPl
 
 // 🌫️ 环境光晕：随音乐整体能量呼吸，让氛围与声波同步起伏。
 // 用 ref 直接改样式而非 state，60fps 也不触发 React 重渲染。
-const AmbientGlow: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPlaying }) => {
+const AmbientGlow: React.FC<{ color: string; isPlaying: boolean; active?: boolean }> = ({ color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!active) return; // 非激活时停转：blur-[100px] 巨型模糊层每帧变换极昂贵，切换时尤甚
     let raf = 0;
     let smooth = 0;
     const tick = () => {
@@ -137,7 +140,7 @@ const AmbientGlow: React.FC<{ color: string; isPlaying: boolean }> = ({ color, i
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [isPlaying]);
+  }, [isPlaying, active]);
 
   return (
     <div
@@ -152,10 +155,11 @@ const AmbientGlow: React.FC<{ color: string; isPlaying: boolean }> = ({ color, i
 const alphaHex = (a: number) => Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0');
 
 // 🎶 歌名本身：随音乐能量轻轻呼吸晕光，让标题成为律动的主角而非静态文字。
-const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean }> = ({ title, color, isPlaying }) => {
+const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean; active?: boolean }> = ({ title, color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
+    if (!active) return; // 非激活时停转
     let raf = 0;
     let smooth = 0;
     const tick = () => {
@@ -173,7 +177,7 @@ const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [color, isPlaying]);
+  }, [color, isPlaying, active]);
 
   return (
     <h2
@@ -226,6 +230,9 @@ const albumOf = (url: string): { key: string; name: string; year: string } => {
 };
 
 export const OasisResonance: React.FC = () => {
+  // 🎚️ 视图是否「在场」：切换离场时（AnimatePresence 退场期间）useIsPresent 立即转 false，
+  //    据此关停所有高频 rAF 视觉，避免退场动画与新视图挂载争用主线程/GPU，消除切换卡顿。
+  const active = useIsPresent();
   const { currentTrack, isPlaying, playMode, currentTime, duration, volume, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, changeVolume, playlist } = useSoundscape();
   const [activeCategory, setActiveCategory] = useState<MusicCategory>('All Tracks');
 
@@ -241,6 +248,7 @@ export const OasisResonance: React.FC = () => {
   const targetVel = useRef(0);                       // 目标角速度：播放 20deg/s(≈18s 一圈)，暂停 0
   useEffect(() => { targetVel.current = isPlaying ? 20 : 0; }, [isPlaying]);
   useEffect(() => {
+    if (!active) return; // 非激活时停转盘
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -254,7 +262,7 @@ export const OasisResonance: React.FC = () => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [active]);
 
   const modeDisplay = useMemo(() => {
     if (playMode === 'loop') return { icon: Icons.loop, text: 'LOOP' };
@@ -301,7 +309,6 @@ export const OasisResonance: React.FC = () => {
   return (
     <motion.div
       className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-24 lg:pb-28 pl-6 pr-6 md:pl-14 md:pr-20 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
-      initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
         Resonance Chamber
@@ -314,7 +321,7 @@ export const OasisResonance: React.FC = () => {
         <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center relative h-full min-h-0">
 
           {/* 超大环境光晕：随声波能量呼吸 */}
-          <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} />
+          <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} active={active} />
 
           {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
           <div className="relative w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
@@ -330,7 +337,7 @@ export const OasisResonance: React.FC = () => {
               onClick={togglePlay} role="button" aria-label={isPlaying ? '暂停' : '播放'}
             >
               {/* 💿 唱片光晕：随音乐律动，暂停丝滑淡出、重播丝滑淡入 */}
-              <DiscHalo color={currentTrack.color} isPlaying={isPlaying} />
+              <DiscHalo color={currentTrack.color} isPlaying={isPlaying} active={active} />
               {/* 🎛️ 拉丝金属转盘（platter）：黑胶坐落其上，带柔和径向高光与内阴影，质感更真实 */}
               <div className="absolute -inset-[4.5%] rounded-full bg-gradient-to-br from-slate-200/70 via-slate-300/45 to-slate-400/40 dark:from-white/[0.07] dark:via-black/30 dark:to-black/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.18)] border border-white/50 dark:border-white/[0.06] transition-colors duration-[1500ms]" />
               {/* 转盘边缘细圈，分隔黑胶与盘面 */}
@@ -517,12 +524,12 @@ export const OasisResonance: React.FC = () => {
               <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
             </div>
 
-            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={72} />
+            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={72} active={active} />
 
             <AnimatePresence mode="wait">
               <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-4">
 
-                <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} />
+                <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
 
                 <div className="flex items-center justify-center gap-3 mt-5">
                   <motion.span

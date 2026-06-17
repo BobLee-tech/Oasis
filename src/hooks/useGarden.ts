@@ -123,9 +123,12 @@ export const useGarden = () => {
 
   useEffect(() => {
     fetchCloud();
-    // 🛰️ 实时订阅：任意端增删改 → 本地刷新，博客与星图同步
+    // 🛰️ 实时订阅：任意端增删改 → 本地刷新，博客与星图同步。
+    // ⚠️ 频道名必须每个 hook 实例唯一：博客与星图（OasisGallery / OasisOrchard）会在切换转场时
+    //    短暂同时挂载，两个 useGarden 实例若共用固定频道名，第二个 .on() 会在该频道 subscribe() 之后
+    //    被调用而抛错，导致整页崩白。用随机后缀隔离，各实例各自独立的频道。
     const channel = supabase
-      .channel('garden_posts_sync')
+      .channel(`garden_posts_sync_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, () => fetchCloud())
       .subscribe();
     return () => { supabase.removeChannel(channel); };

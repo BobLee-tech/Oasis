@@ -1,6 +1,8 @@
 // src/App.tsx
 import { useState, useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import type { ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
 import { useSoundscape } from './hooks/useSoundscape'; 
 
@@ -113,6 +115,53 @@ const OasisHUD = ({ showClock }: { showClock: boolean }) => (
   </div>
 );
 
+// 🌫️ 单层视图容器：交叉溶解全程重叠，新旧界面同时在场，结构上杜绝闪白。
+// 只动 opacity + 极轻 scale（合成器层），永不触发整屏重绘，因此丝滑无抖动。
+const ViewLayer = ({ reduce, children }: { reduce: boolean; children: ReactNode }) => (
+  <motion.div
+    className="absolute inset-0 flex items-center justify-center"
+    variants={reduce ? reducedLayerVariants : layerVariants}
+    initial="initial" animate="animate" exit="exit"
+  >
+    {children}
+  </motion.div>
+);
+
+// 🫫 水波涟漪：落点处一圈圈细环渐次荡开，如雨滴落水般轻盈舒缓；中心仅一抹弥散柔光衬底。
+// 仅 transform scale + opacity（合成器友好），细环带微模糊柔边，airy 不厚重、无廉价硬环。
+const RippleBloom = ({ origin }: { origin: RippleOrigin }) => {
+  const anchor = { left: origin.x, top: origin.y, x: '-50%', y: '-50%' } as const;
+  // 三圈错峰荡开的涟漪：渐次延迟 + 渐淡，营造水面一圈圈舒展、缓缓平息的层次。
+  const rings = [
+    { color: 'rgba(57,197,187,0.42)', w: 1.5, to: 5.4, op: 0.7, delay: 0, dur: 1.6 },
+    { color: 'rgba(57,197,187,0.30)', w: 1.2, to: 4.6, op: 0.55, delay: 0.18, dur: 1.7 },
+    { color: 'rgba(255,183,197,0.34)', w: 1.2, to: 3.9, op: 0.5, delay: 0.36, dur: 1.8 },
+  ];
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[39]">
+      {/* 中心弥散柔光：轻轻衬底，不抢戏 */}
+      <motion.span
+        className="absolute rounded-full"
+        style={{ ...anchor, width: 360, height: 360, background: 'radial-gradient(circle, rgba(57,197,187,0.30) 0%, rgba(57,197,187,0.10) 44%, transparent 72%)', filter: 'blur(10px)' }}
+        initial={{ scale: 0.3, opacity: 0 }}
+        animate={{ scale: 2.2, opacity: [0, 0.55, 0] }}
+        transition={{ duration: 1.5, ease: BLOOM_EASE, times: [0, 0.14, 1] }}
+      />
+      {/* 渐次荡开的涟漪细环 */}
+      {rings.map((r, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full"
+          style={{ ...anchor, width: 150, height: 150, border: `${r.w}px solid ${r.color}`, filter: 'blur(0.6px)' }}
+          initial={{ scale: 0.3, opacity: r.op }}
+          animate={{ scale: r.to, opacity: 0 }}
+          transition={{ duration: r.dur, ease: BLOOM_EASE, delay: r.delay }}
+        />
+      ))}
+    </div>
+  );
+};
+
 function App() {
   const { isAdmin, isLoading, logout } = useAuth();
   const { playBGM } = useSoundscape(); 
@@ -126,6 +175,20 @@ function App() {
   
   const hasTriggeredBGM = useRef(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // 🫧 涟漪转场：记录每次切换的落点（被点击的 Dock 图标中心），并用自增 key 触发一道扩散水波。
+  const prefersReducedMotion = useReducedMotion();
+  const [revealOrigin, setRevealOrigin] = useState<RippleOrigin>({
+    x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
+    y: typeof window !== 'undefined' ? window.innerHeight * 0.92 : 0,
+  });
+  const [waveKey, setWaveKey] = useState(0);
+
+  const handleViewChange = (view: AppView, origin?: RippleOrigin) => {
+    if (origin) setRevealOrigin(origin);
+    setWaveKey(k => k + 1);
+    setAppView(view);
+  };
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -208,16 +271,26 @@ function App() {
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
           {terminalStatus === 'locked' && <OasisTerminal key="terminal" onSuccess={handleTerminalSuccess} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} onEnterGarden={() => setAppView('garden')} />
+            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} onEnterGarden={() => handleViewChange('garden')} />
           )}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
-            <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}>
-              <AnimatePresence mode="wait">
-                {appView === 'soundscape' && <OasisResonance key="sound-space" />}
-                {appView === 'garden' && <OasisGallery key="garden-space" isAdmin={effectiveIsAdmin} />}
-                {appView === 'orchard' && <OasisOrchard key="orchard-space" isAdmin={effectiveIsAdmin} />}
-              </AnimatePresence>
-              <OasisDock currentView={appView} onViewChange={setAppView} isAdmin={effectiveIsAdmin} />
+            <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.9, ease: [0.32, 0.72, 0, 1] } }} exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.9, 0.2] } }}>
+              {/* 🌫️ 交叉溶解：新旧界面同时在场、同步淡入淡出，无空档不闪白 */}
+              {(() => {
+                const reduce = !!prefersReducedMotion;
+                const wrap = (key: string, node: ReactNode) => (
+                  <ViewLayer key={key} reduce={reduce}>{node}</ViewLayer>
+                );
+                return (
+                  <AnimatePresence>
+                    {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
+                    {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
+                  </AnimatePresence>
+                );
+              })()}
+              {!prefersReducedMotion && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
+              <OasisDock currentView={appView} onViewChange={handleViewChange} isAdmin={effectiveIsAdmin} />
             </motion.div>
           )}
         </AnimatePresence>
