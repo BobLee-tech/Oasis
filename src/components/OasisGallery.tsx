@@ -288,9 +288,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               <div className="absolute top-24 -right-6 w-40 h-40 rounded-full bg-[#FFB7C5]/16 dark:bg-[#FFB7C5]/10 blur-[70px] pointer-events-none" />
 
               <div className="relative z-10 flex flex-col items-center w-full">
-                {/* 头像 */}
+                {/* 头像：点击展开完整档案 */}
                 <motion.div
-                  className="relative w-[88px] h-[88px] mb-6 group cursor-pointer"
+                  className="relative w-[88px] h-[88px] mb-5 group cursor-pointer"
                   onClick={() => setShowProfile(true)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -302,33 +302,25 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </motion.div>
 
                 {/* 名字 */}
-                <h1 className="font-serif text-[2.4rem] leading-none text-slate-700 dark:text-slate-100 mb-3.5 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</h1>
+                <h1 className="font-serif text-[2.4rem] leading-none text-slate-700 dark:text-slate-100 mb-3 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</h1>
 
-                {/* 身份：两行 */}
-                <div className="flex flex-col items-center gap-1.5 mb-6 font-mono text-[10px] tracking-[0.2em] uppercase">
+                {/* 身份：单行，减少噪点 */}
+                <div className="mb-3.5 font-mono text-[10px] tracking-[0.2em] uppercase">
                   <span className="text-[#39C5BB]">Full-Stack Craftsman</span>
-                  <span className="text-slate-400 dark:text-slate-500">CS · UNSW · Sydney</span>
+                  <span className="text-slate-400 dark:text-slate-500"> · CS @ UNSW</span>
                 </div>
 
-                {/* 签名 */}
-                <p className="font-serif italic text-slate-600/90 dark:text-slate-300 text-sm leading-relaxed mb-6 transition-colors duration-[1500ms] ease-in-out">“Exploring the intersection of human behavior, aesthetics &amp; software architecture.”</p>
+                {/* 展开档案的提示入口 */}
+                <button onClick={() => setShowProfile(true)} className="mb-7 font-mono text-[9px] tracking-[0.2em] uppercase text-slate-400/70 dark:text-slate-500 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors pointer-events-auto">View profile →</button>
 
-                {/* 兴趣标签：柔和无框小胶囊 */}
-                <div className="flex flex-wrap justify-center gap-1.5 mb-7">
-                  {['C++', 'AI', 'Claude', '初音ミク❤'].map(tag => (
-                    <span key={tag} className="font-mono text-[9px] tracking-[0.12em] px-2.5 py-1 rounded-full bg-slate-500/[0.07] dark:bg-white/[0.05] text-slate-500 dark:text-slate-400 transition-colors duration-[1500ms]">{tag}</span>
-                  ))}
-                </div>
-
-                {/* 分割线 */}
-                <span className="w-10 h-px bg-slate-300/60 dark:bg-white/10 mb-6 transition-colors duration-[1500ms]" />
-
-                {/* Today's Resonance */}
-                <div className="font-mono text-[9px] tracking-[0.25em] text-slate-400 dark:text-slate-500 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
-                <p className="font-serif text-xs leading-[1.75] text-slate-600 dark:text-slate-300 italic mb-3.5 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
-                <div className="flex items-center justify-center gap-2.5 mb-7 text-slate-400/80 dark:text-slate-400/60 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
-                  <span className="text-[#39C5BB]/60 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
-                  <span className="font-mono text-[10px] tracking-wider truncate transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
+                {/* ✨ 今日共鸣：常驻卡唯一的动态焦点，每天变化、是回访动力 */}
+                <div className="w-full rounded-2xl bg-slate-500/[0.04] dark:bg-white/[0.03] border border-slate-300/40 dark:border-white/[0.06] px-5 py-5 mb-7 transition-colors duration-[1500ms]">
+                  <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
+                  <p className="font-serif text-[13px] leading-[1.75] text-slate-600 dark:text-slate-300 italic mb-4 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
+                  <div className="flex items-center gap-2.5 text-slate-500/90 dark:text-slate-400/70 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
+                    <span className="text-[#39C5BB]/70 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
+                    <span className="font-mono text-[10px] tracking-wider truncate transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
+                  </div>
                 </div>
 
                 {/* 链接 */}
@@ -677,32 +669,76 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-[90vw] max-w-md bg-white/80 dark:bg-[#111827]/90 backdrop-blur-3xl border border-white/50 dark:border-white/10 p-10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col items-center text-center transition-colors duration-1000"
+              className="relative w-[90vw] max-w-md max-h-[88vh] overflow-y-auto no-scrollbar bg-white/80 dark:bg-[#111827]/90 backdrop-blur-3xl border border-white/50 dark:border-white/10 p-10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col transition-colors duration-1000"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#39C5BB] rounded-full blur-[80px] opacity-30 dark:opacity-20 pointer-events-none transition-opacity duration-1000" />
               <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-[#FFB7C5] rounded-full blur-[80px] opacity-30 dark:opacity-20 pointer-events-none transition-opacity duration-1000" />
 
-              <button onClick={() => setShowProfile(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button onClick={() => setShowProfile(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors z-20">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
 
-              <div className="w-28 h-28 rounded-full border-4 border-white dark:border-[#1F2937] shadow-xl overflow-hidden mb-6 z-10 transition-colors duration-1000">
-                <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" />
+              {/* 头部：居中 */}
+              <div className="flex flex-col items-center text-center z-10">
+                <div className="w-28 h-28 rounded-full border-4 border-white dark:border-[#1F2937] shadow-xl overflow-hidden mb-6 transition-colors duration-1000">
+                  <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" />
+                </div>
+                <h2 className="font-serif text-3xl text-slate-800 dark:text-slate-100 mb-2 transition-colors">Bob Lee</h2>
+                <p className="font-mono text-xs tracking-[0.2em] text-[#39C5BB] uppercase">Full-Stack Craftsman</p>
+                <p className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mt-1.5">CS @ UNSW · Sydney</p>
+
+                {/* 签名引言 */}
+                <p className="font-serif italic text-slate-500 dark:text-slate-400 text-sm leading-relaxed mt-6 px-2 transition-colors">
+                  “Exploring the intersection of human behavior, aesthetics &amp; software architecture.”
+                </p>
               </div>
 
-              <h2 className="font-serif text-3xl text-slate-800 dark:text-slate-100 mb-2 z-10 transition-colors">Bob Lee</h2>
-              <p className="font-mono text-xs tracking-[0.2em] text-[#39C5BB] uppercase mb-6 z-10">Full-Stack Craftsman</p>
-              
-              <p className="font-serif text-slate-600 dark:text-slate-300 leading-relaxed text-sm mb-8 z-10 px-4 transition-colors">
-                A 19-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces.
-              </p>
+              {/* 正文：左对齐，可读性更好 */}
+              <div className="z-10 mt-8 text-left">
+                <p className="font-serif text-slate-600 dark:text-slate-300 leading-relaxed text-sm transition-colors">
+                  A 19-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces — where craft, calm and curiosity matter more than the race.
+                </p>
+              </div>
 
-              <div className="flex flex-wrap justify-center gap-2 z-10">
-                {['CPP', 'AI', 'Claude','Hatsune Miku❤️'].map(tag => (
-                  <span key={tag} className="font-mono text-[9px] tracking-widest uppercase px-3 py-1.5 rounded-full border border-slate-300/60 dark:border-white/10 bg-white/60 dark:bg-white/5 text-slate-500 dark:text-slate-400 transition-colors duration-1000">
-                    {tag}
-                  </span>
-                ))}
+              {/* Now：最近在做什么，每次回访都有新东西看 */}
+              <div className="z-10 mt-8 text-left">
+                <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3">Now</div>
+                <ul className="flex flex-col gap-2.5">
+                  {[
+                    { k: 'Building', v: 'Oasis — a quiet digital garden' },
+                    { k: 'Reading', v: 'Designing Data-Intensive Applications' },
+                    { k: 'Learning', v: 'C++ systems & AI agents' },
+                  ].map(item => (
+                    <li key={item.k} className="flex items-baseline gap-3 text-sm">
+                      <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 w-16 shrink-0">{item.k}</span>
+                      <span className="font-serif text-slate-600 dark:text-slate-300 leading-snug transition-colors">{item.v}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* 兴趣标签：带一句话注解 */}
+              <div className="z-10 mt-8 text-left">
+                <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3">Interests</div>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { tag: 'C++', note: 'systems & performance' },
+                    { tag: 'AI', note: 'agents & applied LLMs' },
+                    { tag: 'Claude', note: 'daily craft companion' },
+                    { tag: 'Hatsune Miku ❤️', note: 'forever the muse' },
+                  ].map(({ tag, note }) => (
+                    <div key={tag} className="flex items-baseline gap-3">
+                      <span className="font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full border border-slate-300/60 dark:border-white/10 bg-white/60 dark:bg-white/5 text-slate-500 dark:text-slate-400 transition-colors duration-1000 shrink-0">{tag}</span>
+                      <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500">{note}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 链接矩阵 */}
+              <div className="z-10 mt-8 pt-6 border-t border-slate-300/40 dark:border-white/10 flex gap-8">
+                <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
+                <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
               </div>
             </motion.div>
           </div>
