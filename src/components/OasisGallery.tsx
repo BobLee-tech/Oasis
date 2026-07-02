@@ -5,7 +5,6 @@ import { useGarden, type BlogPost, type PostType } from '../hooks/useGarden';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
-import { FRIENDS } from '../data/friends';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\s+/).length / 200)} min read`;
@@ -474,37 +473,6 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </AnimatePresence>
                 {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">No thoughts found here yet — perhaps plant the first seed.</div>}
               </div>
-
-              {/* 🏮 邻家灯火：花园的尽头，邻居的灯还亮着 —— 给滚动一个温柔的终点 */}
-              {FRIENDS.length > 0 && (
-                <div className="mt-28 mb-6">
-                  <div className="flex items-center gap-4 mb-12">
-                    <span className="h-px flex-1 bg-gradient-to-l from-slate-300/50 dark:from-white/10 to-transparent" />
-                    <span className="font-mono text-[10px] tracking-[0.35em] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">Neighboring Lights · 邻家灯火</span>
-                    <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
-                  </div>
-
-                  <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
-                    {FRIENDS.map((f, i) => (
-                      <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center text-center max-w-[220px]">
-                        {/* 灯火：微光圆点各按自己的节奏呼吸，hover 时亮起 */}
-                        <span className="relative flex items-center justify-center w-5 h-5 mb-3.5">
-                          <motion.span aria-hidden className="absolute w-4 h-4 rounded-full blur-[6px]" style={{ backgroundColor: f.color }} animate={{ opacity: [0.3, 0.75, 0.3] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: i * 1.1 }} />
-                          <span aria-hidden className="absolute w-6 h-6 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-700" style={{ backgroundColor: f.color }} />
-                          <span className="relative w-1.5 h-1.5 rounded-full transition-transform duration-700 group-hover:scale-125" style={{ backgroundColor: f.color, boxShadow: `0 0 10px ${f.color}80` }} />
-                        </span>
-                        <span className="font-serif text-[15px] text-slate-600 dark:text-slate-300 mb-1.5 transition-colors duration-500 group-hover:text-slate-800 dark:group-hover:text-slate-100">{f.name}</span>
-                        <span className="font-serif italic text-xs leading-relaxed text-slate-400 dark:text-slate-500 transition-colors duration-500">{f.desc}</span>
-                      </a>
-                    ))}
-                  </div>
-
-                  {/* 尾注：友链交换的温柔入口 */}
-                  <p className="mt-14 text-center font-serif italic text-xs text-slate-400/80 dark:text-slate-600 transition-colors duration-[1500ms]">
-                    灯火常新 — 想把你的花园连过来？<a href="mailto:lb15058460816@gmail.com" className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] border-b border-slate-300/50 dark:border-white/10 hover:border-[#39C5BB]/50 pb-0.5 transition-colors">来信</a>
-                  </p>
-                </div>
-              )}
             </motion.div>
           ) : (
             // --- 创作/编辑器区（不截断，完整实现） ---

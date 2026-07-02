@@ -11,7 +11,8 @@ import { OasisGallery } from './components/OasisGallery';
 import { OasisResonance } from './components/OasisResonance';
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
-import { OasisGarden } from './components/OasisGarden'; 
+import { OasisGarden } from './components/OasisGarden';
+import { OasisLights } from './components/OasisLights';
 import { OasisDock } from './components/OasisDock'; 
 
 import type { BgPhase, AppView } from './types/auth';
@@ -304,6 +305,7 @@ function App() {
                     {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
                     {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
                     {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'lights' && wrap('lights-space', <OasisLights />)}
                   </AnimatePresence>
                 );
               })()}
