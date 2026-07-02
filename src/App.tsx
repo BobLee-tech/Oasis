@@ -94,7 +94,7 @@ const Clock = () => {
   return <>{time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })} · OASIS</>;
 };
 
-const OasisHUD = ({ showClock }: { showClock: boolean }) => (
+const OasisHUD = ({ showClock, onClockTap }: { showClock: boolean; onClockTap?: () => void }) => (
   <div className="pointer-events-none absolute inset-8 z-40 flex flex-col justify-between opacity-30 mix-blend-difference text-slate-400">
     <div className="flex justify-between items-start">
       <span className="font-mono text-xs leading-none">+</span>
@@ -102,7 +102,7 @@ const OasisHUD = ({ showClock }: { showClock: boolean }) => (
         <span className="font-mono text-xs leading-none">+</span>
         <AnimatePresence>
           {showClock && (
-            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 2 }} className="font-mono text-[10px] tracking-[0.3em] whitespace-nowrap">
+            <motion.div onClick={onClockTap} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 2 }} className="font-mono text-[10px] tracking-[0.3em] whitespace-nowrap pointer-events-auto select-none">
               <Clock />
             </motion.div>
           )}
@@ -195,16 +195,34 @@ function App() {
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
+  // 🚪 默认即访客：会话检查结束后所有人直入禅境，登录不再是大门而是暗门
   useEffect(() => {
-    if (!isLoading) {
-      if (isAdmin && terminalStatus === 'checking') {
-        setTerminalStatus('granted'); setBgPhase('zen');
-      } else if (!isAdmin) {
-        setTerminalStatus('locked'); setBgPhase('cyber'); setAppView('welcome');
-      }
+    if (!isLoading && terminalStatus === 'checking') {
+      setTerminalStatus('granted'); setBgPhase('zen');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]); 
+  }, [isLoading]);
+
+  // 🕳️ 终端暗门：反引号 ` 键召唤 / ESC 关闭；已是 creator 时无需再召
+  const [showTerminal, setShowTerminal] = useState(false);
+  const clockTaps = useRef<number[]>([]);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable;
+      if (e.key === '`' && !typing && !isAdmin) { e.preventDefault(); setShowTerminal(v => !v); }
+      if (e.key === 'Escape') setShowTerminal(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAdmin]);
+
+  // 移动端暗号：2.5 秒内连点右上角时钟 5 次
+  const handleClockTap = () => {
+    const now = Date.now();
+    clockTaps.current = [...clockTaps.current.filter(ts => now - ts < 2500), now];
+    if (clockTaps.current.length >= 5) { clockTaps.current = []; if (!isAdmin) setShowTerminal(true); }
+  };
 
   useEffect(() => {
     if (appView !== 'welcome' && terminalStatus === 'granted' && !hasTriggeredBGM.current) {
@@ -213,12 +231,13 @@ function App() {
   }, [appView, terminalStatus, playBGM]);
 
   const handleTerminalSuccess = () => {
-    setTerminalStatus('granted'); setBgPhase('blooming');
+    setShowTerminal(false); setBgPhase('blooming');
     setTimeout(() => setBgPhase('zen'), 2500);
   };
 
+  // 登出后回到访客欢迎页，而非终端锁屏
   const handleLogout = async () => {
-    await logout(); setSimulateGuest(false); setTerminalStatus('locked'); setBgPhase('cyber'); setAppView('welcome');
+    await logout(); setSimulateGuest(false); setAppView('welcome');
   };
 
   // ✨ 核心修复：纯原生 CSS 类名驱动背景，彻底解放 transition
@@ -228,7 +247,7 @@ function App() {
     <div className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
       <NoiseOverlay />
       <ClickRipples />
-      <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} />
+      <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} onClockTap={handleClockTap} />
 
       <AnimatePresence>
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
@@ -269,7 +288,6 @@ function App() {
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
-          {terminalStatus === 'locked' && <OasisTerminal key="terminal" onSuccess={handleTerminalSuccess} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
             <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} onEnterGarden={() => handleViewChange('garden')} />
           )}
@@ -298,6 +316,20 @@ function App() {
 
       <AnimatePresence>
         {bgPhase === 'blooming' && <motion.div className="absolute inset-0 z-[5] pointer-events-none bg-gradient-to-tr from-[#39C5BB]/15 via-transparent to-[#FFB7C5]/15" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2.5, ease: "easeInOut" }} />}
+      </AnimatePresence>
+
+      {/* 🕳️ 终端暗门覆盖层：只属于园丁的后门，点击空白或 ESC 关闭 */}
+      <AnimatePresence>
+        {showTerminal && (
+          <motion.div
+            key="terminal-overlay"
+            className="fixed inset-0 z-[400] flex items-center justify-center bg-[#050505]/90 backdrop-blur-sm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowTerminal(false); }}
+          >
+            <OasisTerminal onSuccess={handleTerminalSuccess} />
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

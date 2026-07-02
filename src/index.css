@@ -58,6 +58,12 @@ body {
     to { transform: rotate(360deg); }
 }
 
+/* 🫧 头像涟漪细环：hover 时一圈圈从容荡开，呼应全站的水波语言 */
+@keyframes oasis-ripple {
+    0% { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(1.9); opacity: 0; }
+}
+
 /* ♿ 尊重「减少动态效果」偏好：晕动症友好降级 */
 @media (prefers-reduced-motion: reduce) {
     *,

@@ -5,6 +5,7 @@ import { useGarden, type BlogPost, type PostType } from '../hooks/useGarden';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
+import { FRIENDS } from '../data/friends';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\s+/).length / 200)} min read`;
@@ -78,6 +79,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<PostType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [showTags, setShowTags] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -274,61 +277,66 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   return (
     <motion.div className="absolute inset-0 w-full h-full overflow-hidden flex">
       
-      {/* 🌲 左侧策展人名片面板 */}
+      {/* 🌿 左侧「园丁的一隅」：去容器化的开放身份栏，用光与留白锚定，与右栏报头共享顶部起跑线 */}
       <AnimatePresence>
         {!isEditing && (
-          <motion.div className="hidden lg:flex w-1/3 h-full flex-col justify-center items-center px-10 relative z-20 transition-colors duration-[1500ms] ease-in-out" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-            {/* 右缘渐变细线：列分隔，向上下自然淡出 */}
-            <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-slate-300/40 dark:via-white/10 to-transparent pointer-events-none" />
+          <motion.div className="hidden lg:flex w-1/3 h-full flex-col items-center pt-24 px-10 relative z-20 transition-colors duration-[1500ms] ease-in-out" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
+            {/* 呼吸柔光：teal + 樱粉两团弥散光，6s 与 OASIS 标题同频呼吸，边缘自然溢向右栏黏合两列 */}
+            <motion.div aria-hidden className="absolute top-10 left-1/2 -translate-x-1/2 w-[30rem] h-[30rem] rounded-full bg-[#39C5BB]/[0.13] dark:bg-[#39C5BB]/[0.09] blur-[100px] pointer-events-none" animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
+            <motion.div aria-hidden className="absolute top-72 -right-20 w-80 h-80 rounded-full bg-[#FFB7C5]/[0.12] dark:bg-[#FFB7C5]/[0.08] blur-[100px] pointer-events-none" animate={{ opacity: [1, 0.55, 1] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
 
-            {/* 🪪 紧凑居中的磨砂名片：卡片刚好包住内容，垂直居中、节奏紧致，不再松散空旷 */}
-            <div className="relative w-full max-w-[340px] flex flex-col items-center text-center rounded-[2.25rem] px-9 pt-11 pb-9 bg-white/55 dark:bg-white/[0.04] backdrop-blur-2xl border border-white/60 dark:border-white/[0.07] shadow-[0_30px_80px_-44px_rgba(15,23,42,0.3)] dark:shadow-[0_30px_80px_-44px_rgba(0,0,0,0.75)] overflow-hidden transition-colors duration-[1500ms]">
-              {/* 卡内柔光：teal → sakura 一抹氛围 */}
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-52 h-52 rounded-full bg-[#39C5BB]/20 dark:bg-[#39C5BB]/14 blur-[70px] pointer-events-none" />
-              <div className="absolute top-24 -right-6 w-40 h-40 rounded-full bg-[#FFB7C5]/16 dark:bg-[#FFB7C5]/10 blur-[70px] pointer-events-none" />
-
-              <div className="relative z-10 flex flex-col items-center w-full">
-                {/* 头像：点击展开完整档案 */}
+            {/* 碑文式单群组：重心落在栏高上 1/3，下方整片留白托底 */}
+            <div className="relative z-10 flex flex-col items-center text-center w-full max-w-[300px] mt-6">
+              {/* 头像：呼吸光晕 + hover 涟漪细环，点击展开完整档案 */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}>
                 <motion.div
-                  className="relative w-[88px] h-[88px] mb-5 group cursor-pointer"
+                  className="relative w-[84px] h-[84px] mb-5 group cursor-pointer"
                   onClick={() => setShowProfile(true)}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <div className="absolute inset-0 rounded-full bg-[#39C5BB] blur-xl opacity-25 group-hover:opacity-60 transition-opacity duration-1000" />
-                  <div className="relative w-full h-full rounded-full border border-white/60 dark:border-white/10 overflow-hidden shadow-xl bg-white/10 dark:bg-white/5 backdrop-blur-md transition-colors duration-[1500ms] ease-in-out">
-                    <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-85 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <motion.div aria-hidden className="absolute -inset-4 rounded-full bg-[#39C5BB]/30 dark:bg-[#39C5BB]/20 blur-2xl pointer-events-none" animate={{ opacity: [0.45, 0.85, 0.45] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
+                  <span aria-hidden className="absolute inset-0 rounded-full border border-[#39C5BB]/50 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_infinite]" />
+                  <span aria-hidden className="absolute inset-0 rounded-full border border-[#FFB7C5]/45 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_0.45s_infinite]" />
+                  <div className="relative w-full h-full rounded-full border border-white/70 dark:border-white/15 overflow-hidden shadow-lg bg-white/20 dark:bg-white/5 backdrop-blur-sm transition-colors duration-[1500ms] ease-in-out">
+                    <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-90 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   </div>
                 </motion.div>
+              </motion.div>
 
-                {/* 名字 */}
-                <h1 className="font-serif text-[2.4rem] leading-none text-slate-700 dark:text-slate-100 mb-3 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</h1>
+              {/* 名字：无卡束缚，尺寸更从容 */}
+              <motion.h1 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.27, ease: [0.16, 1, 0.3, 1] }} className="font-serif text-[2.2rem] leading-none text-slate-700 dark:text-slate-100 mb-3 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</motion.h1>
 
-                {/* 身份：单行，减少噪点 */}
-                <div className="mb-3.5 font-mono text-[10px] tracking-[0.2em] uppercase">
-                  <span className="text-[#39C5BB]">Full-Stack Craftsman</span>
-                  <span className="text-slate-400 dark:text-slate-500"> · CS @ UNSW</span>
+              {/* 身份行 */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.39, ease: [0.16, 1, 0.3, 1] }} className="mb-5 font-mono text-[10px] tracking-[0.2em] uppercase">
+                <span className="text-[#39C5BB]">Full-Stack Craftsman</span>
+                <span className="text-slate-400 dark:text-slate-500"> · CS @ UNSW</span>
+              </motion.div>
+
+              {/* 签名引言：从档案弹窗移驻主栏，比头衔更贴近人 */}
+              <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.51, ease: [0.16, 1, 0.3, 1] }} className="font-serif italic text-[13px] leading-[1.85] text-slate-500 dark:text-slate-400 mb-7 px-2 transition-colors duration-[1500ms] ease-in-out">
+                “Exploring the intersection of human behavior, aesthetics &amp; software architecture.”
+              </motion.p>
+
+              {/* 短 hairline：碑文式的轻分隔，与右栏月份线同语言 */}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.4, delay: 0.63 }} aria-hidden className="w-7 border-t border-slate-300/70 dark:border-white/10 mb-8" />
+
+              {/* ✨ 今日共鸣：纯排版呈现，无背景无边框 */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.75, ease: [0.16, 1, 0.3, 1] }} className="w-full mb-8">
+                <div className="font-mono text-[9px] tracking-[0.3em] text-[#39C5BB]/80 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
+                <p className="font-serif text-[14px] leading-[1.85] text-slate-600 dark:text-slate-300 italic mb-3.5 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
+                <div className="flex items-center justify-center gap-2.5 text-slate-500/90 dark:text-slate-400/70 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
+                  <span className="text-[#39C5BB]/70 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
+                  <span className="font-mono text-[10px] tracking-wider truncate transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
                 </div>
+              </motion.div>
 
-                {/* 展开档案的提示入口 */}
-                <button onClick={() => setShowProfile(true)} className="mb-7 font-mono text-[9px] tracking-[0.2em] uppercase text-slate-400/70 dark:text-slate-500 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors pointer-events-auto">View profile →</button>
-
-                {/* ✨ 今日共鸣：常驻卡唯一的动态焦点，每天变化、是回访动力 */}
-                <div className="w-full rounded-2xl bg-slate-500/[0.04] dark:bg-white/[0.03] border border-slate-300/40 dark:border-white/[0.06] px-5 py-5 mb-7 transition-colors duration-[1500ms]">
-                  <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
-                  <p className="font-serif text-[13px] leading-[1.75] text-slate-600 dark:text-slate-300 italic mb-4 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
-                  <div className="flex items-center gap-2.5 text-slate-500/90 dark:text-slate-400/70 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
-                    <span className="text-[#39C5BB]/70 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
-                    <span className="font-mono text-[10px] tracking-wider truncate transition-colors dark:text-slate-400">{dailyTrack.title} <span className="opacity-50">- {dailyTrack.artist}</span></span>
-                  </div>
-                </div>
-
-                {/* 链接 */}
-                <div className="flex gap-8 pointer-events-auto">
-                  <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
-                  <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
-                </div>
-              </div>
+              {/* 底部一行收纳：链接 + 档案入口 */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.87, ease: [0.16, 1, 0.3, 1] }} className="flex items-center gap-7 pointer-events-auto">
+                <a href="https://github.com/lb15058460816-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
+                <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
+                <button onClick={() => setShowProfile(true)} className="font-mono text-[10px] tracking-[0.2em] uppercase text-slate-400/80 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors">Profile →</button>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -339,6 +347,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         <AnimatePresence mode="wait">
           {!isEditing ? (
             <motion.div key="gallery" className="w-full h-full flex flex-col" exit={{ opacity: 0 }}>
+              {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案 */}
+              <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-8 mx-auto group">
+                <span className="w-9 h-9 rounded-full overflow-hidden border border-white/60 dark:border-white/10 shadow-sm shrink-0 bg-white/20 dark:bg-white/5">
+                  <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                </span>
+                <span className="font-serif text-lg text-slate-600 dark:text-slate-200 transition-colors duration-[1500ms]">Bob Lee</span>
+                <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-slate-400/80 group-hover:text-[#39C5BB] transition-colors">Profile →</span>
+              </button>
+
               {/* 📰 栏目报头：与左栏头像同高起步、居中，让两侧基线与对齐方式一致 */}
               <div className="mb-9 text-center">
                 <div className="font-mono text-[9px] tracking-[0.5em] uppercase text-[#39C5BB]/70 mb-3">The Garden · 数字花园</div>
@@ -346,27 +363,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 <p className="font-serif italic text-slate-400 dark:text-slate-500 text-sm mt-2.5 transition-colors duration-[1500ms] ease-in-out">A quiet record of learning, growth &amp; small wonders.</p>
               </div>
 
-              <div className="flex flex-col gap-6 mb-10">
-                <div className="flex items-center justify-between">
-                  <div className="relative w-64 group">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 opacity-50 group-hover:opacity-100 transition-opacity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
-                    {/* ✨ 优化输入框：夜间高对比高透玻璃态 */}
-                    <input type="text" placeholder="Search thoughts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/40 dark:bg-white/5 border border-slate-300/30 dark:border-white/10 text-slate-600 dark:text-slate-200 font-serif text-sm rounded-full py-1.5 pl-9 pr-4 outline-none focus:border-slate-400/60 dark:focus:border-white/30 focus:bg-white/60 dark:focus:bg-white/10 backdrop-blur-sm transition-colors duration-[1500ms] ease-in-out placeholder:text-slate-400/50 dark:placeholder:text-slate-500" />
-                  </div>
-                  {isAdmin && (
-                    <div className="flex items-center gap-3">
-                      <AnimatePresence>
-                        {syncMsg && <motion.span initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="font-mono text-[9px] tracking-wider text-[#39C5BB] normal-case">{syncMsg}</motion.span>}
-                      </AnimatePresence>
-                      <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full border border-slate-300/60 dark:border-white/15 text-slate-500 dark:text-slate-300 hover:border-[#39C5BB]/50 hover:text-[#39C5BB] transition-all duration-300 disabled:opacity-40">{syncState === 'syncing' ? '[ ☁ … ]' : '[ ☁ Sync ]'}</button>
-                      <button onClick={startNewPost} className="font-mono text-[10px] tracking-widest uppercase px-4 py-1.5 rounded-full border border-[#39C5BB]/50 text-[#39C5BB] hover:bg-[#39C5BB] hover:text-white transition-all duration-300">[ + Seed ]</button>
-                    </div>
-                  )}
-                </div>
-
-                {/* 🌱 类型过滤：周报 / 学习笔记 / 成长 / 随笔 —— 书写用途的主导维度 */}
-                <div className="flex flex-wrap gap-2.5">
-                  <button onClick={() => setSelectedType(null)} className={`flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-500 ${!selectedType ? 'bg-slate-700 dark:bg-white/15 text-white border-slate-700 dark:border-white/25 shadow-sm' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
+              <div className="mb-10">
+                {/* 🧭 目录线：居中类型筛选为主轴，两端安静收纳搜索 / 标签 / 管理动作，一条线承载全部控件 */}
+                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-24 flex items-center justify-center gap-x-6 gap-y-2 flex-wrap transition-colors duration-[1500ms]">
+                  <button onClick={() => setSelectedType(null)} className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     All <span className="opacity-50 tracking-normal">{posts.length}</span>
                   </button>
                   {POST_TYPES.map(t => {
@@ -374,24 +374,61 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     const count = typeCounts[t.id] || 0;
                     return (
                       <button key={t.id} onClick={() => setSelectedType(active ? null : t.id)} title={t.zh}
-                        className={`flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-500 ${active ? 'text-white border-transparent shadow-sm' : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}
-                        style={active ? { backgroundColor: t.color, boxShadow: `0 4px 16px ${t.color}40` } : undefined}>
-                        <span className="w-3.5 h-3.5" style={{ color: active ? '#fff' : t.color }}>{TypeIcons[t.id]}</span>
-                        {t.label} <span className="opacity-60 tracking-normal">{count}</span>
+                        className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${active ? '' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                        style={active ? { color: t.color, borderColor: t.color } : undefined}>
+                        {t.label} <span className="opacity-50 tracking-normal">{count}</span>
                       </button>
                     );
                   })}
+
+                  {/* 左端：搜索，点击展开输入 */}
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <button onClick={() => setSearchOpen(o => !o)} title="Search" className={`p-1 transition-colors ${searchOpen || searchQuery ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-[#39C5BB]'}`}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    </button>
+                    <AnimatePresence>
+                      {searchOpen && (
+                        <motion.input
+                          autoFocus type="text" placeholder="Search thoughts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                          initial={{ width: 0, opacity: 0 }} animate={{ width: 150, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                          className="bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-200 outline-none pb-0.5 placeholder:text-slate-400/50 dark:placeholder:text-slate-600"
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* 右端：标签抽屉开关 + 管理动作，褪为纯文字 */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-4">
+                    {allTags.length > 0 && (
+                      <button onClick={() => setShowTags(v => !v)} className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showTags || selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># Tags</button>
+                    )}
+                    {isAdmin && (
+                      <>
+                        <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-40">{syncState === 'syncing' ? '☁ …' : '☁ Sync'}</button>
+                        <button onClick={startNewPost} className="font-mono text-[10px] tracking-[0.18em] uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">+ Seed</button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 同步结果轻提示 */}
+                  <AnimatePresence>
+                    {syncMsg && <motion.span initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -bottom-6 right-0 font-mono text-[9px] tracking-wider text-[#39C5BB] normal-case">{syncMsg}</motion.span>}
+                  </AnimatePresence>
                 </div>
 
-                {/* 自由标签：次级筛选维度 */}
-                {allTags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSelectedTag(null)} className={`font-mono text-[9px] tracking-widest uppercase px-3 py-1 rounded-full border transition-colors duration-500 ${!selectedTag ? 'bg-slate-600/80 dark:bg-white/15 text-white border-transparent' : 'bg-transparent text-slate-400 dark:text-slate-500 border-slate-300/40 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}># all</button>
-                    {allTags.map(tag => (
-                      <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} className={`font-mono text-[9px] tracking-widest uppercase px-3 py-1 rounded-full border transition-colors duration-500 ${selectedTag === tag ? 'bg-slate-600/80 dark:bg-white/15 text-white border-transparent' : 'bg-transparent text-slate-400 dark:text-slate-500 border-slate-300/40 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>#{tag}</button>
-                    ))}
-                  </div>
-                )}
+                {/* 标签抽屉：需要时才展开，居中纯文字 */}
+                <AnimatePresence>
+                  {showTags && allTags.length > 0 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+                      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-4 pb-1">
+                        <button onClick={() => setSelectedTag(null)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${!selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># all</button>
+                        {allTags.map(tag => (
+                          <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${selectedTag === tag ? 'text-[#39C5BB] border-b border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>#{tag}</button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* 📅 按月归档的瀑布流：让周报与成长有清晰的时间叙事 */}
@@ -437,6 +474,37 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </AnimatePresence>
                 {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">No thoughts found here yet — perhaps plant the first seed.</div>}
               </div>
+
+              {/* 🏮 邻家灯火：花园的尽头，邻居的灯还亮着 —— 给滚动一个温柔的终点 */}
+              {FRIENDS.length > 0 && (
+                <div className="mt-28 mb-6">
+                  <div className="flex items-center gap-4 mb-12">
+                    <span className="h-px flex-1 bg-gradient-to-l from-slate-300/50 dark:from-white/10 to-transparent" />
+                    <span className="font-mono text-[10px] tracking-[0.35em] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">Neighboring Lights · 邻家灯火</span>
+                    <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-x-16 gap-y-10">
+                    {FRIENDS.map((f, i) => (
+                      <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center text-center max-w-[220px]">
+                        {/* 灯火：微光圆点各按自己的节奏呼吸，hover 时亮起 */}
+                        <span className="relative flex items-center justify-center w-5 h-5 mb-3.5">
+                          <motion.span aria-hidden className="absolute w-4 h-4 rounded-full blur-[6px]" style={{ backgroundColor: f.color }} animate={{ opacity: [0.3, 0.75, 0.3] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: i * 1.1 }} />
+                          <span aria-hidden className="absolute w-6 h-6 rounded-full blur-md opacity-0 group-hover:opacity-70 transition-opacity duration-700" style={{ backgroundColor: f.color }} />
+                          <span className="relative w-1.5 h-1.5 rounded-full transition-transform duration-700 group-hover:scale-125" style={{ backgroundColor: f.color, boxShadow: `0 0 10px ${f.color}80` }} />
+                        </span>
+                        <span className="font-serif text-[15px] text-slate-600 dark:text-slate-300 mb-1.5 transition-colors duration-500 group-hover:text-slate-800 dark:group-hover:text-slate-100">{f.name}</span>
+                        <span className="font-serif italic text-xs leading-relaxed text-slate-400 dark:text-slate-500 transition-colors duration-500">{f.desc}</span>
+                      </a>
+                    ))}
+                  </div>
+
+                  {/* 尾注：友链交换的温柔入口 */}
+                  <p className="mt-14 text-center font-serif italic text-xs text-slate-400/80 dark:text-slate-600 transition-colors duration-[1500ms]">
+                    灯火常新 — 想把你的花园连过来？<a href="mailto:lb15058460816@gmail.com" className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] border-b border-slate-300/50 dark:border-white/10 hover:border-[#39C5BB]/50 pb-0.5 transition-colors">来信</a>
+                  </p>
+                </div>
+              )}
             </motion.div>
           ) : (
             // --- 创作/编辑器区（不截断，完整实现） ---
@@ -680,7 +748,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               {/* 头部：居中 */}
               <div className="flex flex-col items-center text-center z-10">
-                <div className="w-28 h-28 rounded-full border-4 border-white dark:border-[#1F2937] shadow-xl overflow-hidden mb-6 transition-colors duration-1000">
+                <div className="w-28 h-28 rounded-full border border-white/70 dark:border-white/15 shadow-xl overflow-hidden mb-6 transition-colors duration-1000">
                   <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" />
                 </div>
                 <h2 className="font-serif text-3xl text-slate-800 dark:text-slate-100 mb-2 transition-colors">Bob Lee</h2>
@@ -728,7 +796,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     { tag: 'Hatsune Miku ❤️', note: 'forever the muse' },
                   ].map(({ tag, note }) => (
                     <div key={tag} className="flex items-baseline gap-3">
-                      <span className="font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full border border-slate-300/60 dark:border-white/10 bg-white/60 dark:bg-white/5 text-slate-500 dark:text-slate-400 transition-colors duration-1000 shrink-0">{tag}</span>
+                      <span className="font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full bg-slate-500/[0.07] dark:bg-white/[0.07] text-slate-500 dark:text-slate-400 transition-colors duration-1000 shrink-0">{tag}</span>
                       <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500">{note}</span>
                     </div>
                   ))}
