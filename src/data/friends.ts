@@ -10,22 +10,22 @@ export interface FriendLink {
 
 // ⚠️ 以下为占位示例，请替换为真实的邻居们；数组为空时整个「邻家灯火」小节自动隐藏
 export const FRIENDS: FriendLink[] = [
+    // {
+    //   name: "Evan Lin",
+    //   url: "https://evanlin.site/projects/",
+    //   desc: "UNSW Builder",
+    //   color: "#39C5BB",
+    // },
   {
-    name: "A Quiet Garden",
-    url: "https://example.com",
-    desc: "一座还没有名字的花园",
-    color: "#39C5BB",
-  },
-  {
-    name: "Sakura Notes",
+    name: "Waiting fo you",
     url: "https://example.org",
-    desc: "落樱与代码之间的随笔",
+    desc: "等一阵风，也在等你",
     color: "#FFB7C5",
   },
-  {
-    name: "Moonlit Terminal",
-    url: "https://example.net",
-    desc: "深夜里亮着的一块屏幕",
-    color: "#A78BFA",
-  },
+  // {
+  //   name: "Moonlit Terminal",
+  //   url: "https://example.net",
+  //   desc: "深夜里亮着的一块屏幕",
+  //   color: "#A78BFA",
+  // },
 ];
