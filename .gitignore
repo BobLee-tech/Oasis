@@ -16,7 +16,6 @@ dist-audio/
 
 # Editor directories and files
 /public/audio/
-/public/image/
 .vscode/*
 !.vscode/extensions.json
 .idea
