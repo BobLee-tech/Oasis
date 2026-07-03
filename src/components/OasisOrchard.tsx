@@ -11,6 +11,7 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
+import { useCategories } from '../hooks/useCategories';
 import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
 
@@ -31,15 +32,8 @@ const seeded = (str: string) => {
 
 const calcReadingTime = (text: string) => `${readingMinutes(text)} min`;
 
-// 🌱 条目类型 → 颜色 / 中文名：与 Garden 博客同一套语义，星点据此染类型微光环
-const TYPE_META: Record<string, { color: string; zh: string }> = {
-  thought: { color: '#39C5BB', zh: '随笔' },
-  weekly: { color: '#FFB7C5', zh: '周报' },
-  note: { color: '#60A5FA', zh: '学习笔记' },
-  growth: { color: '#A7F3D0', zh: '成长' },
-  project: { color: '#A78BFA', zh: '项目复盘' },
-};
-const typeColor = (t?: string) => (t && TYPE_META[t]?.color) || '#39C5BB';
+// 🌱 条目类型 → 颜色 / 中文名：与 Garden 博客共用 useCategories 的同一套数据（含自定义分类），
+//    在组件内通过 metaOf 取用，星点据此染类型微光环。
 
 type NodeKind = 'core' | 'tag' | 'post';
 interface GNode {
@@ -161,6 +155,8 @@ const buildGraph = (posts: BlogPost[]) => {
 
 export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   const { posts, uprootSeed } = useGarden();
+  const { categories, metaOf } = useCategories();
+  const typeColor = (t?: string) => metaOf(t || 'thought').color;
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   const [hoverPostId, setHoverPostId] = useState<string | null>(null);
   const [hoverTag, setHoverTag] = useState<string | null>(null);
@@ -456,11 +452,11 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
       {/* 🎨 类型图例：星色与知识类型的对应，帮助一眼读懂这片天空的构成 */}
       {posts.length > 0 && (
         <div className="absolute top-24 right-8 z-30 hidden md:flex flex-col gap-1.5 pointer-events-none">
-          {Object.entries(TYPE_META).map(([k, m]) => {
-            const count = posts.filter(p => p.type === k).length;
+          {categories.map(m => {
+            const count = posts.filter(p => p.type === m.id).length;
             if (!count) return null;
             return (
-              <div key={k} className="flex items-center gap-2 font-mono text-[9px] tracking-[0.15em] uppercase text-slate-400/80 dark:text-slate-500">
+              <div key={m.id} className="flex items-center gap-2 font-mono text-[9px] tracking-[0.15em] uppercase text-slate-400/80 dark:text-slate-500">
                 <span className="w-2 h-2 rounded-full" style={{ background: m.color, boxShadow: `0 0 6px ${m.color}` }} />
                 <span>{m.zh}</span><span className="opacity-50">{count}</span>
               </div>

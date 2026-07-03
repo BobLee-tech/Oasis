@@ -7,8 +7,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-// 🌱 条目类型：随笔 / 周报 / 学习笔记 / 成长记录 / 项目复盘
-export type PostType = 'thought' | 'weekly' | 'note' | 'growth' | 'project';
+// 🌱 条目类型：内置随笔 / 周报 / 学习笔记 / 成长 / 项目复盘 + 用户自定义分类（见 useCategories）
+export type PostType = string;
 
 export interface BlogPost {
   id: string;
