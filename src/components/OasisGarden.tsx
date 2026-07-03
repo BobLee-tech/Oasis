@@ -1,7 +1,8 @@
 // src/components/OasisGarden.tsx
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { currentSolarTerm } from '../lib/solarTerms';
+import { currentSolarTerm, daysIntoTerm, termNoteOfDay } from '../lib/solarTerms';
+import { isLateNight } from '../lib/timeContext';
 
 interface OasisGardenProps {
   visitorName: string;
@@ -13,8 +14,13 @@ const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden }) => {
   const term = currentSolarTerm();
+  // 🌙 深夜到访：问候换成夜间版；平日则随节气内的日子在几句语录间轮换
+  const termDay = daysIntoTerm();
+  const lateNight = isLateNight();
+  const note = lateNight ? '已经很晚喽～ 夜里的绿洲也很美，但别忘了休息。' : termNoteOfDay();
   useEffect(() => {
-    const timer = setTimeout(() => onEnterGarden(), 3000);
+    // 留足读完节气问候的时间；想快进的人点击任意处即可跳过
+    const timer = setTimeout(() => onEnterGarden(), 8000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -68,13 +74,15 @@ return (
       <motion.div
         initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, transition: { duration: 0.3 } }}
-        transition={{ duration: 1.6, delay: 2 }}
+        transition={{ duration: 1.6, delay: 1.2 }}
         className="absolute bottom-24 flex flex-col items-center gap-2 px-6 text-center"
       >
         <span className="font-serif text-base text-slate-500/90">
-          今日<span className="text-[#39C5BB] mx-1">{term.name}</span>
+          {termDay === 0
+            ? <>今日交<span className="text-[#39C5BB] mx-1">{term.name}</span></>
+            : <><span className="text-[#39C5BB] mx-1">{term.name}</span>第{'一二三四五六七八九十'[termDay] ?? termDay + 1}日</>}
         </span>
-        <span className="font-serif italic text-xs text-slate-400/80 max-w-xs leading-relaxed">{term.note}</span>
+        <span className="font-serif italic text-xs text-slate-400/80 max-w-xs leading-relaxed">{note}</span>
       </motion.div>
 
       <motion.div

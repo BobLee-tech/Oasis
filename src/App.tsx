@@ -6,6 +6,9 @@ import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } fr
 import { useAuth } from './hooks/useAuth';
 import { useSoundscape } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
+import { useAutoTheme } from './hooks/useAutoTheme';
+import { isLateNight } from './lib/timeContext';
+import { NIGHT_REMINDERS } from './data/quotes';
 
 import { OasisOrchard } from './components/OasisOrchard';
 import { OasisGallery } from './components/OasisGallery';
@@ -84,6 +87,36 @@ const ClickRipples = () => {
         ))}
       </AnimatePresence>
     </div>
+  );
+};
+
+// 🌙 深夜低语：23:00–4:59 到访时，底部浮起一句温柔提醒后缓缓散去；每次会话只说一次，不扰人。
+const NightWhisper = () => {
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isLateNight() || sessionStorage.getItem('oasis_night_whispered')) return;
+    sessionStorage.setItem('oasis_night_whispered', '1');
+    const pick = NIGHT_REMINDERS[Math.floor(Math.random() * NIGHT_REMINDERS.length)];
+    const show = setTimeout(() => setMsg(pick), 4000);   // 等入场安顿好再轻声说
+    const hide = setTimeout(() => setMsg(null), 14000);  // 停留 10 秒后散去
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, []);
+  return (
+    <AnimatePresence>
+      {msg && (
+        <motion.div
+          initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
+          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          className="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 z-[350] px-6 py-3 rounded-full backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 shadow-sm"
+        >
+          <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
+            <span className="mr-2">🌙</span>{msg}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -179,7 +212,8 @@ function App() {
   const effectiveIsAdmin = isAdmin && !simulateGuest;
   
   const hasTriggeredBGM = useRef(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // 🌗 日夜：默认 AUTO 跟随时间流转，也可手动锁定
+  const { mode: themeMode, isDark: isDarkMode, cycleMode } = useAutoTheme();
 
   // 🫧 涟漪转场：记录每次切换的落点（被点击的 Dock 图标中心），并用自增 key 触发一道扩散水波。
   const prefersReducedMotion = useReducedMotion();
@@ -281,10 +315,11 @@ function App() {
             className="absolute top-8 left-8 z-[100] flex flex-wrap items-center gap-3"
           >
             <button 
-              onClick={() => setIsDarkMode(!isDarkMode)} 
+              onClick={cycleMode}
               className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
+              title="AUTO 跟随时间自动调节日夜"
             >
-              {isDarkMode ? '☼ LIGHT' : '☽ DARK'}
+              {themeMode === 'auto' ? `◐ AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? '☼ LIGHT' : '☽ DARK'}
             </button>
 
             {isAdmin && (
@@ -309,6 +344,7 @@ function App() {
 
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
+      {terminalStatus === 'granted' && <NightWhisper />}
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">

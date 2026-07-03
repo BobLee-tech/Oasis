@@ -8,7 +8,8 @@ import { useSoundscape } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc } from '../lib/reading';
 import { ReaderProgress, ReaderToc, Lightbox } from './OasisReader';
 import { useHashRoute } from '../lib/route';
-import { currentSolarTerm } from '../lib/solarTerms';
+import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
+import { DAILY_QUOTES } from '../data/quotes';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 
@@ -44,14 +45,6 @@ const TEMPLATE_STORE_KEY = 'oasis_custom_templates';
 const loadCustomTemplates = (): Partial<Record<PostType, string>> => {
   try { return JSON.parse(localStorage.getItem(TEMPLATE_STORE_KEY) || '{}'); } catch { return {}; }
 };
-
-const DAILY_QUOTES = [
-  "Sometimes life is scary and dark, that's why we must find the light",
-  "忘记了昨日的痛苦与泪，现在的脚步很轻快",
-  "时光有自己的流速，事物有自己的归宿",
-  "小满即是全",
-  "早安 午安 晚安"
-];
 
 interface OasisGalleryProps { isAdmin: boolean; }
 
@@ -243,7 +236,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const { playlist, switchTrack } = useSoundscape();
   const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
   // 🌾 今日共鸣优先带上节气语录：随季节流转，每日在节气与手写箴言之间轮换
-  const quotePool = useMemo(() => [currentSolarTerm().note, ...DAILY_QUOTES], []);
+  const quotePool = useMemo(() => [termNoteOfDay(), ...DAILY_QUOTES], []);
+  const solarTermName = useMemo(() => currentSolarTerm().name, []);
   const dailyQuote = useMemo(() => quotePool[dailyIndex % quotePool.length], [dailyIndex, quotePool]);
   const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
 
@@ -384,7 +378,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               {/* ✨ 今日共鸣：纯排版呈现，无背景无边框 */}
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.75, ease: [0.16, 1, 0.3, 1] }} className="w-full mb-8">
-                <div className="font-mono text-[9px] tracking-[0.3em] text-[#39C5BB]/80 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance</div>
+                <div className="font-mono text-[9px] tracking-[0.3em] text-[#39C5BB]/80 uppercase mb-3 transition-colors duration-[1500ms]">Today's Resonance<span className="ml-2 text-slate-400/70 normal-case tracking-[0.2em]">· {solarTermName}</span></div>
                 <p className="font-serif text-[14px] leading-[1.85] text-slate-600 dark:text-slate-300 italic mb-3.5 transition-colors duration-[1500ms] ease-in-out">“{dailyQuote}”</p>
                 <div className="flex items-center justify-center gap-2.5 text-slate-500/90 dark:text-slate-400/70 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors cursor-pointer group max-w-full pointer-events-auto" onClick={() => switchTrack(dailyTrack)}>
                   <span className="text-[#39C5BB]/70 group-hover:text-[#39C5BB] transition-colors shrink-0"><DiscIcon /></span>
