@@ -1,6 +1,7 @@
 // src/components/OasisGarden.tsx
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { currentSolarTerm } from '../lib/solarTerms';
 
 interface OasisGardenProps {
   visitorName: string;
@@ -11,6 +12,7 @@ interface OasisGardenProps {
 const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden }) => {
+  const term = currentSolarTerm();
   useEffect(() => {
     const timer = setTimeout(() => onEnterGarden(), 3000);
     return () => clearTimeout(timer);
@@ -62,9 +64,22 @@ return (
         </motion.span>
       </motion.div>
 
+      {/* 🌾 今日节气：让每一次到访都被温柔地记得是什么日子 */}
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 0.6 }} 
-        exit={{ opacity: 0, transition: { duration: 0.3 } }} 
+        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, transition: { duration: 0.3 } }}
+        transition={{ duration: 1.6, delay: 2 }}
+        className="absolute bottom-24 flex flex-col items-center gap-2 px-6 text-center"
+      >
+        <span className="font-serif text-base text-slate-500/90">
+          今日<span className="text-[#39C5BB] mx-1">{term.name}</span>
+        </span>
+        <span className="font-serif italic text-xs text-slate-400/80 max-w-xs leading-relaxed">{term.note}</span>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 0.6 }}
+        exit={{ opacity: 0, transition: { duration: 0.3 } }}
         transition={{ duration: 1.5, delay: 2.5 }}
         className="absolute bottom-12 text-sm text-slate-400 font-mono tracking-widest"
       >

@@ -3,6 +3,25 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @plugin "@tailwindcss/typography";
 
+/* 🎨 设计令牌：字体栈 + 主辅色。
+   · font-serif = 西文 EB Garamond 优先，中文自然回落到霞鹜文楷（手写楷体的温度感）
+   · font-mono  = JetBrains Mono
+   · oasis-teal / oasis-sakura 生成 text-/bg-/border- 等工具类，作为界面 chrome 层的一主一辅 */
+@theme {
+    --font-serif: "EB Garamond", "LXGW WenKai Screen", ui-serif, Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-oasis-teal: #39C5BB;
+    --color-oasis-sakura: #FFB7C5;
+}
+
+/* 🪷 运行时 CSS 变量：供 inline style / canvas / 任意值场景引用，与上方令牌同源 */
+:root {
+    --oasis-teal: #39C5BB;
+    --oasis-sakura: #FFB7C5;
+    --oasis-paper: #FAF8F3;   /* 暖纸白：替代旧的冷调 #F8FAFC */
+    --oasis-ink: #0A0F1D;     /* 夜墨：暗色底 */
+}
+
 html, body {
     margin: 0;
     padding: 0;

@@ -1,6 +1,7 @@
 // src/components/OasisBackground.tsx
 import React, { useEffect, useRef } from 'react';
 import type { BgPhase } from '../types/auth';
+import { currentSeason, type Season } from '../lib/solarTerms';
 
 interface OasisBackgroundProps { phase: BgPhase; isDark: boolean; }
 
@@ -33,12 +34,39 @@ export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark 
     const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resizeCanvas(); window.addEventListener('resize', resizeCanvas);
 
-    // 🌸 花瓣色阶：从樱白到深粉，每片花瓣随机取一档，画面层次更自然
-    const PETAL_TONES = [
-      { light: '255, 228, 235', deep: '255, 170, 190' },
-      { light: '255, 218, 228', deep: '255, 150, 175' },
-      { light: '255, 235, 240', deep: '255, 190, 205' },
-    ];
+    // 🍃 季节流转：春樱 / 夏叶 / 秋枫 / 冬雪，各有色板与飘落性格，复用同一套翻飞物理。
+    const season: Season = currentSeason();
+    const SEASON_PALETTES: Record<Season, { light: string; deep: string }[]> = {
+      // 🌸 春：樱白到深粉
+      spring: [
+        { light: '255, 228, 235', deep: '255, 170, 190' },
+        { light: '255, 218, 228', deep: '255, 150, 175' },
+        { light: '255, 235, 240', deep: '255, 190, 205' },
+      ],
+      // 🌿 夏：嫩绿到薄荷
+      summer: [
+        { light: '209, 250, 229', deep: '110, 231, 183' },
+        { light: '187, 247, 208', deep: '74, 222, 165' },
+        { light: '220, 252, 231', deep: '134, 239, 172' },
+      ],
+      // 🍁 秋：琥珀到枫红
+      autumn: [
+        { light: '254, 215, 170', deep: '234, 122, 40' },
+        { light: '253, 200, 150', deep: '220, 88, 42' },
+        { light: '250, 208, 160', deep: '200, 70, 50' },
+      ],
+      // ❄️ 冬：雪白到冷青白
+      winter: [
+        { light: '255, 255, 255', deep: '226, 238, 240' },
+        { light: '248, 252, 253', deep: '210, 228, 232' },
+        { light: '255, 255, 255', deep: '224, 242, 241' },
+      ],
+    };
+    const PETAL_TONES = SEASON_PALETTES[season];
+    // 冬雪为柔软圆点（无花瓣翻转），其余季节为翻飞的花瓣 / 叶片
+    const roundParticles = season === 'winter';
+    // 飘落速度性格：雪最缓、樱瓣轻盈、秋叶稍沉
+    const fallScale = season === 'winter' ? 0.55 : season === 'autumn' ? 1.15 : 1;
 
     class Particle {
       x = 0; y = 0;
@@ -94,8 +122,9 @@ export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark 
           // 🌸 白天：落叶式翻飞物理
           // 翻转相位：花瓣绕长轴翻转，翻转到侧面时下落加快、正面时受风兜住变慢
           const tumble = Math.sin(t * this.tumbleSpeed);
-          const fallBase = this.isBokeh ? 0.08 : (0.22 + 0.1 * this.z);
-          const targetVy = fallBase * (0.65 + 0.35 * Math.abs(tumble));
+          const fallBase = (this.isBokeh ? 0.08 : (0.22 + 0.1 * this.z)) * fallScale;
+          // 雪缓缓飘、少翻飞；花瓣 / 叶片保留原有的翻飞节奏
+          const targetVy = roundParticles ? fallBase : fallBase * (0.65 + 0.35 * Math.abs(tumble));
           // 横向：全局风 + 个体摇曳（与翻转联动，飘出 S 形轨迹）
           const sway = Math.sin(t * 0.0006) * 0.35 * this.z;
           const targetVx = (wind * (0.6 + this.z) + sway) * (this.isBokeh ? 0.3 : 1);
@@ -152,8 +181,16 @@ export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark 
             grad.addColorStop(1, `rgba(${this.tone.deep}, 0)`);
             ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fillStyle = grad; ctx.fill();
+          } else if (roundParticles) {
+            // ❄️ 冬雪：柔软的圆形雪粒，中心亮、边缘化开
+            const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+            grad.addColorStop(0, `rgba(${this.tone.light}, ${dayOp})`);
+            grad.addColorStop(0.6, `rgba(${this.tone.deep}, ${dayOp * 0.75})`);
+            grad.addColorStop(1, `rgba(${this.tone.deep}, 0)`);
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.9, 0, Math.PI * 2);
+            ctx.fillStyle = grad; ctx.fill();
           } else {
-            // 实体花瓣：随翻转压扁横轴，模拟三维翻飞
+            // 实体花瓣 / 叶片：随翻转压扁横轴，模拟三维翻飞
             const tumble = Math.cos(t * this.tumbleSpeed);
             const squash = 0.45 + 0.55 * Math.abs(tumble);
             ctx.save();

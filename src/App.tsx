@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
-import { useSoundscape } from './hooks/useSoundscape'; 
+import { useSoundscape } from './hooks/useSoundscape';
+import { useHashRoute, parseHash } from './lib/route';
 
 import { OasisOrchard } from './components/OasisOrchard';
 import { OasisGallery } from './components/OasisGallery';
@@ -167,9 +168,12 @@ function App() {
   const { isAdmin, isLoading, logout } = useAuth();
   const { playBGM } = useSoundscape(); 
 
+  const { route, navigate } = useHashRoute();
+
   const [terminalStatus, setTerminalStatus] = useState<'checking' | 'locked' | 'granted'>('checking');
   const [bgPhase, setBgPhase] = useState<BgPhase>('cyber');
-  const [appView, setAppView] = useState<AppView>('welcome');
+  // 🧭 带 hash 直达：刷新 / 分享链接进入 #/garden 等地址时跳过欢迎入场，直落对应场所
+  const [appView, setAppView] = useState<AppView>(() => parseHash(window.location.hash).view);
   
   const [simulateGuest, setSimulateGuest] = useState(false);
   const effectiveIsAdmin = isAdmin && !simulateGuest;
@@ -189,7 +193,17 @@ function App() {
     if (origin) setRevealOrigin(origin);
     setWaveKey(k => k + 1);
     setAppView(view);
+    navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
   };
+
+  // ⬅️ 浏览器后退 / 前进：hash 变化时把场所切回对应视图（欢迎页除外，避免误触重播入场）
+  useEffect(() => {
+    if (route.view !== 'welcome' && route.view !== appView) {
+      setWaveKey(k => k + 1);
+      setAppView(route.view);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.view]);
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -238,14 +252,24 @@ function App() {
 
   // 登出后回到访客欢迎页，而非终端锁屏
   const handleLogout = async () => {
-    await logout(); setSimulateGuest(false); setAppView('welcome');
+    await logout(); setSimulateGuest(false); setAppView('welcome'); navigate('welcome');
   };
 
   // ✨ 核心修复：纯原生 CSS 类名驱动背景，彻底解放 transition
-  const bgClass = bgPhase === 'cyber' ? 'bg-[#050505]' : 'bg-[#F8FAFC] dark:bg-[#0A0F1D]';
+  const bgClass = bgPhase === 'cyber' ? 'bg-[#050505]' : 'bg-[#FAF8F3] dark:bg-[#0A0F1D]';
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`relative w-screen h-dvh overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
+      {/* 🌾 暖纸底光：仅亮色可见。左上一抹暖白、右下极淡青，替代纯平「实验室白」，让庭园有和纸的温度。
+          夜色下 dark:opacity-0 隐去，交还给星河底色。 */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] transition-opacity duration-[1500ms] dark:opacity-0"
+        style={{
+          background:
+            'radial-gradient(120% 90% at 15% 12%, rgba(255,251,242,0.9) 0%, rgba(250,248,243,0.45) 42%, transparent 70%), radial-gradient(90% 80% at 88% 92%, rgba(57,197,187,0.05) 0%, transparent 60%)',
+        }}
+      />
       <NoiseOverlay />
       <ClickRipples />
       <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} onClockTap={handleClockTap} />

@@ -12,6 +12,7 @@ import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { Markdown } from './Markdown';
+import { readingMinutes } from '../lib/reading';
 
 interface OasisOrchardProps { isAdmin: boolean; }
 
@@ -28,7 +29,7 @@ const seeded = (str: string) => {
   return x - Math.floor(x);
 };
 
-const calcReadingTime = (text: string) => `${Math.max(1, Math.ceil(text.trim().split(/\s+/).length / 200))} min`;
+const calcReadingTime = (text: string) => `${readingMinutes(text)} min`;
 
 // 🌱 条目类型 → 颜色 / 中文名：与 Garden 博客同一套语义，星点据此染类型微光环
 const TYPE_META: Record<string, { color: string; zh: string }> = {

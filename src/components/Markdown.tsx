@@ -7,15 +7,49 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import { slugify } from '../lib/reading';
 
 interface MarkdownProps {
   children: string;
   className?: string;
 }
 
-// 📋 代码块：附一个轻量「复制」按钮，hover 浮现
+// 🖼️ 图片点击 → 全屏灯箱。用自定义事件解耦：Markdown 只管派发，Reader 里的 Lightbox 负责呈现。
+export const LIGHTBOX_EVENT = 'oasis:lightbox';
+export const openLightbox = (src: string, alt?: string) =>
+  window.dispatchEvent(new CustomEvent(LIGHTBOX_EVENT, { detail: { src, alt } }));
+
+// 🔖 rehype 插件：为 h2/h3 注入锚点 id，与 lib/reading 的 extractToc 同一套 slugify + 去重规则，
+//    保证文中目录（TOC）点击能精确定位、直链可跳转。
+const nodeText = (node: any): string => {
+  if (!node) return '';
+  if (node.type === 'text') return node.value ?? '';
+  return (node.children || []).map(nodeText).join('');
+};
+const rehypeHeadingIds = () => (tree: any) => {
+  const seen = new Map<string, number>();
+  const walk = (node: any) => {
+    if (node.type === 'element' && (node.tagName === 'h2' || node.tagName === 'h3')) {
+      let id = slugify(nodeText(node));
+      const n = seen.get(id) ?? 0;
+      seen.set(id, n + 1);
+      if (n > 0) id = `${id}-${n}`;
+      node.properties = node.properties || {};
+      if (!node.properties.id) node.properties.id = id;
+    }
+    (node.children || []).forEach(walk);
+  };
+  walk(tree);
+};
+
+// 📋 代码块：语言标签水印（左上）+ 轻量「复制」按钮（右上，hover 浮现）
 const CodeBlock: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
   const [copied, setCopied] = useState(false);
+  // rehype-highlight 会给 <code> 加 language-xxx / hljs 类，取出语言名做水印
+  const codeChild: any = React.Children.toArray(children).find(
+    (c: any) => c?.props?.className?.includes('language-') || c?.props?.className?.includes('hljs')
+  );
+  const lang = (codeChild?.props?.className?.match(/language-([\w-]+)/)?.[1] || '').toLowerCase();
   const handleCopy = (e: React.MouseEvent) => {
     const pre = (e.currentTarget as HTMLElement).parentElement?.querySelector('code');
     const text = pre?.textContent ?? '';
@@ -26,9 +60,14 @@ const CodeBlock: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, .
   };
   return (
     <div className="group/code relative">
+      {lang && lang !== 'undefined' && (
+        <span className="absolute top-3 left-4 z-10 font-mono text-[9px] tracking-[0.18em] uppercase text-slate-400/60 dark:text-slate-500/60 pointer-events-none select-none">
+          {lang}
+        </span>
+      )}
       <button
         onClick={handleCopy}
-        className="absolute top-3 right-3 z-10 font-mono text-[9px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-md bg-white/70 dark:bg-white/10 border border-slate-200/70 dark:border-white/10 text-slate-500 dark:text-slate-300 opacity-0 group-hover/code:opacity-100 hover:text-[#39C5BB] transition-all backdrop-blur-sm"
+        className="absolute top-3 right-3 z-10 font-mono text-[9px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-md bg-white/70 dark:bg-white/10 border border-slate-200/70 dark:border-white/10 text-slate-500 dark:text-slate-300 opacity-0 group-hover/code:opacity-100 hover:text-oasis-teal transition-all backdrop-blur-sm"
         aria-label="Copy code"
       >
         {copied ? 'Copied ✓' : 'Copy'}
@@ -48,6 +87,14 @@ const MD_COMPONENTS = {
       </a>
     );
   },
+  // 图片可点放大：光标提示 + 派发灯箱事件
+  img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <img
+      src={src} alt={alt} {...props} loading="lazy"
+      className="cursor-zoom-in transition-opacity duration-300 hover:opacity-90"
+      onClick={() => typeof src === 'string' && openLightbox(src, alt)}
+    />
+  ),
   pre: CodeBlock as unknown as React.FC,
 };
 
@@ -68,7 +115,7 @@ export const Markdown: React.FC<MarkdownProps> = ({ children, className }) => (
   <div className={className ?? PROSE_CLASS}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+      rehypePlugins={[rehypeRaw, rehypeHeadingIds, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
       components={MD_COMPONENTS}
     >
       {children}

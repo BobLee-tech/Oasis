@@ -1,13 +1,16 @@
 // src/components/OasisGallery.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGarden, type BlogPost, type PostType } from '../hooks/useGarden';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
+import { readingTimeLabel, readingMinutes, extractToc } from '../lib/reading';
+import { ReaderProgress, ReaderToc, Lightbox } from './OasisReader';
+import { useHashRoute } from '../lib/route';
+import { currentSolarTerm } from '../lib/solarTerms';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
-const calculateReadingTime = (text: string) => `${Math.ceil(text.trim().split(/\s+/).length / 200)} min read`;
 
 // 🌱 条目类型元数据：周报 / 学习笔记 / 成长 / 随笔，各有温柔的图标与微光色
 const TypeIcons = {
@@ -182,14 +185,66 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   const [showProfile, setShowProfile] = useState(false);
 
-  // 📖 阅读舱滚动进度：顶部细丝随阅读推进
+  // 🔗 摘下本文直链：复制 #/garden/:id 到剪贴板，与 hash 路由对应，可直达单篇
+  const [shareCopied, setShareCopied] = useState(false);
+  const sharePost = (p: BlogPost) => {
+    const url = `${window.location.origin}${window.location.pathname}#/garden/${p.id}`;
+    navigator.clipboard?.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 1800);
+    });
+  };
+
+  // 📖 阅读舱滚动容器：进度与目录都基于它（进度追踪已下沉到 ReaderProgress 内，确保容器已挂载）
   const readerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ container: readerRef });
-  const readingProgress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
+
+  // 📑 文中目录、阅读时长、上一/下一篇：随当前文章推导
+  const toc = useMemo(() => (activePost ? extractToc(activePost.content) : []), [activePost]);
+  const readerMinutes = useMemo(() => (activePost ? readingMinutes(activePost.content) : 0), [activePost]);
+  const { prevPost, nextPost } = useMemo(() => {
+    if (!activePost) return { prevPost: null as BlogPost | null, nextPost: null as BlogPost | null };
+    const idx = posts.findIndex(p => p.id === activePost.id);
+    return {
+      nextPost: idx > 0 ? posts[idx - 1] : null,                          // 时间上更新的一篇
+      prevPost: idx >= 0 && idx < posts.length - 1 ? posts[idx + 1] : null, // 更早的一篇
+    };
+  }, [activePost, posts]);
+  const openPost = (p: BlogPost) => { setActivePost(p); readerRef.current?.scrollTo({ top: 0 }); };
+
+  // 🧭 直链 ⇄ 阅读舱双向同步：
+  //   · 地址含 #/garden/:id（分享 / 刷新 / 后退到某篇）→ 打开对应文章
+  //   · 地址回到 #/garden（后退关闭）→ 收起阅读舱
+  const { route: galleryRoute } = useHashRoute();
+  useEffect(() => {
+    if (galleryRoute.view !== 'garden') return;
+    if (galleryRoute.postId) {
+      const p = posts.find(x => x.id === galleryRoute.postId);
+      if (p && p.id !== activePost?.id) setActivePost(p);
+    } else if (activePost) {
+      setActivePost(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [galleryRoute.view, galleryRoute.postId, posts]);
+
+  // 打开 / 关闭文章时回写地址（相等则跳过，杜绝与上面的 effect 往复抖动）
+  //   hadPostRef 守卫：首次以 #/garden/:id 直达时，别在文章打开前就把 id 抹掉
+  const hadPostRef = useRef(false);
+  useEffect(() => {
+    if (activePost) {
+      hadPostRef.current = true;
+      const target = `#/garden/${activePost.id}`;
+      if (window.location.hash !== target) window.location.hash = target;
+    } else if (hadPostRef.current && window.location.hash.startsWith('#/garden/')) {
+      hadPostRef.current = false;
+      window.location.hash = '#/garden';
+    }
+  }, [activePost]);
 
   const { playlist, switchTrack } = useSoundscape();
   const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
-  const dailyQuote = useMemo(() => DAILY_QUOTES[dailyIndex % DAILY_QUOTES.length], [dailyIndex]);
+  // 🌾 今日共鸣优先带上节气语录：随季节流转，每日在节气与手写箴言之间轮换
+  const quotePool = useMemo(() => [currentSolarTerm().note, ...DAILY_QUOTES], []);
+  const dailyQuote = useMemo(() => quotePool[dailyIndex % quotePool.length], [dailyIndex, quotePool]);
   const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
 
   useEffect(() => {
@@ -209,7 +264,14 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const filteredPosts = useMemo(() => posts.filter(post => {
     const matchType = selectedType ? post.type === selectedType : true;
     const matchTag = selectedTag ? post.tags.includes(selectedTag) : true;
-    const matchSearch = searchQuery ? (post.title.toLowerCase().includes(searchQuery.toLowerCase()) || post.excerpt.toLowerCase().includes(searchQuery.toLowerCase())) : true;
+    // 🔍 全文检索：标题 / 摘要 / 正文 / 标签一并匹配，找回被藏在正文深处的思考
+    const q = searchQuery.trim().toLowerCase();
+    const matchSearch = q
+      ? (post.title.toLowerCase().includes(q) ||
+         post.excerpt.toLowerCase().includes(q) ||
+         post.content.toLowerCase().includes(q) ||
+         post.tags.some(t => t.toLowerCase().includes(q)))
+      : true;
     return matchType && matchTag && matchSearch;
   }), [selectedType, selectedTag, searchQuery, posts]);
 
@@ -460,7 +522,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
                               <div className="p-8">
-                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{calculateReadingTime(post.content)}</span></div>
+                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span></div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
@@ -560,15 +622,14 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             key="reader-overlay"
             ref={readerRef}
             // ✨ 核心修复一：强制将背景色在日夜间与最外层壳体同步，拒绝卡顿断层
-            className="fixed inset-0 z-[100] overflow-y-auto no-scrollbar bg-[#F8FAFC] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
+            className="fixed inset-0 z-[100] overflow-y-auto no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* 📖 顶部阅读进度细丝，染当前文章情绪色 */}
-            <motion.div
-              className="fixed top-0 left-0 right-0 h-[2px] z-[160] origin-left"
-              style={{ scaleX: readingProgress, backgroundColor: activePost.color, boxShadow: `0 0 10px ${activePost.color}` }}
-            />
+            {/* 📖 顶部情绪丝线 + 🪷 右下墨环进度（剩余分钟 / 回顶）：共用滚动弹簧 */}
+            <ReaderProgress containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes} />
+            {/* 📑 左侧文中目录（枯山水耙痕） */}
+            <ReaderToc items={toc} color={activePost.color} containerRef={readerRef} />
             <div className="min-h-screen w-full flex flex-col items-center">
               
               <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none">
@@ -578,6 +639,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               <div className="relative w-full max-w-3xl px-8 md:px-12 pt-24 pb-64">
                 
                 <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
+                  <button onClick={() => activePost && sharePost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-oasis-teal transition-colors">{shareCopied ? '链接已摘下 ✓' : 'Share'}</button>
                   {isAdmin && <button onClick={() => activePost && startEditingPost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors">Edit</button>}
                   {isAdmin && <button onClick={() => activePost && handleDelete(activePost.id)} className="text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors">Destroy</button>}
                   <button onClick={() => setActivePost(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ml-4 p-2 -mr-2 bg-white/50 dark:bg-white/5 rounded-full border border-slate-200/50 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-white/10"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -589,7 +651,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                       <span className="w-3 h-3">{TypeIcons[activePost.type]}</span>{TYPE_MAP[activePost.type].label}
                     </span>
                   )}
-                  <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{calculateReadingTime(activePost.content)}</span>
+                  <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(activePost.content)}</span>
                 </div>
                 
                 <h1 className="font-serif text-4xl md:text-5xl text-slate-800 dark:text-slate-100 leading-[1.3] mb-8 transition-colors duration-[1500ms] ease-in-out">{activePost.title}</h1>
@@ -600,6 +662,24 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                 {/* ✨ 核心修复四：强力介入并定义 Markdown 的全级夜间排版字色，保证多层嵌套下渲染坚固不丢失 */}
                 <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{activePost.content}</Markdown>
+
+                {/* 🪶 上一篇 / 下一篇：一条枯山水式分隔线，读完不必退回列表 */}
+                {(prevPost || nextPost) && (
+                  <div className="mt-24 pt-10 border-t border-slate-200/50 dark:border-white/10 grid grid-cols-2 gap-8 transition-colors duration-[1500ms]">
+                    {prevPost ? (
+                      <button onClick={() => openPost(prevPost)} className="group text-left min-w-0">
+                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-2.5 flex items-center gap-2"><span className="transition-transform group-hover:-translate-x-1">←</span> 更早</div>
+                        <div className="font-serif text-slate-600 dark:text-slate-300 leading-snug line-clamp-2 group-hover:text-oasis-teal dark:group-hover:text-oasis-teal transition-colors">{prevPost.title}</div>
+                      </button>
+                    ) : <span />}
+                    {nextPost ? (
+                      <button onClick={() => openPost(nextPost)} className="group text-right min-w-0">
+                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-2.5 flex items-center justify-end gap-2">更新 <span className="transition-transform group-hover:translate-x-1">→</span></div>
+                        <div className="font-serif text-slate-600 dark:text-slate-300 leading-snug line-clamp-2 group-hover:text-oasis-teal dark:group-hover:text-oasis-teal transition-colors">{nextPost.title}</div>
+                      </button>
+                    ) : <span />}
+                  </div>
+                )}
 
                 {/* 🍂 Fallen Leaves 评论交互区 */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]">
@@ -780,6 +860,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* 🖼️ 图片灯箱：监听正文图片点击，全屏放大 */}
+      <Lightbox />
 
     </motion.div>
   );
