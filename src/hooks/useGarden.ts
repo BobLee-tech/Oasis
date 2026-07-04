@@ -20,6 +20,7 @@ export interface BlogPost {
   tags: string[];
   color: string;
   content: string;
+  series?: string;       // 📚 合集：同一主题的连载归属（如「悉尼生活」）；序号按 createdAt 在合集内推导
 }
 
 const TABLE = 'garden_posts';
@@ -80,10 +81,12 @@ const fromRow = (r: any): BlogPost => ({
   tags: Array.isArray(r.tags) ? r.tags : [],
   color: r.color,
   content: r.content,
+  series: r.series || undefined,
 });
 const toRow = (p: BlogPost) => ({
   id: p.id, title: p.title, excerpt: p.excerpt, date: p.date,
   created_at: p.createdAt, type: p.type, tags: p.tags, color: p.color, content: p.content,
+  series: p.series ?? null,
 });
 
 export const useGarden = () => {
@@ -134,7 +137,7 @@ export const useGarden = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchCloud]);
 
-  const plantSeed = useCallback((title: string, tags: string[], color: string, content: string, type: PostType = 'thought') => {
+  const plantSeed = useCallback((title: string, tags: string[], color: string, content: string, type: PostType = 'thought', series?: string) => {
     const now = Date.now();
     const newPost: BlogPost = {
       id: crypto.randomUUID(),
@@ -142,18 +145,20 @@ export const useGarden = () => {
       excerpt: makeExcerpt(content),
       date: friendlyDate(now), createdAt: now, type,
       tags: tags.length > 0 ? tags : ['Draft'], color, content,
+      series: series?.trim() || undefined,
     };
     commit([newPost, ...postsRef.current]); // 乐观更新
     if (cloudOk.current) supabase.from(TABLE).insert(toRow(newPost)).then(({ error }) => { if (error) cloudOk.current = false; });
   }, [commit]);
 
-  const updateSeed = useCallback((id: string, title: string, tags: string[], color: string, content: string, type: PostType = 'thought') => {
+  const updateSeed = useCallback((id: string, title: string, tags: string[], color: string, content: string, type: PostType = 'thought', series?: string) => {
     const patch = {
       title: title.trim() || 'Untitled', tags: tags.length > 0 ? tags : ['Draft'], color, content, type,
       excerpt: makeExcerpt(content),
+      series: series?.trim() || undefined,
     };
     commit(postsRef.current.map(p => p.id === id ? { ...p, ...patch } : p));
-    if (cloudOk.current) supabase.from(TABLE).update(patch).eq('id', id).then(({ error }) => { if (error) cloudOk.current = false; });
+    if (cloudOk.current) supabase.from(TABLE).update({ ...patch, series: patch.series ?? null }).eq('id', id).then(({ error }) => { if (error) cloudOk.current = false; });
   }, [commit]);
 
   const uprootSeed = useCallback((id: string) => {
