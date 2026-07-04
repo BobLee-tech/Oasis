@@ -1,5 +1,6 @@
 // src/components/OasisGallery.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
@@ -34,6 +35,7 @@ const DRAFT_KEY = 'oasis_editor_draft';
 interface EditorDraft {
   editingId: string | null;
   title: string; tags: string[]; content: string; color: string; type: string;
+  series?: string;
   savedAt: number;
 }
 const readDraft = (): EditorDraft | null => {
@@ -85,6 +87,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [editContent, setEditContent] = useState('');
   const [editColor, setEditColor] = useState('#39C5BB');
   const [editType, setEditType] = useState<string>('thought');
+  // 📚 合集：可空的连载归属；发布栏上方的元信息抽屉里填写
+  const [editSeries, setEditSeries] = useState('');
+  const [showMetaPanel, setShowMetaPanel] = useState(false);
+  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
+  const [showSeries, setShowSeries] = useState(false);
 
   // 🏷️ 分类系统：内置 + 自定义，与知识星图共用一份数据
   const { categories, metaOf, addCategory, removeCategory } = useCategories();
@@ -168,6 +175,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (!ta) return;
     if ((e.metaKey || e.ctrlKey) && !e.altKey) {
       const key = e.key.toLowerCase();
+      if (key === 'enter') { e.preventDefault(); handlePublish(); return; }
       if (key === 'b') { e.preventDefault(); applyFormat('**', '**', 'bold'); return; }
       if (key === 'i') { e.preventDefault(); applyFormat('*', '*', 'italic'); return; }
       if (key === 'k') { e.preventDefault(); applyFormat('[', '](https://)', 'text'); return; }
@@ -220,11 +228,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (!isEditing) return;
     const timer = setTimeout(() => {
       if (!editContent.trim() && !editTitle.trim()) return;
-      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, savedAt: Date.now() };
+      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, savedAt: Date.now() };
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); setDraftSavedAt(draft.savedAt); } catch { /* ignore */ }
     }, 800);
     return () => clearTimeout(timer);
-  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType]);
+  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries]);
   const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setDraftSavedAt(null); setDraftMsg(''); };
 
   // 📑 写作大纲：从正文实时提取 h2/h3，点击滚动到对应位置（按字符占比近似定位）
@@ -341,6 +349,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     const tags = new Set<string>(); posts.forEach(p => p.tags.forEach(t => tags.add(t))); return Array.from(tags).sort();
   }, [posts]);
 
+  // 📚 合集索引：合集名 → 按时间正序的成员文章；「第 N 篇」由此推导，无需手工维护序号
+  const seriesInfo = useMemo(() => {
+    const map: Record<string, BlogPost[]> = {};
+    posts.forEach(p => { if (p.series) (map[p.series] ??= []).push(p); });
+    Object.values(map).forEach(arr => arr.sort((a, b) => a.createdAt - b.createdAt));
+    return map;
+  }, [posts]);
+  const chapterOf = (p: BlogPost) =>
+    p.series ? (seriesInfo[p.series]?.findIndex(x => x.id === p.id) ?? -1) + 1 : 0;
+  const allSeries = useMemo(() => Object.keys(seriesInfo).sort(), [seriesInfo]);
+
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     posts.forEach(p => { counts[p.type] = (counts[p.type] || 0) + 1; });
@@ -350,6 +369,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const filteredPosts = useMemo(() => posts.filter(post => {
     const matchType = selectedType ? post.type === selectedType : true;
     const matchTag = selectedTag ? post.tags.includes(selectedTag) : true;
+    const matchSeries = selectedSeries ? post.series === selectedSeries : true;
     // 🔍 全文检索：标题 / 摘要 / 正文 / 标签一并匹配，找回被藏在正文深处的思考
     const q = searchQuery.trim().toLowerCase();
     const matchSearch = q
@@ -358,8 +378,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
          post.content.toLowerCase().includes(q) ||
          post.tags.some(t => t.toLowerCase().includes(q)))
       : true;
-    return matchType && matchTag && matchSearch;
-  }), [selectedType, selectedTag, searchQuery, posts]);
+    return matchType && matchTag && matchSeries && matchSearch;
+  }), [selectedType, selectedTag, selectedSeries, searchQuery, posts]);
 
   // 📅 按月归档：周报 / 成长记录的时间叙事更清晰
   const groupedPosts = useMemo(() => {
@@ -402,7 +422,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 恢复草稿到编辑器各字段
   const restoreDraft = (d: EditorDraft) => {
     setEditingId(d.editingId); setEditTitle(d.title); setEditTagList(d.tags ?? []);
-    setEditContent(d.content); setEditColor(d.color); setEditType(d.type);
+    setEditContent(d.content); setEditColor(d.color); setEditType(d.type); setEditSeries(d.series ?? '');
     setDraftSavedAt(d.savedAt); setDraftMsg('已恢复上次未发布的草稿');
   };
 
@@ -411,10 +431,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (draft && draft.editingId === post.id && draft.content !== post.content) {
       restoreDraft(draft);
     } else {
-      setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type);
+      setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type); setEditSeries(post.series ?? '');
       setDraftMsg('');
     }
-    setTagInput(''); setEditorMode('write'); setActivePost(null); setIsEditing(true);
+    setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
   };
 
   const startNewPost = () => {
@@ -423,23 +443,23 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       restoreDraft(draft);
     } else {
       const initialType = selectedType ?? 'thought';
-      setEditingId(null); setEditTitle(''); setEditTagList([]); setEditContent(getTemplate(initialType)); setEditColor('#39C5BB'); setEditType(initialType);
+      setEditingId(null); setEditTitle(''); setEditTagList([]); setEditContent(getTemplate(initialType)); setEditColor('#39C5BB'); setEditType(initialType); setEditSeries(selectedSeries ?? '');
       setDraftMsg('');
     }
-    setTagInput(''); setEditorMode('write'); setIsEditing(true);
+    setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setIsEditing(true);
   };
 
   // 丢弃当前草稿，回到空白新篇
   const discardDraft = () => {
     clearDraft();
-    setEditingId(null); setEditTitle(''); setEditTagList([]); setTagInput('');
+    setEditingId(null); setEditTitle(''); setEditTagList([]); setTagInput(''); setEditSeries('');
     setEditContent(getTemplate(editType)); setEditColor('#39C5BB');
   };
 
   const handlePublish = () => {
     if (!editContent.trim()) return;
     const tagArray = [...editTagList, ...(tagInput.trim() ? [tagInput.trim()] : [])];
-    if (editingId) updateSeed(editingId, editTitle, tagArray, editColor, editContent, editType); else plantSeed(editTitle, tagArray, editColor, editContent, editType);
+    if (editingId) updateSeed(editingId, editTitle, tagArray, editColor, editContent, editType, editSeries); else plantSeed(editTitle, tagArray, editColor, editContent, editType, editSeries);
     clearDraft();
     setIsEditing(false);
   };
@@ -453,7 +473,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       
       {/* 🌿 左侧「园丁的一隅」：去容器化的开放身份栏，用光与留白锚定，与右栏报头共享顶部起跑线 */}
       <AnimatePresence>
-        {!isEditing && (
+        {(
           <motion.div className="hidden lg:flex w-1/3 h-full flex-col items-center pt-24 px-10 relative z-20 transition-colors duration-[1500ms] ease-in-out" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
             {/* 呼吸柔光：teal + 樱粉两团弥散光，6s 与 OASIS 标题同频呼吸，边缘自然溢向右栏黏合两列 */}
             <motion.div aria-hidden className="absolute top-10 left-1/2 -translate-x-1/2 w-[30rem] h-[30rem] rounded-full bg-[#39C5BB]/[0.13] dark:bg-[#39C5BB]/[0.09] blur-[100px] pointer-events-none" animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
@@ -517,10 +537,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       </AnimatePresence>
 
       {/* 🖼️ 右侧基础内容画廊区 */}
-      <motion.div className="w-full h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col" animate={{ width: isEditing ? '100%' : '66.666%' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
-        <AnimatePresence mode="wait">
-          {!isEditing ? (
-            <motion.div key="gallery" className="w-full h-full flex flex-col" exit={{ opacity: 0 }}>
+      <div className="w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
+        <div className="w-full h-full flex flex-col">
               {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案 */}
               <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-8 mx-auto group">
                 <span className="w-9 h-9 rounded-full overflow-hidden border border-white/60 dark:border-white/10 shadow-sm shrink-0 bg-white/20 dark:bg-white/5">
@@ -539,7 +557,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               <div className="mb-10">
                 {/* 🧭 目录线：居中类型筛选为主轴，两端安静收纳搜索 / 标签 / 管理动作，一条线承载全部控件 */}
-                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 md:px-24 flex items-center justify-center gap-x-4 md:gap-x-6 gap-y-2.5 flex-wrap transition-colors duration-[1500ms]">
+                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 xl:px-56 flex items-center justify-center gap-x-4 md:gap-x-6 gap-y-2.5 flex-wrap transition-colors duration-[1500ms]">
                   <button onClick={() => setSelectedType(null)} className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     All <span className="opacity-50 tracking-normal">{posts.length}</span>
                   </button>
@@ -555,8 +573,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     );
                   })}
 
-                  {/* 左端：搜索，点击展开输入（小屏随流排列，md+ 吸附左端） */}
-                  <div className="order-last md:order-none w-auto md:absolute md:left-0 md:top-1/2 md:-translate-y-1/2 flex items-center gap-2">
+                  {/* 左端：搜索，点击展开输入（小中屏随流排列，xl+ 吸附左端） */}
+                  <div className="order-last xl:order-none w-auto xl:absolute xl:left-0 xl:top-1/2 xl:-translate-y-1/2 flex items-center gap-2">
                     <button onClick={() => setSearchOpen(o => !o)} title="Search" className={`p-1 transition-colors ${searchOpen || searchQuery ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-[#39C5BB]'}`}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     </button>
@@ -571,14 +589,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     </AnimatePresence>
                   </div>
 
-                  {/* 右端：标签抽屉开关 + 管理动作（小屏随流排列，md+ 吸附右端） */}
-                  <div className="order-last md:order-none md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2 flex items-center gap-4">
+                  {/* 右端：合集/标签抽屉开关 + 管理动作（小中屏随流排列，xl+ 吸附右端） */}
+                  <div className="order-last xl:order-none xl:absolute xl:right-0 xl:top-1/2 xl:-translate-y-1/2 flex items-center gap-4">
+                    {allSeries.length > 0 && (
+                      <button onClick={() => setShowSeries(v => !v)} className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showSeries || selectedSeries ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>Series</button>
+                    )}
                     {allTags.length > 0 && (
                       <button onClick={() => setShowTags(v => !v)} className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showTags || selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># Tags</button>
                     )}
                     {isAdmin && (
                       <>
-                        <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-40">{syncState === 'syncing' ? '☁ …' : '☁ Sync'}</button>
+                        <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-40">{syncState === 'syncing' ? '☁ …' : '☁'}</button>
                         <button onClick={startNewPost} className="font-mono text-[10px] tracking-[0.18em] uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">+ Seed</button>
                       </>
                     )}
@@ -589,6 +610,20 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     {syncMsg && <motion.span initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -bottom-6 right-0 font-mono text-[9px] tracking-wider text-[#39C5BB] normal-case">{syncMsg}</motion.span>}
                   </AnimatePresence>
                 </div>
+
+                {/* 📚 合集抽屉：列出所有连载与篇数，点选只看该合集 */}
+                <AnimatePresence>
+                  {showSeries && allSeries.length > 0 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+                      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-4 pb-1">
+                        <button onClick={() => setSelectedSeries(null)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${!selectedSeries ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>📚 all</button>
+                        {allSeries.map(s => (
+                          <button key={s} onClick={() => setSelectedSeries(selectedSeries === s ? null : s)} className={`font-serif text-xs transition-colors duration-500 ${selectedSeries === s ? 'text-[#39C5BB] border-b border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>{s} <span className="font-mono text-[9px] opacity-50">{seriesInfo[s].length}</span></button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* 标签抽屉：需要时才展开，居中纯文字 */}
                 <AnimatePresence>
@@ -635,7 +670,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
                               <div className="p-6 md:p-8">
-                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span></div>
+                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}</div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
@@ -648,11 +683,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </AnimatePresence>
                 {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">No thoughts found here yet — perhaps plant the first seed.</div>}
               </div>
-            </motion.div>
-          ) : (
-            // --- 创作/编辑器区（不截断，完整实现） ---
-            <motion.div key="editor" className="w-full max-w-3xl mx-auto flex flex-col h-full pt-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-               <div className="flex items-center justify-between mb-8">
+            </div>
+      </div>
+
+      {/* ✍️ 沉浸式全屏书房：portal 到 body 跳出视图层的 stacking context，写作接管整个视口 */}
+      {createPortal(<AnimatePresence>
+        {isEditing && (
+          <motion.div key="editor-overlay" className="fixed inset-0 z-[210] flex flex-col bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
+            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30, filter: 'blur(8px)' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
+               <div className="shrink-0 w-full max-w-6xl mx-auto px-6 md:px-10 pt-5 md:pt-6 flex items-center justify-between">
                  <div className="flex bg-slate-200/50 dark:bg-slate-800/50 rounded-lg p-1 backdrop-blur-sm shadow-inner transition-colors duration-[1500ms] ease-in-out">
                    {([['write', 'Write'], ['split', 'Split'], ['preview', 'Preview']] as const).map(([mode, label]) => (
                      <button key={mode} onClick={() => setEditorMode(mode)}
@@ -672,78 +711,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                  </div>
                </div>
                
-               <input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-transparent text-4xl md:text-5xl font-serif text-slate-700 dark:text-slate-200 mb-6 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors duration-[1500ms] ease-in-out" disabled={isPreviewMode} />
-
-               {/* 🌱 类型选择：内置 + 自定义分类，行末可即时新建 */}
-               <div className="flex flex-wrap items-center gap-2 mb-6" style={{ opacity: isPreviewMode ? 0.3 : 1, pointerEvents: isPreviewMode ? 'none' : 'auto' }}>
-                 {categories.map(t => {
-                   const active = editType === t.id;
-                   return (
-                     <button key={t.id} onClick={() => handleTypeSwitch(t.id)} title={t.zh}
-                       className={`group/cat relative flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-300 ${active ? 'text-white border-transparent' : 'text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}
-                       style={active ? { backgroundColor: t.color, boxShadow: `0 4px 16px ${t.color}40` } : undefined}>
-                       <span className="w-3.5 h-3.5" style={{ color: active ? '#fff' : t.color }}><CategoryIcon name={t.icon} /></span>
-                       {t.label}<span className="opacity-60 normal-case tracking-normal">· {t.zh}</span>
-                       {/* 自定义分类可删除：悬停浮现小 ×，删除后旧文章自动回落默认样式 */}
-                       {!t.builtin && (
-                         <span role="button" title={`删除分类「${t.zh}」`}
-                           onClick={(e) => { e.stopPropagation(); if (window.confirm(`删除分类「${t.zh}」？已有文章会保留，仅失去分类样式。`)) { removeCategory(t.id); if (editType === t.id) setEditType('thought'); } }}
-                           className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-400/90 dark:bg-slate-600 text-white text-[9px] leading-4 text-center opacity-100 md:opacity-0 md:group-hover/cat:opacity-100 transition-opacity hover:bg-red-400">×</span>
-                       )}
-                     </button>
-                   );
-                 })}
-                 <button onClick={() => setShowCatForm(v => !v)} title="新建分类"
-                   className={`font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border border-dashed transition-colors ${showCatForm ? 'text-[#39C5BB] border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 border-slate-300/60 dark:border-white/15 hover:text-[#39C5BB] hover:border-[#39C5BB]/50'}`}>+ New</button>
-               </div>
-
-               {/* 🆕 新建分类内联表单：名字 + 颜色 + 图标即刻生效 */}
-               <AnimatePresence>
-                 {showCatForm && !isPreviewMode && (
-                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                     <div className="flex flex-wrap items-center gap-x-5 gap-y-3 mb-6 px-5 py-4 rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/40 dark:bg-white/[0.03]">
-                       <input type="text" placeholder="English name" value={catLabel} onChange={e => setCatLabel(e.target.value)} className="w-32 bg-transparent border-b border-slate-300/60 dark:border-white/15 font-mono text-xs text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/60" />
-                       <input type="text" placeholder="中文名" value={catZh} onChange={e => setCatZh(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleCreateCategory(); }} className="w-24 bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/60" />
-                       <div className="flex items-center gap-1.5">
-                         {AURA_COLORS.map(c => <div key={c} onClick={() => setCatColor(c)} className={`w-3.5 h-3.5 rounded-full cursor-pointer transition-transform ${catColor === c ? 'scale-125 ring-2 ring-offset-1 ring-current' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, color: c }} />)}
-                       </div>
-                       <div className="flex items-center gap-1">
-                         {ICON_NAMES.map(name => (
-                           <button key={name} onClick={() => setCatIcon(name)} title={name}
-                             className={`w-7 h-7 p-1.5 rounded-lg transition-colors ${catIcon === name ? 'text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                             style={catIcon === name ? { backgroundColor: catColor } : undefined}><CategoryIcon name={name} /></button>
-                         ))}
-                       </div>
-                       <button onClick={handleCreateCategory} disabled={!catLabel.trim() && !catZh.trim()} className="ml-auto font-mono text-[10px] tracking-widest uppercase px-5 py-2 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: catColor }}>Create</button>
-                     </div>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-
-               <div className="flex items-center space-x-6 mb-8 border-b border-slate-200 dark:border-white/10 pb-8 transition-all" style={{ opacity: isPreviewMode ? 0.3 : 1, pointerEvents: isPreviewMode ? 'none' : 'auto' }}>
-                 {/* 🏷️ 标签 chip 输入：回车成签、点 × 摘除、下拉复用已有标签 */}
-                 <div className="flex-1 relative flex flex-wrap items-center gap-2">
-                   {editTagList.map(tag => (
-                     <span key={tag} className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full bg-slate-500/[0.08] dark:bg-white/[0.08] text-slate-500 dark:text-slate-300">
-                       {tag}
-                       <button onClick={() => setEditTagList(editTagList.filter(t => t !== tag))} className="text-slate-400 hover:text-red-400 transition-colors">×</button>
-                     </span>
-                   ))}
-                   <input type="text" placeholder={editTagList.length ? '' : 'Tags · 回车添加'} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
-                     className="flex-1 min-w-[120px] bg-transparent font-mono text-xs tracking-widest text-slate-500 dark:text-slate-400 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 uppercase transition-colors" />
-                   {/* 已有标签联想 */}
-                   {tagInput.trim() && allTags.some(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)) && (
-                     <div className="absolute top-full left-0 mt-2 z-30 flex flex-wrap gap-2 max-w-full p-3 rounded-xl bg-white/90 dark:bg-[#111827]/95 backdrop-blur-xl border border-slate-200/70 dark:border-white/10 shadow-lg">
-                       {allTags.filter(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)).slice(0, 8).map(t => (
-                         <button key={t} onClick={() => commitTag(t)} className="font-mono text-[10px] tracking-widest uppercase text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] transition-colors">#{t}</button>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-                 <div className="flex items-center space-x-2">
-                   {AURA_COLORS.map(c => <div key={c} onClick={() => setEditColor(c)} className={`w-4 h-4 rounded-full cursor-pointer transition-transform ${editColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: editColor === c ? `0 0 0 2px transparent, 0 0 0 4px ${c}` : 'none' }} />)}
-                 </div>
-               </div>
+               {/* 写作主区：居中限宽 ~72ch 阅读友好，标题即页面第一行 */}
+               <div className="flex-1 min-h-0 w-full max-w-6xl mx-auto px-6 md:px-10 flex flex-col">
+               <input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)}
+                 onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); handlePublish(); } }}
+                 className="w-full shrink-0 bg-transparent text-3xl md:text-5xl font-serif text-slate-700 dark:text-slate-200 pt-6 md:pt-8 mb-6 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors duration-[1500ms] ease-in-out" disabled={isPreviewMode} />
 
                {isPreviewMode ? (
                  <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8">
@@ -796,23 +768,125 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        </nav>
                      )}
                    </div>
-                   {/* 📊 状态栏：字数 / 预计阅读 / 草稿保存时间 */}
-                   <div className="flex items-center gap-4 mb-6 font-mono text-[9px] tracking-widest uppercase text-slate-300 dark:text-slate-600 select-none">
-                     <span>{editContent.length} chars</span>
-                     <span>· {readingMinutes(editContent)} min read</span>
-                     {draftSavedAt && <span className="text-[#39C5BB]/60 normal-case">· 草稿已存 {new Date(draftSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
-                     <span className="ml-auto normal-case hidden md:inline">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · Tab 缩进</span>
-                   </div>
                  </>
                )}
-               
-               <div className="flex justify-end mt-auto">
-                 <button onClick={handlePublish} className="font-mono text-xs tracking-widest uppercase px-8 py-3 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300" style={{ backgroundColor: editColor }}>{editingId ? 'Update' : 'Publish'}</button>
                </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+
+               {/* 🧾 底部元信息舱：分类 / 合集 / 标签 / 颜色收进抽屉，写作视野只留正文 */}
+               <div className="shrink-0 w-full border-t border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-md transition-colors duration-[1500ms]">
+                 <AnimatePresence>
+                   {showMetaPanel && (
+                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+                       <div className="w-full max-w-6xl mx-auto px-6 md:px-10 pt-5 flex flex-col gap-5 max-h-[45dvh] overflow-y-auto no-scrollbar">
+                         {/* 🌱 类型选择：内置 + 自定义分类，行末可即时新建 */}
+                         <div className="flex flex-wrap items-center gap-2">
+                           {categories.map(t => {
+                             const active = editType === t.id;
+                             return (
+                               <button key={t.id} onClick={() => handleTypeSwitch(t.id)} title={t.zh}
+                                 className={`group/cat relative flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-300 ${active ? 'text-white border-transparent' : 'text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}
+                                 style={active ? { backgroundColor: t.color, boxShadow: `0 4px 16px ${t.color}40` } : undefined}>
+                                 <span className="w-3.5 h-3.5" style={{ color: active ? '#fff' : t.color }}><CategoryIcon name={t.icon} /></span>
+                                 {t.label}<span className="opacity-60 normal-case tracking-normal">· {t.zh}</span>
+                                 {/* 自定义分类可删除：悬停浮现小 ×，删除后旧文章自动回落默认样式 */}
+                                 {!t.builtin && (
+                                   <span role="button" title={`删除分类「${t.zh}」`}
+                                     onClick={(e) => { e.stopPropagation(); if (window.confirm(`删除分类「${t.zh}」？已有文章会保留，仅失去分类样式。`)) { removeCategory(t.id); if (editType === t.id) setEditType('thought'); } }}
+                                     className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-400/90 dark:bg-slate-600 text-white text-[9px] leading-4 text-center opacity-100 md:opacity-0 md:group-hover/cat:opacity-100 transition-opacity hover:bg-red-400">×</span>
+                                 )}
+                               </button>
+                             );
+                           })}
+                           <button onClick={() => setShowCatForm(v => !v)} title="新建分类"
+                             className={`font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border border-dashed transition-colors ${showCatForm ? 'text-[#39C5BB] border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 border-slate-300/60 dark:border-white/15 hover:text-[#39C5BB] hover:border-[#39C5BB]/50'}`}>+ New</button>
+                         </div>
+
+                         {/* 🆕 新建分类内联表单：名字 + 颜色 + 图标即刻生效 */}
+                         <AnimatePresence>
+                           {showCatForm && (
+                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                               <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/40 dark:bg-white/[0.03]">
+                                 <input type="text" placeholder="English name" value={catLabel} onChange={e => setCatLabel(e.target.value)} className="w-32 bg-transparent border-b border-slate-300/60 dark:border-white/15 font-mono text-xs text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/60" />
+                                 <input type="text" placeholder="中文名" value={catZh} onChange={e => setCatZh(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleCreateCategory(); }} className="w-24 bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/60" />
+                                 <div className="flex items-center gap-1.5">
+                                   {AURA_COLORS.map(c => <div key={c} onClick={() => setCatColor(c)} className={`w-3.5 h-3.5 rounded-full cursor-pointer transition-transform ${catColor === c ? 'scale-125 ring-2 ring-offset-1 ring-current' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, color: c }} />)}
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   {ICON_NAMES.map(name => (
+                                     <button key={name} onClick={() => setCatIcon(name)} title={name}
+                                       className={`w-7 h-7 p-1.5 rounded-lg transition-colors ${catIcon === name ? 'text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                       style={catIcon === name ? { backgroundColor: catColor } : undefined}><CategoryIcon name={name} /></button>
+                                   ))}
+                                 </div>
+                                 <button onClick={handleCreateCategory} disabled={!catLabel.trim() && !catZh.trim()} className="ml-auto font-mono text-[10px] tracking-widest uppercase px-5 py-2 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: catColor }}>Create</button>
+                               </div>
+                             </motion.div>
+                           )}
+                         </AnimatePresence>
+
+                         {/* 📚 合集：同主题连载归属，自动联想已有合集名；序号按发布时间推导 */}
+                         <div className="flex items-center gap-3">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Series</span>
+                           <input type="text" list="oasis-series-options" placeholder="合集名 · 可留空（如「悉尼生活」「React 深入」）" value={editSeries} onChange={e => setEditSeries(e.target.value)}
+                             className="flex-1 max-w-md bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/50 dark:placeholder:text-slate-600 transition-colors" />
+                           <datalist id="oasis-series-options">{allSeries.map(s => <option key={s} value={s} />)}</datalist>
+                           {editSeries.trim() && seriesInfo[editSeries.trim()] && !editingId && (
+                             <span className="font-mono text-[9px] tracking-wider text-[#39C5BB]/70 whitespace-nowrap">将成为第 {seriesInfo[editSeries.trim()].length + 1} 篇</span>
+                           )}
+                         </div>
+
+                         <div className="flex items-center space-x-6 pb-5">
+                           {/* 🏷️ 标签 chip 输入：回车成签、点 × 摘除、下拉复用已有标签 */}
+                           <div className="flex-1 relative flex flex-wrap items-center gap-2">
+                             <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Tags</span>
+                             {editTagList.map(tag => (
+                               <span key={tag} className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full bg-slate-500/[0.08] dark:bg-white/[0.08] text-slate-500 dark:text-slate-300">
+                                 {tag}
+                                 <button onClick={() => setEditTagList(editTagList.filter(t => t !== tag))} className="text-slate-400 hover:text-red-400 transition-colors">×</button>
+                               </span>
+                             ))}
+                             <input type="text" placeholder={editTagList.length ? '' : '回车添加'} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
+                               className="flex-1 min-w-[120px] bg-transparent font-mono text-xs tracking-widest text-slate-500 dark:text-slate-400 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 uppercase transition-colors" />
+                             {/* 已有标签联想：贴近屏幕底部，向上弹出 */}
+                             {tagInput.trim() && allTags.some(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)) && (
+                               <div className="absolute bottom-full left-0 mb-2 z-30 flex flex-wrap gap-2 max-w-full p-3 rounded-xl bg-white/90 dark:bg-[#111827]/95 backdrop-blur-xl border border-slate-200/70 dark:border-white/10 shadow-lg">
+                                 {allTags.filter(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)).slice(0, 8).map(t => (
+                                   <button key={t} onClick={() => commitTag(t)} className="font-mono text-[10px] tracking-widest uppercase text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] transition-colors">#{t}</button>
+                                 ))}
+                               </div>
+                             )}
+                           </div>
+                           <div className="flex items-center space-x-2">
+                             {AURA_COLORS.map(c => <div key={c} onClick={() => setEditColor(c)} className={`w-4 h-4 rounded-full cursor-pointer transition-transform ${editColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: editColor === c ? `0 0 0 2px transparent, 0 0 0 4px ${c}` : 'none' }} />)}
+                           </div>
+                         </div>
+                       </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+
+                 {/* 发布栏：状态 · 元信息开关 · 发布 */}
+                 <div className="w-full max-w-6xl mx-auto px-6 md:px-10 py-3.5 flex items-center gap-3 md:gap-5">
+                   <div className="flex items-center gap-3 font-mono text-[9px] tracking-widest uppercase text-slate-300 dark:text-slate-600 select-none min-w-0">
+                     <span className="hidden sm:inline">{editContent.length} chars</span>
+                     <span>{readingMinutes(editContent)} min</span>
+                     {draftSavedAt && <span className="text-[#39C5BB]/60 normal-case truncate">草稿已存 {new Date(draftSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                   </div>
+                   <span className="hidden lg:inline font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 normal-case select-none">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · ⌘⏎ 发布</span>
+                   <button onClick={() => setShowMetaPanel(v => !v)}
+                     className={`ml-auto flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-300 ${showMetaPanel ? 'text-[#39C5BB] border-[#39C5BB]/50 bg-[#39C5BB]/5' : 'text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
+                     <span className="w-3.5 h-3.5" style={{ color: metaOf(editType).color }}><CategoryIcon name={metaOf(editType).icon} /></span>
+                     <span className="hidden sm:inline">{metaOf(editType).label}</span>
+                     {editTagList.length > 0 && <span className="opacity-60 normal-case">#{editTagList.length}</span>}
+                     {editSeries.trim() && <span className="opacity-60 normal-case max-w-[8rem] truncate">📚 {editSeries.trim()}</span>}
+                     <span className={`transition-transform duration-300 ${showMetaPanel ? 'rotate-180' : ''}`}>⌄</span>
+                   </button>
+                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editColor }}>{editingId ? 'Update' : 'Publish'}</button>
+                 </div>
+               </div>
+          </motion.div>
+        )}
+      </AnimatePresence>, document.body)}
 
       {/* 📖 沉浸式全屏独立阅读舱 */}
       <AnimatePresence>
@@ -849,6 +923,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     <span className="w-3 h-3"><CategoryIcon name={metaOf(activePost.type).icon} /></span>{metaOf(activePost.type).label}
                   </span>
                   <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(activePost.content)}</span>
+                  {activePost.series && <span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {activePost.series} · 第 {chapterOf(activePost)} 篇</span>}
                 </div>
                 
                 <h1 className="font-serif text-3xl md:text-5xl text-slate-800 dark:text-slate-100 leading-[1.3] mb-8 transition-colors duration-[1500ms] ease-in-out">{activePost.title}</h1>
@@ -859,6 +934,28 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                 {/* ✨ 核心修复四：强力介入并定义 Markdown 的全级夜间排版字色，保证多层嵌套下渲染坚固不丢失 */}
                 <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{activePost.content}</Markdown>
+
+                {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去 */}
+                {activePost.series && (seriesInfo[activePost.series]?.length ?? 0) > 1 && (
+                  <div className="mt-20 px-7 py-6 md:px-9 md:py-7 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm transition-colors duration-[1500ms]">
+                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-[#39C5BB]/80 mb-5">📚 Series · {activePost.series} <span className="text-slate-400/70 dark:text-slate-500 tracking-normal normal-case ml-1">共 {seriesInfo[activePost.series].length} 篇</span></div>
+                    <ol className="flex flex-col gap-3">
+                      {seriesInfo[activePost.series].map((p, i) => {
+                        const current = p.id === activePost.id;
+                        return (
+                          <li key={p.id} className="flex items-baseline gap-3 min-w-0">
+                            <span className={`font-mono text-[10px] shrink-0 ${current ? 'text-[#39C5BB]' : 'text-slate-300 dark:text-slate-600'}`}>{String(i + 1).padStart(2, '0')}</span>
+                            {current ? (
+                              <span className="font-serif text-sm text-slate-700 dark:text-slate-100 leading-snug truncate">{p.title}<span className="ml-2 font-mono text-[9px] tracking-widest uppercase text-[#39C5BB]/70">· 本篇</span></span>
+                            ) : (
+                              <button onClick={() => openPost(p)} className="font-serif text-sm text-slate-500 dark:text-slate-400 leading-snug truncate text-left hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors">{p.title}</button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                )}
 
                 {/* 🪶 上一篇 / 下一篇：一条枯山水式分隔线，读完不必退回列表 */}
                 {(prevPost || nextPost) && (

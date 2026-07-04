@@ -11,8 +11,12 @@ create table if not exists public.garden_posts (
   type        text not null default 'thought',
   tags        jsonb not null default '[]'::jsonb,
   color       text not null default '#39C5BB',
-  content     text not null default ''
+  content     text not null default '',
+  series      text                      -- 📚 合集名（可空）：同主题连载归属，序号按 created_at 推导
 );
+
+-- 已建表的存量库：执行下面这行补上合集列（新库可忽略，幂等安全）
+alter table public.garden_posts add column if not exists series text;
 
 -- 按时间倒序读取更快
 create index if not exists garden_posts_created_at_idx
