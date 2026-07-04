@@ -286,14 +286,52 @@ globalAudio.addEventListener('ended', () => {
   advanceTrack(1);
 });
 
+// ⏱️ timeupdate 以整秒为粒度通知：进度显示只精确到秒，无谓的高频通知只会
+// 让订阅组件（尤其移动端）反复重渲染。
+let lastNotifiedSecond = -1;
 globalAudio.addEventListener('timeupdate', () => {
   globalCurrentTime = globalAudio.currentTime;
-  notifyListeners();
+  const sec = Math.floor(globalCurrentTime);
+  if (sec !== lastNotifiedSecond) {
+    lastNotifiedSecond = sec;
+    notifyListeners();
+  }
 });
 globalAudio.addEventListener('loadedmetadata', () => {
   globalDuration = globalAudio.duration || 0;
   notifyListeners();
 });
+
+// 🎵 入场 BGM：只依赖模块级全局状态，独立导出。App 等只需触发播放的组件
+// 直接 import 使用，无需订阅播放器状态（避免整棵应用树跟着 timeupdate 重渲染）。
+export const playBGM = (targetVolume = 0.4, fadeDuration = 2500) => {
+  if (globalAudio.getAttribute('data-track-id') !== globalCurrentTrack.id) {
+    globalAudio.src = resolveAudioUrl(globalCurrentTrack.url);
+    globalAudio.setAttribute('data-track-id', globalCurrentTrack.id);
+    globalAudio.load();
+  }
+
+  cancelFade();
+  setAudioVolume(0);
+  // 同步全局音量，让 UI 滑轨与实际淡入目标一致
+  globalVolume = targetVolume;
+  notifyListeners();
+
+  globalAudio.play().then(() => {
+    ensureAnalyser();
+    const startTime = performance.now();
+    const fadeIn = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / fadeDuration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setAudioVolume(targetVolume * ease);
+      if (progress < 1) {
+        currentFade = requestAnimationFrame(fadeIn);
+      }
+    };
+    currentFade = requestAnimationFrame(fadeIn);
+  }).catch(e => console.warn("> Autoplay intercepted", e));
+};
 
 export const useSoundscape = () => {
   const [track, setTrack] = useState<Track>(globalCurrentTrack);
@@ -314,35 +352,6 @@ export const useSoundscape = () => {
     };
     listeners.add(updateState);
     return () => { listeners.delete(updateState); };
-  }, []);
-
-  const playBGM = useCallback((targetVolume = 0.4, fadeDuration = 2500) => {
-    if (globalAudio.getAttribute('data-track-id') !== globalCurrentTrack.id) {
-      globalAudio.src = resolveAudioUrl(globalCurrentTrack.url);
-      globalAudio.setAttribute('data-track-id', globalCurrentTrack.id);
-      globalAudio.load();
-    }
-
-    cancelFade();
-    setAudioVolume(0);
-    // 同步全局音量，让 UI 滑轨与实际淡入目标一致
-    globalVolume = targetVolume;
-    notifyListeners();
-
-    globalAudio.play().then(() => {
-      ensureAnalyser();
-      const startTime = performance.now();
-      const fadeIn = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / fadeDuration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3);
-        setAudioVolume(targetVolume * ease);
-        if (progress < 1) {
-            currentFade = requestAnimationFrame(fadeIn);
-        }
-      };
-      currentFade = requestAnimationFrame(fadeIn);
-    }).catch(e => console.warn("> Autoplay intercepted", e));
   }, []);
 
   const playTrack = useCallback((t: Track) => {
@@ -475,7 +484,6 @@ export const useSoundscape = () => {
     playMode,
     currentTime,
     duration,
-    playBGM,
     togglePlay,
     switchTrack,
     changeVolume,
