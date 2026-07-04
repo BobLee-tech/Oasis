@@ -343,6 +343,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   useEffect(() => {
     setResContent(''); setResAuthor(''); setIsResFocused(false); setReplyingToId(null); setReplyInput('');
+    // 切换篇目回到顶部：否则从「下一篇」进来会停在上一篇的滚动位置，进度环也会被瞬间误判读完
+    readerRef.current?.scrollTo({ top: 0 });
   }, [activePost?.id]);
 
   const allTags = useMemo(() => {
@@ -900,7 +902,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             {/* 📖 顶部情绪丝线 + 🪷 右下墨环进度（剩余分钟 / 回顶）：共用滚动弹簧 */}
-            <ReaderProgress containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes} />
+            {/* key 按文章重挂：切到上一/下一篇时进度环与读完落锁一并归零 */}
+            <ReaderProgress key={activePost.id} containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes} />
             {/* 📑 左侧文中目录（枯山水耙痕） */}
             <ReaderToc items={toc} color={activePost.color} containerRef={readerRef} />
             <div className="min-h-screen w-full flex flex-col items-center">
