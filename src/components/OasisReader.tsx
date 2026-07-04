@@ -17,7 +17,15 @@ interface ReaderProgressProps {
 }
 export const ReaderProgress: React.FC<ReaderProgressProps> = ({ containerRef, color, totalMinutes }) => {
   const { scrollYProgress } = useScroll({ container: containerRef });
-  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
+  // ⚠️ useScroll 在容器刚挂载、尚未滚动时可能给出虚假的 1（0/0 兜底），
+  //    会让墨环一进来就误判读完。这里借它的更新时机，进度改由真实 scrollTop 计算。
+  const safeProgress = useTransform(scrollYProgress, () => {
+    const el = containerRef.current;
+    if (!el) return 0;
+    const max = el.scrollHeight - el.clientHeight;
+    return max > 1 ? Math.min(1, el.scrollTop / max) : 0;
+  });
+  const progress = useSpring(safeProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
   const backToTop = () => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   return (
     <>
@@ -47,14 +55,23 @@ interface InkRingProps {
 
 export const InkRing: React.FC<InkRingProps> = ({ progress, color, totalMinutes, onBackToTop }) => {
   const [pct, setPct] = useState(0);
+  const [done, setDone] = useState(false);
   const [rippleKey, setRippleKey] = useState(0);
   const dashoffset = useTransform(progress, (p) => C * (1 - Math.min(1, Math.max(0, p))));
 
   // 只在真正翻动时更新文字状态，滚动本身不触发整环重渲染
-  useMotionValueEvent(progress, 'change', (v) => setPct(v));
+  // ✅ 读完态是「墨已注满」——一旦抵达就落锁，回翻重读也不褪回倒计时
+  useMotionValueEvent(progress, 'change', (v) => {
+    setPct(v);
+    if (v > 0.985) {
+      setDone((was) => {
+        if (!was) setRippleKey((k) => k + 1); // 读完一瞬荡一圈水波作贺
+        return true;
+      });
+    }
+  });
 
-  const visible = pct > 0.02;
-  const done = pct > 0.985;
+  const visible = pct > 0.02 || done;
   const remaining = Math.max(0, Math.ceil(totalMinutes * (1 - pct)));
 
   const handleClick = () => {
@@ -95,10 +112,20 @@ export const InkRing: React.FC<InkRingProps> = ({ progress, color, totalMinutes,
             {/* 轨底 */}
             <circle cx="22" cy="22" r={R} fill="none" stroke="currentColor" className="text-slate-300/50 dark:text-white/10" strokeWidth="2" />
             {/* 进度环：染文章情绪色，随滚动注满 */}
-            <motion.circle
-              cx="22" cy="22" r={R} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
-              strokeDasharray={C} style={{ strokeDashoffset: dashoffset, filter: `drop-shadow(0 0 3px ${color}80)` }}
-            />
+            {done ? (
+              // 读完落锁：环保持完满，不再随回翻退墨
+              <motion.circle
+                cx="22" cy="22" r={R} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
+                strokeDasharray={C} initial={false} animate={{ strokeDashoffset: 0 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                style={{ filter: `drop-shadow(0 0 3px ${color}80)` }}
+              />
+            ) : (
+              <motion.circle
+                cx="22" cy="22" r={R} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
+                strokeDasharray={C} style={{ strokeDashoffset: dashoffset, filter: `drop-shadow(0 0 3px ${color}80)` }}
+              />
+            )}
           </svg>
 
           {/* 环心：剩余分钟 → 读完变对勾 */}
