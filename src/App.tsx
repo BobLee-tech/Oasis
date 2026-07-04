@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
-import { useSoundscape } from './hooks/useSoundscape';
+import { playBGM } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
@@ -21,8 +21,10 @@ import { OasisDock } from './components/OasisDock';
 
 import type { BgPhase, AppView } from './types/auth';
 
+// 移动端隐藏：满屏 mix-blend 噪点层要求每帧对整屏做混合合成，手机 GPU 吃不消，
+// 而 0.03 透明度在小屏上本就几乎不可见。
 const NoiseOverlay = () => (
-  <div className="pointer-events-none absolute inset-0 z-50 opacity-[0.03] mix-blend-overlay">
+  <div className="pointer-events-none absolute inset-0 z-50 opacity-[0.03] mix-blend-overlay hidden md:block">
     <svg className="absolute inset-0 w-full h-full">
       <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch" /></filter>
       <rect width="100%" height="100%" filter="url(#noise)" />
@@ -34,6 +36,8 @@ const NoiseOverlay = () => (
 type Ripple = { id: number; x: number; y: number; color: string };
 const ClickRipples = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  // 触屏设备走轻量版：只保留主涟漪细环，去掉模糊柔光与余韵二环，滑动/点按不掉帧
+  const coarse = useRef(typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches);
 
   useEffect(() => {
     // 与界面主色调呼应的柔和色板：初音绿 / 樱粉 / 月白
@@ -60,13 +64,15 @@ const ClickRipples = () => {
         {ripples.map(r => (
           <span key={r.id} className="absolute" style={{ left: r.x, top: r.y }}>
             {/* 落点的一点柔光，像水珠触面后缓缓晕开 */}
-            <motion.span
-              className="absolute rounded-full blur-[4px]"
-              style={{ x: '-50%', y: '-50%', background: `radial-gradient(circle, ${r.color} 0%, transparent 72%)` }}
-              initial={{ width: 14, height: 14, opacity: 0.55 }}
-              animate={{ width: 78, height: 78, opacity: 0 }}
-              transition={{ duration: 1.7, ease: 'easeOut' }}
-            />
+            {!coarse.current && (
+              <motion.span
+                className="absolute rounded-full blur-[4px]"
+                style={{ x: '-50%', y: '-50%', background: `radial-gradient(circle, ${r.color} 0%, transparent 72%)` }}
+                initial={{ width: 14, height: 14, opacity: 0.55 }}
+                animate={{ width: 78, height: 78, opacity: 0 }}
+                transition={{ duration: 1.7, ease: 'easeOut' }}
+              />
+            )}
             {/* 主涟漪细环：从容地荡开，长长的尾韵 */}
             <motion.span
               className="absolute rounded-full"
@@ -76,13 +82,15 @@ const ClickRipples = () => {
               transition={{ duration: 2.5, ease: [0.22, 0.61, 0.36, 1] }}
             />
             {/* 第二圈延迟扩散，水波荡开的余韵 */}
-            <motion.span
-              className="absolute rounded-full"
-              style={{ x: '-50%', y: '-50%', border: `1px solid ${r.color}` }}
-              initial={{ width: 6, height: 6, opacity: 0 }}
-              animate={{ width: 168, height: 168, opacity: [0, 0.32, 0] }}
-              transition={{ duration: 2.8, ease: [0.22, 0.61, 0.36, 1], delay: 0.35, times: [0, 0.25, 1] }}
-            />
+            {!coarse.current && (
+              <motion.span
+                className="absolute rounded-full"
+                style={{ x: '-50%', y: '-50%', border: `1px solid ${r.color}` }}
+                initial={{ width: 6, height: 6, opacity: 0 }}
+                animate={{ width: 168, height: 168, opacity: [0, 0.32, 0] }}
+                transition={{ duration: 2.8, ease: [0.22, 0.61, 0.36, 1], delay: 0.35, times: [0, 0.25, 1] }}
+              />
+            )}
           </span>
         ))}
       </AnimatePresence>
@@ -130,7 +138,7 @@ const Clock = () => {
 };
 
 const OasisHUD = ({ showClock, onClockTap }: { showClock: boolean; onClockTap?: () => void }) => (
-  <div className="pointer-events-none absolute inset-8 z-40 flex flex-col justify-between opacity-30 mix-blend-difference text-slate-400">
+  <div className="pointer-events-none absolute inset-5 md:inset-8 z-40 flex flex-col justify-between opacity-30 mix-blend-difference text-slate-400">
     <div className="flex justify-between items-start">
       <span className="font-mono text-xs leading-none">+</span>
       <div className="flex flex-col items-end gap-3">
@@ -199,7 +207,6 @@ const RippleBloom = ({ origin }: { origin: RippleOrigin }) => {
 
 function App() {
   const { isAdmin, isLoading, logout } = useAuth();
-  const { playBGM } = useSoundscape(); 
 
   const { route, navigate } = useHashRoute();
 
@@ -312,11 +319,11 @@ function App() {
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
-            className="absolute top-8 left-8 z-[100] flex flex-wrap items-center gap-3"
+            className="absolute top-5 left-5 md:top-8 md:left-8 z-[100] flex flex-wrap items-center gap-2 md:gap-3 max-w-[calc(100vw-7rem)]"
           >
             <button 
               onClick={cycleMode}
-              className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-4 py-2 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
+              className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-3 py-2 md:px-4 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
               title="AUTO 跟随时间自动调节日夜"
             >
               {themeMode === 'auto' ? `◐ AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? '☼ LIGHT' : '☽ DARK'}

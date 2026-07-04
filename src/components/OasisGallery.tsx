@@ -517,7 +517,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       </AnimatePresence>
 
       {/* 🖼️ 右侧基础内容画廊区 */}
-      <motion.div className="w-full h-full overflow-y-auto no-scrollbar pt-24 pb-32 px-8 lg:px-16 relative z-10 flex flex-col" animate={{ width: isEditing ? '100%' : '66.666%' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
+      <motion.div className="w-full h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col" animate={{ width: isEditing ? '100%' : '66.666%' }} transition={{ type: "spring", stiffness: 260, damping: 30 }}>
         <AnimatePresence mode="wait">
           {!isEditing ? (
             <motion.div key="gallery" className="w-full h-full flex flex-col" exit={{ opacity: 0 }}>
@@ -539,7 +539,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               <div className="mb-10">
                 {/* 🧭 目录线：居中类型筛选为主轴，两端安静收纳搜索 / 标签 / 管理动作，一条线承载全部控件 */}
-                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-24 flex items-center justify-center gap-x-6 gap-y-2 flex-wrap transition-colors duration-[1500ms]">
+                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 md:px-24 flex items-center justify-center gap-x-4 md:gap-x-6 gap-y-2.5 flex-wrap transition-colors duration-[1500ms]">
                   <button onClick={() => setSelectedType(null)} className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     All <span className="opacity-50 tracking-normal">{posts.length}</span>
                   </button>
@@ -555,8 +555,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     );
                   })}
 
-                  {/* 左端：搜索，点击展开输入 */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {/* 左端：搜索，点击展开输入（小屏随流排列，md+ 吸附左端） */}
+                  <div className="order-last md:order-none w-auto md:absolute md:left-0 md:top-1/2 md:-translate-y-1/2 flex items-center gap-2">
                     <button onClick={() => setSearchOpen(o => !o)} title="Search" className={`p-1 transition-colors ${searchOpen || searchQuery ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-[#39C5BB]'}`}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     </button>
@@ -571,8 +571,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     </AnimatePresence>
                   </div>
 
-                  {/* 右端：标签抽屉开关 + 管理动作，褪为纯文字 */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-4">
+                  {/* 右端：标签抽屉开关 + 管理动作（小屏随流排列，md+ 吸附右端） */}
+                  <div className="order-last md:order-none md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2 flex items-center gap-4">
                     {allTags.length > 0 && (
                       <button onClick={() => setShowTags(v => !v)} className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showTags || selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># Tags</button>
                     )}
@@ -634,7 +634,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                 </div>
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
-                              <div className="p-8">
+                              <div className="p-6 md:p-8">
                                 <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span></div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
@@ -688,7 +688,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        {!t.builtin && (
                          <span role="button" title={`删除分类「${t.zh}」`}
                            onClick={(e) => { e.stopPropagation(); if (window.confirm(`删除分类「${t.zh}」？已有文章会保留，仅失去分类样式。`)) { removeCategory(t.id); if (editType === t.id) setEditType('thought'); } }}
-                           className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-400/90 dark:bg-slate-600 text-white text-[9px] leading-4 text-center opacity-0 group-hover/cat:opacity-100 transition-opacity hover:bg-red-400">×</span>
+                           className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-400/90 dark:bg-slate-600 text-white text-[9px] leading-4 text-center opacity-100 md:opacity-0 md:group-hover/cat:opacity-100 transition-opacity hover:bg-red-400">×</span>
                        )}
                      </button>
                    );
@@ -801,7 +801,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      <span>{editContent.length} chars</span>
                      <span>· {readingMinutes(editContent)} min read</span>
                      {draftSavedAt && <span className="text-[#39C5BB]/60 normal-case">· 草稿已存 {new Date(draftSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
-                     <span className="ml-auto normal-case">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · Tab 缩进</span>
+                     <span className="ml-auto normal-case hidden md:inline">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · Tab 缩进</span>
                    </div>
                  </>
                )}
@@ -835,7 +835,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px] dark:opacity-10 transition-opacity duration-[1500ms] ease-in-out" style={{ backgroundColor: activePost.color }} transition={{ duration: 1 }} />
               </div>
 
-              <div className="relative w-full max-w-3xl px-8 md:px-12 pt-24 pb-64">
+              <div className="relative w-full max-w-3xl px-6 md:px-12 pt-20 md:pt-24 pb-64">
                 
                 <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
                   <button onClick={() => activePost && sharePost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-oasis-teal transition-colors">{shareCopied ? '链接已摘下 ✓' : 'Share'}</button>
@@ -851,7 +851,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(activePost.content)}</span>
                 </div>
                 
-                <h1 className="font-serif text-4xl md:text-5xl text-slate-800 dark:text-slate-100 leading-[1.3] mb-8 transition-colors duration-[1500ms] ease-in-out">{activePost.title}</h1>
+                <h1 className="font-serif text-3xl md:text-5xl text-slate-800 dark:text-slate-100 leading-[1.3] mb-8 transition-colors duration-[1500ms] ease-in-out">{activePost.title}</h1>
                 
                 <div className="flex space-x-4 mb-16">
                   {activePost.tags.map(tag => <span key={tag} className="font-mono text-[10px] tracking-widest text-slate-500 dark:text-slate-400 uppercase border-b border-slate-300 dark:border-white/10 pb-1 transition-colors duration-[1500ms]">{tag}</span>)}
@@ -912,7 +912,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                         {/* Admin 动作面板 */}
                         {isAdmin && (
-                          <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-3 bg-white/80 dark:bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/50 dark:border-white/10">
+                          <div className="absolute top-5 right-5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-3 bg-white/80 dark:bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/50 dark:border-white/10">
                             <button onClick={() => setReplyingToId(replyingToId === res.id ? null : res.id)} className="font-mono text-[9px] tracking-widest uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">Echo</button>
                             <button onClick={() => purifyResonance(res.id)} className="font-mono text-[9px] tracking-widest uppercase text-red-400 hover:text-red-500 transition-colors">Purify</button>
                           </div>
@@ -943,7 +943,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
             {/* 底部悬浮输入激活胶囊 */}
             <motion.div 
-              className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90vw] max-w-2xl z-[150]"
+              className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 w-[92vw] max-w-2xl z-[150]"
               initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
               transition={{ delay: 0.8, duration: 0.6, type: "spring", stiffness: 200, damping: 25 }}
             >
@@ -982,7 +982,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-[90vw] max-w-md max-h-[88vh] overflow-y-auto no-scrollbar bg-white/80 dark:bg-[#111827]/90 backdrop-blur-3xl border border-white/50 dark:border-white/10 p-10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col transition-colors duration-1000"
+              className="relative w-[92vw] max-w-md max-h-[88vh] overflow-y-auto no-scrollbar bg-white/80 dark:bg-[#111827]/90 backdrop-blur-3xl border border-white/50 dark:border-white/10 p-7 md:p-10 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col transition-colors duration-1000"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#39C5BB] rounded-full blur-[80px] opacity-30 dark:opacity-20 pointer-events-none transition-opacity duration-1000" />
               <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-[#FFB7C5] rounded-full blur-[80px] opacity-30 dark:opacity-20 pointer-events-none transition-opacity duration-1000" />

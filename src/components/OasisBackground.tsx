@@ -225,7 +225,8 @@ export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark 
     }
 
     // 🌸 数量随视口面积自适应：小屏不挤，大屏不空
-    const particleCount = Math.min(85, Math.max(42, Math.round((canvas.width * canvas.height) / 26000)));
+    // 下限 20：手机小视口按面积算只有十几颗，旧下限 42 反而让小屏画得比例最重
+    const particleCount = Math.min(85, Math.max(20, Math.round((canvas.width * canvas.height) / 26000)));
     const particles: Particle[] = [];
     for (let i = 0; i < particleCount; i++) particles.push(new Particle(true));
 

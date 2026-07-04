@@ -250,7 +250,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
       {/* 🌌 星图画布（等比）：滚轮缩放、空白处拖拽平移 */}
       <div
         ref={stageRef}
-        className="relative w-full max-w-[1180px] aspect-[1000/760] mx-auto touch-none select-none"
+        className="relative w-full max-w-[1180px] h-[62vh] md:h-auto md:aspect-[1000/760] mx-auto touch-none select-none"
         style={{ cursor: dragRef.current ? 'grabbing' : posts.length ? 'grab' : 'default' }}
         onWheel={posts.length ? onWheel : undefined}
         onPointerDown={posts.length ? onPointerDown : undefined}
@@ -445,7 +445,12 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
               </motion.button>
             )}
           </AnimatePresence>
-          {!activeTag && <span className="select-none">click a topic · scroll to zoom · drag to pan</span>}
+          {!activeTag && (
+            <span className="select-none">
+              <span className="hidden md:inline">click a topic · scroll to zoom · drag to pan</span>
+              <span className="md:hidden">tap a star · drag to pan</span>
+            </span>
+          )}
         </div>
       )}
 
@@ -467,14 +472,14 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
 
       {/* 🔭 缩放控制：放大 / 缩小 / 复位 */}
       {posts.length > 0 && (
-        <div className="absolute bottom-28 right-8 z-30 flex flex-col items-center gap-1.5 font-mono text-slate-400 dark:text-slate-500">
-          <button onClick={() => setView(v => ({ ...v, scale: Math.min(3.5, v.scale * 1.2) }))} className="w-8 h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">＋</button>
-          <button onClick={() => setView(v => ({ ...v, scale: Math.max(0.6, v.scale / 1.2) }))} className="w-8 h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">－</button>
+        <div className="absolute bottom-28 right-4 md:right-8 z-30 flex flex-col items-center gap-1.5 font-mono text-slate-400 dark:text-slate-500">
+          <button onClick={() => setView(v => ({ ...v, scale: Math.min(3.5, v.scale * 1.2) }))} className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">＋</button>
+          <button onClick={() => setView(v => ({ ...v, scale: Math.max(0.6, v.scale / 1.2) }))} className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">－</button>
           <AnimatePresence>
             {(view.scale !== 1 || view.x !== 0 || view.y !== 0) && (
               <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
                 onClick={resetView} title="复位视图"
-                className="w-8 h-8 rounded-full border border-slate-300/50 dark:border-white/10 text-[10px] hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">↺</motion.button>
+                className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 text-[10px] hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">↺</motion.button>
             )}
           </AnimatePresence>
         </div>
@@ -498,7 +503,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
             >
               <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px] opacity-30 dark:opacity-20 pointer-events-none" style={{ backgroundColor: activePost.color }} />
 
-              <header className="relative px-8 md:px-14 pt-12 pb-6 shrink-0">
+              <header className="relative px-6 md:px-14 pt-10 md:pt-12 pb-6 shrink-0">
                 <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 mb-6">
                   <span className="flex items-center gap-3">
                     <span style={{ color: activePost.color }}>{activePost.date}</span>
@@ -526,7 +531,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                 )}
               </header>
 
-              <div className="relative flex-1 overflow-y-auto px-8 md:px-14 pb-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="relative flex-1 overflow-y-auto px-6 md:px-14 pb-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Markdown>{activePost.content}</Markdown>
               </div>
             </motion.article>

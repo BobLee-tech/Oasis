@@ -7,51 +7,60 @@ import type { MusicCategory, Track } from '../types/music';
 // 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
 // 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
 const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number; active?: boolean }> = ({ color, isPlaying, bars = 11, active = true }) => {
-  const [levels, setLevels] = useState<number[]>(() => new Array(bars).fill(0));
+  const barsRef = useRef<HTMLDivElement>(null);
+  const playingRef = useRef(isPlaying);
+  playingRef.current = isPlaying;
 
   // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
   // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
   // 对称布局：低频置于正中央、向两侧镜像生长，能量「从中间开始」而非自左铺开。
+  // ⚡ 直接用 ref 写 DOM 样式：每帧 setState 会让 React 重渲染整排声条，移动端掉帧明显。
   useEffect(() => {
     if (!active) return; // 视图非激活（含切换退场期间）时停转，避免高频刷新争用主线程
     let raf = 0;
     const half = Math.ceil(bars / 2);
     const center = (bars - 1) / 2;
     const tick = () => {
-      const spec = getSpectrum(half);            // 低→高
-      const mirrored = new Array(bars);
-      for (let i = 0; i < bars; i++) {
-        const d = Math.round(Math.abs(i - center)); // 到中心的距离 → 频段（中心=低频）
-        mirrored[i] = spec[Math.min(half - 1, d)];
+      const container = barsRef.current;
+      if (container) {
+        const spec = getSpectrum(half);            // 低→高
+        const playing = playingRef.current;
+        const children = container.children;
+        for (let i = 0; i < children.length; i++) {
+          const d = Math.round(Math.abs(i - center)); // 到中心的距离 → 频段（中心=低频）
+          const lv = spec[Math.min(half - 1, d)];
+          const e = Math.pow(lv, 0.72); // 更大的动态范围，弱信号也清晰可辨
+          const el = children[i] as HTMLElement;
+          el.style.height = `${3 + e * 97}%`;
+          el.style.opacity = `${playing ? 0.22 + e * 0.78 : 0.16}`;
+          el.style.boxShadow = e > 0.55 ? `0 0 ${5 + e * 8}px ${color}` : 'none';
+        }
       }
-      setLevels(mirrored);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [bars, active]);
+  }, [bars, active, color]);
 
   // 镜像波形：声条以中线为基准上下对称生长，比单边触底更具音乐性与美感
   return (
-    <div className="relative flex items-center justify-center gap-[2px] h-16 w-full">
+    <div className="relative flex items-center justify-center h-16 w-full">
       {/* 静息中线，暂停时声条柔和落回这条线 */}
       <span className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-current to-transparent opacity-10 pointer-events-none" style={{ color }} />
-      {levels.map((lv, i) => {
-        const e = Math.pow(lv, 0.72); // 更大的动态范围，弱信号也清晰可辨
-        return (
+      <div ref={barsRef} className="flex items-center justify-center gap-[2px] h-full w-full">
+        {Array.from({ length: bars }, (_, i) => (
           <span
             key={i}
             className="w-[2px] rounded-full flex-shrink-0"
             style={{
-              height: `${3 + e * 97}%`,
+              height: '3%',
               backgroundColor: color,
-              opacity: isPlaying ? 0.22 + e * 0.78 : 0.16,
-              boxShadow: e > 0.55 ? `0 0 ${5 + e * 8}px ${color}` : 'none',
+              opacity: 0.16,
               transition: 'height 90ms cubic-bezier(0.22,0.61,0.36,1), opacity 200ms linear, box-shadow 200ms linear',
             }}
           />
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 };
@@ -182,7 +191,7 @@ const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean
   return (
     <h2
       ref={ref}
-      className="text-[2.6rem] md:text-6xl font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance transition-colors duration-[1500ms]"
+      className="text-[2rem] sm:text-[2.6rem] md:text-6xl font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance transition-colors duration-[1500ms]"
     >
       {title}
     </h2>
@@ -233,6 +242,8 @@ export const OasisResonance: React.FC = () => {
   // 🎚️ 视图是否「在场」：切换离场时（AnimatePresence 退场期间）useIsPresent 立即转 false，
   //    据此关停所有高频 rAF 视觉，避免退场动画与新视图挂载争用主线程/GPU，消除切换卡顿。
   const active = useIsPresent();
+  // 🖥️ 大屏才启用最重的氛围视觉（挂载时判定一次即可，旋转/拉伸窗口属边缘场景）
+  const isDesktop = useRef(typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches).current;
   const { currentTrack, isPlaying, playMode, currentTime, duration, volume, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, changeVolume, playlist } = useSoundscape();
   const [activeCategory, setActiveCategory] = useState<MusicCategory>('All Tracks');
 
@@ -308,7 +319,7 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div
-      className="relative w-full max-w-[1680px] mx-auto min-h-[85vh] lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-24 lg:pb-28 pl-6 pr-6 md:pl-14 md:pr-20 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
+      className="relative w-full max-w-[1680px] mx-auto h-full max-h-full overflow-y-auto no-scrollbar lg:overflow-visible lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-28 lg:pb-28 px-6 md:px-14 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
         Resonance Chamber
@@ -320,8 +331,8 @@ export const OasisResonance: React.FC = () => {
         {/* ================= 左侧 (7/12)：拟真转盘唱机（主角） ================= */}
         <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center relative h-full min-h-0">
 
-          {/* 超大环境光晕：随声波能量呼吸 */}
-          <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} active={active} />
+          {/* 超大环境光晕：随声波能量呼吸。blur-[100px] 超大模糊层对手机 GPU 过重，仅桌面栏式布局启用 */}
+          {isDesktop && <AmbientGlow color={currentTrack.color} isPlaying={isPlaying} active={active} />}
 
           {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
           <div className="relative w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] transition-colors duration-[1500ms]">
@@ -424,22 +435,22 @@ export const OasisResonance: React.FC = () => {
               <span className="font-mono text-[10px] tabular-nums text-slate-500 dark:text-slate-400 w-9 text-right transition-colors duration-[1500ms]">
                 {formatTime(currentTime)}
               </span>
-              <div className="relative flex-1 group/seek h-4 flex items-center">
-                <div className="absolute inset-x-0 h-[3px] group-hover/seek:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
+              <div className="relative flex-1 group/seek h-6 md:h-4 flex items-center">
+                <div className="absolute inset-x-0 h-[4px] md:h-[3px] group-hover/seek:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
                   <div className="h-full rounded-full transition-colors duration-[1500ms] relative" style={{ width: `${progress}%`, backgroundColor: currentTrack.color, boxShadow: `0 0 10px ${currentTrack.color}90` }}>
                     {/* 进度末端流动微光，增强律动感 */}
                     <span className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-full bg-gradient-to-r from-transparent to-white/40 mix-blend-overlay" />
                   </div>
                 </div>
                 <div
-                  className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-0 group-hover/seek:opacity-100 transition-opacity pointer-events-none ring-2"
+                  className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-100 md:opacity-0 group-hover/seek:opacity-100 transition-opacity pointer-events-none ring-2"
                   style={{ left: `${progress}%`, ['--tw-ring-color' as string]: currentTrack.color }}
                 />
                 <input
                   type="range" min={0} max={duration || 0} step={0.1} value={currentTime}
                   onChange={(e) => seek(Number(e.target.value))}
                   aria-label="播放进度"
-                  className="absolute inset-x-0 w-full h-4 appearance-none bg-transparent cursor-pointer opacity-0"
+                  className="absolute inset-x-0 w-full h-6 md:h-4 appearance-none bg-transparent cursor-pointer opacity-0"
                 />
               </div>
               <span className="font-mono text-[10px] tabular-nums text-slate-500 dark:text-slate-400 w-9 transition-colors duration-[1500ms]">
@@ -489,19 +500,19 @@ export const OasisResonance: React.FC = () => {
                   )}
                 </svg>
               </button>
-              <div className="relative flex-1 group/vol h-4 flex items-center">
-                <div className="absolute inset-x-0 h-[3px] group-hover/vol:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
+              <div className="relative flex-1 group/vol h-6 md:h-4 flex items-center">
+                <div className="absolute inset-x-0 h-[4px] md:h-[3px] group-hover/vol:h-[5px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden transition-all duration-300">
                   <div className="h-full rounded-full transition-colors duration-[1500ms]" style={{ width: `${volume * 100}%`, backgroundColor: currentTrack.color }} />
                 </div>
                 <div
-                  className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-0 group-hover/vol:opacity-100 transition-opacity pointer-events-none ring-2"
+                  className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 opacity-100 md:opacity-0 group-hover/vol:opacity-100 transition-opacity pointer-events-none ring-2"
                   style={{ left: `${volume * 100}%`, ['--tw-ring-color' as string]: currentTrack.color }}
                 />
                 <input
                   type="range" min={0} max={1} step={0.01} value={volume}
                   onChange={(e) => changeVolume(Number(e.target.value))}
                   aria-label="音量"
-                  className="absolute inset-x-0 w-full h-4 appearance-none bg-transparent cursor-pointer opacity-0"
+                  className="absolute inset-x-0 w-full h-6 md:h-4 appearance-none bg-transparent cursor-pointer opacity-0"
                 />
               </div>
               <span className="font-mono text-[9px] tabular-nums text-slate-400 dark:text-slate-500 w-7 text-right select-none">{Math.round(volume * 100)}</span>
@@ -558,7 +569,7 @@ export const OasisResonance: React.FC = () => {
           </div>
 
           {/* 分类栏（居中） */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mt-9 mb-7 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-4">
+          <div className="flex flex-wrap justify-center gap-x-5 md:gap-x-8 gap-y-2 mt-9 mb-7 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-4">
             {CATEGORIES.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`relative flex items-baseline gap-1.5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-700 outline-none pb-2 ${activeCategory === cat.id ? 'text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {cat.label}
