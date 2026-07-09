@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
@@ -9,15 +9,19 @@ import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
 import { NIGHT_REMINDERS } from './data/quotes';
+import { useCoarsePointer } from './hooks/useCoarsePointer';
 
-import { OasisOrchard } from './components/OasisOrchard';
-import { OasisGallery } from './components/OasisGallery';
-import { OasisResonance } from './components/OasisResonance';
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
-import { OasisLights } from './components/OasisLights';
-import { OasisDock } from './components/OasisDock'; 
+import { OasisDock } from './components/OasisDock';
+
+// 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
+//    markdown/highlight.js/图表等重依赖）按需拆包，切换时才拉取，减轻首屏体积。
+const OasisOrchard = lazy(() => import('./components/OasisOrchard').then(m => ({ default: m.OasisOrchard })));
+const OasisGallery = lazy(() => import('./components/OasisGallery').then(m => ({ default: m.OasisGallery })));
+const OasisResonance = lazy(() => import('./components/OasisResonance').then(m => ({ default: m.OasisResonance })));
+const OasisLights = lazy(() => import('./components/OasisLights').then(m => ({ default: m.OasisLights })));
 
 import type { BgPhase, AppView } from './types/auth';
 
@@ -37,7 +41,7 @@ type Ripple = { id: number; x: number; y: number; color: string };
 const ClickRipples = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
   // 触屏设备走轻量版：只保留主涟漪细环，去掉模糊柔光与余韵二环，滑动/点按不掉帧
-  const coarse = useRef(typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches);
+  const coarse = useCoarsePointer();
 
   useEffect(() => {
     // 与界面主色调呼应的柔和色板：初音绿 / 樱粉 / 月白
@@ -64,7 +68,7 @@ const ClickRipples = () => {
         {ripples.map(r => (
           <span key={r.id} className="absolute" style={{ left: r.x, top: r.y }}>
             {/* 落点的一点柔光，像水珠触面后缓缓晕开 */}
-            {!coarse.current && (
+            {!coarse && (
               <motion.span
                 className="absolute rounded-full blur-[4px]"
                 style={{ x: '-50%', y: '-50%', background: `radial-gradient(circle, ${r.color} 0%, transparent 72%)` }}
@@ -82,7 +86,7 @@ const ClickRipples = () => {
               transition={{ duration: 2.5, ease: [0.22, 0.61, 0.36, 1] }}
             />
             {/* 第二圈延迟扩散，水波荡开的余韵 */}
-            {!coarse.current && (
+            {!coarse && (
               <motion.span
                 className="absolute rounded-full"
                 style={{ x: '-50%', y: '-50%', border: `1px solid ${r.color}` }}
@@ -224,6 +228,9 @@ function App() {
 
   // 🫧 涟漪转场：记录每次切换的落点（被点击的 Dock 图标中心），并用自增 key 触发一道扩散水波。
   const prefersReducedMotion = useReducedMotion();
+  // 📱 触屏：场所切换改「先退场再入场」而非交叉重叠，避免两个重量级视图（各自的 rAF/订阅）
+  // 同时挂载争抢主线程，这是移动端切换卡顿的主因；水波转场也一并关闭，减少额外合成层。
+  const coarse = useCoarsePointer();
   const [revealOrigin, setRevealOrigin] = useState<RippleOrigin>({
     x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
     y: typeof window !== 'undefined' ? window.innerHeight * 0.92 : 0,
@@ -363,20 +370,22 @@ function App() {
             <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.9, ease: [0.32, 0.72, 0, 1] } }} exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.9, 0.2] } }}>
               {/* 🌫️ 交叉溶解：新旧界面同时在场、同步淡入淡出，无空档不闪白 */}
               {(() => {
-                const reduce = !!prefersReducedMotion;
+                const reduce = !!prefersReducedMotion || coarse;
                 const wrap = (key: string, node: ReactNode) => (
                   <ViewLayer key={key} reduce={reduce}>{node}</ViewLayer>
                 );
                 return (
-                  <AnimatePresence>
-                    {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
-                    {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
-                    {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
-                    {appView === 'lights' && wrap('lights-space', <OasisLights />)}
-                  </AnimatePresence>
+                  <Suspense fallback={null}>
+                    <AnimatePresence mode={coarse ? 'wait' : 'sync'}>
+                      {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
+                      {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
+                      {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
+                      {appView === 'lights' && wrap('lights-space', <OasisLights />)}
+                    </AnimatePresence>
+                  </Suspense>
                 );
               })()}
-              {!prefersReducedMotion && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
+              {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
               <OasisDock currentView={appView} onViewChange={handleViewChange} isAdmin={effectiveIsAdmin} />
             </motion.div>
           )}

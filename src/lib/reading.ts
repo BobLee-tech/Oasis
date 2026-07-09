@@ -55,3 +55,20 @@ export const extractToc = (markdown: string): TocItem[] => {
   }
   return items;
 };
+
+// 📍 阅读进度记忆：按文章 id 记住滚动百分比，回访时可续读。
+//   只存百分比 + 时间戳，足够轻量；接近读完（≥92%）视为已读完，不再提示续读。
+const PROGRESS_KEY = 'oasis_read_progress';
+interface ProgressEntry { pct: number; updatedAt: number; }
+const readProgressStore = (): Record<string, ProgressEntry> => {
+  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}'); } catch { return {}; }
+};
+export const getReadProgress = (id: string): number => readProgressStore()[id]?.pct ?? 0;
+export const setReadProgress = (id: string, pct: number) => {
+  try {
+    const store = readProgressStore();
+    if (pct <= 0.02) { delete store[id]; }
+    else store[id] = { pct: Math.min(1, pct), updatedAt: Date.now() };
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(store));
+  } catch { /* ignore */ }
+};

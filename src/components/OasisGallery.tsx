@@ -7,11 +7,12 @@ import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories'
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
-import { readingTimeLabel, readingMinutes, extractToc } from '../lib/reading';
+import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, setReadProgress } from '../lib/reading';
 import { ReaderProgress, ReaderToc, Lightbox } from './OasisReader';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { DAILY_QUOTES } from '../data/quotes';
+import { useCoarsePointer } from '../hooks/useCoarsePointer';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 
@@ -30,19 +31,36 @@ const loadCustomTemplates = (): Record<string, string> => {
   try { return JSON.parse(localStorage.getItem(TEMPLATE_STORE_KEY) || '{}'); } catch { return {}; }
 };
 
-// 💾 写作草稿：编辑中自动落盘，误触关闭 / 刷新都不会丢字
-const DRAFT_KEY = 'oasis_editor_draft';
+// 💾 写作草稿：按文章分 key 落盘（新文章用 __new__），编辑 A 途中切去编辑 B 也不会互相覆盖；
+//    误触关闭 / 刷新都不会丢字。
+const DRAFT_STORE_KEY = 'oasis_editor_drafts';
 interface EditorDraft {
   editingId: string | null;
   title: string; tags: string[]; content: string; color: string; type: string;
   series?: string;
   savedAt: number;
 }
-const readDraft = (): EditorDraft | null => {
+const draftKeyOf = (editingId: string | null) => editingId ?? '__new__';
+const readDraftStore = (): Record<string, EditorDraft> => {
+  try { return JSON.parse(localStorage.getItem(DRAFT_STORE_KEY) || '{}'); } catch { return {}; }
+};
+const readDraft = (editingId: string | null): EditorDraft | null => {
+  const d = readDraftStore()[draftKeyOf(editingId)];
+  return d && typeof d.content === 'string' ? d : null;
+};
+const writeDraft = (draft: EditorDraft) => {
   try {
-    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-    return d && typeof d.content === 'string' ? d : null;
-  } catch { return null; }
+    const store = readDraftStore();
+    store[draftKeyOf(draft.editingId)] = draft;
+    localStorage.setItem(DRAFT_STORE_KEY, JSON.stringify(store));
+  } catch { /* 容量/隐私模式失败可忽略 */ }
+};
+const removeDraft = (editingId: string | null) => {
+  try {
+    const store = readDraftStore();
+    delete store[draftKeyOf(editingId)];
+    localStorage.setItem(DRAFT_STORE_KEY, JSON.stringify(store));
+  } catch { /* ignore */ }
 };
 
 interface OasisGalleryProps { isAdmin: boolean; }
@@ -52,6 +70,9 @@ const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const DiscIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 animate-[spin_4s_linear_infinite]"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>);
 
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
+  // 📱 触屏：卡片列表去掉逐张 backdrop-filter 模糊——滚动时每张卡都是独立合成层，
+  // 数量一多手机 GPU 明显吃力；改实色半透明背景，观感不减，滚动更顺。
+  const coarse = useCoarsePointer();
   const { posts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
   // ☁️ 本地 → 云端一键迁移状态：idle / syncing / 结果文案
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
@@ -70,6 +91,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }
   };
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
+  // 供异步回调（图片加载完成后再定位续读位置）判断当前是否已经切走文章，避免过期跳转
+  const activePostRef = useRef(activePost);
+  activePostRef.current = activePost;
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -229,11 +253,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     const timer = setTimeout(() => {
       if (!editContent.trim() && !editTitle.trim()) return;
       const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, savedAt: Date.now() };
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); setDraftSavedAt(draft.savedAt); } catch { /* ignore */ }
+      writeDraft(draft); setDraftSavedAt(draft.savedAt);
     }, 800);
     return () => clearTimeout(timer);
   }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries]);
-  const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setDraftSavedAt(null); setDraftMsg(''); };
+  const clearDraft = () => { removeDraft(editingId); setDraftSavedAt(null); setDraftMsg(''); };
 
   // 📑 写作大纲：从正文实时提取 h2/h3，点击滚动到对应位置（按字符占比近似定位）
   const editorToc = useMemo(() => extractToc(editContent), [editContent]);
@@ -341,11 +365,88 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const dailyQuote = useMemo(() => quotePool[dailyIndex % quotePool.length], [dailyIndex, quotePool]);
   const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
 
+  // 上一篇文章 id：切走 / 关闭阅读舱前，把它停留的滚动位置存一笔最终进度，
+  // 否则 400ms 防抖若还没触发就切走，最后一段阅读不会被记住。
+  const prevPostIdRef = useRef<string | null>(null);
+  // 续读定位尚未完成时（回顶 → 等图片 → 跳转这段过程）暂停自动保存，
+  // 否则回顶触发的 scroll 事件会在跳转完成前把刚读出的进度以 0 覆盖掉。
+  const restoringRef = useRef(false);
+  // StrictMode 开发模式下会对本 effect 重复调用一次：第二次重复调用发生时 scrollTop
+  // 已被第一次调用重置为 0，若不去重会把刚读到的进度当作「离开时的最终位置」错误覆盖为 0。
+  // 用「上次真正处理过的 id」做幂等 guard，同一 id 的重复调用直接跳过。
+  const processedIdRef = useRef<string | null | undefined>(undefined);
+  // 📍 阅读进度防抖保存计时器：声明提到切篇 effect 之前，供其在切篇 / 关闭时抢先清掉
+  const progressSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 世代计数器：每次真正切篇 +1。程序化回顶 / 跳转过程会引出若干「迟到」的滚动事件，
+  // 它们各自排出的防抖保存即便没被 clearTimeout 逮到，触发时也会因世代号对不上而作废——
+  // 比逐个排查「这次 scroll 事件到底是谁触发的」更可靠。
+  const saveGenRef = useRef(0);
   useEffect(() => {
+    const newId = activePost?.id ?? null;
+    if (processedIdRef.current === newId) return;
+    processedIdRef.current = newId;
+    saveGenRef.current += 1;
     setResContent(''); setResAuthor(''); setIsResFocused(false); setReplyingToId(null); setReplyInput('');
-    // 切换篇目回到顶部：否则从「下一篇」进来会停在上一篇的滚动位置，进度环也会被瞬间误判读完
-    readerRef.current?.scrollTo({ top: 0 });
+    // 换篇 / 关闭前先取消上一篇可能还挂着的防抖保存计时器（双保险，世代号才是最终防线）
+    if (progressSaveTimer.current) { clearTimeout(progressSaveTimer.current); progressSaveTimer.current = null; }
+    const el = readerRef.current;
+    if (prevPostIdRef.current && el) {
+      const max = el.scrollHeight - el.clientHeight;
+      setReadProgress(prevPostIdRef.current, max > 1 ? el.scrollTop / max : 0);
+    }
+    prevPostIdRef.current = activePost?.id ?? null;
+    // 打开新篇目：默认回到顶部，否则从「下一篇」进来会停在上一篇的滚动位置；
+    // 若有未读完的续读进度（2%~92% 之间），改为在布局落定后跳到对应位置。
+    // ⚠️ 关闭阅读舱（activePost 变 null）时不要再归零：此刻 AnimatePresence 仍在播放
+    // 退出动画、DOM 节点还没卸载，归零会触发一次多余的 scroll 事件，把上面刚存好的
+    // 退出进度覆盖回 0。
+    if (activePost) {
+      readerRef.current?.scrollTo({ top: 0 });
+      const pct = getReadProgress(activePost.id);
+      if (pct > 0.02 && pct < 0.92) {
+        const postId = activePost.id;
+        restoringRef.current = true;
+        // 正文里的图片是异步加载的，此刻 scrollHeight 可能还没到最终高度，
+        // 按半成品高度算出的位置会偏低。等图片都加载完（或 1.2s 超时兜底）再跳转。
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const el = readerRef.current;
+          if (!el || activePostRef.current?.id !== postId) { restoringRef.current = false; return; }
+          const imgs = Array.from(el.querySelectorAll('img')).filter(img => !img.complete);
+          const jump = () => {
+            const target = readerRef.current;
+            if (target && activePostRef.current?.id === postId) {
+              target.scrollTo({ top: pct * (target.scrollHeight - target.clientHeight) });
+            }
+            restoringRef.current = false;
+          };
+          if (imgs.length === 0) { jump(); return; }
+          let settled = false;
+          const done = () => { if (!settled) { settled = true; jump(); } };
+          const timeout = setTimeout(done, 1200);
+          Promise.all(imgs.map(img => new Promise<void>(res => {
+            img.addEventListener('load', () => res(), { once: true });
+            img.addEventListener('error', () => res(), { once: true });
+          }))).then(() => { clearTimeout(timeout); done(); });
+        }));
+      }
+    }
   }, [activePost?.id]);
+
+  // 📍 阅读进度持久化：滚动时防抖记录百分比，供列表「续读」标记与下次自动跳转使用
+  const handleReaderScroll = () => {
+    const post = activePost;
+    const el = readerRef.current;
+    if (!post || !el || restoringRef.current) return;
+    const gen = saveGenRef.current;
+    if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current);
+    progressSaveTimer.current = setTimeout(() => {
+      // 排出计时器期间若已切篇 / 关闭（世代号变了），这笔保存就是迟到的，作废
+      if (restoringRef.current || gen !== saveGenRef.current) return;
+      const max = el.scrollHeight - el.clientHeight;
+      const pct = max > 1 ? el.scrollTop / max : 0;
+      setReadProgress(post.id, pct);
+    }, 400);
+  };
 
   const allTags = useMemo(() => {
     const tags = new Set<string>(); posts.forEach(p => p.tags.forEach(t => tags.add(t))); return Array.from(tags).sort();
@@ -429,8 +530,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   };
 
   const startEditingPost = (post: BlogPost) => {
-    const draft = readDraft();
-    if (draft && draft.editingId === post.id && draft.content !== post.content) {
+    const draft = readDraft(post.id);
+    if (draft && draft.content !== post.content) {
       restoreDraft(draft);
     } else {
       setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type); setEditSeries(post.series ?? '');
@@ -440,8 +541,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   };
 
   const startNewPost = () => {
-    const draft = readDraft();
-    if (draft && !draft.editingId && draft.content.trim() && !categories.some(c => draft.content === getTemplate(c.id))) {
+    const draft = readDraft(null);
+    if (draft && draft.content.trim() && !categories.some(c => draft.content === getTemplate(c.id))) {
       restoreDraft(draft);
     } else {
       const initialType = selectedType ?? 'thought';
@@ -559,8 +660,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               <div className="mb-10">
                 {/* 🧭 目录线：居中类型筛选为主轴，两端安静收纳搜索 / 标签 / 管理动作，一条线承载全部控件 */}
-                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 xl:px-56 flex items-center justify-center gap-x-4 md:gap-x-6 gap-y-2.5 flex-wrap transition-colors duration-[1500ms]">
-                  <button onClick={() => setSelectedType(null)} className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 xl:px-56 flex flex-col md:flex-row items-center justify-center gap-x-4 md:gap-x-6 gap-y-3 md:gap-y-2.5 md:flex-wrap transition-colors duration-[1500ms]">
+                  {/* 分类：移动端单行横滚，避免换行拥挤；md+ 恢复居中换行原样 */}
+                  <div className="flex items-center gap-x-4 md:gap-x-6 w-full overflow-x-auto no-scrollbar md:w-auto md:contents">
+                  <button onClick={() => setSelectedType(null)} className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     All <span className="opacity-50 tracking-normal">{posts.length}</span>
                   </button>
                   {categories.filter(t => t.builtin || (typeCounts[t.id] || 0) > 0).map(t => {
@@ -568,13 +671,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     const count = typeCounts[t.id] || 0;
                     return (
                       <button key={t.id} onClick={() => setSelectedType(active ? null : t.id)} title={t.zh}
-                        className={`font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${active ? '' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                        className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${active ? '' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
                         style={active ? { color: t.color, borderColor: t.color } : undefined}>
                         {t.label} <span className="opacity-50 tracking-normal">{count}</span>
                       </button>
                     );
                   })}
+                  </div>
 
+                  {/* 搜索 + 右侧动作：移动端收作独立一行，两端对齐；md+ 各自归位到目录线两端 */}
+                  <div className="flex items-center justify-between w-full md:contents">
                   {/* 左端：搜索，点击展开输入（小中屏随流排列，xl+ 吸附左端） */}
                   <div className="order-last xl:order-none w-auto xl:absolute xl:left-0 xl:top-1/2 xl:-translate-y-1/2 flex items-center gap-2">
                     <button onClick={() => setSearchOpen(o => !o)} title="Search" className={`p-1 transition-colors ${searchOpen || searchQuery ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-[#39C5BB]'}`}>
@@ -605,6 +711,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         <button onClick={startNewPost} className="font-mono text-[10px] tracking-[0.18em] uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">+ Seed</button>
                       </>
                     )}
+                  </div>
                   </div>
 
                   {/* 同步结果轻提示 */}
@@ -656,9 +763,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                       <div className="columns-1 xl:columns-2 gap-8 space-y-8">
                         {group.posts.map((post) => {
                           const meta = metaOf(post.type);
+                          // 📍 续读进度：2%~92% 之间视为「读到一半」，读完或未读都不打扰
+                          const progress = getReadProgress(post.id);
+                          const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
-                            <motion.div key={post.id} className="break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border border-white/40 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:dark:bg-white/[0.08] transition-colors duration-[1500ms] ease-in-out" style={{ backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08] transition-colors duration-[1500ms] ease-in-out ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
@@ -672,10 +782,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
                               <div className="p-6 md:p-8">
-                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}</div>
+                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal" style={{ color: post.color }}>续读 {Math.round(progress * 100)}%</span></>}</div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
+                              {isOngoing && <div className="absolute bottom-0 left-0 h-[2px] transition-all duration-700" style={{ width: `${progress * 100}%`, backgroundColor: post.color }} />}
                             </motion.div>
                           );
                         })}
@@ -890,14 +1001,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         )}
       </AnimatePresence>, document.body)}
 
-      {/* 📖 沉浸式全屏独立阅读舱 */}
-      <AnimatePresence>
+      {/* 📖 沉浸式全屏独立阅读舱：portal 到 body 跳出视图层的 stacking context——
+          否则被 App 顶层 HUD（时钟/日夜按钮，其 z-index 相对 body 计算）叠在文章标题上，
+          移动端最先露馅（续读定位一滚动到中段就撞见）。手法与写作书房 portal 一致。 */}
+      {createPortal(<AnimatePresence>
         {activePost && !isEditing && (
           <motion.div
             key="reader-overlay"
             ref={readerRef}
+            onScroll={handleReaderScroll}
             // ✨ 核心修复一：强制将背景色在日夜间与最外层壳体同步，拒绝卡顿断层
-            className="fixed inset-0 z-[100] overflow-y-auto no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
+            className="fixed inset-0 z-[105] overflow-y-auto no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
@@ -1072,10 +1186,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
 
-      {/* 个人全屏资料卡弹出层 */}
-      <AnimatePresence>
+      {/* 个人全屏资料卡弹出层：同理 portal 到 body，避免被顶层 HUD 叠在上面 */}
+      {createPortal(<AnimatePresence>
         {showProfile && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-auto">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md" onClick={() => setShowProfile(false)} />
@@ -1156,7 +1270,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
 
       {/* 🖼️ 图片灯箱：监听正文图片点击，全屏放大 */}
       <Lightbox />

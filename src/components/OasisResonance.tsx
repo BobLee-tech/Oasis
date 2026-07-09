@@ -246,6 +246,8 @@ export const OasisResonance: React.FC = () => {
   const isDesktop = useRef(typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches).current;
   const { currentTrack, isPlaying, playMode, currentTime, duration, volume, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, changeVolume, playlist } = useSoundscape();
   const [activeCategory, setActiveCategory] = useState<MusicCategory>('All Tracks');
+  // 📱 移动端分段：一次只呈现「唱片」或「歌单」，避免同屏塞满、减轻滚动与合成负担
+  const [mobileTab, setMobileTab] = useState<'disc' | 'crate'>('disc');
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -316,6 +318,167 @@ export const OasisResonance: React.FC = () => {
     playlist.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
     return counts;
   }, [playlist]);
+
+  // ================= 📱 移动端：分段版式（唱片 ↔ 歌单），只呈现当前段，减负增美 =================
+  if (!isDesktop) {
+    return (
+      <div className="relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] px-5">
+
+        {/* 分段切换：一枚水滴形药丸，选中段染当前情绪色 */}
+        <div className="shrink-0 flex items-center justify-center mb-5">
+          <div className="inline-flex p-1 rounded-full bg-white/45 dark:bg-white/[0.05] border border-white/50 dark:border-white/10 shadow-sm">
+            {(['disc', 'crate'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setMobileTab(t)}
+                className={`relative px-6 py-1.5 rounded-full font-mono text-[10px] tracking-[0.28em] uppercase transition-colors duration-300 outline-none ${mobileTab === t ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+              >
+                {mobileTab === t && (
+                  <motion.span
+                    layoutId="mobileTabPill"
+                    className="absolute inset-0 rounded-full"
+                    style={{ backgroundColor: currentTrack.color, boxShadow: `0 4px 14px ${currentTrack.color}55` }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                  />
+                )}
+                <span className="relative z-10">{t === 'disc' ? '唱片' : '歌单'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {mobileTab === 'disc' ? (
+          /* ——— 唱片段：黑胶 + 情绪光晕 → 声波 → 歌名 → 走带 ——— */
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-between">
+
+            {/* 💿 简化黑胶：去唱臂/配重/RPM，只留旋转碟片与静态情绪光晕，点碟即播放/暂停 */}
+            <div onClick={togglePlay} className="relative w-[58vw] max-w-[260px] aspect-square shrink-0 cursor-pointer">
+              <div
+                className="absolute -inset-5 rounded-full pointer-events-none"
+                style={{ background: `radial-gradient(circle, ${currentTrack.color}55 0%, ${currentTrack.color}18 42%, transparent 70%)`, opacity: isPlaying ? 0.95 : 0.42, transition: 'opacity 1200ms ease, background 1500ms ease' }}
+              />
+              <div className="absolute -inset-[3%] rounded-full bg-gradient-to-br from-slate-200/60 to-slate-400/30 dark:from-white/[0.06] dark:to-black/40 border border-white/40 dark:border-white/[0.06]" />
+              <div ref={discRef} className="relative w-full h-full rounded-full overflow-hidden shadow-[0_18px_45px_rgba(0,0,0,0.28)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.65)] border border-slate-500/20 dark:border-white/10 will-change-transform">
+                <div className="absolute inset-0" style={{ background: VINYL_GROOVES }} />
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent mix-blend-overlay" />
+                <div className="absolute inset-[31%] rounded-full flex items-center justify-center overflow-hidden shadow-inner" style={{ backgroundColor: currentTrack.color }}>
+                  <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
+                </div>
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[4.5%] h-[4.5%] bg-[#FAF8F3] dark:bg-[#0A0F1D] rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] z-20" />
+              </div>
+            </div>
+
+            {/* 正在共鸣：声波 → 歌名 → 艺术家 */}
+            <div className="w-full flex flex-col items-center text-center px-2 min-h-0">
+              <div className="w-full max-w-[280px] mt-5"><LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={40} active={active} /></div>
+              <AnimatePresence mode="wait">
+                <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-3">
+                  <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
+                  <div className="flex items-center justify-center gap-2.5 mt-3">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: currentTrack.color, opacity: isPlaying ? 1 : 0.4 }} />
+                    <p className="font-mono text-[10px] tracking-[0.36em] uppercase text-slate-500 dark:text-slate-400">{currentTrack.artist}</p>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* 走带控制台：进度 + 传送键 */}
+            <div className="w-full max-w-[420px] flex flex-col gap-4 mt-4">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] tabular-nums text-slate-500 dark:text-slate-400 w-9 text-right">{formatTime(currentTime)}</span>
+                <div className="relative flex-1 h-6 flex items-center">
+                  <div className="absolute inset-x-0 h-[4px] rounded-full bg-slate-300/50 dark:bg-white/10 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: currentTrack.color, boxShadow: `0 0 10px ${currentTrack.color}90` }} />
+                  </div>
+                  <div className="absolute w-3 h-3 rounded-full bg-white dark:bg-slate-100 shadow-md -translate-x-1/2 pointer-events-none ring-2" style={{ left: `${progress}%`, ['--tw-ring-color' as string]: currentTrack.color }} />
+                  <input type="range" min={0} max={duration || 0} step={0.1} value={currentTime} onChange={(e) => seek(Number(e.target.value))} aria-label="播放进度" className="absolute inset-x-0 w-full h-6 appearance-none bg-transparent cursor-pointer opacity-0" />
+                </div>
+                <span className="font-mono text-[10px] tabular-nums text-slate-500 dark:text-slate-400 w-9">{formatTime(duration)}</span>
+              </div>
+
+              <div className="flex items-center justify-between px-2">
+                <button onClick={togglePlayMode} title={modeDisplay.text} aria-label={modeDisplay.text} className="flex items-center justify-center w-11 h-11 text-slate-400 dark:text-slate-500 active:scale-90 transition-transform outline-none shrink-0">{modeDisplay.icon}</button>
+                <button onClick={playPrev} aria-label="上一首" className="flex items-center justify-center w-11 h-11 text-slate-500 dark:text-slate-300 active:scale-90 transition-transform outline-none shrink-0">{Icons.prev}</button>
+                <button onClick={togglePlay} aria-label={isPlaying ? '暂停' : '播放'} className="w-16 h-16 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform duration-200 outline-none border border-white/20 shrink-0" style={{ backgroundColor: currentTrack.color, boxShadow: `0 8px 25px ${currentTrack.color}55` }}>{isPlaying ? Icons.pause : Icons.play}</button>
+                <button onClick={playNext} aria-label="下一首" className="flex items-center justify-center w-11 h-11 text-slate-500 dark:text-slate-300 active:scale-90 transition-transform outline-none shrink-0">{Icons.next}</button>
+                <button onClick={() => changeVolume(volume > 0 ? 0 : 0.5)} aria-label={volume > 0 ? '静音' : '取消静音'} className="flex items-center justify-center w-11 h-11 text-slate-400 dark:text-slate-500 active:scale-90 transition-transform outline-none shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
+                    {volume <= 0.001 ? <path d="M23 9l-6 6M17 9l6 6" /> : <><path d="M15.5 8.5a5 5 0 0 1 0 7" />{volume > 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}</>}
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ——— 歌单段：分类 + 碟箱列表，占满整段高度 ——— */
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="shrink-0 flex gap-x-6 overflow-x-auto no-scrollbar pb-3 mb-1 border-b border-slate-200/50 dark:border-white/5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {CATEGORIES.map(cat => (
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`relative flex items-baseline gap-1.5 font-mono text-[10px] tracking-[0.2em] uppercase whitespace-nowrap transition-colors duration-300 outline-none pb-2 shrink-0 ${activeCategory === cat.id ? 'text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-500'}`}>
+                  {cat.label}
+                  <sup className={`text-[8px] tracking-normal ${activeCategory === cat.id ? 'opacity-70' : 'opacity-40'}`}>{categoryCounts[cat.id] ?? 0}</sup>
+                  {activeCategory === cat.id && <motion.div layoutId="activeCategoryMobile" className="absolute -bottom-[1px] left-0 right-0 h-[2px] rounded-full" style={{ backgroundColor: currentTrack.color }} />}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative flex-1 min-h-0">
+              <div
+                className="absolute inset-0 overflow-y-auto pb-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ maskImage: 'linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 40px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 40px), transparent 100%)' }}
+              >
+                {albumGroups.map(group => (
+                  <section key={group.key}>
+                    <div className="flex items-center gap-2.5 px-2 pt-6 pb-2 first:pt-3 select-none">
+                      <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: group.tracks[0].color }} />
+                      <span className="font-serif text-[13px] text-slate-500 dark:text-slate-400 truncate">{group.name}</span>
+                      {group.year && <span className="font-mono text-[8px] tracking-[0.2em] text-slate-300 dark:text-slate-600 shrink-0">{group.year}</span>}
+                      <span className="h-px flex-1 bg-gradient-to-r from-slate-200/70 dark:from-white/10 to-transparent" />
+                      <span className="font-mono text-[8px] text-slate-300 dark:text-slate-600 tabular-nums shrink-0">{group.tracks.length}</span>
+                    </div>
+                    {group.tracks.map((track, i) => {
+                      const isActive = currentTrack.id === track.id;
+                      return (
+                        <button
+                          key={track.id} onClick={() => { switchTrack(track); }}
+                          className="group relative w-full flex items-center gap-3.5 pl-2 pr-2 py-3 text-left outline-none active:bg-slate-900/[0.04] dark:active:bg-white/[0.04] transition-colors"
+                          style={isActive ? { background: `linear-gradient(90deg, ${track.color}1f, ${track.color}08 35%, transparent 75%)` } : undefined}
+                        >
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] rounded-full" style={{ height: isActive ? '62%' : '0%', backgroundColor: track.color, boxShadow: isActive ? `0 0 8px ${track.color}` : 'none' }} />
+                          <span className="relative w-5 shrink-0 flex items-center justify-center self-start mt-1">
+                            {isActive ? (
+                              isPlaying ? (
+                                <span className="flex items-end gap-[2px] h-3">
+                                  {[0, 0.2, 0.4].map((d, k) => (
+                                    <motion.span key={k} className="w-[2px] rounded-full" style={{ backgroundColor: track.color }} animate={{ height: ['28%', '100%', '28%'] }} transition={{ duration: 0.7, repeat: Infinity, delay: d, ease: 'easeInOut' }} />
+                                  ))}
+                                </span>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: track.color, boxShadow: `0 0 6px ${track.color}` }} />
+                              )
+                            ) : (
+                              <span className="font-mono text-[10px] tabular-nums text-slate-400/55 dark:text-slate-600 select-none">{String(i + 1).padStart(2, '0')}</span>
+                            )}
+                          </span>
+                          <span className="flex-1 min-w-0 flex flex-col">
+                            <span className={`font-serif text-[15px] leading-snug tracking-wide truncate ${isActive ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300'}`}>{track.title}</span>
+                            <span className="font-mono text-[9px] tracking-[0.22em] uppercase mt-1 truncate text-slate-400/80 dark:text-slate-500">{track.artist}</span>
+                          </span>
+                          {isActive && <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap" style={{ color: track.color }}>On Deck</span>}
+                        </button>
+                      );
+                    })}
+                  </section>
+                ))}
+                {filteredPlaylist.length === 0 && <div className="pt-16 text-center font-serif italic text-slate-400 dark:text-slate-600 text-sm">碟箱里没有匹配的碟片…</div>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <motion.div
