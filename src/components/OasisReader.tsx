@@ -1,6 +1,7 @@
 // 📖 阅读舱三件套：墨环进度（InkRing）· 文中目录（ReaderToc）· 图片灯箱（Lightbox）
 //    共用 Gallery 的沉浸阅读层，气质统一：安静的线、克制的光、一物多用。
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useMotionValueEvent, useTransform, useScroll, useSpring, type MotionValue } from 'framer-motion';
 import type { TocItem } from '../lib/reading';
 import { LIGHTBOX_EVENT } from './Markdown';
@@ -146,8 +147,11 @@ export const InkRing: React.FC<InkRingProps> = ({ progress, color, totalMinutes,
 };
 
 // ══════════════════════════════════════════════════════════════
-// 📑 文中目录：左侧一列细线刻度，像枯山水的耙痕；hover 横向展开标题，
-//    当前章节染情绪色。仅桌面显示，移动端隐去不挤空间。
+// 📑 文中目录：桌面端左侧一列细线刻度（枯山水耙痕）——常态只露出当前
+//    章节的标题，其余隐去；hover 整列才依次浮现。移动/平板没有 hover，
+//    换成右上角小圆钮唤出底部抽屉，作为可点的入口。
+//    长文时耙痕本身可能超出视口高度：内部改为可滚动 + 上下淡出遮罩，
+//    并在章节切换时把「目录自己」轻推到露出当前项——只挪目录，不挪文章。
 // ══════════════════════════════════════════════════════════════
 interface ReaderTocProps {
   items: TocItem[];
@@ -157,6 +161,9 @@ interface ReaderTocProps {
 
 export const ReaderToc: React.FC<ReaderTocProps> = ({ items, color, containerRef }) => {
   const [activeId, setActiveId] = useState<string>('');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const railRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     const container = containerRef.current;
@@ -183,46 +190,128 @@ export const ReaderToc: React.FC<ReaderTocProps> = ({ items, color, containerRef
     return () => observer.disconnect();
   }, [items, containerRef]);
 
+  // 📍 长文目录自跟随：当前章节切换时若其刻度已滑出目录轨道自身的可视区，
+  //    把轨道内部轻推到刚好露出它——只滚目录这一条窄轨，不牵动文章滚动。
+  useEffect(() => {
+    const rail = railRef.current;
+    const el = itemRefs.current[activeId];
+    if (!rail || !el) return;
+    const railRect = rail.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    if (elRect.top < railRect.top || elRect.bottom > railRect.bottom) {
+      const delta = (elRect.top - railRect.top) - rail.clientHeight / 2 + el.clientHeight / 2;
+      rail.scrollTop += delta;
+    }
+  }, [activeId]);
+
   if (items.length < 2) return null;
 
   const go = (id: string) => {
     const el = containerRef.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setSheetOpen(false);
   };
 
   return (
-    <div className="hidden lg:flex fixed left-7 top-1/2 -translate-y-1/2 z-[150] flex-col gap-3.5 group/toc">
-      {items.map((it) => {
-        const active = activeId === it.id;
-        return (
-          <button
-            key={it.id}
-            onClick={() => go(it.id)}
-            className="flex items-center gap-3 outline-none text-left"
-            aria-label={it.text}
+    <>
+      {/* 🖥️ 桌面：左侧悬浮耙痕，内部可滚动 + 上下淡出遮罩，长目录不再溢出视口 */}
+      <div className="hidden lg:flex fixed left-7 top-1/2 -translate-y-1/2 z-[150] flex-col group/toc">
+        <div
+          ref={railRef}
+          className="flex flex-col gap-3.5 max-h-[64vh] overflow-y-auto no-scrollbar py-2"
+          style={{
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)',
+            maskImage: 'linear-gradient(to bottom, transparent, black 8%, black 92%, transparent)',
+          }}
+        >
+          {items.map((it) => {
+            const active = activeId === it.id;
+            return (
+              <button
+                key={it.id}
+                ref={(el) => { itemRefs.current[it.id] = el; }}
+                onClick={() => go(it.id)}
+                className="flex items-center gap-3 outline-none text-left shrink-0"
+                aria-label={it.text}
+              >
+                {/* 耙痕：h2 长、h3 短且缩进；当前章染色变宽 */}
+                <span
+                  className="block h-px rounded-full transition-all duration-500"
+                  style={{
+                    width: active ? (it.level === 2 ? 28 : 18) : it.level === 2 ? 18 : 11,
+                    marginLeft: it.level === 3 ? 10 : 0,
+                    backgroundColor: active ? color : 'currentColor',
+                    opacity: active ? 1 : 0.28,
+                    color: 'rgb(148 163 184)',
+                  }}
+                />
+                {/* 标题文字：当前章节常驻可见（定位感不丢），其余隐去待 hover 整列时浮现 */}
+                <span
+                  className={`font-mono text-[10px] tracking-wide whitespace-nowrap max-w-[190px] truncate transition-all duration-300 ${
+                    active ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1 group-hover/toc:opacity-100 group-hover/toc:translate-x-0'
+                  }`}
+                  style={{ color: active ? color : undefined }}
+                >
+                  <span className={active ? '' : 'text-slate-400 dark:text-slate-500'}>{it.text}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 📱 移动/平板：右上角小圆钮唤出底部抽屉——没有 hover，需要一个可点的入口 */}
+      <button
+        onClick={() => setSheetOpen(true)}
+        className="lg:hidden fixed top-5 right-5 z-[150] w-9 h-9 rounded-full grid place-items-center bg-white/55 dark:bg-white/[0.06] backdrop-blur-md border border-white/60 dark:border-white/10 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.4)]"
+        aria-label="目录"
+      >
+        <span className="flex flex-col gap-[3px] items-end">
+          <span className="block h-px w-4 rounded-full" style={{ backgroundColor: color, opacity: 0.9 }} />
+          <span className="block h-px w-3 rounded-full" style={{ backgroundColor: color, opacity: 0.6 }} />
+          <span className="block h-px w-4 rounded-full" style={{ backgroundColor: color, opacity: 0.9 }} />
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {sheetOpen && (
+          <motion.div
+            className="lg:hidden fixed inset-0 z-[300] bg-black/30 backdrop-blur-sm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => setSheetOpen(false)}
           >
-            {/* 耙痕：h2 长、h3 短且缩进；当前章染色变宽 */}
-            <span
-              className="block h-px rounded-full transition-all duration-500"
-              style={{
-                width: active ? (it.level === 2 ? 28 : 18) : it.level === 2 ? 18 : 11,
-                marginLeft: it.level === 3 ? 10 : 0,
-                backgroundColor: active ? color : 'currentColor',
-                opacity: active ? 1 : 0.28,
-                color: 'rgb(148 163 184)',
-              }}
-            />
-            {/* 标题文字：常态隐去，hover 整列时轻轻浮现 */}
-            <span
-              className="font-mono text-[10px] tracking-wide whitespace-nowrap max-w-[190px] truncate opacity-0 -translate-x-1 group-hover/toc:opacity-100 group-hover/toc:translate-x-0 transition-all duration-300"
-              style={{ color: active ? color : undefined }}
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-3xl bg-[#FAF8F3] dark:bg-[#0A0F1D] border-t border-slate-200/60 dark:border-white/10 px-6 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))]"
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <span className={active ? '' : 'text-slate-400 dark:text-slate-500'}>{it.text}</span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
+              <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-white/15 mx-auto mb-5 mt-1" />
+              <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-4">目录 · Contents</div>
+              <div className="flex flex-col gap-1 mb-2">
+                {items.map((it) => {
+                  const active = activeId === it.id;
+                  return (
+                    <button
+                      key={it.id}
+                      onClick={() => go(it.id)}
+                      className="flex items-center gap-3 py-2.5 text-left w-full"
+                      style={{ paddingLeft: it.level === 3 ? 20 : 0 }}
+                    >
+                      <span className="block w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: active ? color : 'rgb(148 163 184)', opacity: active ? 1 : 0.4 }} />
+                      <span className={`font-serif text-sm leading-snug truncate ${active ? '' : 'text-slate-500 dark:text-slate-400'}`} style={{ color: active ? color : undefined }}>
+                        {it.text}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -245,7 +334,9 @@ export const Lightbox: React.FC = () => {
     return () => { window.removeEventListener(LIGHTBOX_EVENT, onOpen); window.removeEventListener('keydown', onKey); };
   }, []);
 
-  return (
+  // 🌀 portal 到 body：灯箱常从文章正文内触发，若不跳出视图层的 stacking context，
+  // 会被 App 顶层 HUD（时钟/日夜按钮）叠在暗色蒙层之上，移动端尤其明显。
+  return createPortal(
     <AnimatePresence>
       {img && (
         <motion.div
@@ -266,6 +357,7 @@ export const Lightbox: React.FC = () => {
           )}
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
