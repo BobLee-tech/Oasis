@@ -1,7 +1,7 @@
 // src/components/OasisGallery.tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
 import { Markdown, PROSE_CLASS } from './Markdown';
@@ -94,6 +94,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 供异步回调（图片加载完成后再定位续读位置）判断当前是否已经切走文章，避免过期跳转
   const activePostRef = useRef(activePost);
   activePostRef.current = activePost;
+  // 🌫️ 本视图开始退场（被 AnimatePresence 移除、isPresent 转 false）时，立即收起
+  // portal 到 body 的阅读舱/书房覆盖层。它们脱离 ViewLayer 的 opacity 交叉溶解,
+  // 若不主动收起，退场的 0.5s 里会以全不透明悬在新视图（如星图）之上
+  // ——即「切到星图偶尔闪现 gallery 组件」的真凶。
+  // 注意：退场中 props 被冻结，故不能靠 active prop，必须用 useIsPresent 的实时信号。
+  const isPresent = useIsPresent();
+  useEffect(() => {
+    if (!isPresent) { setActivePost(null); setIsEditing(false); }
+  }, [isPresent]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
