@@ -1,6 +1,6 @@
 // src/lib/transitions.ts
 // 🌊 界面切换转场：只动 opacity + 极轻 scale（合成器层，永不触发整屏重绘），
-// 因此丝滑无抖动；交叉溶解全程重叠，任意时刻屏幕都有内容，结构上杜绝闪白。
+// 因此丝滑无抖动；先退场再入场，不与前一场所重叠，避免内容叠影。
 import type { Variants } from 'framer-motion';
 
 // 转场落点：被点击的 Dock 图标中心坐标，水光从这里晕开。
