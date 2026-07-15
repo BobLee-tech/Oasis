@@ -162,7 +162,8 @@ const OasisHUD = ({ showClock, onClockTap }: { showClock: boolean; onClockTap?: 
   </div>
 );
 
-// 🌫️ 单层视图容器：交叉溶解全程重叠，新旧界面同时在场，结构上杜绝闪白。
+// 🌫️ 单层视图容器：先退场再入场（AnimatePresence mode="wait"），避免新旧两个重量级场所
+// 同时挂载导致内容重叠、争抢主线程；底层 OasisBackground 常驻，退场期间露出的是禅境底色而非闪白。
 // 只动 opacity + 极轻 scale（合成器层），永不触发整屏重绘，因此丝滑无抖动。
 const ViewLayer = ({ reduce, children }: { reduce: boolean; children: ReactNode }) => (
   <motion.div
@@ -228,8 +229,7 @@ function App() {
 
   // 🫧 涟漪转场：记录每次切换的落点（被点击的 Dock 图标中心），并用自增 key 触发一道扩散水波。
   const prefersReducedMotion = useReducedMotion();
-  // 📱 触屏：场所切换改「先退场再入场」而非交叉重叠，避免两个重量级视图（各自的 rAF/订阅）
-  // 同时挂载争抢主线程，这是移动端切换卡顿的主因；水波转场也一并关闭，减少额外合成层。
+  // 📱 触屏：场所切换关闭水波转场，减少额外合成层，缓解移动端卡顿。
   const coarse = useCoarsePointer();
   const [revealOrigin, setRevealOrigin] = useState<RippleOrigin>({
     x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
@@ -376,7 +376,7 @@ function App() {
                 );
                 return (
                   <Suspense fallback={null}>
-                    <AnimatePresence mode={coarse ? 'wait' : 'sync'}>
+                    <AnimatePresence mode="wait">
                       {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
                       {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
                       {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
