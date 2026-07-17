@@ -1,7 +1,7 @@
 // 📡 RSS 订阅：从 Supabase garden_posts 拉取最新文章，实时生成标准 RSS 2.0 feed。
 //   Vercel 按文件路由自动挂载为 /api/rss，vercel.json 里把 /rss.xml 重写到这里，
 //   访问 https://<domain>/rss.xml 即可在任意阅读器订阅。
-import { createClient } from '@supabase/supabase-js';
+import { fetchGardenPosts } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -20,15 +20,15 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Supabase credentials missing', { status: 500 });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { data, error } = await supabase
-    .from('garden_posts')
-    .select('id,title,excerpt,created_at,tags')
-    .order('created_at', { ascending: false })
-    .limit(30);
-
-  if (error) {
-    return new Response(`Failed to load posts: ${error.message}`, { status: 500 });
+  let data: any[];
+  try {
+    data = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
+      select: 'id,title,excerpt,created_at,tags',
+      order: 'created_at.desc',
+      limit: 30,
+    });
+  } catch (e) {
+    return new Response(`Failed to load posts: ${(e as Error).message}`, { status: 500 });
   }
 
   const items = (data ?? []).map((p) => {
