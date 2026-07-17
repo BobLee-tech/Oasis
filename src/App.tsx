@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
-import { useGarden } from './hooks/useGarden';
+import { useGarden, filterVisible } from './hooks/useGarden';
 import { playBGM } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
@@ -315,7 +315,8 @@ function App() {
   const seasonTint = termTint();
 
   // ⌘K 命令面板：独立的 useGarden 实例（与 Gallery/Orchard 同一模式，频道名自随机，互不冲突）
-  const { posts: allPosts } = useGarden();
+  const { posts: rawAllPosts } = useGarden();
+  const allPosts = filterVisible(rawAllPosts, effectiveIsAdmin);
   const paletteView: PaletteView | 'welcome' =
     appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights'
       ? appView : 'welcome';

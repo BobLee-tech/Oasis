@@ -36,7 +36,7 @@ export default async function handler(req: Request): Promise<Response> {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: p } = await supabase
     .from('garden_posts')
-    .select('id,title,excerpt,content,created_at,color,tags')
+    .select('id,title,excerpt,content,created_at,updated_at,color,tags')
     .eq('id', id)
     .single();
 
@@ -45,6 +45,8 @@ export default async function handler(req: Request): Promise<Response> {
   const title = escapeHtml(p.title ?? 'Oasis');
   const description = escapeHtml((p.excerpt ?? '').trim() || '一处温柔疗愈、带着禅意的数字花园。');
   const pubDate = new Date(Number(p.created_at)).toISOString();
+  // 🌿 老库若还没跑过 garden_posts.sql 的迁移部分，updated_at 可能是 null——退回发布时间
+  const modDate = new Date(Number(p.updated_at) || Number(p.created_at)).toISOString();
   const readerUrl = `/#/garden/${encodeURIComponent(p.id)}`;
   const canonical = `${origin}/p/${encodeURIComponent(p.id)}`;
   const ogImage = `${origin}/api/og?id=${encodeURIComponent(p.id)}`;
@@ -56,6 +58,7 @@ export default async function handler(req: Request): Promise<Response> {
     headline: p.title,
     description: p.excerpt ?? undefined,
     datePublished: pubDate,
+    dateModified: modDate,
     image: ogImage,
     author: { '@type': 'Person', name: 'Bob Lee' },
     mainEntityOfPage: canonical,
@@ -78,6 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
   <meta property="og:url" content="${canonical}" />
   <meta property="og:locale" content="zh_CN" />
   <meta property="article:published_time" content="${pubDate}" />
+  <meta property="article:modified_time" content="${modDate}" />
   ${(p.tags ?? []).map((t: string) => `<meta property="article:tag" content="${escapeHtml(t)}" />`).join('\n  ')}
 
   <meta name="twitter:card" content="summary_large_image" />

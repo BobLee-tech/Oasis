@@ -322,21 +322,29 @@ export const ReaderToc: React.FC<ReaderTocProps> = ({ items, color, containerRef
 //    给每篇文章一个统一的收束仪式（峰终体验里，离开前的最后印象）。
 //    节气按 createdAt 换算，而非「今天」——落款记的是「写于」那一刻的时节。
 // ══════════════════════════════════════════════════════════════
-interface ColophonProps { date: string; createdAt: number; color: string }
-export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, color }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
-    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-    className="mt-16 mb-6 flex flex-col items-center gap-3 select-none"
-  >
-    <svg width="120" height="10" viewBox="0 0 120 10" aria-hidden>
-      <path d="M0 5 Q15 0 30 5 T60 5 T90 5 T120 5" fill="none" stroke={color} strokeWidth="1" opacity="0.55" />
-    </svg>
-    <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500 tracking-wide">
-      写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
-    </span>
-  </motion.div>
-);
+interface ColophonProps { date: string; createdAt: number; updatedAt: number; color: string }
+export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, updatedAt, color }) => {
+  // 🌿 只有真被「照料」过（而非发完顺手改错别字）才多长一行——48h 阈值，与列表页「最近照料」一致
+  const tended = updatedAt - createdAt > 48 * 3600 * 1000;
+  const tendedDate = tended
+    ? new Date(updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+      className="mt-16 mb-6 flex flex-col items-center gap-3 select-none"
+    >
+      <svg width="120" height="10" viewBox="0 0 120 10" aria-hidden>
+        <path d="M0 5 Q15 0 30 5 T60 5 T90 5 T120 5" fill="none" stroke={color} strokeWidth="1" opacity="0.55" />
+      </svg>
+      <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500 tracking-wide text-center leading-relaxed">
+        写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
+        {tended && <><br />照料于 {tendedDate} · {currentSolarTerm(new Date(updatedAt)).name}</>}
+      </span>
+    </motion.div>
+  );
+};
 
 // ══════════════════════════════════════════════════════════════
 // ⟲ 回响：读完一篇，看见「谁曾提到过这里」——反向链接比正向双链更能
