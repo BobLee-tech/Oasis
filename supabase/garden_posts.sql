@@ -66,5 +66,8 @@ create policy "garden authed write"
   using (true)
   with check (true);
 
--- 开启实时同步（博客 ↔ 知识星图、跨标签页/设备）
-alter publication supabase_realtime add table public.garden_posts;
+-- 开启实时同步（博客 ↔ 知识星图、跨标签页/设备）；已加入过则跳过，保持整份脚本可重复执行
+do $$ begin
+  alter publication supabase_realtime add table public.garden_posts;
+exception when duplicate_object then null;
+end $$;
