@@ -4,10 +4,12 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
+import { useGarden } from './hooks/useGarden';
 import { playBGM } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
+import { termTint } from './lib/solarTerms';
 import { NIGHT_REMINDERS } from './data/quotes';
 import { useCoarsePointer } from './hooks/useCoarsePointer';
 
@@ -15,6 +17,7 @@ import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
 import { OasisDock } from './components/OasisDock';
+import { OasisPalette, openPalette, type PaletteView } from './components/OasisPalette';
 
 // 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
 //    markdown/highlight.js/图表等重依赖）按需拆包，切换时才拉取，减轻首屏体积。
@@ -289,7 +292,9 @@ function App() {
 
   useEffect(() => {
     if (appView !== 'welcome' && terminalStatus === 'granted' && !hasTriggeredBGM.current) {
-      hasTriggeredBGM.current = true; playBGM(0.4, 2500); 
+      hasTriggeredBGM.current = true;
+      // 🌙 深夜到访：陪你把声音也一并压低，呼应 NightWhisper 的关怀感
+      playBGM(isLateNight() ? 0.22 : 0.4, 2500);
     }
   }, [appView, terminalStatus, playBGM]);
 
@@ -306,6 +311,16 @@ function App() {
   // ✨ 核心修复：纯原生 CSS 类名驱动背景，彻底解放 transition
   const bgClass = bgPhase === 'cyber' ? 'bg-[#050505]' : 'bg-[#FAF8F3] dark:bg-[#0A0F1D]';
 
+  // 🌾 季节光：暖纸底光的主色随四季缓缓流转，变化幅度极小，只为让常客隐约觉得「这里在呼吸」
+  const seasonTint = termTint();
+
+  // ⌘K 命令面板：独立的 useGarden 实例（与 Gallery/Orchard 同一模式，频道名自随机，互不冲突）
+  const { posts: allPosts } = useGarden();
+  const paletteView: PaletteView | 'welcome' =
+    appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights'
+      ? appView : 'welcome';
+  const themeLabel = themeMode === 'auto' ? `AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? 'LIGHT' : 'DARK';
+
   return (
     <div className={`relative w-screen h-dvh overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
       {/* 🌾 暖纸底光：仅亮色可见。左上一抹暖白、右下极淡青，替代纯平「实验室白」，让庭园有和纸的温度。
@@ -315,7 +330,7 @@ function App() {
         className="pointer-events-none absolute inset-0 z-[1] transition-opacity duration-[1500ms] dark:opacity-0"
         style={{
           background:
-            'radial-gradient(120% 90% at 15% 12%, rgba(255,251,242,0.9) 0%, rgba(250,248,243,0.45) 42%, transparent 70%), radial-gradient(90% 80% at 88% 92%, rgba(57,197,187,0.05) 0%, transparent 60%)',
+            `radial-gradient(120% 90% at 15% 12%, ${seasonTint.wash} 0%, rgba(250,248,243,0.45) 42%, transparent 70%), radial-gradient(90% 80% at 88% 92%, ${seasonTint.accent} 0%, transparent 60%)`,
         }}
       />
       <NoiseOverlay />
@@ -328,7 +343,17 @@ function App() {
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
             className="absolute top-5 left-5 md:top-8 md:left-8 z-[100] flex flex-wrap items-center gap-2 md:gap-3 max-w-[calc(100vw-7rem)]"
           >
-            <button 
+            <button
+              onClick={openPalette}
+              className="flex items-center justify-center gap-1.5 font-mono text-[9px] tracking-[0.2em] uppercase w-9 h-9 md:w-auto md:px-3 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
+              title="⌘K 寻找一片叶子"
+              aria-label="打开命令面板"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+              <span className="hidden md:inline">⌘K</span>
+            </button>
+
+            <button
               onClick={cycleMode}
               className="flex items-center justify-center font-mono text-[9px] tracking-[0.2em] uppercase px-3 py-2 md:px-4 rounded-full border transition-all duration-700 outline-none backdrop-blur-md bg-white/40 dark:bg-white/5 border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm"
               title="AUTO 跟随时间自动调节日夜"
@@ -395,6 +420,18 @@ function App() {
       <AnimatePresence>
         {bgPhase === 'blooming' && <motion.div className="absolute inset-0 z-[5] pointer-events-none bg-gradient-to-tr from-[#39C5BB]/15 via-transparent to-[#FFB7C5]/15" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2.5, ease: "easeInOut" }} />}
       </AnimatePresence>
+
+      {/* ⌘K 命令面板：搜文章 / 去往场所 / 切主题，全站唯一的漫游入口 */}
+      {terminalStatus === 'granted' && (
+        <OasisPalette
+          posts={allPosts}
+          currentView={paletteView}
+          themeLabel={themeLabel}
+          onGo={(view) => handleViewChange(view)}
+          onOpenPost={(id) => navigate('garden', id)}
+          onToggleTheme={cycleMode}
+        />
+      )}
 
       {/* 🕳️ 终端暗门覆盖层：只属于园丁的后门，点击空白或 ESC 关闭 */}
       <AnimatePresence>

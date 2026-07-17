@@ -8,9 +8,10 @@ import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, setReadProgress } from '../lib/reading';
-import { ReaderProgress, ReaderToc, Lightbox } from './OasisReader';
+import { ReaderProgress, ReaderToc, Lightbox, Colophon, Echoes, Related } from './OasisReader';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
+import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
 import { DAILY_QUOTES } from '../data/quotes';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 
@@ -311,10 +312,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   const [showProfile, setShowProfile] = useState(false);
 
-  // 🔗 摘下本文直链：复制 #/garden/:id 到剪贴板，与 hash 路由对应，可直达单篇
+  // 🔗 摘下本文直链：复制 /p/:id（服务端渲染的分享页，见 api/post.ts）而非 hash 路由——
+  //   分享到微信/Twitter/Slack 等平台时，对方抓取的是这条链接的静态 meta/OG，
+  //   #/garden/:id 的 fragment 从不会被发到服务器，链接预览会是空的。
   const [shareCopied, setShareCopied] = useState(false);
   const sharePost = (p: BlogPost) => {
-    const url = `${window.location.origin}${window.location.pathname}#/garden/${p.id}`;
+    const url = `${window.location.origin}/p/${p.id}`;
     navigator.clipboard?.writeText(url).then(() => {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1800);
@@ -327,6 +330,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 📑 文中目录、阅读时长、上一/下一篇：随当前文章推导
   const toc = useMemo(() => (activePost ? extractToc(activePost.content) : []), [activePost]);
   const readerMinutes = useMemo(() => (activePost ? readingMinutes(activePost.content) : 0), [activePost]);
+
+  // 🔗 双链 [[标题]]：渲染前把正文里的引用解析成可点击的站内链接（未命中的标题渲染成虚线种子）
+  const postTitleIndex = useMemo(() => buildTitleIndex(posts), [posts]);
+  const resolvedContent = useMemo(
+    () => (activePost ? resolveWikiLinks(activePost.content, postTitleIndex) : ''),
+    [activePost, postTitleIndex]
+  );
   const { prevPost, nextPost } = useMemo(() => {
     if (!activePost) return { prevPost: null as BlogPost | null, nextPost: null as BlogPost | null };
     const idx = posts.findIndex(p => p.id === activePost.id);
@@ -471,6 +481,66 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const chapterOf = (p: BlogPost) =>
     p.series ? (seriesInfo[p.series]?.findIndex(x => x.id === p.id) ?? -1) + 1 : 0;
   const allSeries = useMemo(() => Object.keys(seriesInfo).sort(), [seriesInfo]);
+
+  // ⟲ 反向链接索引：目标文章 id → 提到它的来源文章 + 语境摘句。一次全量建索，
+  //   任意文章打开都是 O(1) 查表——几百篇量级毫无压力。
+  const backlinkIndex = useMemo(() => buildBacklinkIndex(posts), [posts]);
+  const activeBacklinks = useMemo(
+    () => (activePost ? backlinkIndex.get(activePost.id) ?? [] : []),
+    [activePost, backlinkIndex]
+  );
+
+  // 🍃 继续漫游：score = 3×(本文正向双链到对方) + 2×(标签重合数) + 1×(同类型)。
+  //   排除自己、已在「合集目录」出现的同 series 文章、已在「回响」出现的文章——
+  //   三个区块绝不重复展示同一篇。平分时时间越近越优先。
+  const relatedPosts = useMemo(() => {
+    if (!activePost) return [] as BlogPost[];
+    const forwardIds = new Set(
+      extractWikiLinks(activePost.content)
+        .map((t) => postTitleIndex.get(t.trim().toLowerCase())?.id)
+        .filter((id): id is string => !!id)
+    );
+    const excludeIds = new Set<string>([
+      activePost.id,
+      ...activeBacklinks.map((b) => b.post.id),
+      ...(activePost.series ? (seriesInfo[activePost.series] ?? []).map((p) => p.id) : []),
+    ]);
+    const activeTags = new Set(activePost.tags);
+
+    return posts
+      .filter((p) => !excludeIds.has(p.id))
+      .map((p) => {
+        const tagOverlap = p.tags.filter((t) => activeTags.has(t)).length;
+        const score = (forwardIds.has(p.id) ? 3 : 0) + tagOverlap * 2 + (p.type === activePost.type ? 1 : 0);
+        return { post: p, score, timeDelta: Math.abs(p.createdAt - activePost.createdAt) };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score || a.timeDelta - b.timeDelta)
+      .slice(0, 3)
+      .map((x) => x.post);
+  }, [activePost, posts, postTitleIndex, activeBacklinks, seriesInfo]);
+
+  // 🗓️ 那年今日：按节气名匹配更早年份写下的文章——solarTerms 从「氛围」变成「索引」。
+  //   每个节气每位访客只提示一次（localStorage 记按年+节气名的 key），点 × 或点进文章后都不再出现。
+  const termEchoSeenKey = useMemo(() => `oasis_term_echo_seen_${new Date().getFullYear()}_${currentSolarTerm().name}`, []);
+  const [termEchoDismissed, setTermEchoDismissed] = useState(() => {
+    try { return localStorage.getItem(termEchoSeenKey) === '1'; } catch { return true; }
+  });
+  const dismissTermEcho = () => {
+    setTermEchoDismissed(true);
+    try { localStorage.setItem(termEchoSeenKey, '1'); } catch { /* 容量/隐私模式失败可忽略，下次刷新再提示一次无妨 */ }
+  };
+  const termEchoPost = useMemo(() => {
+    if (termEchoDismissed) return null;
+    const term = currentSolarTerm();
+    const thisYear = new Date().getFullYear();
+    const candidates = posts.filter(p => {
+      const d = new Date(p.createdAt);
+      return d.getFullYear() < thisYear && currentSolarTerm(d).name === term.name;
+    });
+    if (candidates.length === 0) return null;
+    return candidates.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+  }, [posts, termEchoDismissed]);
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -757,6 +827,27 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* 🗓️ 那年今日：同一节气，更早一年写下的文章——稀缺的惊喜，每节气只出现一次 */}
+              <AnimatePresence>
+                {termEchoPost && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex items-center justify-center gap-2 mb-8 -mt-2 text-center"
+                  >
+                    <button
+                      onClick={() => { dismissTermEcho(); openPost(termEchoPost); }}
+                      className="font-serif italic text-sm text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                    >
+                      {new Date(termEchoPost.createdAt).getFullYear()} 年{currentSolarTerm().name}，你写下了《
+                      <span style={{ color: termEchoPost.color }} className="not-italic">{termEchoPost.title}</span>
+                      》—— 要回去看看吗
+                    </button>
+                    <button onClick={dismissTermEcho} aria-label="不再提示" className="text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors text-xs px-1">✕</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* 📅 按月归档的瀑布流：让周报与成长有清晰的时间叙事 */}
               <div className="flex flex-col gap-12">
@@ -1059,7 +1150,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </div>
 
                 {/* ✨ 核心修复四：强力介入并定义 Markdown 的全级夜间排版字色，保证多层嵌套下渲染坚固不丢失 */}
-                <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{activePost.content}</Markdown>
+                <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{resolvedContent}</Markdown>
+
+                {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
+                <Colophon date={activePost.date} createdAt={activePost.createdAt} color={activePost.color} />
 
                 {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去 */}
                 {activePost.series && (seriesInfo[activePost.series]?.length ?? 0) > 1 && (
@@ -1082,6 +1176,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     </ol>
                   </div>
                 )}
+
+                {/* ⟲ 回响 + 🍃 继续漫游：反向链接与相关推荐，读完之后的漫游入口 */}
+                <Echoes backlinks={activeBacklinks} currentColor={activePost.color} onOpen={openPost} />
+                <Related posts={relatedPosts} onOpen={openPost} />
 
                 {/* 🪶 上一篇 / 下一篇：一条枯山水式分隔线，读完不必退回列表 */}
                 {(prevPost || nextPost) && (

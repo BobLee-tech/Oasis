@@ -19,17 +19,27 @@ export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturni
   const lateNight = isLateNight();
   const note = lateNight ? '已经很晚喽～ 夜里的绿洲也很美，但别忘了休息。' : termNoteOfDay();
   useEffect(() => {
-    // 留足读完节气问候的时间；想快进的人点击任意处即可跳过
-    const timer = setTimeout(() => onEnterGarden(), 8000);
+    // 首次到访留足读完节气问候的时间；同一会话内重复回到欢迎页（如登出）则不必再等那么久
+    const revisit = sessionStorage.getItem('oasis_welcomed');
+    sessionStorage.setItem('oasis_welcomed', '1');
+    const timer = setTimeout(() => onEnterGarden(), revisit ? 3000 : 8000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEnterGarden(); }
+  };
+
 return (
     <motion.div
       key="zen-garden"
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer select-none"
-      onClick={onEnterGarden} 
+      role="button"
+      tabIndex={0}
+      aria-label="进入绿洲"
+      onKeyDown={handleKeyDown}
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer select-none outline-none"
+      onClick={onEnterGarden}
       initial={{ opacity: 0, y: 30, filter: 'blur(20px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       exit={{ opacity: 0, transition: { duration: 0.6 } }} // ✨ 修复：极速退场，解除等待阻塞
@@ -60,14 +70,25 @@ return (
         exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)', transition: { duration: 0.6 } }} // ✨ 修复：退场只需 0.6s
         className="relative flex items-center justify-center mix-blend-screen"
       >
-        <motion.span
-          className="text-[15vw] md:text-[180px] font-black tracking-[0.3em] ml-[0.3em] leading-none text-transparent bg-clip-text"
-          style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(57,197,187,0.6) 50%, rgba(255,183,197,0.6) 100%)' }}
-          animate={{ opacity: [0.6, 1, 0.6], textShadow: ["0px 0px 20px rgba(57,197,187,0)", "0px 0px 80px rgba(255,183,197,0.4)", "0px 0px 20px rgba(57,197,187,0)"] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          OASIS
-        </motion.span>
+        {/* 呼吸的光晕：预先用 blur 栅格化好的发光副本，循环里只动 opacity（合成器友好），
+            不再逐帧对 text-shadow 重新走 paint 管线 —— 首屏动画对移动端 GPU 更友好。 */}
+        <span className="relative inline-block">
+          <span
+            className="text-[15vw] md:text-[180px] font-black tracking-[0.3em] ml-[0.3em] leading-none text-transparent bg-clip-text"
+            style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(57,197,187,0.6) 50%, rgba(255,183,197,0.6) 100%)' }}
+          >
+            OASIS
+          </span>
+          <motion.span
+            aria-hidden
+            className="absolute inset-0 text-[15vw] md:text-[180px] font-black tracking-[0.3em] ml-[0.3em] leading-none text-transparent bg-clip-text blur-[18px]"
+            style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(57,197,187,0.9) 50%, rgba(255,183,197,0.9) 100%)' }}
+            animate={{ opacity: [0.25, 0.75, 0.25] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          >
+            OASIS
+          </motion.span>
+        </span>
       </motion.div>
 
       {/* 🌾 今日节气：让每一次到访都被温柔地记得是什么日子 */}

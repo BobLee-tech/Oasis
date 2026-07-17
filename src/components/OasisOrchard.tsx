@@ -14,6 +14,7 @@ import { useGarden, type BlogPost } from '../hooks/useGarden';
 import { useCategories } from '../hooks/useCategories';
 import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
+import { extractWikiLinks, buildTitleIndex } from '../lib/wikilinks';
 
 interface OasisOrchardProps { isAdmin: boolean; }
 
@@ -46,7 +47,14 @@ interface GNode {
   count?: number;
   color?: string;
 }
-interface GLink { a: GNode; b: GNode; color: string; core: boolean; }
+interface GLink { a: GNode; b: GNode; color: string; core: boolean; wikilink?: boolean; }
+
+// 双链引用的两篇文章各自的情绪色取中，作为连线颜色——「这条连线属于两颗星」
+const blendColor = (a: string, b: string): string => {
+  const pa = parseInt(a.replace('#', ''), 16), pb = parseInt(b.replace('#', ''), 16);
+  const mix = (shift: number) => Math.round((((pa >> shift) & 255) + ((pb >> shift) & 255)) / 2);
+  return `#${[mix(16), mix(8), mix(0)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+};
 
 // 🌌 构建知识图谱并用轻量力导布局松弛开，得到舒朗、不重叠的星座坐标
 const buildGraph = (posts: BlogPost[]) => {
@@ -98,6 +106,23 @@ const buildGraph = (posts: BlogPost[]) => {
     else pts.forEach(t => links.push({ a: tagNodes.get(t)!, b: pn, color: p.color || '#39C5BB', core: false }));
   });
 
+  // 🔗 双链 [[标题]]：正文里写下的直接引用，额外画一条引力线，把两颗星彼此拉近——
+  //   标签连线呈现「同一主题」，双链连线呈现「作者亲手写下的思想联结」，是两种不同的邻近关系。
+  const titleIndex = buildTitleIndex(posts);
+  const wikiSeen = new Set<string>();
+  posts.forEach(p => {
+    const pn = postNodes.get(p.id)!;
+    extractWikiLinks(p.content).forEach(title => {
+      const target = titleIndex.get(title.trim().toLowerCase());
+      if (!target || target.id === p.id) return; // 未命中的标题（虚线种子）不参与布局，只在正文里呈现
+      const pairKey = [p.id, target.id].sort().join('|');
+      if (wikiSeen.has(pairKey)) return;
+      wikiSeen.add(pairKey);
+      const tn = postNodes.get(target.id);
+      if (tn) links.push({ a: pn, b: tn, color: blendColor(p.color || '#39C5BB', target.color || '#39C5BB'), core: false, wikilink: true });
+    });
+  });
+
   // —— 力导松弛：斥力分散 + 弹簧拉近相连节点 + 轻微向心 ——
   //    斥力用空间哈希网格只比较邻近节点，复杂度从 O(n²) 降到近似 O(n)，
   //    迭代次数随规模自适应，几百颗星也能瞬时算完、不阻塞首屏。
@@ -130,7 +155,7 @@ const buildGraph = (posts: BlogPost[]) => {
       }
     }
     for (const l of links) {
-      const L = l.core ? 170 : 84;
+      const L = l.core ? 170 : l.wikilink ? 66 : 84;
       let dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
       let d = Math.hypot(dx, dy) || 0.01;
       const k = ((d - L) / d) * 0.06;
@@ -206,7 +231,10 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
       if (p) {
         const tagset = new Set(p.tags);
         graph.links.forEach((l, idx) => {
-          if (l.b.key === pn?.key) { litLinks.add(idx); litNodes.add(l.a.key); litNodes.add(l.b.key); }
+          // 双链是唯一一种「文章连文章」的边，悬停任意一端都要点亮（其余边里 post 只会出现在 b 侧）
+          if (l.b.key === pn?.key || (l.wikilink && l.a.key === pn?.key)) {
+            litLinks.add(idx); litNodes.add(l.a.key); litNodes.add(l.b.key);
+          }
         });
         // 点亮同一星座（共享标签）的姐妹星
         p.tags.forEach(t => {
@@ -291,9 +319,10 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                     stroke={on ? l.color : 'currentColor'}
                     className={on ? '' : 'text-slate-400 dark:text-white/40'}
                     strokeWidth={on ? 1.6 : 1}
+                    strokeDasharray={l.wikilink ? '3 4' : undefined}
                     strokeLinecap="round"
                     style={{
-                      opacity: on ? 0.55 : dim ? 0.04 : 0.12,
+                      opacity: on ? 0.6 : dim ? 0.04 : l.wikilink ? 0.2 : 0.12,
                       filter: on ? `drop-shadow(0 0 4px ${l.color})` : 'none',
                       transition: 'opacity 0.45s ease, stroke-width 0.45s ease',
                     }}
