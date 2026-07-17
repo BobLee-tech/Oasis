@@ -176,3 +176,15 @@ export const currentSeason = (date: Date = new Date()): Season => {
   if (key >= mmdd(8, 8) && key < mmdd(11, 8)) return 'autumn';
   return 'winter';
 };
+
+// 🌾 季节光：每个季节一组极淡的环境色，替换 App 背景暖纸底光的两处 radial-gradient
+//   （该层整体只在亮色模式可见，dark:opacity-0 时隐去，故此处只需亮色两份）。
+//   幅度控制在「隐约觉得站变了却说不出哪变了」——按季节而非 24 节气逐一配色，变化本就该缓慢。
+interface SeasonTint { wash: string; accent: string }
+const SEASON_TINTS: Record<Season, SeasonTint> = {
+  spring: { wash: 'rgba(250,253,245,0.9)', accent: 'rgba(120,200,150,0.06)' },  // 嫩绿
+  summer: { wash: 'rgba(255,251,242,0.9)', accent: 'rgba(57,197,187,0.06)' },   // 青金（原色）
+  autumn: { wash: 'rgba(255,248,238,0.9)', accent: 'rgba(200,140,90,0.06)' },   // 暖赭
+  winter: { wash: 'rgba(248,250,255,0.9)', accent: 'rgba(120,150,220,0.06)' },  // 靛蓝
+};
+export const termTint = (date: Date = new Date()): SeasonTint => SEASON_TINTS[currentSeason(date)];

@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useMotionValueEvent, useTransform, useScroll, useSpring, type MotionValue } from 'framer-motion';
 import type { TocItem } from '../lib/reading';
 import { LIGHTBOX_EVENT } from './Markdown';
+import { currentSolarTerm } from '../lib/solarTerms';
+import type { Backlink } from '../lib/wikilinks';
 
 // ══════════════════════════════════════════════════════════════
 // 📏 阅读进度：顶部情绪丝线 + 右下墨环，共用同一条 scroll 弹簧。
@@ -314,6 +316,114 @@ export const ReaderToc: React.FC<ReaderTocProps> = ({ items, color, containerRef
     </>
   );
 };
+
+// ══════════════════════════════════════════════════════════════
+// 🖋️ 文末落款：正文读完，一条渐弱的水波细线 + 写作日期与当时的节气，
+//    给每篇文章一个统一的收束仪式（峰终体验里，离开前的最后印象）。
+//    节气按 createdAt 换算，而非「今天」——落款记的是「写于」那一刻的时节。
+// ══════════════════════════════════════════════════════════════
+interface ColophonProps { date: string; createdAt: number; color: string }
+export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, color }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
+    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+    className="mt-16 mb-6 flex flex-col items-center gap-3 select-none"
+  >
+    <svg width="120" height="10" viewBox="0 0 120 10" aria-hidden>
+      <path d="M0 5 Q15 0 30 5 T60 5 T90 5 T120 5" fill="none" stroke={color} strokeWidth="1" opacity="0.55" />
+    </svg>
+    <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500 tracking-wide">
+      写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
+    </span>
+  </motion.div>
+);
+
+// ══════════════════════════════════════════════════════════════
+// ⟲ 回响：读完一篇，看见「谁曾提到过这里」——反向链接比正向双链更能
+//   勾住读者继续漫游，语境摘句让它不只是一份标题清单，而是「对方当时在说什么」。
+//   左侧竖线取来源文章自己的颜色（这是谁的声音），引用文字取当前文章的颜色（在说谁）。
+// ══════════════════════════════════════════════════════════════
+interface EchoPost { id: string; title: string; color: string }
+interface EchoesProps<T extends EchoPost> {
+  backlinks: Backlink<T>[];
+  currentColor: string;
+  onOpen: (post: T) => void;
+}
+export function Echoes<T extends EchoPost>({ backlinks, currentColor, onOpen }: EchoesProps<T>) {
+  if (backlinks.length === 0) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+      className="mt-6 mb-10 w-full"
+    >
+      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-5">
+        ⟲ Echoes · {backlinks.length} 篇文章提到这里
+      </div>
+      <div className="flex flex-col gap-5">
+        {backlinks.map(({ post, before, after, rawTitle }) => (
+          <button key={post.id} onClick={() => onOpen(post)} className="group flex gap-4 text-left w-full">
+            <span
+              className="w-[2px] shrink-0 rounded-full opacity-40 group-hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: post.color }}
+              aria-hidden
+            />
+            <span className="flex flex-col gap-1.5 min-w-0">
+              <span className="font-serif text-sm text-slate-700 dark:text-slate-200 group-hover:text-[#39C5BB] transition-colors truncate">
+                {post.title}
+              </span>
+              <span className="font-serif text-xs italic text-slate-400 dark:text-slate-500 leading-relaxed">
+                {before}
+                <span className="not-italic opacity-90" style={{ color: currentColor }}>{rawTitle}</span>
+                {after}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🍃 继续漫游：按「双链互引 > 标签重合 > 同类型」打分推荐的相关文章，
+//   是读完之后的一条路牌——刻意用幽灵卡（无底色）而非列表页的实心卡，
+//   视觉上区分「藏品陈列」与「继续走下去的小径」。
+// ══════════════════════════════════════════════════════════════
+interface RelatedPost { id: string; title: string; date: string; color: string }
+interface RelatedProps<T extends RelatedPost> {
+  posts: T[];
+  onOpen: (post: T) => void;
+}
+export function Related<T extends RelatedPost>({ posts, onOpen }: RelatedProps<T>) {
+  if (posts.length === 0) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+      className="mb-10 w-full"
+    >
+      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-5">
+        🍃 继续漫游 · Related
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {posts.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onOpen(p)}
+            className="group flex flex-col gap-2 text-left rounded-xl border border-slate-200/40 dark:border-white/5 px-4 py-3.5 hover:bg-white/40 dark:hover:bg-white/[0.03] hover:border-slate-200/70 dark:hover:border-white/10 transition-colors"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} aria-hidden />
+              <span className="font-serif text-sm text-slate-700 dark:text-slate-200 group-hover:text-[#39C5BB] transition-colors truncate">{p.title}</span>
+            </span>
+            <span className="font-mono text-[9px] tracking-wide text-slate-400 dark:text-slate-500 pl-3.5">{p.date}</span>
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 // ══════════════════════════════════════════════════════════════
 // 🖼️ 图片灯箱：监听 Markdown 派发的事件，全屏黑玻璃 + 放大呈现，ESC/点击关闭。

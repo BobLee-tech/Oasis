@@ -153,6 +153,20 @@ body {
     .prose ul.contains-task-list { list-style: none; padding-left: 0.25rem; }
     .prose .task-list-item { list-style: none; }
     .prose .task-list-item input { margin-right: 0.5rem; accent-color: #39C5BB; }
+
+    /* 🔗 双链 [[标题]]：命中的引用用点状下划线区别于普通链接；未命中的标题不可点，
+       以虚线标出「还未种下的种子」——正文即事实源，改标题后链接会自然断开成这个样子。 */
+    .prose a[title="wikilink"] {
+        text-decoration: none;
+        border-bottom: 1px dotted currentColor;
+    }
+    .prose a[title="wikilink"]:hover { border-bottom-style: solid; }
+    .wikilink-pending {
+        color: rgb(148 163 184 / 0.85);
+        border-bottom: 1px dashed rgb(148 163 184 / 0.5);
+        cursor: default;
+    }
+    .dark .wikilink-pending { color: rgb(100 116 139 / 0.85); }
 }
 
 /* 🌈 highlight.js 极简主题：贴合 Oasis 调性的语法着色（明暗自适应） */

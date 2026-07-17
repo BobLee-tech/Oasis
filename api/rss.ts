@@ -32,7 +32,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const items = (data ?? []).map((p) => {
-    const link = `${origin}/#/garden/${p.id}`;
+    // 指向 /p/:id 而非 hash 路由：阅读器/爬虫能拿到真实渲染的 meta 与正文，而非空壳 SPA 首页
+    const link = `${origin}/p/${p.id}`;
     const pubDate = new Date(Number(p.created_at)).toUTCString();
     return `    <item>
       <title>${escapeXml(p.title)}</title>
