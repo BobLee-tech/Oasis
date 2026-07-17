@@ -10,7 +10,7 @@
 // 数据与 Garden 博客同源（useGarden / localStorage），同步全部过往。
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGarden, type BlogPost } from '../hooks/useGarden';
+import { useGarden, filterVisible, type BlogPost } from '../hooks/useGarden';
 import { useCategories } from '../hooks/useCategories';
 import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
@@ -179,7 +179,9 @@ const buildGraph = (posts: BlogPost[]) => {
 };
 
 export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
-  const { posts, uprootSeed } = useGarden();
+  const { posts: rawPosts, uprootSeed } = useGarden();
+  // 🔒 「模拟访客」时把草稿从星图里滤掉，与博客列表一致（真实访客本就拿不到草稿行，见 RLS）
+  const posts = useMemo(() => filterVisible(rawPosts, isAdmin), [rawPosts, isAdmin]);
   const { categories, metaOf } = useCategories();
   const typeColor = (t?: string) => metaOf(t || 'thought').color;
   const [activePost, setActivePost] = useState<BlogPost | null>(null);

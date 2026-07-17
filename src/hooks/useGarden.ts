@@ -10,17 +10,37 @@ import { supabase } from '../lib/supabase';
 // 🌱 条目类型：内置随笔 / 周报 / 学习笔记 / 成长 / 项目复盘 + 用户自定义分类（见 useCategories）
 export type PostType = string;
 
+// 🌱🌿🌳 生长度：花园里的植物会长大——种子刚种下 / 正在生长 / 已长成常青树，纯自述性质，不影响排序
+export type Growth = 'seedling' | 'growing' | 'evergreen';
+// 📝 发布状态：草稿仅园丁本人可见（RLS 层面收紧），published 才对所有访客可读
+export type PostStatus = 'draft' | 'published';
+
 export interface BlogPost {
   id: string;
   title: string;
   excerpt: string;
   date: string;          // 展示用的友好日期串
   createdAt: number;     // 真实时间戳，用于可靠排序与按月归档
+  updatedAt: number;     // 🌿 最近一次被「照料」（updateSeed）的时间戳；从未改过则等于 createdAt
+  growth: Growth;
+  status: PostStatus;
   type: PostType;        // 条目类型
   tags: string[];
   color: string;
   content: string;
   series?: string;       // 📚 合集：同一主题的连载归属（如「悉尼生活」）；序号按 createdAt 在合集内推导
+}
+
+// ✍️ 种下 / 照料一颗种子时传入的字段：plantSeed 全部必填即用，updateSeed 对既有文章打补丁
+export interface SeedInput {
+  title: string;
+  tags: string[];
+  color: string;
+  content: string;
+  type?: PostType;
+  series?: string;
+  growth?: Growth;
+  status?: PostStatus;
 }
 
 const TABLE = 'garden_posts';
@@ -36,7 +56,8 @@ const DEFAULT_POSTS: BlogPost[] = [
   {
     id: 'p1', title: 'The Architecture of a Digital Garden',
     excerpt: '打破传统博客时间轴的暴政。探讨如何构建一个具有疗愈感与空间隐喻的数字避难所。',
-    date: friendlyDate(Date.now()), createdAt: Date.now(), type: 'thought',
+    date: friendlyDate(Date.now()), createdAt: Date.now(), updatedAt: Date.now(),
+    growth: 'seedling', status: 'published', type: 'thought',
     tags: ['UI/UX', 'Psyche'], color: '#39C5BB',
     content: '## 逃离内卷\n\n在充满内卷与信息焦虑的时代，我们需要一种非竞争性的数字表达方式。数字花园不按时间线强制排序，它允许思想自由生长。\n\n### Markdown 与图片支持\n\n你现在可以像这样插入图片：\n\n![Oasis Vibe](https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2000&auto=format&fit=crop)'
   }
@@ -44,7 +65,7 @@ const DEFAULT_POSTS: BlogPost[] = [
 
 const sortByNewest = (arr: BlogPost[]) => [...arr].sort((a, b) => b.createdAt - a.createdAt);
 
-// 🩹 老数据迁移：为缺失字段的旧文章补齐 type / createdAt / tags
+// 🩹 老数据迁移：为缺失字段的旧文章补齐 type / createdAt / tags / growth / status / updatedAt
 const hydrate = (raw: any[]): BlogPost[] =>
   raw.map((p, i) => {
     const createdAt = typeof p.createdAt === 'number'
@@ -52,8 +73,11 @@ const hydrate = (raw: any[]): BlogPost[] =>
       : (Date.parse(p.date) || (Date.now() - i * 86400000));
     return {
       type: 'thought' as PostType,
+      growth: 'seedling' as Growth,
+      status: 'published' as PostStatus,
       ...p,
       createdAt,
+      updatedAt: typeof p.updatedAt === 'number' ? p.updatedAt : createdAt,
       tags: Array.isArray(p.tags) ? p.tags : [],
       date: p.date || friendlyDate(createdAt),
     };
@@ -71,21 +95,30 @@ const writeCache = (posts: BlogPost[]) => {
 };
 
 // —— DB 行 ⇄ BlogPost 映射（snake_case ⇄ camelCase） ——
-const fromRow = (r: any): BlogPost => ({
-  id: r.id,
-  title: r.title,
-  excerpt: r.excerpt,
-  date: r.date || friendlyDate(Number(r.created_at)),
-  createdAt: typeof r.created_at === 'number' ? r.created_at : Number(r.created_at),
-  type: r.type,
-  tags: Array.isArray(r.tags) ? r.tags : [],
-  color: r.color,
-  content: r.content,
-  series: r.series || undefined,
-});
+// growth/status/updated_at 三列可能来自尚未跑迁移脚本（supabase/garden_posts.sql）的老库，
+// 缺失时兜底为 seedling / published / createdAt，与本地 hydrate() 的默认值保持一致。
+const fromRow = (r: any): BlogPost => {
+  const createdAt = typeof r.created_at === 'number' ? r.created_at : Number(r.created_at);
+  return {
+    id: r.id,
+    title: r.title,
+    excerpt: r.excerpt,
+    date: r.date || friendlyDate(createdAt),
+    createdAt,
+    updatedAt: typeof r.updated_at === 'number' ? r.updated_at : (Number(r.updated_at) || createdAt),
+    growth: (r.growth as Growth) || 'seedling',
+    status: (r.status as PostStatus) || 'published',
+    type: r.type,
+    tags: Array.isArray(r.tags) ? r.tags : [],
+    color: r.color,
+    content: r.content,
+    series: r.series || undefined,
+  };
+};
 const toRow = (p: BlogPost) => ({
   id: p.id, title: p.title, excerpt: p.excerpt, date: p.date,
-  created_at: p.createdAt, type: p.type, tags: p.tags, color: p.color, content: p.content,
+  created_at: p.createdAt, updated_at: p.updatedAt, growth: p.growth, status: p.status,
+  type: p.type, tags: p.tags, color: p.color, content: p.content,
   series: p.series ?? null,
 });
 
@@ -137,28 +170,42 @@ export const useGarden = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchCloud]);
 
-  const plantSeed = useCallback((title: string, tags: string[], color: string, content: string, type: PostType = 'thought', series?: string) => {
+  const plantSeed = useCallback((input: SeedInput) => {
     const now = Date.now();
     const newPost: BlogPost = {
       id: crypto.randomUUID(),
-      title: title.trim() || 'Untitled Thought',
-      excerpt: makeExcerpt(content),
-      date: friendlyDate(now), createdAt: now, type,
-      tags: tags.length > 0 ? tags : ['Draft'], color, content,
-      series: series?.trim() || undefined,
+      title: input.title.trim() || 'Untitled Thought',
+      excerpt: makeExcerpt(input.content),
+      date: friendlyDate(now), createdAt: now, updatedAt: now,
+      growth: input.growth ?? 'seedling', status: input.status ?? 'published',
+      type: input.type ?? 'thought',
+      tags: input.tags.length > 0 ? input.tags : ['Draft'], color: input.color, content: input.content,
+      series: input.series?.trim() || undefined,
     };
     commit([newPost, ...postsRef.current]); // 乐观更新
     if (cloudOk.current) supabase.from(TABLE).insert(toRow(newPost)).then(({ error }) => { if (error) cloudOk.current = false; });
   }, [commit]);
 
-  const updateSeed = useCallback((id: string, title: string, tags: string[], color: string, content: string, type: PostType = 'thought', series?: string) => {
+  const updateSeed = useCallback((id: string, input: SeedInput) => {
+    // 🌿 每次显式「Update」都是一次照料：updatedAt 刷新为此刻，供 Colophon 与「最近照料」展示
+    const updatedAt = Date.now();
     const patch = {
-      title: title.trim() || 'Untitled', tags: tags.length > 0 ? tags : ['Draft'], color, content, type,
-      excerpt: makeExcerpt(content),
-      series: series?.trim() || undefined,
+      title: input.title.trim() || 'Untitled', tags: input.tags.length > 0 ? input.tags : ['Draft'],
+      color: input.color, content: input.content, type: input.type ?? 'thought',
+      excerpt: makeExcerpt(input.content),
+      series: input.series?.trim() || undefined,
+      updatedAt,
+      growth: input.growth ?? 'seedling', status: input.status ?? 'published',
     };
     commit(postsRef.current.map(p => p.id === id ? { ...p, ...patch } : p));
-    if (cloudOk.current) supabase.from(TABLE).update({ ...patch, series: patch.series ?? null }).eq('id', id).then(({ error }) => { if (error) cloudOk.current = false; });
+    if (cloudOk.current) {
+      const dbPatch = {
+        title: patch.title, tags: patch.tags, color: patch.color, content: patch.content, type: patch.type,
+        excerpt: patch.excerpt, series: patch.series ?? null, growth: patch.growth, status: patch.status,
+        updated_at: updatedAt,
+      };
+      supabase.from(TABLE).update(dbPatch).eq('id', id).then(({ error }) => { if (error) cloudOk.current = false; });
+    }
   }, [commit]);
 
   const uprootSeed = useCallback((id: string) => {
@@ -179,3 +226,9 @@ export const useGarden = () => {
 
   return { posts, plantSeed, updateSeed, uprootSeed, syncToCloud };
 };
+
+// 🔒 草稿可见性：RLS 已在服务端把草稿挡在匿名读取之外，这层过滤只为「访客模拟」开关服务——
+//   admin 本人的已登录会话仍会把草稿一并拉下来，模拟访客视角时需要在客户端把它们滤掉，
+//   否则「模拟」名不副实。真实访客的 posts 里本就不会有草稿，这个过滤对他们是无操作。
+export const filterVisible = (posts: BlogPost[], isAdmin: boolean): BlogPost[] =>
+  isAdmin ? posts : posts.filter(p => p.status !== 'draft');

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
-import { useGarden, type BlogPost } from '../hooks/useGarden';
+import { useGarden, filterVisible, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
@@ -39,6 +39,7 @@ interface EditorDraft {
   editingId: string | null;
   title: string; tags: string[]; content: string; color: string; type: string;
   series?: string;
+  growth?: Growth; status?: PostStatus;
   savedAt: number;
 }
 const draftKeyOf = (editingId: string | null) => editingId ?? '__new__';
@@ -70,11 +71,31 @@ const GithubIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>);
 const DiscIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 animate-[spin_4s_linear_infinite]"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>);
 
+// 🌱🌿🌳 生长度小图形：给常客的暗号，不是给所有人的徽章——只用 12px 大小，一个点 / 双叶 / 小树
+const GrowthGlyph: React.FC<{ growth: Growth; color: string }> = ({ growth, color }) => {
+  if (growth === 'evergreen') return (
+    <svg viewBox="0 0 12 12" className="w-3 h-3 shrink-0" style={{ color }} aria-label="常青">
+      <path d="M6 1L2.2 6.2h1.9L2 9.6h8L7.9 6.2h1.9z" fill="currentColor" opacity="0.85" />
+      <path d="M6 9.6v1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+  if (growth === 'growing') return (
+    <svg viewBox="0 0 12 12" className="w-3 h-3 shrink-0" style={{ color }} aria-label="生长中">
+      <path d="M6 11V4.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M6 6.2C6 4.3 4.4 3.2 2.4 3.2c0 2 1.6 3.3 3.6 3z" fill="currentColor" opacity="0.85" />
+      <path d="M6 7.4c0-1.6 1.3-2.5 2.9-2.5.1 1.7-1.3 2.8-2.9 2.5z" fill="currentColor" opacity="0.6" />
+    </svg>
+  );
+  return <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} aria-label="种子" />;
+};
+
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 📱 触屏：卡片列表去掉逐张 backdrop-filter 模糊——滚动时每张卡都是独立合成层，
   // 数量一多手机 GPU 明显吃力；改实色半透明背景，观感不减，滚动更顺。
   const coarse = useCoarsePointer();
-  const { posts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
+  const { posts: rawPosts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
+  // 🔒 admin 本人已登录会话会连草稿一并拉下来；「模拟访客」时在客户端滤掉，模拟才名副其实
+  const posts = useMemo(() => filterVisible(rawPosts, isAdmin), [rawPosts, isAdmin]);
   // ☁️ 本地 → 云端一键迁移状态：idle / syncing / 结果文案
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
@@ -123,6 +144,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [editType, setEditType] = useState<string>('thought');
   // 📚 合集：可空的连载归属；发布栏上方的元信息抽屉里填写
   const [editSeries, setEditSeries] = useState('');
+  // 🌱🌿🌳 生长度（自述性质）+ 📝 发布状态（草稿仅自己可见）：同样收在元信息抽屉里
+  const [editGrowth, setEditGrowth] = useState<Growth>('seedling');
+  const [editStatus, setEditStatus] = useState<PostStatus>('published');
   const [showMetaPanel, setShowMetaPanel] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [showSeries, setShowSeries] = useState(false);
@@ -262,11 +286,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (!isEditing) return;
     const timer = setTimeout(() => {
       if (!editContent.trim() && !editTitle.trim()) return;
-      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, savedAt: Date.now() };
+      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, growth: editGrowth, status: editStatus, savedAt: Date.now() };
       writeDraft(draft); setDraftSavedAt(draft.savedAt);
     }, 800);
     return () => clearTimeout(timer);
-  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries]);
+  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries, editGrowth, editStatus]);
   const clearDraft = () => { removeDraft(editingId); setDraftSavedAt(null); setDraftMsg(''); };
 
   // 📑 写作大纲：从正文实时提取 h2/h3，点击滚动到对应位置（按字符占比近似定位）
@@ -542,6 +566,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     return candidates.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
   }, [posts, termEchoDismissed]);
 
+  // 🌿 最近照料：花园在生长的可见证据——只在真被「更新」过（而非发完顺手改错别字）
+  //   且在 30 天内照料过的文章里，横向列出至多 3 篇。48h 阈值滤掉误差性小编辑。
+  const recentlyTended = useMemo(() => {
+    const now = Date.now();
+    const DAY = 86400000;
+    return posts
+      .filter(p => p.updatedAt - p.createdAt > 48 * 3600 * 1000 && now - p.updatedAt < 30 * DAY)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 3);
+  }, [posts]);
+
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     posts.forEach(p => { counts[p.type] = (counts[p.type] || 0) + 1; });
@@ -605,6 +640,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const restoreDraft = (d: EditorDraft) => {
     setEditingId(d.editingId); setEditTitle(d.title); setEditTagList(d.tags ?? []);
     setEditContent(d.content); setEditColor(d.color); setEditType(d.type); setEditSeries(d.series ?? '');
+    setEditGrowth(d.growth ?? 'seedling'); setEditStatus(d.status ?? 'published');
     setDraftSavedAt(d.savedAt); setDraftMsg('已恢复上次未发布的草稿');
   };
 
@@ -614,6 +650,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       restoreDraft(draft);
     } else {
       setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type); setEditSeries(post.series ?? '');
+      setEditGrowth(post.growth); setEditStatus(post.status);
       setDraftMsg('');
     }
     setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
@@ -626,6 +663,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     } else {
       const initialType = selectedType ?? 'thought';
       setEditingId(null); setEditTitle(''); setEditTagList([]); setEditContent(getTemplate(initialType)); setEditColor('#39C5BB'); setEditType(initialType); setEditSeries(selectedSeries ?? '');
+      setEditGrowth('seedling'); setEditStatus('published');
       setDraftMsg('');
     }
     setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setIsEditing(true);
@@ -635,13 +673,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const discardDraft = () => {
     clearDraft();
     setEditingId(null); setEditTitle(''); setEditTagList([]); setTagInput(''); setEditSeries('');
+    setEditGrowth('seedling'); setEditStatus('published');
     setEditContent(getTemplate(editType)); setEditColor('#39C5BB');
   };
 
   const handlePublish = () => {
     if (!editContent.trim()) return;
     const tagArray = [...editTagList, ...(tagInput.trim() ? [tagInput.trim()] : [])];
-    if (editingId) updateSeed(editingId, editTitle, tagArray, editColor, editContent, editType, editSeries); else plantSeed(editTitle, tagArray, editColor, editContent, editType, editSeries);
+    const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: editStatus };
+    if (editingId) updateSeed(editingId, input); else plantSeed(input);
     clearDraft();
     setIsEditing(false);
   };
@@ -849,6 +889,19 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 )}
               </AnimatePresence>
 
+              {/* 🌿 最近照料：花园在生长的可见证据，只在真有文章被认真修订过时才出现 */}
+              {recentlyTended.length > 0 && (
+                <div className="flex items-center justify-center gap-2.5 flex-wrap mb-8 -mt-2 font-mono text-[9px] tracking-[0.2em] uppercase text-slate-400 dark:text-slate-500">
+                  <span className="text-[#39C5BB]/70">🌿 最近照料</span>
+                  {recentlyTended.map((p, i) => (
+                    <React.Fragment key={p.id}>
+                      {i > 0 && <span className="opacity-40">·</span>}
+                      <button onClick={() => openPost(p)} className="normal-case tracking-normal font-serif text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] transition-colors">{p.title}</button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+
               {/* 📅 按月归档的瀑布流：让周报与成长有清晰的时间叙事 */}
               <div className="flex flex-col gap-12">
                 <AnimatePresence mode="popLayout">
@@ -868,7 +921,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
-                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08] transition-colors duration-[1500ms] ease-in-out ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
@@ -879,10 +932,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                   <span className="w-3 h-3"><CategoryIcon name={meta.icon} /></span>
                                   <span className="font-mono text-[8px] tracking-[0.2em] uppercase">{meta.label}</span>
                                 </div>
+                                {/* 🌰 草稿徽章：仅 admin 视角（模拟访客已被 filterVisible 滤掉）能看到自己埋下的种子 */}
+                                {post.status === 'draft' && (
+                                  <div className="absolute top-4 right-6 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-dashed border-[#FFB7C5]/60 text-[#FFB7C5]">
+                                    <span className="font-mono text-[8px] tracking-[0.2em] uppercase">Draft · 尚未破土</span>
+                                  </div>
+                                )}
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
                               <div className="p-6 md:p-8">
-                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal" style={{ color: post.color }}>续读 {Math.round(progress * 100)}%</span></>}</div>
+                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><GrowthGlyph growth={post.growth} color={post.color} /><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal" style={{ color: post.color }}>续读 {Math.round(progress * 100)}%</span></>}</div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
@@ -1048,6 +1107,26 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                            )}
                          </div>
 
+                         {/* 🌱🌿🌳 生长度（自述）+ 📝 发布状态：花园会长大，也允许先埋进土里再公开 */}
+                         <div className="flex items-center gap-3 flex-wrap">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Growth</span>
+                           {([
+                             { v: 'seedling' as Growth, label: '🌱 种子' },
+                             { v: 'growing' as Growth, label: '🌿 生长中' },
+                             { v: 'evergreen' as Growth, label: '🌳 常青' },
+                           ]).map(({ v, label }) => (
+                             <button key={v} onClick={() => setEditGrowth(v)}
+                               className={`font-serif text-xs px-3 py-1.5 rounded-full border transition-colors duration-300 ${editGrowth === v ? 'text-[#39C5BB] border-[#39C5BB]/60 bg-[#39C5BB]/5' : 'text-slate-400 dark:text-slate-500 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
+                               {label}
+                             </button>
+                           ))}
+                           <button onClick={() => setEditStatus(s => s === 'draft' ? 'published' : 'draft')}
+                             title="草稿仅自己登录时可见，不进入公开列表"
+                             className={`ml-auto font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-full border transition-colors duration-300 ${editStatus === 'draft' ? 'text-[#FFB7C5] border-[#FFB7C5]/50 bg-[#FFB7C5]/5' : 'text-slate-400 dark:text-slate-500 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
+                             {editStatus === 'draft' ? '🌰 先埋进土里' : '公开可见'}
+                           </button>
+                         </div>
+
                          <div className="flex items-center space-x-6 pb-5">
                            {/* 🏷️ 标签 chip 输入：回车成签、点 × 摘除、下拉复用已有标签 */}
                            <div className="flex-1 relative flex flex-wrap items-center gap-2">
@@ -1092,9 +1171,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      <span className="hidden sm:inline">{metaOf(editType).label}</span>
                      {editTagList.length > 0 && <span className="opacity-60 normal-case">#{editTagList.length}</span>}
                      {editSeries.trim() && <span className="opacity-60 normal-case max-w-[8rem] truncate">📚 {editSeries.trim()}</span>}
+                     {editStatus === 'draft' && <span className="text-[#FFB7C5] normal-case">🌰 draft</span>}
                      <span className={`transition-transform duration-300 ${showMetaPanel ? 'rotate-180' : ''}`}>⌄</span>
                    </button>
-                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editColor }}>{editingId ? 'Update' : 'Publish'}</button>
+                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editingId ? 'Update' : 'Publish'}</button>
                  </div>
                </div>
           </motion.div>
@@ -1153,7 +1233,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{resolvedContent}</Markdown>
 
                 {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
-                <Colophon date={activePost.date} createdAt={activePost.createdAt} color={activePost.color} />
+                <Colophon date={activePost.date} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
 
                 {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去 */}
                 {activePost.series && (seriesInfo[activePost.series]?.length ?? 0) > 1 && (

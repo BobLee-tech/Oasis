@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# 上线后把下面这行的域名换成你的真实域名（自定义域名或 *.vercel.app），
+# 指向 /sitemap.xml（见 api/sitemap.ts + vercel.json 的 rewrite）。
+# Sitemap: https://<your-domain>/sitemap.xml
