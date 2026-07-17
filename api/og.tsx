@@ -4,8 +4,8 @@
 //   体积从完整字库的几十 MB 降到几 KB，且天然覆盖任意标题、无需在仓库里塞字体文件。
 //   UA 伪装成不支持 woff2 的旧浏览器，让 Google 回落到 satori 能直接解析的 TTF。
 import { ImageResponse } from '@vercel/og';
-import { createClient } from '@supabase/supabase-js';
 import { currentSolarTerm } from '../src/lib/solarTerms';
+import { fetchGardenPosts } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -44,12 +44,8 @@ export default async function handler(req: Request) {
   let dateLabel = '';
 
   if (supabaseUrl && supabaseAnonKey && id) {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: p } = await supabase
-      .from('garden_posts')
-      .select('title,color,created_at')
-      .eq('id', id)
-      .single();
+    const rows = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, { select: 'title,color,created_at', eq: ['id', id] }).catch(() => []);
+    const p = rows[0];
     if (p) {
       title = p.title ?? title;
       color = p.color ?? color;

@@ -3,7 +3,7 @@
 //   永远只是首页那一份通用 meta —— 这里补一条「真实存在」的服务端地址：
 //   完整渲染 meta / OG / JSON-LD / 纯文本正文（服务端爬虫可读），
 //   真人访客则由 head 里的一行脚本立即换乘回 SPA 的 #/garden/:id 阅读舱。
-import { createClient } from '@supabase/supabase-js';
+import { fetchGardenPosts } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -33,12 +33,11 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Not found', { status: 404 });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { data: p } = await supabase
-    .from('garden_posts')
-    .select('id,title,excerpt,content,created_at,updated_at,color,tags')
-    .eq('id', id)
-    .single();
+  const rows = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
+    select: 'id,title,excerpt,content,created_at,updated_at,color,tags',
+    eq: ['id', id],
+  }).catch(() => []);
+  const p = rows[0];
 
   if (!p) return new Response('Not found', { status: 404 });
 
