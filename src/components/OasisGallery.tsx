@@ -377,14 +377,14 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const { route: galleryRoute } = useHashRoute();
   useEffect(() => {
     if (galleryRoute.view !== 'garden') return;
-    if (galleryRoute.postId) {
-      const p = posts.find(x => x.id === galleryRoute.postId);
+    if (galleryRoute.itemId) {
+      const p = posts.find(x => x.id === galleryRoute.itemId);
       if (p && p.id !== activePost?.id) setActivePost(p);
     } else if (activePost) {
       setActivePost(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [galleryRoute.view, galleryRoute.postId, posts]);
+  }, [galleryRoute.view, galleryRoute.itemId, posts]);
 
   // 打开 / 关闭文章时回写地址（相等则跳过，杜绝与上面的 effect 往复抖动）
   //   hadPostRef 守卫：首次以 #/garden/:id 直达时，别在文章打开前就把 id 抹掉
@@ -990,7 +990,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                  className="w-full shrink-0 bg-transparent text-3xl md:text-5xl font-serif text-slate-700 dark:text-slate-200 pt-6 md:pt-8 mb-6 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors duration-[1500ms] ease-in-out" disabled={isPreviewMode} />
 
                {isPreviewMode ? (
-                 <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8">
+                 <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 notranslate" translate="no">
                    {editContent.trim() ? <Markdown>{editContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">No content to preview...</div>}
                  </div>
                ) : (
@@ -1025,7 +1025,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    <div className="flex-1 flex gap-8 min-h-0 mb-3">
                      <textarea ref={editorRef} value={editContent} onChange={e => setEditContent(e.target.value)} onKeyDown={handleEditorKeyDown} placeholder="Let your thoughts flow..." className="flex-1 min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
                      {editorMode === 'split' && (
-                       <div className="hidden lg:block flex-1 min-w-0 overflow-y-auto no-scrollbar pl-8 border-l border-slate-200/60 dark:border-white/5">
+                       <div className="hidden lg:block flex-1 min-w-0 overflow-y-auto no-scrollbar pl-8 border-l border-slate-200/60 dark:border-white/5 notranslate" translate="no">
                          {editContent.trim() ? <Markdown>{editContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">Preview...</div>}
                        </div>
                      )}

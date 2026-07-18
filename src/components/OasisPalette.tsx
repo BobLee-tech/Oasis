@@ -15,12 +15,13 @@ import { useCoarsePointer } from '../hooks/useCoarsePointer';
 export const PALETTE_EVENT = 'oasis:palette';
 export const openPalette = () => window.dispatchEvent(new CustomEvent(PALETTE_EVENT));
 
-export type PaletteView = 'soundscape' | 'garden' | 'orchard' | 'lights';
+export type PaletteView = 'soundscape' | 'garden' | 'orchard' | 'lights' | 'atelier';
 const VIEW_META: Record<PaletteView, { label: string; icon: string }> = {
   garden: { label: '花园 · Garden', icon: '🌱' },
   soundscape: { label: '共鸣 · Soundscape', icon: '🎧' },
   orchard: { label: '星图 · Orchard', icon: '🪐' },
   lights: { label: '灯火 · Lanterns', icon: '🏮' },
+  atelier: { label: '绘阁 · Atelier', icon: '🖼️' },
 };
 
 interface PostHit { kind: 'post'; id: string; title: string; color: string; snippet: string }
