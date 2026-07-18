@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
 import { slugify } from '../lib/reading';
@@ -114,7 +115,7 @@ export const PROSE_CLASS =
 export const Markdown: React.FC<MarkdownProps> = ({ children, className }) => (
   <div className={className ?? PROSE_CLASS}>
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
       rehypePlugins={[rehypeRaw, rehypeHeadingIds, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
       components={MD_COMPONENTS}
     >

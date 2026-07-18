@@ -34,12 +34,14 @@ const LanternIcon = () => (<svg {...svgProps}><path d="M12 2.5v2.2"/><path d="M8
 const AtelierIcon = () => (<svg {...svgProps}><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4.5 16.8l4.3-4.8 3.4 3.8 2.4-2.8 4.9 5.3"/></svg>);
 
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
+  // 排序以 Garden（主博客）为视觉中心，两侧对称：星图/绘阁是作品的另一种呈现，紧邻 Garden；
+  // 共鸣与灯火是纯氛围场所，居两端。
   const dockItems: DockItem[] = [
     { view: 'soundscape', label: 'Resonance', icon: <ResonanceIcon />, glowColor: 'rgba(57,197,187,0.8)' },
-    { view: 'garden', label: 'Garden', icon: <GardenIcon />, glowColor: 'rgba(110,231,183,0.8)' },
     { view: 'orchard', label: 'Constellation', icon: <ConstellationIcon />, glowColor: 'rgba(167,139,250,0.8)' },
-    { view: 'lights', label: 'Lanterns', icon: <LanternIcon />, glowColor: 'rgba(253,186,116,0.8)' },
-    { view: 'atelier', label: 'Atelier', icon: <AtelierIcon />, glowColor: 'rgba(255,183,197,0.8)' }
+    { view: 'garden', label: 'Garden', icon: <GardenIcon />, glowColor: 'rgba(110,231,183,0.8)' },
+    { view: 'atelier', label: 'Atelier', icon: <AtelierIcon />, glowColor: 'rgba(255,183,197,0.8)' },
+    { view: 'lights', label: 'Lanterns', icon: <LanternIcon />, glowColor: 'rgba(253,186,116,0.8)' }
   ];
 
   return (

@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "backup": "node scripts/export-posts.mjs",
+    "img": "node scripts/post-image.mjs",
+    "art": "node scripts/post-artwork.mjs",
     "test": "vitest run",
     "init-tailwind": "tailwindcss init -p"
   },
@@ -27,6 +29,7 @@
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {

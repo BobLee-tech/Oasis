@@ -1,5 +1,5 @@
 // src/components/OasisGallery.tsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 import { useGarden, filterVisible, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
@@ -190,25 +190,33 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   // ✍️ Markdown 格式工具栏：选中文字 → 包裹语法；无选区 → 插入占位并选中
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  // 最小侵入式改文本：优先走原生 insertText（走真实 input 事件，保留浏览器撤销栈、
+  // 不触发 React 整串替换 value 导致的滚动位置重置）；不支持时退回受控 state 写入 + 手动恢复滚动。
+  const editText = (ta: HTMLTextAreaElement, selStart: number, selEnd: number, text: string) => {
+    ta.setSelectionRange(selStart, selEnd);
+    const ok = typeof document.execCommand === 'function' && document.execCommand('insertText', false, text);
+    if (!ok) {
+      const scrollTop = ta.scrollTop;
+      setEditContent(ta.value.slice(0, selStart) + text + ta.value.slice(selEnd));
+      requestAnimationFrame(() => { ta.scrollTop = scrollTop; });
+    }
+  };
   const applyFormat = (before: string, after: string = before, placeholder = '') => {
     const ta = editorRef.current;
     if (!ta) return;
     const { selectionStart: s, selectionEnd: e } = ta;
-    const sel = editContent.slice(s, e) || placeholder;
-    const next = editContent.slice(0, s) + before + sel + after + editContent.slice(e);
-    setEditContent(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.setSelectionRange(s + before.length, s + before.length + sel.length);
-    });
+    const sel = ta.value.slice(s, e) || placeholder;
+    ta.focus();
+    editText(ta, s, e, before + sel + after);
+    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + before.length, s + before.length + sel.length); });
   };
   const applyLinePrefix = (prefix: string) => {
     const ta = editorRef.current;
     if (!ta) return;
     const { selectionStart: s } = ta;
-    const lineStart = editContent.lastIndexOf('\n', s - 1) + 1;
-    const next = editContent.slice(0, lineStart) + prefix + editContent.slice(lineStart);
-    setEditContent(next);
+    const lineStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+    ta.focus();
+    editText(ta, lineStart, lineStart, prefix);
     requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + prefix.length, s + prefix.length); });
   };
 
@@ -242,28 +250,39 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (e.key === 'Tab') {
       e.preventDefault();
       const { selectionStart: s, selectionEnd: end } = ta;
-      setEditContent(editContent.slice(0, s) + '  ' + editContent.slice(end));
-      requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + 2, s + 2); });
+      if (s === end) {
+        editText(ta, s, s, '  ');
+        requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + 2, s + 2); });
+        return;
+      }
+      // 有选区（可能跨多行）：整体缩进/反缩进，而非用两个空格吞掉选中内容
+      const lineStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+      const block = ta.value.slice(lineStart, end);
+      const lines = block.split('\n');
+      const next = e.shiftKey
+        ? lines.map(l => l.replace(/^ {1,2}/, '')).join('\n')
+        : lines.map(l => '  ' + l).join('\n');
+      editText(ta, lineStart, end, next);
+      requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(lineStart, lineStart + next.length); });
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       const { selectionStart: s } = ta;
-      const lineStart = editContent.lastIndexOf('\n', s - 1) + 1;
-      const line = editContent.slice(lineStart, s);
+      const lineStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+      const line = ta.value.slice(lineStart, s);
       const m = /^(\s*)(?:([-*])\s\[[ x]\]\s|([-*])\s|(\d+)\.\s)(.*)$/.exec(line);
       if (!m) return;
       e.preventDefault();
       const [, indent, task, bullet, num, rest] = m;
       // 空列表项再回车 → 结束列表（清掉本行前缀）
       if (!rest.trim()) {
-        const next = editContent.slice(0, lineStart) + editContent.slice(s);
-        setEditContent(next);
+        editText(ta, lineStart, s, '');
         requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(lineStart, lineStart); });
         return;
       }
       const prefix = task ? `${indent}${task} [ ] ` : bullet ? `${indent}${bullet} ` : `${indent}${Number(num) + 1}. `;
       const insert = '\n' + prefix;
-      setEditContent(editContent.slice(0, s) + insert + editContent.slice(s));
+      editText(ta, s, s, insert);
       requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + insert.length, s + insert.length); });
     }
   };
@@ -304,6 +323,21 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     ta.setSelectionRange(idx, idx);
     ta.scrollTop = Math.max(0, (idx / Math.max(1, editContent.length)) * ta.scrollHeight - 80);
   };
+
+  // 🖼️ 预览渲染用延迟值：长文时不阻塞每次敲字的输入手感
+  const previewContent = useDeferredValue(editContent);
+  // 🔄 Split 模式：写作区滚动时按比例同步预览区滚动位置
+  const previewRef = useRef<HTMLDivElement>(null);
+  const syncPreviewScroll = () => {
+    const ta = editorRef.current, pv = previewRef.current;
+    if (!ta || !pv) return;
+    const taMax = ta.scrollHeight - ta.clientHeight;
+    const ratio = taMax > 0 ? ta.scrollTop / taMax : 0;
+    pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight);
+  };
+  useEffect(() => {
+    if (editorMode === 'split') syncPreviewScroll();
+  }, [previewContent, editorMode]);
 
   const insertTemplate = () => {
     const tpl = getTemplate(editType);
@@ -991,7 +1025,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                {isPreviewMode ? (
                  <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 notranslate" translate="no">
-                   {editContent.trim() ? <Markdown>{editContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">No content to preview...</div>}
+                   {previewContent.trim() ? <Markdown>{previewContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">No content to preview...</div>}
                  </div>
                ) : (
                  <>
@@ -1014,7 +1048,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    {/* ✍️ Markdown 格式工具栏：选中文字点按钮即插入对应语法 */}
                    <div className="flex flex-wrap items-center gap-1 mb-3 pb-3 border-b border-slate-200/60 dark:border-white/5">
                      {FORMAT_TOOLS.map(t => (
-                       <button key={t.label} type="button" onClick={t.run} title={t.title}
+                       <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={t.run} title={t.title}
                          className="min-w-[30px] h-7 px-2 flex items-center justify-center font-mono text-[12px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
                          {t.label}
                        </button>
@@ -1023,10 +1057,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    </div>
                    {/* ✍️ 写作区：write 单栏（宽屏侧挂大纲）/ split 左写右读 */}
                    <div className="flex-1 flex gap-8 min-h-0 mb-3">
-                     <textarea ref={editorRef} value={editContent} onChange={e => setEditContent(e.target.value)} onKeyDown={handleEditorKeyDown} placeholder="Let your thoughts flow..." className="flex-1 min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
+                     <textarea ref={editorRef} value={editContent} onChange={e => setEditContent(e.target.value)} onKeyDown={handleEditorKeyDown} onScroll={editorMode === 'split' ? syncPreviewScroll : undefined} placeholder="Let your thoughts flow..." className="flex-1 min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
                      {editorMode === 'split' && (
-                       <div className="hidden lg:block flex-1 min-w-0 overflow-y-auto no-scrollbar pl-8 border-l border-slate-200/60 dark:border-white/5 notranslate" translate="no">
-                         {editContent.trim() ? <Markdown>{editContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">Preview...</div>}
+                       <div ref={previewRef} className="hidden lg:block flex-1 min-w-0 overflow-y-auto no-scrollbar pl-8 border-l border-slate-200/60 dark:border-white/5 notranslate" translate="no">
+                         {previewContent.trim() ? <Markdown>{previewContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">Preview...</div>}
                        </div>
                      )}
                      {/* 📑 写作大纲：单栏写作时提取 h2/h3，点击跳到对应段落 */}
