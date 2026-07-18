@@ -5,12 +5,13 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
 import { useGarden, filterVisible } from './hooks/useGarden';
+import { peekCachedArtworks, filterVisible as filterVisibleArtworks, resolveArtSrc, type Artwork } from './hooks/useAtelier';
 import { playBGM } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
 import { termTint } from './lib/solarTerms';
-import { NIGHT_REMINDERS } from './data/quotes';
+import { NIGHT_REMINDERS, MIKU_WHISPERS } from './data/quotes';
 import { useCoarsePointer } from './hooks/useCoarsePointer';
 
 import { OasisTerminal } from './components/OasisTerminal';
@@ -25,6 +26,7 @@ const OasisOrchard = lazy(() => import('./components/OasisOrchard').then(m => ({
 const OasisGallery = lazy(() => import('./components/OasisGallery').then(m => ({ default: m.OasisGallery })));
 const OasisResonance = lazy(() => import('./components/OasisResonance').then(m => ({ default: m.OasisResonance })));
 const OasisLights = lazy(() => import('./components/OasisLights').then(m => ({ default: m.OasisLights })));
+const OasisAtelier = lazy(() => import('./components/OasisAtelier').then(m => ({ default: m.OasisAtelier })));
 
 import type { BgPhase, AppView } from './types/auth';
 
@@ -106,29 +108,55 @@ const ClickRipples = () => {
 };
 
 // 🌙 深夜低语：23:00–4:59 到访时，底部浮起一句温柔提醒后缓缓散去；每次会话只说一次，不扰人。
-const NightWhisper = () => {
-  const [msg, setMsg] = useState<string | null>(null);
+//   本地缓存里若有 miku 标签的公开收藏，优先配一张一并浮现（点击直达绘阁灯箱）；
+//   没有则回退纯文字提醒。只读 peekCachedArtworks() 快照，不为此额外发起云端请求。
+type WhisperContent = { kind: 'text'; msg: string } | { kind: 'art'; artwork: Artwork; msg: string };
+const NightWhisper = ({ isAdmin, onOpenArtwork }: { isAdmin: boolean; onOpenArtwork: (id: string) => void }) => {
+  const [content, setContent] = useState<WhisperContent | null>(null);
   useEffect(() => {
     if (!isLateNight() || sessionStorage.getItem('oasis_night_whispered')) return;
-    sessionStorage.setItem('oasis_night_whispered', '1');
-    const pick = NIGHT_REMINDERS[Math.floor(Math.random() * NIGHT_REMINDERS.length)];
-    const show = setTimeout(() => setMsg(pick), 4000);   // 等入场安顿好再轻声说
-    const hide = setTimeout(() => setMsg(null), 14000);  // 停留 10 秒后散去
+    // ⚠️ 标记必须在真正展示（show 定时器触发）时才写入，不能在这里同步写：
+    //   StrictMode 开发模式会先「挂载→卸载」空跑一次 effect 再正式挂载，若在此处同步标记，
+    //   空跑的那一次会抢先占用标记，导致真正存活的那次直接被挡在门外、永远不展示。
+    const show = setTimeout(() => {
+      sessionStorage.setItem('oasis_night_whispered', '1');
+      const mikuPicks = filterVisibleArtworks(peekCachedArtworks(), isAdmin).filter((a) => a.tags.includes('miku'));
+      if (mikuPicks.length > 0) {
+        const artwork = mikuPicks[Math.floor(Math.random() * mikuPicks.length)];
+        const msg = MIKU_WHISPERS[Math.floor(Math.random() * MIKU_WHISPERS.length)];
+        setContent({ kind: 'art', artwork, msg });
+      } else {
+        setContent({ kind: 'text', msg: NIGHT_REMINDERS[Math.floor(Math.random() * NIGHT_REMINDERS.length)] });
+      }
+    }, 4000);   // 等入场安顿好再轻声说
+    const hide = setTimeout(() => setContent(null), 14000);  // 停留 10 秒后散去
     return () => { clearTimeout(show); clearTimeout(hide); };
-  }, []);
+  }, [isAdmin]);
   return (
     <AnimatePresence>
-      {msg && (
+      {content && (
         <motion.div
           initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
           transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-          className="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 z-[350] px-6 py-3 rounded-full backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 shadow-sm"
+          onClick={content.kind === 'art' ? () => onOpenArtwork(content.artwork.id) : undefined}
+          className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[350] rounded-full backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 shadow-sm ${
+            content.kind === 'art' ? 'flex items-center gap-3 pl-2 pr-5 py-2 cursor-pointer pointer-events-auto' : 'pointer-events-none px-6 py-3'
+          }`}
         >
-          <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
-            <span className="mr-2">🌙</span>{msg}
-          </span>
+          {content.kind === 'art' ? (
+            <>
+              <img src={resolveArtSrc(content.artwork.imagePath, 'thumb')} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+              <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
+                <span className="mr-2">♪</span>{content.msg}
+              </span>
+            </>
+          ) : (
+            <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
+              <span className="mr-2">🌙</span>{content.msg}
+            </span>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -318,7 +346,7 @@ function App() {
   const { posts: rawAllPosts } = useGarden();
   const allPosts = filterVisible(rawAllPosts, effectiveIsAdmin);
   const paletteView: PaletteView | 'welcome' =
-    appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights'
+    appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights' || appView === 'atelier'
       ? appView : 'welcome';
   const themeLabel = themeMode === 'auto' ? `AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? 'LIGHT' : 'DARK';
 
@@ -384,7 +412,7 @@ function App() {
 
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
-      {terminalStatus === 'granted' && <NightWhisper />}
+      {terminalStatus === 'granted' && <NightWhisper isAdmin={effectiveIsAdmin} onOpenArtwork={(id) => navigate('atelier', id)} />}
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
@@ -407,6 +435,7 @@ function App() {
                       {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
                       {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
                       {appView === 'lights' && wrap('lights-space', <OasisLights />)}
+                      {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}
                     </AnimatePresence>
                   </Suspense>
                 );

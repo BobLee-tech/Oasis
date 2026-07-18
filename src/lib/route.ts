@@ -9,17 +9,22 @@ const VIEW_TO_SEG: Partial<Record<AppView, string>> = {
   garden: 'garden',
   orchard: 'constellation',
   lights: 'lanterns',
+  atelier: 'atelier',
 };
 const SEG_TO_VIEW: Record<string, AppView> = {
   resonance: 'soundscape',
   garden: 'garden',
   constellation: 'orchard',
   lanterns: 'lights',
+  atelier: 'atelier',
 };
+
+// 支持「场所内单条目直达」的 view（garden 的文章 / atelier 的画作）
+const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'atelier']);
 
 export interface Route {
   view: AppView;        // 'welcome' 表示无有效路由（首页入场）
-  postId?: string;      // 仅 garden 场所有意义
+  itemId?: string;      // garden 文章 id 或 atelier 画作 id，仅 ITEM_VIEWS 内的场所有意义
 }
 
 export const parseHash = (hash: string): Route => {
@@ -28,15 +33,15 @@ export const parseHash = (hash: string): Route => {
   const view = SEG_TO_VIEW[seg];
   if (!view) return { view: 'welcome' };
   const route: Route = { view };
-  if (view === 'garden' && rest[0]) route.postId = decodeURIComponent(rest[0]);
+  if (ITEM_VIEWS.has(view) && rest[0]) route.itemId = decodeURIComponent(rest[0]);
   return route;
 };
 
-export const formatHash = (view: AppView, postId?: string): string => {
+export const formatHash = (view: AppView, itemId?: string): string => {
   if (view === 'welcome') return '#/';
   const seg = VIEW_TO_SEG[view];
   if (!seg) return '#/';
-  return postId ? `#/${seg}/${encodeURIComponent(postId)}` : `#/${seg}`;
+  return itemId ? `#/${seg}/${encodeURIComponent(itemId)}` : `#/${seg}`;
 };
 
 // 读取 + 订阅当前路由；navigate 推入新地址（新增历史项 → 浏览器后退可回退）
@@ -47,8 +52,8 @@ export const useHashRoute = () => {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  const navigate = useCallback((view: AppView, postId?: string) => {
-    const next = formatHash(view, postId);
+  const navigate = useCallback((view: AppView, itemId?: string) => {
+    const next = formatHash(view, itemId);
     if (next !== window.location.hash) window.location.hash = next;
   }, []);
   return { route, navigate };

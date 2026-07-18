@@ -26,18 +26,20 @@ const svgProps = {
   className: ico,
 };
 
-// 🎧 共鸣：耳机  🌿 花园：新芽  ✦ 星座：连星  🏮 灯火：灯笼
+// 🎧 共鸣：耳机  🌿 花园：新芽  ✦ 星座：连星  🏮 灯火：灯笼  🖼️ 绘阁：画框
 const ResonanceIcon = () => (<svg {...svgProps}><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="13.5" width="4" height="6.5" rx="1.8"/><rect x="17.5" y="13.5" width="4" height="6.5" rx="1.8"/></svg>);
 const GardenIcon = () => (<svg {...svgProps}><path d="M12 21V9"/><path d="M12 9C12 6 9.2 4 5.5 4c0 3.6 2.8 5.6 6.5 5z"/><path d="M12 12.5c0-2.6 2.4-4.6 6-4.6C18 11.4 15.6 12.5 12 12.5z"/></svg>);
 const ConstellationIcon = () => (<svg {...svgProps}><path d="M5 6l6.5 10.5L18 8.5"/><circle cx="5" cy="6" r="1.3"/><circle cx="18" cy="8.5" r="1.3"/><circle cx="11.5" cy="16.5" r="1.3"/><path d="M15.5 4.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z"/></svg>);
 const LanternIcon = () => (<svg {...svgProps}><path d="M12 2.5v2.2"/><path d="M8.8 4.7h6.4"/><rect x="6.5" y="6.5" width="11" height="11" rx="4.5"/><path d="M12 6.7v10.6"/><path d="M12 17.5v2.2"/><path d="M10.4 20.4h3.2"/></svg>);
+const AtelierIcon = () => (<svg {...svgProps}><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4.5 16.8l4.3-4.8 3.4 3.8 2.4-2.8 4.9 5.3"/></svg>);
 
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
   const dockItems: DockItem[] = [
     { view: 'soundscape', label: 'Resonance', icon: <ResonanceIcon />, glowColor: 'rgba(57,197,187,0.8)' },
     { view: 'garden', label: 'Garden', icon: <GardenIcon />, glowColor: 'rgba(110,231,183,0.8)' },
     { view: 'orchard', label: 'Constellation', icon: <ConstellationIcon />, glowColor: 'rgba(167,139,250,0.8)' },
-    { view: 'lights', label: 'Lanterns', icon: <LanternIcon />, glowColor: 'rgba(253,186,116,0.8)' }
+    { view: 'lights', label: 'Lanterns', icon: <LanternIcon />, glowColor: 'rgba(253,186,116,0.8)' },
+    { view: 'atelier', label: 'Atelier', icon: <AtelierIcon />, glowColor: 'rgba(255,183,197,0.8)' }
   ];
 
   return (
