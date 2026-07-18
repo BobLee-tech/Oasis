@@ -1,6 +1,7 @@
-// 📍 sitemap.xml：首页 + 全部已发布文章的 /p/:id，供搜索引擎发现与收录。
+// 📍 sitemap.xml：首页 + 全部已发布文章的 /p/:slug，供搜索引擎发现与收录。
 //   Vercel 按文件路由自动挂载为 /api/sitemap，vercel.json 把 /sitemap.xml 重写到这里。
-//   与 api/rss.ts 同构：anon key 查询，RLS 已把草稿挡在外面，这里无需再筛 status。
+//   与 api/rss.ts 同构：anon key 查询，RLS 挡掉了 draft，但 unlisted 对匿名可读（分享链接要能打开），
+//   所以这里必须显式再筛 status=published，否则 unlisted 会漏进搜索引擎收录。
 import { fetchGardenPosts } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
@@ -17,7 +18,10 @@ export default async function handler(req: Request): Promise<Response> {
   let data: any[];
   try {
     data = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
-      select: 'id,created_at,updated_at',
+      select: 'id,slug,created_at,updated_at',
+      // ⚠️ RLS 已经把 draft 挡在匿名读取之外，但 unlisted 现在也对匿名可读（否则分享链接打不开）——
+      //   这里必须显式再筛一道 published，否则「不进搜索引擎收录」这个 unlisted 的核心承诺会被打破。
+      filters: [['status', 'published']],
       order: 'created_at.desc',
     });
   } catch (e) {
@@ -30,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
     `    <url><loc>${origin}/</loc></url>`,
     ...(data ?? []).map((p) => {
       const lastmod = isoDate(Number(p.updated_at) || Number(p.created_at));
-      return `    <url><loc>${origin}/p/${p.id}</loc><lastmod>${lastmod}</lastmod></url>`;
+      return `    <url><loc>${origin}/p/${encodeURIComponent(p.slug || p.id)}</loc><lastmod>${lastmod}</lastmod></url>`;
     }),
   ].join('\n');
 

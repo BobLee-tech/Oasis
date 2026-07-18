@@ -7,6 +7,7 @@
 export interface RestQuery {
   select: string;
   eq?: [string, string];
+  filters?: [string, string][]; // 额外的 eq 过滤条件，AND 叠加（如排除 unlisted 用 ['status', 'published']）
   order?: string;   // 如 'created_at.desc'
   limit?: number;
 }
@@ -19,6 +20,7 @@ export const fetchGardenPosts = async (
   const url = new URL(`${supabaseUrl}/rest/v1/garden_posts`);
   url.searchParams.set('select', query.select);
   if (query.eq) url.searchParams.set(query.eq[0], `eq.${query.eq[1]}`);
+  (query.filters ?? []).forEach(([col, val]) => url.searchParams.set(col, `eq.${val}`));
   if (query.order) url.searchParams.set('order', query.order);
   if (query.limit) url.searchParams.set('limit', String(query.limit));
 
@@ -27,4 +29,22 @@ export const fetchGardenPosts = async (
   });
   if (!res.ok) throw new Error(`Supabase REST ${res.status}: ${await res.text()}`);
   return res.json();
+};
+
+// 🔗 unlisted 文章的唯一读取口子：RLS 的 public-read 策略只放行 published，
+//   这个 RPC 在服务端（security definer）里单独判断 token 匹配 + status='unlisted'，
+//   与 garden_posts.sql 的 get_post_by_share_token() 对应，不能直接查表拿到。
+export const fetchPostByShareToken = async (
+  supabaseUrl: string,
+  anonKey: string,
+  token: string
+): Promise<any | null> => {
+  const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_post_by_share_token`, {
+    method: 'POST',
+    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw new Error(`Supabase RPC ${res.status}: ${await res.text()}`);
+  const rows = await res.json();
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 };

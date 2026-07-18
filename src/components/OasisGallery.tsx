@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
-import { useGarden, filterVisible, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
+import { useGarden, filterVisible, makeExcerpt, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
@@ -40,6 +40,7 @@ interface EditorDraft {
   title: string; tags: string[]; content: string; color: string; type: string;
   series?: string;
   growth?: Growth; status?: PostStatus;
+  slug?: string; excerpt?: string;
   savedAt: number;
 }
 const draftKeyOf = (editingId: string | null) => editingId ?? '__new__';
@@ -95,7 +96,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const coarse = useCoarsePointer();
   const { posts: rawPosts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
   // 🔒 admin 本人已登录会话会连草稿一并拉下来；「模拟访客」时在客户端滤掉，模拟才名副其实
+  // ⚠️ posts 是「能被直接导航/引用到」的集合（深链、反向链接、合集目录都靠它），
+  //   unlisted 故意留在里面——分享链接打开后，文章本身该正常渲染。
   const posts = useMemo(() => filterVisible(rawPosts, isAdmin), [rawPosts, isAdmin]);
+  // 📋 listedPosts 才是「会被主动摆出来」的集合：网格 / 标签 / 归档 / 站内搜索 / 「继续漫游」类推荐面板
+  //   都从这里取数据，非 admin 视角下排除 unlisted（admin 自己仍能看到，便于管理）。
+  const listedPosts = useMemo(() => isAdmin ? posts : posts.filter(p => p.status !== 'unlisted'), [posts, isAdmin]);
   // ☁️ 本地 → 云端一键迁移状态：idle / syncing / 结果文案
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
@@ -144,9 +150,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [editType, setEditType] = useState<string>('thought');
   // 📚 合集：可空的连载归属；发布栏上方的元信息抽屉里填写
   const [editSeries, setEditSeries] = useState('');
-  // 🌱🌿🌳 生长度（自述性质）+ 📝 发布状态（草稿仅自己可见）：同样收在元信息抽屉里
+  // 🌱🌿🌳 生长度（自述性质）+ 📝 可见性（draft/unlisted/published）：同样收在元信息抽屉里
   const [editGrowth, setEditGrowth] = useState<Growth>('seedling');
   const [editStatus, setEditStatus] = useState<PostStatus>('published');
+  // 🔗 slug 留空则发布时自动从标题生成；✂️ 摘要留空则自动截断正文，两者都只是手动覆盖
+  const [editSlug, setEditSlug] = useState('');
+  const [editExcerpt, setEditExcerpt] = useState('');
   const [showMetaPanel, setShowMetaPanel] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [showSeries, setShowSeries] = useState(false);
@@ -305,11 +314,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (!isEditing) return;
     const timer = setTimeout(() => {
       if (!editContent.trim() && !editTitle.trim()) return;
-      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, growth: editGrowth, status: editStatus, savedAt: Date.now() };
+      const draft: EditorDraft = { editingId, title: editTitle, tags: editTagList, content: editContent, color: editColor, type: editType, series: editSeries, growth: editGrowth, status: editStatus, slug: editSlug, excerpt: editExcerpt, savedAt: Date.now() };
       writeDraft(draft); setDraftSavedAt(draft.savedAt);
     }, 800);
     return () => clearTimeout(timer);
-  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries, editGrowth, editStatus]);
+  }, [isEditing, editingId, editTitle, editTagList, editContent, editColor, editType, editSeries, editGrowth, editStatus, editSlug, editExcerpt]);
   const clearDraft = () => { removeDraft(editingId); setDraftSavedAt(null); setDraftMsg(''); };
 
   // 📑 写作大纲：从正文实时提取 h2/h3，点击滚动到对应位置（按字符占比近似定位）
@@ -374,8 +383,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   //   分享到微信/Twitter/Slack 等平台时，对方抓取的是这条链接的静态 meta/OG，
   //   #/garden/:id 的 fragment 从不会被发到服务器，链接预览会是空的。
   const [shareCopied, setShareCopied] = useState(false);
+  // unlisted 必须用 share_token（唯一能绕开「public read = published only」的凭证）；
+  // published 优先用可读 slug；都没有则回落 id，与旧链接保持兼容
   const sharePost = (p: BlogPost) => {
-    const url = `${window.location.origin}/p/${p.id}`;
+    const path = p.status === 'unlisted' && p.shareToken ? p.shareToken : (p.slug || p.id);
+    const url = `${window.location.origin}/p/${encodeURIComponent(path)}`;
     navigator.clipboard?.writeText(url).then(() => {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1800);
@@ -395,14 +407,18 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     () => (activePost ? resolveWikiLinks(activePost.content, postTitleIndex) : ''),
     [activePost, postTitleIndex]
   );
+  // ⚠️ 用 listedPosts 而非 posts：否则非 admin 读公开文章时，「上一篇/下一篇」可能踩进
+  //   时间上紧邻的 unlisted 文章，链接可达但没被列出的承诺就被这条导航链破了。
+  //   活跃文章本身是 unlisted 时 idx 会是 -1（它不在 listedPosts 里），prev/next 都是 null——
+  //   符合直觉：unlisted 是游离于时间线之外的孤岛，没有「上一篇/下一篇」。
   const { prevPost, nextPost } = useMemo(() => {
     if (!activePost) return { prevPost: null as BlogPost | null, nextPost: null as BlogPost | null };
-    const idx = posts.findIndex(p => p.id === activePost.id);
+    const idx = listedPosts.findIndex(p => p.id === activePost.id);
     return {
-      nextPost: idx > 0 ? posts[idx - 1] : null,                          // 时间上更新的一篇
-      prevPost: idx >= 0 && idx < posts.length - 1 ? posts[idx + 1] : null, // 更早的一篇
+      nextPost: idx > 0 ? listedPosts[idx - 1] : null,                          // 时间上更新的一篇
+      prevPost: idx >= 0 && idx < listedPosts.length - 1 ? listedPosts[idx + 1] : null, // 更早的一篇
     };
-  }, [activePost, posts]);
+  }, [activePost, listedPosts]);
   const openPost = (p: BlogPost) => { setActivePost(p); readerRef.current?.scrollTo({ top: 0 }); };
 
   // 🧭 直链 ⇄ 阅读舱双向同步：
@@ -526,23 +542,37 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   };
 
   const allTags = useMemo(() => {
-    const tags = new Set<string>(); posts.forEach(p => p.tags.forEach(t => tags.add(t))); return Array.from(tags).sort();
-  }, [posts]);
+    const tags = new Set<string>(); listedPosts.forEach(p => p.tags.forEach(t => tags.add(t))); return Array.from(tags).sort();
+  }, [listedPosts]);
 
-  // 📚 合集索引：合集名 → 按时间正序的成员文章；「第 N 篇」由此推导，无需手工维护序号
+  // 📚 合集索引（浏览用）：合集名 → 按时间正序的成员文章；「第 N 篇」由此推导，无需手工维护序号。
+  //   基于 listedPosts——过滤面板的合集 chip、编辑器的合集联想都不该暴露 unlisted 成员。
   const seriesInfo = useMemo(() => {
     const map: Record<string, BlogPost[]> = {};
-    posts.forEach(p => { if (p.series) (map[p.series] ??= []).push(p); });
+    listedPosts.forEach(p => { if (p.series) (map[p.series] ??= []).push(p); });
     Object.values(map).forEach(arr => arr.sort((a, b) => a.createdAt - b.createdAt));
     return map;
-  }, [posts]);
-  const chapterOf = (p: BlogPost) =>
-    p.series ? (seriesInfo[p.series]?.findIndex(x => x.id === p.id) ?? -1) + 1 : 0;
+  }, [listedPosts]);
   const allSeries = useMemo(() => Object.keys(seriesInfo).sort(), [seriesInfo]);
+
+  // 📖 阅读舱专用的合集视图：若正在读的这篇本身是 unlisted（靠分享链接直达，不在 listedPosts 里），
+  //   把它自己补回所属合集，章节号才不会算错；不牵连同系列其它 unlisted 成员，
+  //   否则一篇公开文章的「合集目录」会把系列里未公开的姊妹篇也列给所有访客看到。
+  const readerSeriesInfo = useMemo(() => {
+    if (!activePost?.series) return seriesInfo;
+    const members = seriesInfo[activePost.series] ?? [];
+    if (members.some(p => p.id === activePost.id)) return seriesInfo;
+    const merged = [...members, activePost].sort((a, b) => a.createdAt - b.createdAt);
+    return { ...seriesInfo, [activePost.series]: merged };
+  }, [seriesInfo, activePost]);
+  const chapterOf = (p: BlogPost) =>
+    p.series ? (readerSeriesInfo[p.series]?.findIndex(x => x.id === p.id) ?? -1) + 1 : 0;
 
   // ⟲ 反向链接索引：目标文章 id → 提到它的来源文章 + 语境摘句。一次全量建索，
   //   任意文章打开都是 O(1) 查表——几百篇量级毫无压力。
-  const backlinkIndex = useMemo(() => buildBacklinkIndex(posts), [posts]);
+  //   来源限定 listedPosts：否则一篇 unlisted 文章反链到某篇公开文章，会在那篇公开文章的
+  //   「回响」区块里把 unlisted 的标题暴露给所有访客。
+  const backlinkIndex = useMemo(() => buildBacklinkIndex(listedPosts), [listedPosts]);
   const activeBacklinks = useMemo(
     () => (activePost ? backlinkIndex.get(activePost.id) ?? [] : []),
     [activePost, backlinkIndex]
@@ -565,7 +595,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     ]);
     const activeTags = new Set(activePost.tags);
 
-    return posts
+    return listedPosts
       .filter((p) => !excludeIds.has(p.id))
       .map((p) => {
         const tagOverlap = p.tags.filter((t) => activeTags.has(t)).length;
@@ -576,7 +606,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       .sort((a, b) => b.score - a.score || a.timeDelta - b.timeDelta)
       .slice(0, 3)
       .map((x) => x.post);
-  }, [activePost, posts, postTitleIndex, activeBacklinks, seriesInfo]);
+  }, [activePost, listedPosts, postTitleIndex, activeBacklinks, seriesInfo]);
 
   // 🗓️ 那年今日：按节气名匹配更早年份写下的文章——solarTerms 从「氛围」变成「索引」。
   //   每个节气每位访客只提示一次（localStorage 记按年+节气名的 key），点 × 或点进文章后都不再出现。
@@ -592,32 +622,32 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (termEchoDismissed) return null;
     const term = currentSolarTerm();
     const thisYear = new Date().getFullYear();
-    const candidates = posts.filter(p => {
+    const candidates = listedPosts.filter(p => {
       const d = new Date(p.createdAt);
       return d.getFullYear() < thisYear && currentSolarTerm(d).name === term.name;
     });
     if (candidates.length === 0) return null;
     return candidates.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
-  }, [posts, termEchoDismissed]);
+  }, [listedPosts, termEchoDismissed]);
 
   // 🌿 最近照料：花园在生长的可见证据——只在真被「更新」过（而非发完顺手改错别字）
   //   且在 30 天内照料过的文章里，横向列出至多 3 篇。48h 阈值滤掉误差性小编辑。
   const recentlyTended = useMemo(() => {
     const now = Date.now();
     const DAY = 86400000;
-    return posts
+    return listedPosts
       .filter(p => p.updatedAt - p.createdAt > 48 * 3600 * 1000 && now - p.updatedAt < 30 * DAY)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 3);
-  }, [posts]);
+  }, [listedPosts]);
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    posts.forEach(p => { counts[p.type] = (counts[p.type] || 0) + 1; });
+    listedPosts.forEach(p => { counts[p.type] = (counts[p.type] || 0) + 1; });
     return counts;
-  }, [posts]);
+  }, [listedPosts]);
 
-  const filteredPosts = useMemo(() => posts.filter(post => {
+  const filteredPosts = useMemo(() => listedPosts.filter(post => {
     const matchType = selectedType ? post.type === selectedType : true;
     const matchTag = selectedTag ? post.tags.includes(selectedTag) : true;
     const matchSeries = selectedSeries ? post.series === selectedSeries : true;
@@ -630,7 +660,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
          post.tags.some(t => t.toLowerCase().includes(q)))
       : true;
     return matchType && matchTag && matchSeries && matchSearch;
-  }), [selectedType, selectedTag, selectedSeries, searchQuery, posts]);
+  }), [selectedType, selectedTag, selectedSeries, searchQuery, listedPosts]);
 
   // 📅 按月归档：周报 / 成长记录的时间叙事更清晰
   const groupedPosts = useMemo(() => {
@@ -675,6 +705,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setEditingId(d.editingId); setEditTitle(d.title); setEditTagList(d.tags ?? []);
     setEditContent(d.content); setEditColor(d.color); setEditType(d.type); setEditSeries(d.series ?? '');
     setEditGrowth(d.growth ?? 'seedling'); setEditStatus(d.status ?? 'published');
+    setEditSlug(d.slug ?? ''); setEditExcerpt(d.excerpt ?? '');
     setDraftSavedAt(d.savedAt); setDraftMsg('已恢复上次未发布的草稿');
   };
 
@@ -685,6 +716,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     } else {
       setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type); setEditSeries(post.series ?? '');
       setEditGrowth(post.growth); setEditStatus(post.status);
+      setEditSlug(post.slug ?? ''); setEditExcerpt('');
       setDraftMsg('');
     }
     setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
@@ -698,6 +730,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       const initialType = selectedType ?? 'thought';
       setEditingId(null); setEditTitle(''); setEditTagList([]); setEditContent(getTemplate(initialType)); setEditColor('#39C5BB'); setEditType(initialType); setEditSeries(selectedSeries ?? '');
       setEditGrowth('seedling'); setEditStatus('published');
+      setEditSlug(''); setEditExcerpt('');
       setDraftMsg('');
     }
     setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setIsEditing(true);
@@ -708,13 +741,14 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     clearDraft();
     setEditingId(null); setEditTitle(''); setEditTagList([]); setTagInput(''); setEditSeries('');
     setEditGrowth('seedling'); setEditStatus('published');
+    setEditSlug(''); setEditExcerpt('');
     setEditContent(getTemplate(editType)); setEditColor('#39C5BB');
   };
 
   const handlePublish = () => {
     if (!editContent.trim()) return;
     const tagArray = [...editTagList, ...(tagInput.trim() ? [tagInput.trim()] : [])];
-    const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: editStatus };
+    const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: editStatus, slug: editSlug, excerpt: editExcerpt };
     if (editingId) updateSeed(editingId, input); else plantSeed(input);
     clearDraft();
     setIsEditing(false);
@@ -817,7 +851,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   {/* 分类：移动端单行横滚，避免换行拥挤；md+ 恢复居中换行原样 */}
                   <div className="flex items-center gap-x-4 md:gap-x-6 w-full overflow-x-auto no-scrollbar md:w-auto md:contents">
                   <button onClick={() => setSelectedType(null)} className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                    All <span className="opacity-50 tracking-normal">{posts.length}</span>
+                    All <span className="opacity-50 tracking-normal">{listedPosts.length}</span>
                   </button>
                   {categories.filter(t => t.builtin || (typeCounts[t.id] || 0) > 0).map(t => {
                     const active = selectedType === t.id;
@@ -955,7 +989,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
-                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
@@ -966,10 +1000,15 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                   <span className="w-3 h-3"><CategoryIcon name={meta.icon} /></span>
                                   <span className="font-mono text-[8px] tracking-[0.2em] uppercase">{meta.label}</span>
                                 </div>
-                                {/* 🌰 草稿徽章：仅 admin 视角（模拟访客已被 filterVisible 滤掉）能看到自己埋下的种子 */}
+                                {/* 🌰 草稿徽章 / 🔗 unlisted 徽章：仅 admin 视角（模拟访客已被过滤掉）能看到自己埋下的种子 */}
                                 {post.status === 'draft' && (
                                   <div className="absolute top-4 right-6 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-dashed border-[#FFB7C5]/60 text-[#FFB7C5]">
                                     <span className="font-mono text-[8px] tracking-[0.2em] uppercase">Draft · 尚未破土</span>
+                                  </div>
+                                )}
+                                {post.status === 'unlisted' && (
+                                  <div className="absolute top-4 right-6 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-dashed border-[#60A5FA]/60 text-[#60A5FA]">
+                                    <span className="font-mono text-[8px] tracking-[0.2em] uppercase">Unlisted · 仅链接可达</span>
                                   </div>
                                 )}
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
@@ -1141,7 +1180,22 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                            )}
                          </div>
 
-                         {/* 🌱🌿🌳 生长度（自述）+ 📝 发布状态：花园会长大，也允许先埋进土里再公开 */}
+                         {/* 🔗 短链：留空发布时自动从标题生成（中文标题直接保留汉字，不转拼音） */}
+                         <div className="flex items-center gap-3">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Slug</span>
+                           <span className="font-mono text-xs text-slate-300 dark:text-slate-600 select-none shrink-0">/p/</span>
+                           <input type="text" placeholder="留空 · 自动从标题生成" value={editSlug} onChange={e => setEditSlug(e.target.value)}
+                             className="flex-1 max-w-md bg-transparent border-b border-slate-300/60 dark:border-white/15 font-mono text-xs text-slate-600 dark:text-slate-300 outline-none pb-1 placeholder:text-slate-400/50 dark:placeholder:text-slate-600 transition-colors" />
+                         </div>
+
+                         {/* ✂️ 摘要：留空则用正文自动截断（下方 placeholder 即时预览会截成什么样） */}
+                         <div className="flex items-start gap-3">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14 pt-1.5">Excerpt</span>
+                           <textarea rows={2} placeholder={editContent.trim() ? makeExcerpt(editContent) : '留空 · 自动截断正文前 110 字'} value={editExcerpt} onChange={e => setEditExcerpt(e.target.value)}
+                             className="flex-1 max-w-2xl bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-300 outline-none pb-1 resize-none placeholder:text-slate-400/50 dark:placeholder:text-slate-600 transition-colors" />
+                         </div>
+
+                         {/* 🌱🌿🌳 生长度：自述性质，花园会长大 */}
                          <div className="flex items-center gap-3 flex-wrap">
                            <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Growth</span>
                            {([
@@ -1154,11 +1208,22 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                {label}
                              </button>
                            ))}
-                           <button onClick={() => setEditStatus(s => s === 'draft' ? 'published' : 'draft')}
-                             title="草稿仅自己登录时可见，不进入公开列表"
-                             className={`ml-auto font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-full border transition-colors duration-300 ${editStatus === 'draft' ? 'text-[#FFB7C5] border-[#FFB7C5]/50 bg-[#FFB7C5]/5' : 'text-slate-400 dark:text-slate-500 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
-                             {editStatus === 'draft' ? '🌰 先埋进土里' : '公开可见'}
-                           </button>
+                         </div>
+
+                         {/* 📝 可见性：published 所有人可见并列出 / unlisted 不进列表·归档·搜索·RSS·sitemap，但持有链接的人都能读到 / draft 仅自己登录可见 */}
+                         <div className="flex items-center gap-3 flex-wrap">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14">Visible</span>
+                           {([
+                             { v: 'published' as PostStatus, label: '公开可见', active: 'text-[#39C5BB] border-[#39C5BB]/60 bg-[#39C5BB]/5' },
+                             { v: 'unlisted' as PostStatus, label: '🔗 仅链接可达', active: 'text-[#60A5FA] border-[#60A5FA]/60 bg-[#60A5FA]/5' },
+                             { v: 'draft' as PostStatus, label: '🌰 先埋进土里', active: 'text-[#FFB7C5] border-[#FFB7C5]/50 bg-[#FFB7C5]/5' },
+                           ]).map(({ v, label, active }) => (
+                             <button key={v} onClick={() => setEditStatus(v)}
+                               title={v === 'draft' ? '草稿：仅自己登录时可见，不进入公开列表' : v === 'unlisted' ? '不进主列表/归档/搜索/RSS/sitemap，但持有分享链接的人都能读到' : '所有人可见，进入主列表与站外索引'}
+                               className={`font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1.5 rounded-full border transition-colors duration-300 ${editStatus === v ? active : 'text-slate-400 dark:text-slate-500 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
+                               {label}
+                             </button>
+                           ))}
                          </div>
 
                          <div className="flex items-center space-x-6 pb-5">
@@ -1206,9 +1271,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      {editTagList.length > 0 && <span className="opacity-60 normal-case">#{editTagList.length}</span>}
                      {editSeries.trim() && <span className="opacity-60 normal-case max-w-[8rem] truncate">📚 {editSeries.trim()}</span>}
                      {editStatus === 'draft' && <span className="text-[#FFB7C5] normal-case">🌰 draft</span>}
+                     {editStatus === 'unlisted' && <span className="text-[#60A5FA] normal-case">🔗 unlisted</span>}
                      <span className={`transition-transform duration-300 ${showMetaPanel ? 'rotate-180' : ''}`}>⌄</span>
                    </button>
-                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editingId ? 'Update' : 'Publish'}</button>
+                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editStatus === 'unlisted' ? '#60A5FA' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editStatus === 'unlisted' ? (editingId ? 'Update · Unlisted' : 'Publish · Unlisted') : editingId ? 'Update' : 'Publish'}</button>
                  </div>
                </div>
           </motion.div>
@@ -1269,12 +1335,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
                 <Colophon date={activePost.date} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
 
-                {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去 */}
-                {activePost.series && (seriesInfo[activePost.series]?.length ?? 0) > 1 && (
+                {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去。用 readerSeriesInfo——
+                    公开文章的合集目录不该把系列里未公开（unlisted）的姊妹篇也列给所有访客看到。 */}
+                {activePost.series && (readerSeriesInfo[activePost.series]?.length ?? 0) > 1 && (
                   <div className="mt-20 px-7 py-6 md:px-9 md:py-7 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm transition-colors duration-[1500ms]">
-                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-[#39C5BB]/80 mb-5">📚 Series · {activePost.series} <span className="text-slate-400/70 dark:text-slate-500 tracking-normal normal-case ml-1">共 {seriesInfo[activePost.series].length} 篇</span></div>
+                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-[#39C5BB]/80 mb-5">📚 Series · {activePost.series} <span className="text-slate-400/70 dark:text-slate-500 tracking-normal normal-case ml-1">共 {readerSeriesInfo[activePost.series].length} 篇</span></div>
                     <ol className="flex flex-col gap-3">
-                      {seriesInfo[activePost.series].map((p, i) => {
+                      {readerSeriesInfo[activePost.series].map((p, i) => {
                         const current = p.id === activePost.id;
                         return (
                           <li key={p.id} className="flex items-baseline gap-3 min-w-0">
