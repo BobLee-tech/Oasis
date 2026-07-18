@@ -12,6 +12,18 @@ create table if not exists public.garden_categories (
 
 alter table public.garden_categories enable row level security;
 
+-- 🔑 唯一园丁判定：与 garden_posts.sql 里那份定义完全一致（create or replace 幂等，
+--   两份脚本不管谁先跑都行）。仅靠「to authenticated」不够——项目若没关掉公开注册，
+--   任何访客自己注册就能拿到 session 改写全部分类。这里是纵深防御第二层，
+--   第一层务必去 Supabase Dashboard → Authentication → Settings 关掉 "Enable new user signups"。
+create or replace function public.is_gardener()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce(auth.jwt() ->> 'email', '') = 'lb15058460816@gmail.com';
+$$;
+
 drop policy if exists "categories public read" on public.garden_categories;
 create policy "categories public read"
   on public.garden_categories for select
@@ -21,5 +33,5 @@ drop policy if exists "categories authed write" on public.garden_categories;
 create policy "categories authed write"
   on public.garden_categories for all
   to authenticated
-  using (true)
-  with check (true);
+  using (public.is_gardener())
+  with check (public.is_gardener());

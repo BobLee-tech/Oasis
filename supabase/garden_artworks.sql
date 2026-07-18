@@ -35,6 +35,18 @@ end $$;
 create index if not exists garden_artworks_collected_at_idx
   on public.garden_artworks (collected_at desc);
 
+-- 🔑 唯一园丁判定：与 garden_posts.sql 里那份定义完全一致（create or replace 幂等）。
+--   仅靠「to authenticated」不够——项目若没关掉公开注册，任何访客自己注册就能拿到
+--   session，读到全部 private 收藏、改写/删除画作。这里是纵深防御第二层，
+--   第一层务必去 Supabase Dashboard → Authentication → Settings 关掉 "Enable new user signups"。
+create or replace function public.is_gardener()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce(auth.jwt() ->> 'email', '') = 'lb15058460816@gmail.com';
+$$;
+
 -- 行级安全：默认 private 只有登录的园丁本人可见（白名单式公开，而非默认公开）
 alter table public.garden_artworks enable row level security;
 
@@ -43,19 +55,19 @@ create policy "atelier public read"
   on public.garden_artworks for select
   using (visibility = 'public');
 
--- 与上面这条 select 策略是 OR 关系：登录的园丁本人额外能看到 private 收藏
+-- 与上面这条 select 策略是 OR 关系：园丁本人额外能看到 private 收藏
 drop policy if exists "atelier authed read" on public.garden_artworks;
 create policy "atelier authed read"
   on public.garden_artworks for select
   to authenticated
-  using (true);
+  using (public.is_gardener());
 
 drop policy if exists "atelier authed write" on public.garden_artworks;
 create policy "atelier authed write"
   on public.garden_artworks for all
   to authenticated
-  using (true)
-  with check (true);
+  using (public.is_gardener())
+  with check (public.is_gardener());
 
 -- 开启实时同步（跨标签页/设备）；已加入过则跳过，保持整份脚本可重复执行
 do $$ begin

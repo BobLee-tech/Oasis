@@ -1,6 +1,8 @@
 // 📡 RSS 订阅：从 Supabase garden_posts 拉取最新文章，实时生成标准 RSS 2.0 feed。
 //   Vercel 按文件路由自动挂载为 /api/rss，vercel.json 里把 /rss.xml 重写到这里，
 //   访问 https://<domain>/rss.xml 即可在任意阅读器订阅。
+//   ⚠️ unlisted 对匿名可读（分享链接要能打开），必须显式筛 status=published，
+//   否则 unlisted 会漏进订阅源推给所有订阅者——见 api/sitemap.ts 同款注释。
 import { fetchGardenPosts } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
@@ -23,7 +25,8 @@ export default async function handler(req: Request): Promise<Response> {
   let data: any[];
   try {
     data = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
-      select: 'id,title,excerpt,created_at,tags',
+      select: 'id,slug,title,excerpt,created_at,tags',
+      filters: [['status', 'published']],
       order: 'created_at.desc',
       limit: 30,
     });
@@ -32,8 +35,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const items = (data ?? []).map((p) => {
-    // 指向 /p/:id 而非 hash 路由：阅读器/爬虫能拿到真实渲染的 meta 与正文，而非空壳 SPA 首页
-    const link = `${origin}/p/${p.id}`;
+    // 指向 /p/:slug（无 slug 则退回 /p/:id）而非 hash 路由：阅读器/爬虫能拿到真实渲染的 meta 与正文，而非空壳 SPA 首页
+    const link = `${origin}/p/${encodeURIComponent(p.slug || p.id)}`;
     const pubDate = new Date(Number(p.created_at)).toUTCString();
     return `    <item>
       <title>${escapeXml(p.title)}</title>
