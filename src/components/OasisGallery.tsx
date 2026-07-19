@@ -14,6 +14,7 @@ import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
 import { DAILY_QUOTES } from '../data/quotes';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
+import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 
@@ -368,7 +369,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   };
 
   const { resonances, leaveResonance, replyResonance, purifyResonance } = usePostResonance(activePost ? activePost.id : null);
-  const [resAuthor, setResAuthor] = useState('');
+  const [resAuthor, setResAuthor] = useState(() => getVisitorAlias() ?? '');
   const [resContent, setResContent] = useState('');
   const [resColor, setResColor] = useState('#39C5BB');
   const [isResFocused, setIsResFocused] = useState(false);
@@ -479,7 +480,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (processedIdRef.current === newId) return;
     processedIdRef.current = newId;
     saveGenRef.current += 1;
-    setResContent(''); setResAuthor(''); setIsResFocused(false); setReplyingToId(null); setReplyInput('');
+    setResContent(''); setResAuthor(getVisitorAlias() ?? ''); setIsResFocused(false); setReplyingToId(null); setReplyInput('');
     // 换篇 / 关闭前先取消上一篇可能还挂着的防抖保存计时器（双保险，世代号才是最终防线）
     if (progressSaveTimer.current) { clearTimeout(progressSaveTimer.current); progressSaveTimer.current = null; }
     const el = readerRef.current;
@@ -688,7 +689,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setIsResSubmitting(true);
     try {
       await leaveResonance(resAuthor, resContent, resColor);
-      setResContent(''); setResAuthor(''); setIsResFocused(false);
+      setVisitorAlias(resAuthor);
+      setResContent(''); setIsResFocused(false);
     } finally {
       setIsResSubmitting(false);
     }
@@ -1458,7 +1460,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <input type="text" placeholder="Leave a falling leaf..." onClick={() => setIsResFocused(true)} readOnly className="w-full bg-transparent font-serif text-slate-500 dark:text-slate-400 outline-none cursor-pointer italic text-center transition-colors duration-[1500ms]" />
                 ) : (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col px-2">
-                    <input type="text" placeholder="Your Alias..." value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-mono text-xs text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
+                    <input type="text" placeholder="Your Alias, remembered next time..." value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-mono text-xs text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
                     <textarea placeholder="The leaf falls..." value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-700 dark:text-slate-200 h-20 outline-none resize-none mb-4 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors" />
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex space-x-2">
