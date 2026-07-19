@@ -83,6 +83,17 @@ body {
     100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* 🎐 Miku 挂坠呼吸：听歌时用纯 CSS 驱动的轻微脉动，暗示她在里面跟着哼——
+   刻意不用 framer-motion 的重复 keyframe 动画，那种写法在父组件频繁重渲染时
+   （比如每秒跳动的时钟）容易被打断重启，视觉上会卡死在起始帧动不了。 */
+@keyframes oasis-miku-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.045); }
+}
+.animate-miku-breathe {
+    animation: oasis-miku-breathe 1.6s ease-in-out infinite;
+}
+
 /* 📱 移动端性能降级：大半径 backdrop-blur 是手机端最贵的合成开销之一，
    小屏上 8px 与 40px 的观感差异极小，却能把滚动/转场帧率拉回 60fps。 */
 @media (max-width: 767px) {

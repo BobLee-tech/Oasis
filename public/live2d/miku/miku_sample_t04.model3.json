@@ -13,10 +13,12 @@
 					"File": "motion/miku_01.motion3.json"
 				},
 				{
-					"File": "motion/miku_04.motion3.json"
-				},
-				{
 					"File": "motion/miku_07.motion3.json"
+				}
+			],
+			"Doze": [
+				{
+					"File": "motion/miku_04.motion3.json"
 				}
 			],
 			"Tap": [

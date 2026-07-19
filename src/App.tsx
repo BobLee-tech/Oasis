@@ -415,7 +415,7 @@ function App() {
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
       {terminalStatus === 'granted' && <NightWhisper isAdmin={effectiveIsAdmin} onOpenArtwork={(id) => navigate('atelier', id)} />}
-      {terminalStatus === 'granted' && <OasisMiku view={appView} />}
+      {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && <OasisMiku view={appView} />}
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
