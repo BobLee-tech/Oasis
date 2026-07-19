@@ -98,7 +98,7 @@ export default async function handler(req: Request): Promise<Response> {
   <meta name="twitter:description" content="${description}" />
   <meta name="twitter:image" content="${ogImage}" />
 
-  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+  <script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>
 
   <!-- 真人访客：立即换乘回 SPA 的阅读舱；爬虫/分享卡从不执行这段脚本，只读上面的静态 meta -->
   <script>location.replace(${JSON.stringify(readerUrl)});</script>

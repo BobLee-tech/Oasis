@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { slugify } from '../lib/reading';
 
@@ -41,6 +42,24 @@ const rehypeHeadingIds = () => (tree: any) => {
     (node.children || []).forEach(walk);
   };
   walk(tree);
+};
+
+// 🛡️ 裸 HTML 白名单：rehype-raw 会把正文里的 HTML 原样进树，正文虽只有园丁能写，
+//    但任何一处写路径失守（RLS 配错、账号被盗、localStorage 缓存投毒）都会升级成持久 XSS——
+//    这里作为纵深防御剥掉 <script>/<iframe>/事件属性等执行向量。基于 GitHub 同款 defaultSchema
+//    （已含图片、任务列表、footnote 等 GFM 所需），额外放行折叠块与内联样式（无脚本执行能力）。
+//    必须排在 rehypeRaw 之后、headingIds/highlight 之前：锚点 id 与 hljs 类是我们自己后注入的，不受白名单裁剪。
+const SANITIZE_SCHEMA = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'details', 'summary', 'mark', 'video', 'audio', 'source'],
+  attributes: {
+    ...defaultSchema.attributes,
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'style', 'className'],
+    details: ['open'],
+    video: ['src', 'poster', 'controls', 'loop', 'muted', 'playsInline', 'width', 'height'],
+    audio: ['src', 'controls', 'loop', 'muted'],
+    source: ['src', 'type'],
+  },
 };
 
 // 📋 代码块：语言标签水印（左上）+ 轻量「复制」按钮（右上，hover 浮现）
@@ -116,7 +135,7 @@ export const Markdown: React.FC<MarkdownProps> = ({ children, className }) => (
   <div className={className ?? PROSE_CLASS}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkBreaks]}
-      rehypePlugins={[rehypeRaw, rehypeHeadingIds, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHeadingIds, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
       components={MD_COMPONENTS}
     >
       {children}

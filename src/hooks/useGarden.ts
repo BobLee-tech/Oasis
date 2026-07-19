@@ -51,7 +51,7 @@ const TABLE = 'garden_posts';
 const CACHE_KEY = 'oasis_garden_posts';
 
 export const makeExcerpt = (content: string) =>
-  content.slice(0, 110).replace(/[#*`>!\[\]()]/g, '').replace(/\n+/g, ' ').trim() + '…';
+  content.slice(0, 110).replace(/[#*`>!\[\]()]/g, '').replace(/\n+/g, '\n').trim() + '…';
 
 // 🔗 slug 化：中文标题保留汉字直接进 URL（现代浏览器地址栏会自动解码，比强行转拼音/随机串更可读），
 //   只清掉标点符号、空白折成连字符。纯符号/纯 emoji 标题会滑出空串，交给调用方兜底。
