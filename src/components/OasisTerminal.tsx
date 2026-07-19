@@ -38,11 +38,12 @@ export const OasisTerminal: React.FC<OasisTerminalProps> = ({ onSuccess }) => {
     } 
     else if (val.startsWith('sudo login')) {
       const parts = val.split(' ');
-      if (parts.length === 4) {
+      // 密码可以含空格：第 4 段起整体拼回，别用 length===4 把强密码挡在门外
+      if (parts.length >= 4) {
         setIsProcessing(true);
         setLogs(prev => [...prev, '> authenticating via secure uplink...']);
         try {
-          await loginAdmin(parts[2], parts[3]);
+          await loginAdmin(parts[2], parts.slice(3).join(' '));
           setLogs(prev => [...prev, '> ACCESS GRANTED: WELCOME CREATOR', '> unlocking restricted sectors (Echoes)...']);
           setTimeout(() => onSuccess(), 1500); 
         } catch (error: any) {
@@ -101,7 +102,7 @@ export const OasisTerminal: React.FC<OasisTerminalProps> = ({ onSuccess }) => {
               <span className="relative z-10">{inputValue.startsWith('sudo login') ? inputValue.replace(/(\S+\s+\S+\s+\S+\s+).*/, '$1' + '*'.repeat(Math.max(0, inputValue.length - inputValue.lastIndexOf(' ') - 1))) : inputValue}</span>
               <motion.div animate={{ opacity: [1, 1, 0, 0] }} transition={{ repeat: Infinity, duration: 1, times: [0, 0.5, 0.5, 1] }} className="w-[5px] h-[1.1em] bg-[#39C5BB] ml-[2px] shadow-[0_0_8px_rgba(57,197,187,0.8)] rounded-sm" />
             </div>
-            <input ref={inputRef} autoFocus type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="absolute inset-0 w-full h-full text-transparent caret-transparent outline-none" spellCheck={false} />
+            <input ref={inputRef} autoFocus type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="absolute inset-0 w-full h-full text-transparent caret-transparent outline-none" spellCheck={false} autoComplete="off" autoCorrect="off" autoCapitalize="off" />
           </div>
         )}
         <div ref={bottomRef} />

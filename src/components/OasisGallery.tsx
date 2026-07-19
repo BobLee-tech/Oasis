@@ -716,7 +716,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     } else {
       setEditingId(post.id); setEditTitle(post.title); setEditTagList(post.tags); setEditColor(post.color); setEditContent(post.content); setEditType(post.type); setEditSeries(post.series ?? '');
       setEditGrowth(post.growth); setEditStatus(post.status);
-      setEditSlug(post.slug ?? ''); setEditExcerpt('');
+      // ✂️ 只有手动写过的摘要才回填；等于自动截断结果时留空，让它继续跟随正文自动更新
+      setEditSlug(post.slug ?? ''); setEditExcerpt(post.excerpt && post.excerpt !== makeExcerpt(post.content) ? post.excerpt : '');
       setDraftMsg('');
     }
     setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
@@ -1016,7 +1017,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                               <div className="p-6 md:p-8">
                                 <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><GrowthGlyph growth={post.growth} color={post.color} /><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal" style={{ color: post.color }}>续读 {Math.round(progress * 100)}%</span></>}</div>
                                 <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
-                                <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
+                                <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 whitespace-pre-line transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
                               {isOngoing && <div className="absolute bottom-0 left-0 h-[2px] transition-all duration-700" style={{ width: `${progress * 100}%`, backgroundColor: post.color }} />}
                             </motion.div>

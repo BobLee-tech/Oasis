@@ -44,9 +44,17 @@ export const usePostResonance = (postId: string | null) => {
     fetchResonances();
   }, [fetchResonances]);
 
-  const leaveResonance = async (author_name: string, content: string, aura_color: string) => {
+  const leaveResonance = async (rawAuthor: string, rawContent: string, rawColor: string) => {
     if (!postId) return;
-    
+
+    // 🛡️ 与 supabase/post_resonances.sql 的 RLS 约束一一对应（那边才是真正的边界，这里只是体验层）：
+    //   [_REPLY_] 是站主回复的拆包标记，访客写入即可伪造挂着站主头像的假回复，必须剥掉；
+    //   aura_color 会进内联样式，只放行 #RRGGBB。
+    const author_name = rawAuthor.trim().slice(0, 20);
+    const content = rawContent.replaceAll('[_REPLY_]', '').trim().slice(0, 150);
+    const aura_color = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : '#39C5BB';
+    if (!author_name || !content) return;
+
     const tempId = crypto.randomUUID();
     const tempResonance: PostResonance = {
       id: tempId, post_id: postId, author_name, content, aura_color, created_at: new Date().toISOString()

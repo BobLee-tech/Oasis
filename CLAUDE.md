@@ -28,7 +28,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。
 
 ## Supabase
-- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)。RLS:所有人可读,authenticated 可写。不建表应用也能跑(纯 localStorage)。
+- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/garden_artworks.sql](supabase/garden_artworks.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
 
 ## 音频流程(详见 docs/audio-hosting.md)
 `public/audio/` 存 flac 源文件(不部署) → `scripts/transcode-audio.sh` 转 AAC 256k 到 `dist-audio/`(gitignored) → rclone 上传 R2 → 线上设 `VITE_AUDIO_BASE`。
