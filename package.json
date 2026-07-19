@@ -24,6 +24,8 @@
     "framer-motion": "^12.40.0",
     "highlight.js": "^11.11.1",
     "lxgw-wenkai-screen-webfont": "^1.7.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",

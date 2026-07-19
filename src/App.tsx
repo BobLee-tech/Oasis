@@ -13,7 +13,9 @@ import { isLateNight } from './lib/timeContext';
 import { termTint } from './lib/solarTerms';
 import { NIGHT_REMINDERS, MIKU_WHISPERS } from './data/quotes';
 import { useCoarsePointer } from './hooks/useCoarsePointer';
+import { getVisitorAlias } from './lib/visitor';
 
+import { OasisMiku } from './components/OasisMiku';
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
@@ -413,12 +415,13 @@ function App() {
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
       {terminalStatus === 'granted' && <NightWhisper isAdmin={effectiveIsAdmin} onOpenArtwork={(id) => navigate('atelier', id)} />}
+      {terminalStatus === 'granted' && <OasisMiku view={appView} />}
 
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : "Visitor"} isReturningUser={effectiveIsAdmin} onEnterGarden={() => handleViewChange('garden')} />
+            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : (getVisitorAlias() ?? "Visitor")} isReturningUser={effectiveIsAdmin || getVisitorAlias() !== null} onEnterGarden={() => handleViewChange('garden')} />
           )}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
             <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.9, ease: [0.32, 0.72, 0, 1] } }} exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.9, 0.2] } }}>
