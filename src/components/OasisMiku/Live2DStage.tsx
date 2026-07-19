@@ -15,7 +15,8 @@ export interface MikuStageHandle {
   focus: (clientX: number, clientY: number, instant?: boolean) => void;
   /** 自主看向某处，不依赖真实鼠标——用于触屏设备的自发左右张望 */
   focusNormalized: (x: number, y: number, instant?: boolean) => void;
-  playMotion: (group: string, index?: number) => void;
+  /** priority 默认 NORMAL(2)，优先于自动待机；传 3(FORCE) 可打断另一段正在播放的 NORMAL 动作（例如摸醒正在打瞌睡的她） */
+  playMotion: (group: string, index?: number, priority?: number) => void;
   setParam: (id: string, value: number, weight?: number) => void;
   /** 是否正在播放 Tap/Flick 等「专业动作片段」——是的话我们的表情混合要让位，别打架 */
   isReacting: () => boolean;
@@ -49,9 +50,8 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
     focusNormalized: (x, y, instant) => {
       modelRef.current?.internalModel.focusController.focus(x, y, instant);
     },
-    playMotion: (group, index) => {
-      // MotionPriority.NORMAL：优先于自动待机动作，但不会打断更高优先级的表演
-      void modelRef.current?.motion(group, index, 2);
+    playMotion: (group, index, priority) => {
+      void modelRef.current?.motion(group, index, priority ?? 2);
     },
     setParam: (id, value, weight) => {
       const core = modelRef.current?.internalModel.coreModel as unknown as CoreModelLike | undefined;

@@ -9,8 +9,6 @@ import { useCoarsePointer } from '../../hooks/useCoarsePointer';
 import type { AppView } from '../../types/auth';
 
 const MODEL_URL = '/live2d/miku/miku_sample_t04.model3.json';
-const EXPANDED_W = 176;
-const EXPANDED_H = 272;
 
 // 折叠态的小挂坠图标：双马尾剪影，纯线条，呼应站内其余图标的极简风格
 const PendantIcon = () => (
@@ -27,6 +25,9 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const coarsePointer = useCoarsePointer();
   const prefersReducedMotion = !!useReducedMotion();
+  // 触屏屏幕更窄，展开态相应缩一号，别喧宾夺主
+  const expandedW = coarsePointer ? 148 : 176;
+  const expandedH = coarsePointer ? 232 : 272;
 
   const [expanded, setExpanded] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
   const [ready, setReady] = useState(false);
@@ -34,8 +35,8 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   const { isPlaying, currentTrack } = useSoundscape();
 
-  const { bubble, handlePointerMove, handleClick } = useMikuBrain({
-    stageRef, ready, view, isPlaying, trackId: currentTrack?.id, getSpectrum, coarsePointer,
+  const { bubble, handlePointerDown, handlePointerUp } = useMikuBrain({
+    stageRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer,
   });
 
   useEffect(() => {
@@ -55,9 +56,11 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -4, filter: 'blur(4px)' }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-[220px] rounded-2xl backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border border-slate-300/40 dark:border-white/10 shadow-sm px-3.5 py-2"
+            className="relative max-w-[220px] rounded-2xl backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border border-slate-300/40 dark:border-white/10 shadow-sm px-3.5 py-2"
           >
             <span className="font-serif text-[13px] leading-snug text-slate-600 dark:text-slate-300">{bubble}</span>
+            {/* 尾巴：明确这句话是她说的，指向下方的挂坠/立绘 */}
+            <span className="absolute -bottom-[5px] right-6 w-2.5 h-2.5 rotate-45 backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border-b border-r border-slate-300/40 dark:border-white/10" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -71,23 +74,24 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
             exit={{ opacity: 0, scale: 0.85, y: 12 }}
             transition={{ type: 'spring', stiffness: 220, damping: 22 }}
             className="relative"
-            style={{ width: EXPANDED_W, height: EXPANDED_H }}
+            style={{ width: expandedW, height: expandedH }}
           >
             <div
               ref={wrapRef}
-              className="w-full h-full cursor-pointer"
-              onPointerMove={(e) => handlePointerMove(e.clientX, e.clientY)}
-              onClick={(e) => {
+              className="w-full h-full cursor-pointer touch-none"
+              onPointerDown={(e) => {
                 if (!wrapRef.current) return;
-                handleClick(e.clientY, wrapRef.current.getBoundingClientRect());
+                e.currentTarget.setPointerCapture(e.pointerId);
+                handlePointerDown(e.clientX, e.clientY, wrapRef.current.getBoundingClientRect());
               }}
+              onPointerUp={(e) => handlePointerUp(e.clientX, e.clientY)}
             >
               {!failed && (
                 <Live2DStage
                   ref={stageRef}
                   modelUrl={MODEL_URL}
-                  width={EXPANDED_W}
-                  height={EXPANDED_H}
+                  width={expandedW}
+                  height={expandedH}
                   reduceMotion={prefersReducedMotion}
                   onReady={() => setReady(true)}
                   onError={() => setFailed(true)}
@@ -111,7 +115,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
             >
               <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
-            <span className="absolute -bottom-4 right-0 font-mono text-[8px] tracking-wide opacity-30 whitespace-nowrap text-slate-400">
+            <span className="absolute -bottom-4 right-0 left-0 text-right font-mono text-[8px] tracking-wide opacity-30 truncate text-slate-400">
               形象 © Crypton Future Media・建模 © Live2D Inc.
             </span>
           </motion.div>
@@ -121,9 +125,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ delay: 0.7, type: 'spring', stiffness: 260, damping: 22 }}
             onClick={expand}
             title="喊她出来"
-            className="w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm transition-all duration-500"
+            className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/40 dark:bg-white/5 border text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm transition-colors duration-500 ${isPlaying ? 'border-[#39C5BB]/40 shadow-[0_0_12px_rgba(57,197,187,0.35)] animate-miku-breathe' : 'border-slate-300/40 dark:border-white/10'}`}
           >
             <PendantIcon />
           </motion.button>
