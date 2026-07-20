@@ -35,8 +35,8 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   const { isPlaying, currentTrack } = useSoundscape();
 
-  const { bubble, handlePointerDown, handlePointerUp } = useMikuBrain({
-    stageRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer,
+  const { bubble, handlePointerDown, handlePointerUp, handlePointerCancel } = useMikuBrain({
+    stageRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer, reduceMotion: prefersReducedMotion,
   });
 
   useEffect(() => {
@@ -85,6 +85,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                 handlePointerDown(e.clientX, e.clientY, wrapRef.current.getBoundingClientRect());
               }}
               onPointerUp={(e) => handlePointerUp(e.clientX, e.clientY)}
+              onPointerCancel={handlePointerCancel}
             >
               {!failed && (
                 <Live2DStage
