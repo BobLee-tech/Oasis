@@ -1522,7 +1522,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               {/* 正文：左对齐，可读性更好 */}
               <div className="z-10 mt-8 text-left">
                 <p className="font-serif text-slate-600 dark:text-slate-300 leading-relaxed text-sm transition-colors">
-                  A 19-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces — where craft, calm and curiosity matter more than the race.
+                  A 20-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces — where craft, calm and curiosity matter more than the race.
                 </p>
               </div>
 
