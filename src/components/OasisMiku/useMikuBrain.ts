@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { MikuStageHandle } from './Live2DStage';
+import type { MikuParticlesHandle } from './MikuParticles';
 import type { AppView } from '../../types/auth';
 import type { MusicCategory } from '../../types/music';
 import { currentPeriod, isLateNight } from '../../lib/timeContext';
 import { termNoteOfDay } from '../../lib/solarTerms';
 import { onMikuSignal } from '../../lib/mikuSignal';
+import { MotionDirector } from './brain/motionDirector';
+import { RhythmEngine, profileForCategory } from './brain/rhythmEngine';
 import {
   MIKU_GREETINGS, MIKU_GREETINGS_FAMILIAR, MIKU_GREETINGS_CLOSE, MIKU_GREETINGS_DEEP,
   MIKU_TOUCH_HEAD_LINES, MIKU_TOUCH_HEAD_LINES_CLOSE, MIKU_TOUCH_HEAD_LINES_DEEP, MIKU_LONGPRESS_HEAD_LINES,
@@ -63,6 +66,23 @@ const HEM_FRAC = 0.62;
 const COMBO_WINDOW_MS = 1500;
 const COMBO_THRESHOLD = 3;
 
+// 由 overrideParam 绝对接管：唱歌口型、眉眼脸红嘴形，以及手臂。手臂放进这一组是拿实测数据
+// 校准过的——用 __miku 调试口子逐帧采样过 Idle 动作片段自己的 ParamArmL/R，发现它本身就会
+// 在每个 ~2.4s 循环里荡到接近满量程（-0.84~1），跟有没有放歌、有没有我们的叠加律动完全无关。
+// 也就是说「手不必要地往两边翘」根源是 Idle 片段自己的振幅，不是只加一点律动波纹能盖住的——
+// 所以手臂不跟头身摆动一样走 addParam 叠加，而是整段 override，由我们自己一套克制得多的
+// 呼吸态微动全权接管。
+//
+// 这些参数每帧都无条件计算+写入，不再像旧版那样在 reacting 窗口里手动 clearParam——
+// 「要不要生效」交给 Live2DStage 的 setYield 连续系数去接管（见 motionDirector），
+// 这样进/出动作片段两个方向都是平滑过渡，不会再有表情硬切的那一帧
+
+// 标准三次埃尔米特平滑阈值：x 在 [edge0, edge1] 内从 0 平滑升到 1，之外分别钳在 0/1
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+
 // 最近说过的几句记在这，池子够大时优先挑没说过的，避免连续撞句
 const pickFresh = <T,>(arr: readonly T[], recent: T[]): T => {
   const fresh = arr.filter((item) => !recent.includes(item));
@@ -84,6 +104,7 @@ const pickTiered = (tier: number, pools: (readonly string[] | undefined)[], rece
 
 interface UseMikuBrainOptions {
   stageRef: RefObject<MikuStageHandle | null>;
+  particlesRef: RefObject<MikuParticlesHandle | null>;
   ready: boolean;
   view: AppView;
   isPlaying: boolean;
@@ -97,27 +118,32 @@ interface UseMikuBrainOptions {
 }
 
 export const useMikuBrain = ({
-  stageRef, ready, view, isPlaying, trackId, trackCategory, getSpectrum, coarsePointer, reduceMotion,
+  stageRef, particlesRef, ready, view, isPlaying, trackId, trackCategory, getSpectrum, coarsePointer, reduceMotion,
 }: UseMikuBrainOptions) => {
   const [bubble, setBubble] = useState<string | null>(null);
   const bubbleTimer = useRef<number | null>(null);
   const recentLinesRef = useRef<string[]>([]);
   const moodRef = useRef<{ mood: Mood; intensity: number }>({ mood: 'neutral', intensity: 0 });
-  const valsRef = useRef({ eyeSmile: 0, cheek: 0, mouthForm: 0, mouth: 0, browY: 0, browAngle: 0, browForm: 0, swayEnergy: 0 });
-  const swayPhaseRef = useRef(0);
+  const valsRef = useRef({ eyeSmile: 0, cheek: 0, mouthForm: 0, mouth: 0, browY: 0, browAngle: 0, browForm: 0 });
+  const rhythmRef = useRef(new RhythmEngine());
+  // 手臂呼吸态微动的独立相位——恒速推进，不随音乐能量变化，安静时也要有这一点点存在感，
+  // 不然又变回和 Idle 切换瞬间一样的「一动不动」；刻意不共用 rhythmRef 的内部相位，
+  // 手臂本就该是比头身摇摆更轻、更不精确锁拍的一层装饰性涟漪
+  const armPhaseRef = useRef(0);
   const lastViewRef = useRef<AppView | null>(null);
   const lastTrackRef = useRef<string | undefined>(undefined);
   const lookTimerRef = useRef(0);
   const dozeTimerRef = useRef(20000 + Math.random() * 20000);
   const idleChatterTimerRef = useRef(70000 + Math.random() * 50000);
+  // 唱自己的歌时偶尔冒个音符泡泡——只认镇站曲（MusicCategory 'Miku'），不然听 Yorushika/Atarayo 时
+  // 满屏飘她自己的音符会显得答非所问
+  const noteTimerRef = useRef(2600);
   const pointerRef = useRef({ x: 0, y: 0, movedAt: 0 });
   const pressRef = useRef<{ zone: TouchZone; startX: number; startY: number; startT: number } | null>(null);
   const comboRef = useRef<number[]>([]);
-  // 模型自带的每段动作片段（Idle/Tap/Flick/Doze/FlickUp）在 model3.json 里都标了 Loop:true，
-  // 播放后会一直循环、永远不触发「播完」，Cubism 自己的 currentPriority 因此不会自然回落——
-  // 不能拿它判断「专业动作片段是否正在演出」，只能自己按时间窗记：每次显式播放一段动作，
-  // 记下「大约还要演多久」，窗口内表情混合/自主发言让位，窗口一过就当它已经进入循环底噪、收回控制权
-  const reactingUntilRef = useRef(0);
+  // 动作片段的播放与「专业动作片段正在演出、表情混合/自主发言该让位」的时间窗全部交给
+  // motionDirector 管理（含「Loop:true 动作永不播完，需要主动补一次 Idle 才能回归」的修复）
+  const directorRef = useRef(new MotionDirector());
   // 阅读舱/编辑器开着与否——由 OasisGallery 通过 mikuSignal 通知，闲聊调度据此换池/静音
   const readingRef = useRef(false);
   const editingRef = useRef(false);
@@ -131,10 +157,6 @@ export const useMikuBrain = ({
     if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current);
     bubbleTimer.current = window.setTimeout(() => setBubble(null), ms);
   }, []);
-
-  // 每次显式播放一段专业动作片段时调用，标记「未来这段时间算作正在演出」
-  const markReacting = useCallback((ms: number) => { reactingUntilRef.current = performance.now() + ms; }, []);
-  const isCurrentlyReacting = useCallback(() => performance.now() < reactingUntilRef.current, []);
 
   const sayFresh = useCallback((pool: readonly string[], ms?: number) => {
     if (!pool.length) return;
@@ -175,7 +197,10 @@ export const useMikuBrain = ({
   useEffect(() => {
     if (!ready) return;
     moodRef.current = { mood: isLateNight() ? 'sleepy' : 'neutral', intensity: 1 };
-    const t1 = window.setTimeout(() => { if (!reduceMotion) { stageRef.current?.playMotion('FlickUp'); markReacting(2200); } }, 200);
+    const t1 = window.setTimeout(() => {
+      const stage = stageRef.current;
+      if (!reduceMotion && stage) directorRef.current.play(stage, 'FlickUp', undefined, { reactMs: 2200 });
+    }, 200);
     const t2 = window.setTimeout(() => {
       const dateLine = mikuDateLine();
       if (dateLine && Math.random() < 0.7) {
@@ -221,11 +246,17 @@ export const useMikuBrain = ({
     const stop = onMikuSignal((signal) => {
       if (signal.type === 'editor-open') {
         editingRef.current = true;
-        if (ready) window.setTimeout(() => { if (!isCurrentlyReacting()) { triggerMood('happy', 0.6); sayFresh(MIKU_WRITING_LINES, 4200); } }, 500);
+        if (ready) window.setTimeout(() => { if (!directorRef.current.isReacting()) { triggerMood('happy', 0.6); sayFresh(MIKU_WRITING_LINES, 4200); } }, 500);
       } else if (signal.type === 'editor-close') {
         editingRef.current = false;
       } else if (signal.type === 'published') {
-        if (ready) window.setTimeout(() => { triggerMood('happy', 1); stageRef.current?.playMotion('FlickUp'); markReacting(2200); sayFresh(MIKU_PUBLISH_LINES, 6500); }, 900);
+        if (ready) window.setTimeout(() => {
+          const stage = stageRef.current;
+          triggerMood('happy', 1);
+          if (stage) directorRef.current.play(stage, 'FlickUp', undefined, { reactMs: 2200 });
+          particlesRef.current?.emit({ kind: 'burst' });
+          sayFresh(MIKU_PUBLISH_LINES, 6500);
+        }, 900);
       } else if (signal.type === 'reading-open') {
         readingRef.current = true;
       } else if (signal.type === 'reading-close') {
@@ -233,7 +264,7 @@ export const useMikuBrain = ({
       }
     });
     return stop;
-  }, [ready, sayFresh, triggerMood, stageRef, markReacting, isCurrentlyReacting]);
+  }, [ready, sayFresh, triggerMood, stageRef, particlesRef]);
 
   // 离开一阵子后回来：短暂切走标签页看一眼不值得欢迎，离开够久（60s+）才算「回来了」
   useEffect(() => {
@@ -243,12 +274,12 @@ export const useMikuBrain = ({
       const hiddenAt = hiddenAtRef.current;
       hiddenAtRef.current = null;
       if (hiddenAt !== null && performance.now() - hiddenAt > 60000) {
-        window.setTimeout(() => { if (!isCurrentlyReacting()) { triggerMood('happy', 0.7); sayFresh(MIKU_WELCOME_BACK_LINES, 4800); } }, 400);
+        window.setTimeout(() => { if (!directorRef.current.isReacting()) { triggerMood('happy', 0.7); sayFresh(MIKU_WELCOME_BACK_LINES, 4800); } }, 400);
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [ready, sayFresh, triggerMood, isCurrentlyReacting]);
+  }, [ready, sayFresh, triggerMood]);
 
   // 复制文本彩蛋：偶尔接住一句，别对着连续复制刷屏
   useEffect(() => {
@@ -276,7 +307,8 @@ export const useMikuBrain = ({
   }, [ready, coarsePointer]);
 
   // 逐帧：视线回落、心情浓度衰减、口型同步、音乐律动、打瞌睡/闲聊调度；
-  // Tap/Flick/Doze 等专业动作片段播放时（isCurrentlyReacting）表情混合全程让位，不打架
+  // Tap/Flick/Doze 等专业动作片段播放时，motionDirector 把 Live2DStage 的让位系数淡到 0，
+  // 下面这些 override/add 调用会自然失效——不需要每帧手动判断 reacting 再决定写不写
   useEffect(() => {
     if (!ready || reduceMotion) return;
     let raf = 0;
@@ -285,10 +317,11 @@ export const useMikuBrain = ({
       raf = requestAnimationFrame(loop);
       const dt = Math.min(now - last, 64);
       last = now;
+      const dtSec = dt / 1000;
       const stage = stageRef.current;
       if (!stage) return;
-      const reacting = isCurrentlyReacting();
-      const rate = 1 - Math.pow(0.001, dt / 1000); // 与 dt 无关的指数平滑，帧率波动也不抖
+      const { reacting } = directorRef.current.update(stage, dtSec);
+      const rate = 1 - Math.pow(0.001, dtSec); // 与 dt 无关的指数平滑，帧率波动也不抖
 
       // 视线：真实指针最近 3s 内动过就跟随；否则（或触屏）交给自主张望，别死盯着一个点
       if (!coarsePointer && now - pointerRef.current.movedAt < 3000) {
@@ -316,46 +349,62 @@ export const useMikuBrain = ({
       const targetMouth = spectrum.length ? Math.min(1, (spectrum[0] + spectrum[1]) * 0.7) : 0;
       const v = valsRef.current;
       v.mouth += (targetMouth - v.mouth) * rate;
-      if (!reacting) stage.setParam('ParamMouthOpenY', v.mouth);
 
-      if (!reacting) {
-        v.eyeSmile += (resting.eyeSmile + (active.eyeSmile - resting.eyeSmile) * blend - v.eyeSmile) * rate;
-        v.cheek += (resting.cheek + (active.cheek - resting.cheek) * blend - v.cheek) * rate;
-        stage.setParam('ParamEyeLSmile', v.eyeSmile);
-        stage.setParam('ParamEyeRSmile', v.eyeSmile);
-        stage.setParam('ParamCheek', v.cheek);
+      stage.overrideParam('ParamMouthOpenY', v.mouth);
 
-        // 眉毛：脸部辨识度最高的部件，之前完全没接入心情系统，表情只靠眼笑+脸红撑着
-        v.browY += (resting.browY + (active.browY - resting.browY) * blend - v.browY) * rate;
-        v.browAngle += (resting.browAngle + (active.browAngle - resting.browAngle) * blend - v.browAngle) * rate;
-        v.browForm += (resting.browForm + (active.browForm - resting.browForm) * blend - v.browForm) * rate;
-        stage.setParam('ParamBrowLY', v.browY);
-        stage.setParam('ParamBrowRY', v.browY);
-        stage.setParam('ParamBrowLAngle', v.browAngle);
-        stage.setParam('ParamBrowRAngle', v.browAngle);
-        stage.setParam('ParamBrowLForm', v.browForm);
-        stage.setParam('ParamBrowRForm', v.browForm);
+      v.eyeSmile += (resting.eyeSmile + (active.eyeSmile - resting.eyeSmile) * blend - v.eyeSmile) * rate;
+      v.cheek += (resting.cheek + (active.cheek - resting.cheek) * blend - v.cheek) * rate;
+      stage.overrideParam('ParamEyeLSmile', v.eyeSmile);
+      stage.overrideParam('ParamEyeRSmile', v.eyeSmile);
+      stage.overrideParam('ParamCheek', v.cheek);
 
-        const mouthFormBase = resting.mouthForm + (active.mouthForm - resting.mouthForm) * blend;
-        const mouthFormTarget = isPlaying ? Math.min(0.6, mouthFormBase + (spectrum[2] ?? 0) * 0.4) : mouthFormBase;
-        v.mouthForm += (mouthFormTarget - v.mouthForm) * rate;
-        stage.setParam('ParamMouthForm', v.mouthForm);
+      // 眉毛：脸部辨识度最高的部件，之前完全没接入心情系统，表情只靠眼笑+脸红撑着
+      v.browY += (resting.browY + (active.browY - resting.browY) * blend - v.browY) * rate;
+      v.browAngle += (resting.browAngle + (active.browAngle - resting.browAngle) * blend - v.browAngle) * rate;
+      v.browForm += (resting.browForm + (active.browForm - resting.browForm) * blend - v.browForm) * rate;
+      stage.overrideParam('ParamBrowLY', v.browY);
+      stage.overrideParam('ParamBrowRY', v.browY);
+      stage.overrideParam('ParamBrowLAngle', v.browAngle);
+      stage.overrideParam('ParamBrowRAngle', v.browAngle);
+      stage.overrideParam('ParamBrowLForm', v.browForm);
+      stage.overrideParam('ParamBrowRForm', v.browForm);
 
-        // 音乐律动：低频驱动的轻微摇摆，交给她的头发物理去接住这份节拍感；
-        // 手臂也跟着一起打拍子——但叠加在 Idle/Tap 等动作片段自己的曲线之上，而不是整个盖掉，
-        // 不然听歌时间越长，手反而越呆（那些片段本身的手臂曲线幅度并不小）
-        if (isPlaying) {
-          v.swayEnergy += ((spectrum[0] ?? 0) - v.swayEnergy) * rate;
-          swayPhaseRef.current += (dt / 1000) * (1.6 + v.swayEnergy * 1.8);
-          const sway = Math.sin(swayPhaseRef.current) * v.swayEnergy * 4;
-          stage.setParam('ParamAngleZ', sway);
-          stage.setParam('ParamBodyAngleZ', sway * 0.6);
-          const armSway = Math.sin(swayPhaseRef.current * 0.6 + Math.PI / 4) * v.swayEnergy * 0.2;
-          const armBaseL = stage.getParam('ParamArmL');
-          const armBaseR = stage.getParam('ParamArmR');
-          stage.setParam('ParamArmL', Math.max(-1, Math.min(1, armBaseL + armSway)));
-          stage.setParam('ParamArmR', Math.max(-1, Math.min(1, armBaseR - armSway)));
+      const mouthFormBase = resting.mouthForm + (active.mouthForm - resting.mouthForm) * blend;
+      const mouthFormTarget = isPlaying ? Math.min(0.6, mouthFormBase + (spectrum[2] ?? 0) * 0.4) : mouthFormBase;
+      v.mouthForm += (mouthFormTarget - v.mouthForm) * rate;
+      stage.overrideParam('ParamMouthForm', v.mouthForm);
+
+      // 音乐律动：包络与振荡器分离的节拍引擎（见 rhythmEngine.ts）——摆幅只吃平滑后的能量包络，
+      // 不吃逐帧抖动的原始频谱值；频率恒定推进，检测到鼓点时只是「软推」相位而不是硬切。
+      // 叠加（而非取代）在 Idle/Tap 等动作片段自己的曲线之上，交给头发物理去接住这份节拍感
+      const bass = isPlaying ? (spectrum[0] ?? 0) : 0;
+      const rhythm = rhythmRef.current.update(dtSec, bass, profileForCategory(trackCategory));
+      stage.addParam('ParamAngleZ', rhythm.headZ);
+      stage.addParam('ParamBodyAngleZ', rhythm.bodyZ);
+      stage.addParam('ParamAngleX', rhythm.headX);
+      stage.addParam('ParamAngleY', rhythm.nod);
+
+      // 手臂整段接管（overrideParam，不是叠加）：常态是一个很轻的呼吸态微动，幅度只有 ±0.06，
+      // 相位恒速推进、不随音乐能量变化——安静时也该有这一点点存在感，而不是又变回一动不动。
+      // 唱歌且能量过了软阈值时，再叠一层装饰性的音乐涟漪上去（energy < 0.08 时这层贡献为 0）；
+      // 刻意用手臂自己的相位而非节拍引擎的相位——手臂只是轻轻跟着晃，不需要真的卡拍
+      armPhaseRef.current += dtSec * ((Math.PI * 2) / 5);
+      const armIdle = Math.sin(armPhaseRef.current) * 0.06;
+      const armEnvelope = smoothstep(0.08, 0.35, rhythm.energy);
+      const armMusic = Math.sin(armPhaseRef.current * 2 + Math.PI / 4) * armEnvelope * 0.15;
+      stage.overrideParam('ParamArmL', armIdle + armMusic);
+      stage.overrideParam('ParamArmR', -(armIdle + armMusic));
+
+      // 唱自己的歌时偶尔冒个音符泡泡：能量越高、冒得越勤，最短不低于 1.2s 别糊成一片；
+      // 换到别的分类或暂停时只重置倒计时，不在这一帧补发——不然切歌瞬间容易连着弹好几颗
+      if (isPlaying && trackCategory === 'Miku') {
+        noteTimerRef.current -= dt;
+        if (noteTimerRef.current <= 0) {
+          noteTimerRef.current = Math.max(1200, 2600 + Math.random() * 2200 - rhythm.energy * 800);
+          particlesRef.current?.emit({ kind: 'notes', count: 1 });
         }
+      } else {
+        noteTimerRef.current = 2600 + Math.random() * 2200;
       }
 
       // 打瞌睡：深夜常态里偶尔真的睡过去，或听歌听到入神时安心闭一下眼——由这里主动调度，
@@ -366,9 +415,9 @@ export const useMikuBrain = ({
         if (!reacting) {
           const shouldDoze = isLateNight() ? Math.random() < 0.55 : (isPlaying && Math.random() < 0.12);
           if (shouldDoze) {
-            stage.playMotion('Doze');
-            markReacting(2500);
+            directorRef.current.play(stage, 'Doze', undefined, { reactMs: 2500 });
             triggerMood('sleepy', 1);
+            particlesRef.current?.emit({ kind: 'zzz' });
             window.setTimeout(() => sayFresh(MIKU_DOZE_LINES), 250);
           }
         }
@@ -396,7 +445,7 @@ export const useMikuBrain = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [ready, reduceMotion, isPlaying, getSpectrum, stageRef, coarsePointer, sayFresh, triggerMood, markReacting, isCurrentlyReacting]);
+  }, [ready, reduceMotion, isPlaying, trackCategory, getSpectrum, stageRef, particlesRef, coarsePointer, sayFresh, triggerMood]);
 
   const handlePointerDown = useCallback((clientX: number, clientY: number, rect: DOMRect) => {
     // 优先走 drawable 精确命中（真实还原头/辫子/身体/裙摆的实际网格形状，含 X 轴）；
@@ -430,8 +479,7 @@ export const useMikuBrain = ({
     const held = performance.now() - press.startT;
 
     if (dist > SWIPE_DIST_PX) {
-      stage.playMotion('Flick', clientY < press.startY ? 0 : 1, 3);
-      markReacting(3200);
+      directorRef.current.play(stage, 'Flick', clientY < press.startY ? 0 : 1, { reactMs: 3200, priority: 3 });
       triggerMood('happy', 0.8);
       sayFresh(MIKU_FLICK_LINES, 3800);
       return;
@@ -443,6 +491,8 @@ export const useMikuBrain = ({
         : press.zone === 'twintail' ? MIKU_TWINTAIL_LINES
         : press.zone === 'hem' ? MIKU_TOUCH_HEM_LINES : MIKU_TOUCH_BODY_LINES;
       sayFresh(pool, 3800);
+      if (press.zone === 'head') particlesRef.current?.emit({ kind: 'hearts', count: 4 });
+      else if (press.zone === 'twintail') particlesRef.current?.emit({ kind: 'notes', count: 2 });
       return;
     }
 
@@ -452,33 +502,35 @@ export const useMikuBrain = ({
     comboRef.current = [...comboRef.current.filter((t) => now - t < COMBO_WINDOW_MS), now];
     if (comboRef.current.length >= COMBO_THRESHOLD) {
       comboRef.current = [];
-      stage.playMotion('Tap', 1, 3);
-      markReacting(3100);
+      directorRef.current.play(stage, 'Tap', 1, { reactMs: 3100, priority: 3 });
       triggerMood('annoyed', 1);
       sayFresh(MIKU_COMBO_LINES, 3400);
       return;
     }
 
     const next = patCount();
-    stage.playMotion('Tap', press.zone === 'head' || press.zone === 'twintail' ? 0 : 1, 3);
-    markReacting(3100);
+    directorRef.current.play(stage, 'Tap', press.zone === 'head' || press.zone === 'twintail' ? 0 : 1, { reactMs: 3100, priority: 3 });
     triggerMood('shy', 1);
     if (press.zone === 'head') {
       // 摸头是高频动作，亲密度分层在这里最容易被感知到——20/50/100 次解锁更贴近的语气
       sayTiered(patTier(), [MIKU_TOUCH_HEAD_LINES, MIKU_TOUCH_HEAD_LINES, MIKU_TOUCH_HEAD_LINES_CLOSE, MIKU_TOUCH_HEAD_LINES_DEEP], 3800);
+      particlesRef.current?.emit({ kind: 'hearts', count: 3 });
     } else {
       const pool = press.zone === 'twintail' ? MIKU_TWINTAIL_LINES : press.zone === 'hem' ? MIKU_TOUCH_HEM_LINES : MIKU_TOUCH_BODY_LINES;
       sayFresh(pool, 3800);
+      if (press.zone === 'twintail') particlesRef.current?.emit({ kind: 'notes', count: 2 });
     }
 
     if (next === 20 || next === 50) {
-      window.setTimeout(() => { triggerMood('surprised', 1); sayFresh(MIKU_UNLOCK_LINES, 6000); }, 4200);
+      window.setTimeout(() => { triggerMood('surprised', 1); particlesRef.current?.emit({ kind: 'burst' }); sayFresh(MIKU_UNLOCK_LINES, 6000); }, 4200);
     } else if (next === 100) {
-      window.setTimeout(() => { triggerMood('happy', 1); sayFresh(MIKU_UNLOCK_LINES_DEEP, 7000); }, 4200);
+      // 拍满百次是全库最郑重的一档里程碑，樱瓣专属留给它——花瓣是「落下来」的郑重，
+      // 跟 20/50 档「炸开」的 burst 拉开区分度
+      window.setTimeout(() => { triggerMood('happy', 1); particlesRef.current?.emit({ kind: 'petal' }); sayFresh(MIKU_UNLOCK_LINES_DEEP, 7000); }, 4200);
     } else if (next > 5 && Math.random() < 0.015) {
       window.setTimeout(() => { triggerMood('surprised', 1); sayFresh(MIKU_RARE_LINES, 6000); }, 4200);
     }
-  }, [stageRef, triggerMood, sayFresh, sayTiered, patTier, patCount, markReacting]);
+  }, [stageRef, particlesRef, triggerMood, sayFresh, sayTiered, patTier, patCount]);
 
   return { bubble, handlePointerDown, handlePointerUp, handlePointerCancel };
 };

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Live2DStage, type MikuStageHandle } from './Live2DStage';
+import { MikuParticles, type MikuParticlesHandle } from './MikuParticles';
 import { useMikuBrain } from './useMikuBrain';
 import { useSoundscape, getSpectrum } from '../../hooks/useSoundscape';
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
@@ -22,6 +23,7 @@ const PendantIcon = () => (
 
 export const OasisMiku = ({ view }: { view: AppView }) => {
   const stageRef = useRef<MikuStageHandle>(null);
+  const particlesRef = useRef<MikuParticlesHandle>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const coarsePointer = useCoarsePointer();
   const prefersReducedMotion = !!useReducedMotion();
@@ -36,7 +38,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const { isPlaying, currentTrack } = useSoundscape();
 
   const { bubble, handlePointerDown, handlePointerUp, handlePointerCancel } = useMikuBrain({
-    stageRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer, reduceMotion: prefersReducedMotion,
+    stageRef, particlesRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer, reduceMotion: prefersReducedMotion,
   });
 
   useEffect(() => {
@@ -109,6 +111,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                 </div>
               )}
             </div>
+            <MikuParticles ref={particlesRef} reduceMotion={prefersReducedMotion} coarsePointer={coarsePointer} />
             <button
               onClick={() => setExpanded(false)}
               aria-label="收起"
