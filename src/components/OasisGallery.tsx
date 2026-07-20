@@ -15,6 +15,7 @@ import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks
 import { DAILY_QUOTES } from '../data/quotes';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
+import { emitMikuSignal } from '../lib/mikuSignal';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 
@@ -142,6 +143,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // ✍️ 编辑器三档视图：纯写 / 左写右读分屏 / 纯预览
   const [editorMode, setEditorMode] = useState<'write' | 'split' | 'preview'>('write');
   const isPreviewMode = editorMode === 'preview';
+
+  // 🎐 给 Miku 递个信号：编辑器/阅读舱开关时她换一套语气——只在状态真正翻转时发一次，
+  // 不用 useIsPresent 那条退场兜底也会跟着触发（isEditing/activePost 本身就会被它置空）
+  useEffect(() => { emitMikuSignal({ type: isEditing ? 'editor-open' : 'editor-close' }); }, [isEditing]);
+  useEffect(() => { emitMikuSignal({ type: activePost ? 'reading-open' : 'reading-close' }); }, [activePost]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editTagList, setEditTagList] = useState<string[]>([]);
@@ -755,6 +761,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     if (editingId) updateSeed(editingId, input); else plantSeed(input);
     clearDraft();
     setIsEditing(false);
+    // 存草稿不值得庆祝，只有真正公开出去的才道贺
+    if (editStatus !== 'draft') emitMikuSignal({ type: 'published' });
   };
 
   const handleDelete = (id: string) => {
