@@ -55,11 +55,34 @@ const PHASE_LOCK_STRENGTH = 0.05; // 纠正力度也调轻——是「察觉到�
 const NOD_SPRING_K = 14; // 弹簧调软：一次点头是缓缓沉下去又浮起来，不是一冲一弹的抽搐
 const NOD_SPRING_C = 7.5; // 临界阻尼（ζ≈1），不回弹，~1s 内静静归零
 
+// BPM 中位数一更新（或估计值跨进/跨出 60~190 可信区间），目标频率会在两帧之间直接跳变——
+// 之前直接拿去推相位，摆动速度肉眼可见地「换挡」。这里先对目标频率做一层慢平滑，相位积分
+// 永远用平滑后的值，换挡就变成「渐渐追上了节奏」，而不是一步到位的瞬间切换
+const FREQ_SMOOTH_TAU = 1.8;
+// 振幅呼吸：两条不可通约（无公约数比）的慢频率叠加成伪 Perlin 噪声，让摆幅本身「时深时浅」。
+// 完美周期性是人眼识别「机械/合成」运动最敏感的信号——真实生物运动从不会每个周期摆得一样深。
+// 深度压得比第一版更浅：±15% 在配合下面的整形曲线时读成了「摆动深浅失控」，是醉态感的来源之一，
+// ±7% 只留一点「还活着」的呼吸感，不会让人怀疑她是不是在犯晕
+const DRIFT_FREQ_A = 0.071; // Hz
+const DRIFT_FREQ_B = 0.113; // Hz，与上面那条无公约数比，叠加后波形自身也不会有肉眼可辨的重复周期
+const DRIFT_DEPTH = 0.07;
+// headX 弧线本是半频叠加（0.5）让轨迹从直线变成弧线，但精确的半频意味着每两拍就精确重复同一条
+// 李萨如轨迹——失谐到 0.48，弧线会随时间缓慢进动、永不精确重合，跟主摆动的关系也不再是「卡死的」
+const HEAD_X_DETUNE = 0.48;
+// 第一版这里用 tanh 压平波峰，本意是模拟摆动比简谐运动更「赖在端点」——但推导过后发现效果反了：
+// tanh 对中间值是「往上拉」的（0.38 会被拉到 0.55、0.71 拉到 0.86），等于让头很快甩到接近最大摆角，
+// 然后在那个偏斜的姿态上停留一大段相位，视觉上正是「东倒西歪、赖着不回正」的醉态，而不是清醒的摇摆。
+// 换成幂函数 sign(x)·|x|^1.5：中间值反而被「往下压」（0.38→0.24、0.71→0.59），头在直立附近多停留，
+// 只在接近相位真正的波峰前才快速摆出去又摆回来——多数时间贴近正中，偏摆是短促的，不是拖沓的
+const SWAY_SHAPE_POWER = 1.5;
+
 const median = (arr: number[]): number => {
   const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
+
+const shapeSway = (x: number) => Math.sign(x) * Math.abs(x) ** SWAY_SHAPE_POWER;
 
 export class RhythmEngine {
   private env = 0;
@@ -69,6 +92,8 @@ export class RhythmEngine {
   private intervals: number[] = [];
   private nodPos = 0;
   private nodVel = 0;
+  private smoothedFreq = -1; // -1 = 未初始化，首帧直接取目标值，不必对着 0 慢慢爬升
+  private driftT = 0;
 
   update(dtSec: number, bass: number, profile: RhythmProfile): RhythmFrame {
     // ① AR 包络：起也不再快——0.4s 起、1.1s 收，幅度是「缓缓浮上来」而不是「一下子弹出来」，
@@ -94,9 +119,13 @@ export class RhythmEngine {
     }
 
     // ③ 频率恒定推进：有稳定 BPM 估计（60~190 区间内可信）就用它，否则退回档位默认频率——
-    // 无论哪种，频率本身都不随瞬时能量抖动
+    // 无论哪种，频率本身都不随瞬时能量抖动。但目标值本身会跳变（见 FREQ_SMOOTH_TAU 注释），
+    // 所以先对目标频率做一层慢平滑，相位积分永远吃平滑后的值
     const bpm = this.intervals.length ? 60000 / median(this.intervals) : 0;
-    const freq = bpm >= 60 && bpm <= 190 ? bpm / 60 / 4 : profile.freqDefault;
+    const targetFreq = bpm >= 60 && bpm <= 190 ? bpm / 60 / 4 : profile.freqDefault;
+    if (this.smoothedFreq < 0) this.smoothedFreq = targetFreq;
+    this.smoothedFreq += (targetFreq - this.smoothedFreq) * (1 - Math.exp(-dtSec / FREQ_SMOOTH_TAU));
+    const freq = this.smoothedFreq;
     this.phase += dtSec * freq * Math.PI * 2;
     if (this.phase > 10000) this.phase %= Math.PI * 2; // 长会话防止相位无界增长，纯卫生性质
 
@@ -104,14 +133,22 @@ export class RhythmEngine {
     this.nodVel += (-NOD_SPRING_K * this.nodPos - NOD_SPRING_C * this.nodVel) * dtSec;
     this.nodPos += this.nodVel * dtSec;
 
-    const amp = profile.amp * this.env;
+    // 振幅呼吸：两条无公约数比的慢正弦叠出伪 Perlin 噪声，让摆幅本身「时深时浅」，
+    // 而不是整支歌都摆同一个上限——完美周期性是最容易被识别为「机械」的信号
+    this.driftT += dtSec;
+    const drift = (Math.sin(this.driftT * Math.PI * 2 * DRIFT_FREQ_A) +
+      Math.sin(this.driftT * Math.PI * 2 * DRIFT_FREQ_B + 1.7)) * 0.5;
+    const amp = profile.amp * this.env * (1 + drift * DRIFT_DEPTH);
     const bodyLag = Math.PI * 2 * freq * 0.18; // 身体滞后头部 180ms，比第一版再拖一点，更松弛
     return {
-      headZ: Math.sin(this.phase) * amp,
-      bodyZ: Math.sin(this.phase - bodyLag) * amp * 0.5,
+      // 幂函数整形（见 SWAY_SHAPE_POWER）：多数时间贴近直立，只在相位靠近波峰前后才短促地摆出去，
+      // 读起来是清醒的摇摆，而不是赖在偏斜姿态上的醉态
+      headZ: shapeSway(Math.sin(this.phase)) * amp,
+      bodyZ: shapeSway(Math.sin(this.phase - bodyLag)) * amp * 0.5,
       // 这一层弧线本是为了让轨迹不是直线，但幅度太大会跟主摆动打架、显得晃得很杂——调轻到只是
-      // 隐约的弧度感，多数时候几乎感觉不到它单独存在，只在回看轨迹时才「哦原来不是直线」
-      headX: Math.sin(this.phase * 0.5 + Math.PI / 3) * amp * 0.18,
+      // 隐约的弧度感，多数时候几乎感觉不到它单独存在，只在回看轨迹时才「哦原来不是直线」；
+      // 半频刻意失谐到 0.48（见 HEAD_X_DETUNE），弧线会随时间缓慢进动，不会每两拍精确重复
+      headX: Math.sin(this.phase * HEAD_X_DETUNE + Math.PI / 3) * amp * 0.18,
       nod: this.nodPos * 1.8,
       energy: this.env,
     };

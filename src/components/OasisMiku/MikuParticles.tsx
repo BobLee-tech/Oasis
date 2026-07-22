@@ -194,7 +194,10 @@ export const MikuParticles = forwardRef<MikuParticlesHandle, { reduceMotion: boo
               animate={{ opacity: [0, 1, 1, 0], x: p.x, y: p.y, rotate: p.rotate, scale: p.scale }}
               transition={{
                 duration: p.duration, delay: p.delay, ease: EASE_DRIFT,
-                times: p.times, opacity: { times: DISSOLVE_TIMES },
+                times: p.times,
+                // 独立 transition 对象不会继承顶层 duration/delay——不补全的话 Framer Motion
+                // 会回落到默认的 ~0.8s/0 延迟，粒子位移还在慢慢飞，透明度却已经提前谢幕了
+                opacity: { times: DISSOLVE_TIMES, duration: p.duration, delay: p.delay, ease: 'linear' },
               }}
               onAnimationComplete={() => remove(p.id)}
             >

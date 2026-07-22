@@ -21,7 +21,7 @@ import {
   MIKU_WELCOME_BACK_LINES, MIKU_COPY_LINES, MIKU_WRITING_LINES, MIKU_PUBLISH_LINES, MIKU_SEDENTARY_LINES,
 } from '../../data/mikuLines';
 
-type Mood = 'neutral' | 'happy' | 'shy' | 'sleepy' | 'surprised' | 'annoyed';
+export type Mood = 'neutral' | 'happy' | 'shy' | 'sleepy' | 'surprised' | 'annoyed';
 // 命中区域：头部 / 双马尾 / 躯干（含手臂）/ 裙摆与腿部——优先走 drawable 精确命中（见 classifyDrawableHits），
 // 只有点在网格缝隙里（命中列表为空）时才退回下面这套按容器比例校准的几何分带兜底
 type TouchZone = 'head' | 'twintail' | 'body' | 'hem';
@@ -33,13 +33,18 @@ const TWINTAIL_ID_PREFIX = 'D_HAIR_BACK';
 const BODY_ID_PREFIXES = ['D_BODY_', 'D_ARM_'];
 const HEM_ID_PREFIX = 'D_LEG_';
 
-// 按 头 > 双马尾 > 躯干 > 裙摆 的优先级取第一个命中的桶——发丝经常飘到躯干/裙摆的包围盒里，
-// 但只要同时命中了头部相关网格，体验上仍应算「摸到头/摸到辫子」而不是身体
+// hits 已经是 Live2DStage.hitTestDrawables 按渲染次序「最靠前优先」排好的列表——直接取 hits[0]
+// 就是这个像素上视觉最顶层、用户真正「摸到」的那个部件。旧版按 头>马尾>身体>裙摆 的固定优先级
+// 扫描整个命中列表，问题是双马尾的轴对齐包围盒能把大半个身体都罩住，于是点手臂/点腿只要落在
+// 这个大矩形里就会被马尾抢走判定，出现「摸大腿说摸到辫子」这种错位。改成信「最前面那层」之后，
+// 只有真正被头发遮住的地方才会判成摸到头发，符合直觉
 const classifyDrawableHits = (hits: string[]): TouchZone | null => {
-  if (hits.some((id) => HEAD_ID_PREFIXES.some((p) => id.startsWith(p)))) return 'head';
-  if (hits.some((id) => id.startsWith(TWINTAIL_ID_PREFIX))) return 'twintail';
-  if (hits.some((id) => BODY_ID_PREFIXES.some((p) => id.startsWith(p)))) return 'body';
-  if (hits.some((id) => id.startsWith(HEM_ID_PREFIX))) return 'hem';
+  const front = hits[0];
+  if (!front) return null;
+  if (HEAD_ID_PREFIXES.some((p) => front.startsWith(p))) return 'head';
+  if (front.startsWith(TWINTAIL_ID_PREFIX)) return 'twintail';
+  if (BODY_ID_PREFIXES.some((p) => front.startsWith(p))) return 'body';
+  if (front.startsWith(HEM_ID_PREFIX)) return 'hem';
   return null;
 };
 
@@ -54,7 +59,16 @@ const MOOD_TARGETS: Record<Mood, { eyeSmile: number; cheek: number; mouthForm: n
 
 // 心情不是开关，是会衰减的浓度：半衰期 45s，此后自然退回「常态」（深夜是 sleepy，其余是 neutral）
 const MOOD_HALF_LIFE_MS = 45000;
-const BUBBLE_MS = 5200;
+// 脸颊/眼笑/眉毛这类情绪表情，跟 Tap/Flick 的身体动作本是两件正交的事——不该被 motionDirector
+// 的整体让位连累。给这些参数的 overrideParam 传这个 floor，即使 Tap 正在播（全局 yieldAlpha→0），
+// 表情依然能保持 80% 强度：摸头的瞬间就看得到脸红，不用等 3 秒动作播完才慢半拍浮现
+const EMOTION_YIELD_FLOOR = 0.8;
+// 气泡停留时长按实际文字长度伸缩，不再是不论长短统一挂一个数字——中文舒适阅读速度约
+// 4~6 字/秒，短句挂太久像卡住不走，长句挂不够久还没读完就先消失了
+const BUBBLE_BASE_MS = 1600;
+const BUBBLE_MS_PER_CHAR = 220;
+const BUBBLE_MIN_MS = 3000;
+const BUBBLE_MAX_MS = 8000;
 const RECENT_LINE_MEMORY = 5;
 // 摸头/戳一下都算「按住」，超过这个时长才算长按，而不是快速点按
 const LONG_PRESS_MS = 260;
@@ -81,6 +95,13 @@ const COMBO_THRESHOLD = 3;
 const smoothstep = (edge0: number, edge1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
+};
+
+// minMs 不再是「唯一决定时长的数字」，而是一条「至少停这么久」的下限——milestone 类台词
+// 传入更大的 minMs 来保证分量感，但实际时长仍会按这句话真实有多长继续往上浮动
+const bubbleDuration = (text: string, minMs?: number) => {
+  const computed = BUBBLE_BASE_MS + text.length * BUBBLE_MS_PER_CHAR;
+  return Math.min(BUBBLE_MAX_MS, Math.max(BUBBLE_MIN_MS, minMs ?? 0, computed));
 };
 
 // 最近说过的几句记在这，池子够大时优先挑没说过的，避免连续撞句
@@ -121,6 +142,9 @@ export const useMikuBrain = ({
   stageRef, particlesRef, ready, view, isPlaying, trackId, trackCategory, getSpectrum, coarsePointer, reduceMotion,
 }: UseMikuBrainOptions) => {
   const [bubble, setBubble] = useState<string | null>(null);
+  // 气泡边框的情绪染色只认「说这句话时她是什么心情」，不逐帧跟随 moodRef——
+  // 那样既没必要（气泡本就每隔几秒才换一次内容）也会引入不必要的高频重渲染
+  const [bubbleMood, setBubbleMood] = useState<Mood>('neutral');
   const bubbleTimer = useRef<number | null>(null);
   const recentLinesRef = useRef<string[]>([]);
   const moodRef = useRef<{ mood: Mood; intensity: number }>({ mood: 'neutral', intensity: 0 });
@@ -151,11 +175,12 @@ export const useMikuBrain = ({
   const sedentaryMsRef = useRef(0);
   const sedentaryFiredRef = useRef(false);
 
-  const say = useCallback((text: string, ms = BUBBLE_MS) => {
+  const say = useCallback((text: string, minMs?: number) => {
     setBubble(text);
+    setBubbleMood(moodRef.current.intensity > 0.15 ? moodRef.current.mood : 'neutral');
     recentLinesRef.current = [text, ...recentLinesRef.current].slice(0, RECENT_LINE_MEMORY);
     if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = window.setTimeout(() => setBubble(null), ms);
+    bubbleTimer.current = window.setTimeout(() => setBubble(null), bubbleDuration(text, minMs));
   }, []);
 
   const sayFresh = useCallback((pool: readonly string[], ms?: number) => {
@@ -354,25 +379,25 @@ export const useMikuBrain = ({
 
       v.eyeSmile += (resting.eyeSmile + (active.eyeSmile - resting.eyeSmile) * blend - v.eyeSmile) * rate;
       v.cheek += (resting.cheek + (active.cheek - resting.cheek) * blend - v.cheek) * rate;
-      stage.overrideParam('ParamEyeLSmile', v.eyeSmile);
-      stage.overrideParam('ParamEyeRSmile', v.eyeSmile);
-      stage.overrideParam('ParamCheek', v.cheek);
+      stage.overrideParam('ParamEyeLSmile', v.eyeSmile, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamEyeRSmile', v.eyeSmile, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamCheek', v.cheek, EMOTION_YIELD_FLOOR);
 
       // 眉毛：脸部辨识度最高的部件，之前完全没接入心情系统，表情只靠眼笑+脸红撑着
       v.browY += (resting.browY + (active.browY - resting.browY) * blend - v.browY) * rate;
       v.browAngle += (resting.browAngle + (active.browAngle - resting.browAngle) * blend - v.browAngle) * rate;
       v.browForm += (resting.browForm + (active.browForm - resting.browForm) * blend - v.browForm) * rate;
-      stage.overrideParam('ParamBrowLY', v.browY);
-      stage.overrideParam('ParamBrowRY', v.browY);
-      stage.overrideParam('ParamBrowLAngle', v.browAngle);
-      stage.overrideParam('ParamBrowRAngle', v.browAngle);
-      stage.overrideParam('ParamBrowLForm', v.browForm);
-      stage.overrideParam('ParamBrowRForm', v.browForm);
+      stage.overrideParam('ParamBrowLY', v.browY, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamBrowRY', v.browY, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamBrowLAngle', v.browAngle, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamBrowRAngle', v.browAngle, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamBrowLForm', v.browForm, EMOTION_YIELD_FLOOR);
+      stage.overrideParam('ParamBrowRForm', v.browForm, EMOTION_YIELD_FLOOR);
 
       const mouthFormBase = resting.mouthForm + (active.mouthForm - resting.mouthForm) * blend;
       const mouthFormTarget = isPlaying ? Math.min(0.6, mouthFormBase + (spectrum[2] ?? 0) * 0.4) : mouthFormBase;
       v.mouthForm += (mouthFormTarget - v.mouthForm) * rate;
-      stage.overrideParam('ParamMouthForm', v.mouthForm);
+      stage.overrideParam('ParamMouthForm', v.mouthForm, EMOTION_YIELD_FLOOR);
 
       // 音乐律动：包络与振荡器分离的节拍引擎（见 rhythmEngine.ts）——摆幅只吃平滑后的能量包络，
       // 不吃逐帧抖动的原始频谱值；频率恒定推进，检测到鼓点时只是「软推」相位而不是硬切。
@@ -532,5 +557,5 @@ export const useMikuBrain = ({
     }
   }, [stageRef, particlesRef, triggerMood, sayFresh, sayTiered, patTier, patCount]);
 
-  return { bubble, handlePointerDown, handlePointerUp, handlePointerCancel };
+  return { bubble, bubbleMood, handlePointerDown, handlePointerUp, handlePointerCancel };
 };

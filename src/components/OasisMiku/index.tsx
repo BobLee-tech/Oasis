@@ -4,10 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Live2DStage, type MikuStageHandle } from './Live2DStage';
 import { MikuParticles, type MikuParticlesHandle } from './MikuParticles';
-import { useMikuBrain } from './useMikuBrain';
+import { useMikuBrain, type Mood } from './useMikuBrain';
 import { useSoundscape, getSpectrum } from '../../hooks/useSoundscape';
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
 import type { AppView } from '../../types/auth';
+
+// 气泡边框按「说这句话时她是什么心情」极淡地染色：开心/惊喜偏初音绿、害羞偏樱粉，
+// 其余心情（含常态）维持原本的灰——不做成一句一变的六色系统，只在这两种最有辨识度的
+// 情绪上点一下色，多数时候你甚至不会意识到边框在变，只会觉得「今天她好像更活了一点」
+const MOOD_BUBBLE_BORDER: Partial<Record<Mood, string>> = {
+  happy: 'border-[#39C5BB]/35 dark:border-[#39C5BB]/25',
+  surprised: 'border-[#39C5BB]/35 dark:border-[#39C5BB]/25',
+  shy: 'border-[#FFB7C5]/50 dark:border-[#FFB7C5]/30',
+};
+const DEFAULT_BUBBLE_BORDER = 'border-slate-300/40 dark:border-white/10';
 
 const MODEL_URL = '/live2d/miku/miku_sample_t04.model3.json';
 
@@ -37,9 +47,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   const { isPlaying, currentTrack } = useSoundscape();
 
-  const { bubble, handlePointerDown, handlePointerUp, handlePointerCancel } = useMikuBrain({
+  const { bubble, bubbleMood, handlePointerDown, handlePointerUp, handlePointerCancel } = useMikuBrain({
     stageRef, particlesRef, ready, view, isPlaying, trackId: currentTrack?.id, trackCategory: currentTrack?.category, getSpectrum, coarsePointer, reduceMotion: prefersReducedMotion,
   });
+  const bubbleBorder = MOOD_BUBBLE_BORDER[bubbleMood] ?? DEFAULT_BUBBLE_BORDER;
 
   useEffect(() => {
     sessionStorage.setItem('oasis_miku_expanded', expanded ? '1' : '0');
@@ -54,15 +65,15 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
       <AnimatePresence>
         {bubble && (
           <motion.div
-            initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -4, filter: 'blur(4px)' }}
+            initial={{ opacity: 0, y: 8, scale: 0.92, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -4, scale: 0.96, filter: 'blur(4px)' }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="relative max-w-[220px] rounded-2xl backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border border-slate-300/40 dark:border-white/10 shadow-sm px-3.5 py-2"
+            className={`relative max-w-[16em] text-[13px] origin-bottom-right rounded-2xl rounded-br-md backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border shadow-sm px-4 py-2.5 transition-colors duration-500 ${bubbleBorder}`}
           >
-            <span className="font-serif text-[13px] leading-snug text-slate-600 dark:text-slate-300">{bubble}</span>
+            <span className="font-serif leading-[1.7] tracking-[0.02em] text-slate-600 dark:text-slate-300 text-balance">{bubble}</span>
             {/* 尾巴：明确这句话是她说的，指向下方的挂坠/立绘 */}
-            <span className="absolute -bottom-[5px] right-6 w-2.5 h-2.5 rotate-45 backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border-b border-r border-slate-300/40 dark:border-white/10" />
+            <span className={`absolute -bottom-[5px] right-6 w-2.5 h-2.5 rotate-45 backdrop-blur-md bg-white/50 dark:bg-white/[0.06] border-b border-r transition-colors duration-500 ${bubbleBorder}`} />
           </motion.div>
         )}
       </AnimatePresence>
