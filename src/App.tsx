@@ -49,6 +49,7 @@ const ClickRipples = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
   // 触屏设备走轻量版：只保留主涟漪细环，去掉模糊柔光与余韵二环，滑动/点按不掉帧
   const coarse = useCoarsePointer();
+  const reduceMotion = !!useReducedMotion();
 
   useEffect(() => {
     // 与界面主色调呼应的柔和色板：初音绿 / 樱粉 / 月白
@@ -56,6 +57,9 @@ const ClickRipples = () => {
     let i = 0;
     let last = 0;
     const handler = (e: PointerEvent) => {
+      if (reduceMotion) return;
+      // Dock 有自己的短促按压反馈；跳过全屏长涟漪，避免一次点击叠出两套动效。
+      if (e.target instanceof Element && e.target.closest('[data-no-global-ripple]')) return;
       // 舒缓的节奏：太密集的点击不再叠成一团，让每圈水波都从容荡开
       const now = performance.now();
       if (now - last < 140) return;
@@ -67,7 +71,7 @@ const ClickRipples = () => {
     };
     window.addEventListener('pointerdown', handler);
     return () => window.removeEventListener('pointerdown', handler);
-  }, []);
+  }, [reduceMotion]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[300] overflow-hidden">
