@@ -9,7 +9,7 @@
 //   悬停一颗星 → 点亮它所在的整个星座；点一个主题 → 聚焦该星团；点一颗星 → 阅读全文。
 // 数据与 Garden 博客同源（useGarden / localStorage），同步全部过往。
 import React, { useMemo, useState, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useGarden, filterVisible, type BlogPost } from '../hooks/useGarden';
 import { useCategories } from '../hooks/useCategories';
 import { Markdown } from './Markdown';
@@ -157,7 +157,7 @@ const buildGraph = (posts: BlogPost[]) => {
     for (const l of links) {
       const L = l.core ? 170 : l.wikilink ? 66 : 84;
       let dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
-      let d = Math.hypot(dx, dy) || 0.01;
+      const d = Math.hypot(dx, dy) || 0.01;
       const k = ((d - L) / d) * 0.06;
       dx *= k; dy *= k;
       if (l.a.kind !== 'core') { l.a.x += dx; l.a.y += dy; }
@@ -179,6 +179,7 @@ const buildGraph = (posts: BlogPost[]) => {
 };
 
 export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
+  const reduceMotion = !!useReducedMotion();
   const { posts: rawPosts, uprootSeed } = useGarden();
   // 🔒 「模拟访客」时把草稿从星图里滤掉，与博客列表一致（真实访客本就拿不到草稿行，见 RLS）
   const posts = useMemo(() => filterVisible(rawPosts, isAdmin), [rawPosts, isAdmin]);
@@ -191,6 +192,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
 
   // 🔭 缩放 / 平移：滚轮缩放、拖拽平移，大体量时可凑近某片星域细看
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +208,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
     // 仅在空白处（非星点/主题按钮）按下才进入平移
     if ((e.target as HTMLElement).closest('button')) return;
     dragRef.current = { x: e.clientX, y: e.clientY, ox: view.x, oy: view.y };
+    setIsDragging(true);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }, [view.x, view.y]);
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -213,7 +216,10 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
     if (!d) return;
     setView(v => ({ ...v, x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) }));
   }, []);
-  const onPointerUp = useCallback(() => { dragRef.current = null; }, []);
+  const onPointerUp = useCallback(() => {
+    dragRef.current = null;
+    setIsDragging(false);
+  }, []);
   const resetView = useCallback(() => setView({ scale: 1, x: 0, y: 0 }), []);
 
   const graph = useMemo(() => buildGraph(posts), [posts]);
@@ -281,7 +287,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
       <div
         ref={stageRef}
         className="relative w-full max-w-[1180px] h-[62vh] md:h-auto md:aspect-[1000/760] mx-auto touch-none select-none"
-        style={{ cursor: dragRef.current ? 'grabbing' : posts.length ? 'grab' : 'default' }}
+        style={{ cursor: isDragging ? 'grabbing' : posts.length ? 'grab' : 'default' }}
         onWheel={posts.length ? onWheel : undefined}
         onPointerDown={posts.length ? onPointerDown : undefined}
         onPointerMove={posts.length ? onPointerMove : undefined}
@@ -299,10 +305,15 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
         ) : (
           <div
             className="absolute inset-0"
-            style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: 'center center', transition: dragRef.current ? 'none' : 'transform 0.18s ease-out' }}
+            style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: 'center center', transition: isDragging ? 'none' : 'transform 0.18s ease-out' }}
           >
             {/* 连接脉络：SVG 细丝，相连即关联 */}
-            <svg viewBox={`0 0 ${VW} ${VH}`} className="absolute inset-0 w-full h-full pointer-events-none" fill="none">
+            <svg
+              viewBox={`0 0 ${VW} ${VH}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              fill="none"
+            >
               {graph.links.map((l, idx) => {
                 const on = lit.litLinks.has(idx);
                 const dim = lit.hasFocus && !on;
@@ -415,11 +426,10 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                   onFocus={() => setHoverPostId(post.id)}
                   onBlur={() => setHoverPostId(null)}
                   initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: dim ? 0.8 : 1, opacity: dim ? 0.16 : 1, y: [0, -4, 0] }}
+                  animate={{ scale: dim ? 0.8 : 1, opacity: dim ? 0.16 : 1 }}
                   transition={{
                     scale: { type: 'spring', stiffness: 200, damping: 16, delay: delay * 0.05 },
                     opacity: { duration: 0.5 },
-                    y: { duration: 5 + delay, repeat: Infinity, ease: 'easeInOut', delay },
                   }}
                   whileHover={{ scale: 1.5 }}
                   whileTap={{ scale: 0.9 }}
@@ -431,12 +441,14 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                     style={{ backgroundColor: color, opacity: isHovered ? 0.7 : 0.3 }}
                   />
                   {/* 星核 */}
-                  <span
+                  <motion.span
                     className="relative w-full h-full rounded-full"
                     style={{
                       background: `radial-gradient(circle at 35% 30%, #ffffff 0%, ${color} 55%, ${color} 100%)`,
                       boxShadow: `0 0 10px ${color}aa`,
                     }}
+                    animate={reduceMotion || isHovered ? { scale: 1 } : { scale: [0.96, 1.06, 0.96] }}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 5 + delay, repeat: Infinity, ease: 'easeInOut', delay }}
                   />
                   {/* 悬停信息卡 */}
                   <AnimatePresence>

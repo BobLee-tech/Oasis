@@ -44,6 +44,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const [expanded, setExpanded] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // 星图右下角另有缩放控制，移动端把挂坠再抬高一层；其他场所只需避开 Dock。
+  const mobileBottom = view === 'orchard'
+    ? 'bottom-[calc(env(safe-area-inset-bottom)+13rem)]'
+    : 'bottom-[calc(env(safe-area-inset-bottom)+6.5rem)]';
 
   const { isPlaying, currentTrack } = useSoundscape();
 
@@ -61,7 +65,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const expand = () => { setReady(false); setFailed(false); setExpanded(true); };
 
   return (
-    <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 md:bottom-8 md:right-8 z-[90] flex flex-col items-end gap-2 select-none">
+    <div className={`fixed ${mobileBottom} right-5 md:bottom-8 md:right-8 z-[90] flex flex-col items-end gap-2 select-none`}>
       <AnimatePresence>
         {bubble && (
           <motion.div
