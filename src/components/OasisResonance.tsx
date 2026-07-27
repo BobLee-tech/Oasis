@@ -1,15 +1,16 @@
 // src/components/OasisResonance.tsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
-import { useSoundscape, getSpectrum } from '../hooks/useSoundscape';
+import { useSoundscape, getPlaybackTime, getSpectrum } from '../hooks/useSoundscape';
 import type { MusicCategory, Track } from '../types/music';
+import { LyricPanel } from './resonance/LyricPanel';
 
 // 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
 // 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
 const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number; active?: boolean }> = ({ color, isPlaying, bars = 11, active = true }) => {
   const barsRef = useRef<HTMLDivElement>(null);
   const playingRef = useRef(isPlaying);
-  playingRef.current = isPlaying;
+  useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
 
   // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
   // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
@@ -71,7 +72,7 @@ const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number;
 const DiscHalo: React.FC<{ color: string; isPlaying: boolean; active?: boolean }> = ({ color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   const playingRef = React.useRef(isPlaying);
-  playingRef.current = isPlaying;
+  useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
 
   useEffect(() => {
     if (!active) return; // 非激活时停转：避免每帧重栅格化 blur-3xl 大模糊层
@@ -242,12 +243,20 @@ export const OasisResonance: React.FC = () => {
   // 🎚️ 视图是否「在场」：切换离场时（AnimatePresence 退场期间）useIsPresent 立即转 false，
   //    据此关停所有高频 rAF 视觉，避免退场动画与新视图挂载争用主线程/GPU，消除切换卡顿。
   const active = useIsPresent();
-  // 🖥️ 大屏才启用最重的氛围视觉（挂载时判定一次即可，旋转/拉伸窗口属边缘场景）
-  const isDesktop = useRef(typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches).current;
+  // 🖥️ 大屏才启用最重的氛围视觉；监听断点变化，兼容手机旋转与 iPad 分屏。
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
   const { currentTrack, isPlaying, playMode, currentTime, duration, volume, togglePlay, switchTrack, togglePlayMode, seek, playNext, playPrev, changeVolume, playlist } = useSoundscape();
   const [activeCategory, setActiveCategory] = useState<MusicCategory>('All Tracks');
-  // 📱 移动端分段：一次只呈现「唱片」或「歌单」，避免同屏塞满、减轻滚动与合成负担
-  const [mobileTab, setMobileTab] = useState<'disc' | 'crate'>('disc');
+  // 📱 移动端分段：一次只呈现唱片 / 歌词 / 歌单中的一段，避免同屏合成争用。
+  const [mobileTab, setMobileTab] = useState<'disc' | 'lyrics' | 'crate'>('disc');
+  const [desktopPanel, setDesktopPanel] = useState<'lyrics' | 'crate'>('crate');
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -327,11 +336,12 @@ export const OasisResonance: React.FC = () => {
         {/* 分段切换：一枚水滴形药丸，选中段染当前情绪色 */}
         <div className="shrink-0 flex items-center justify-center mb-5">
           <div className="inline-flex p-1 rounded-full bg-white/45 dark:bg-white/[0.05] border border-white/50 dark:border-white/10 shadow-sm">
-            {(['disc', 'crate'] as const).map(t => (
+            {(['disc', 'lyrics', 'crate'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setMobileTab(t)}
-                className={`relative px-6 py-1.5 rounded-full font-mono text-[10px] tracking-[0.28em] uppercase transition-colors duration-300 outline-none ${mobileTab === t ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                aria-pressed={mobileTab === t}
+                className={`relative min-w-[4.5rem] px-4 py-2 rounded-full font-mono text-[10px] tracking-[0.22em] uppercase transition-colors duration-300 outline-none ${mobileTab === t ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
               >
                 {mobileTab === t && (
                   <motion.span
@@ -341,7 +351,7 @@ export const OasisResonance: React.FC = () => {
                     transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                   />
                 )}
-                <span className="relative z-10">{t === 'disc' ? '唱片' : '歌单'}</span>
+                <span className="relative z-10">{t === 'disc' ? '唱片' : t === 'lyrics' ? '歌词' : '歌单'}</span>
               </button>
             ))}
           </div>
@@ -409,6 +419,20 @@ export const OasisResonance: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        ) : mobileTab === 'lyrics' ? (
+          /* ——— 歌词段：逐句共鸣，点句跳转；手动浏览后可一键回到此刻 ——— */
+          <div className="flex-1 min-h-0">
+            <LyricPanel
+              track={currentTrack}
+              color={currentTrack.color}
+              isPlaying={isPlaying}
+              active={active}
+              currentTime={currentTime}
+              seek={seek}
+              getPlaybackTime={getPlaybackTime}
+              compact
+            />
           </div>
         ) : (
           /* ——— 歌单段：分类 + 碟箱列表，占满整段高度 ——— */
@@ -717,13 +741,13 @@ export const OasisResonance: React.FC = () => {
                   </p>
                 </div>
 
-                {currentTrack.lyric && (
+                {desktopPanel === 'crate' && currentTrack.excerpt && (
                   <motion.p
                     animate={{ opacity: isPlaying ? 1 : 0.55 }} transition={{ duration: 1.5, ease: 'easeOut' }}
                     className="mt-7 max-w-[420px] font-serif italic text-slate-600 dark:text-slate-300 tracking-wider text-base md:text-lg leading-loose transition-colors duration-[1500ms]"
                   >
                     <span className="mr-0.5 text-xl align-[-0.15em] opacity-60" style={{ color: currentTrack.color }}>“</span>
-                    {currentTrack.lyric}
+                    {currentTrack.excerpt}
                     <span className="ml-0.5 text-xl align-[-0.15em] opacity-60" style={{ color: currentTrack.color }}>”</span>
                   </motion.p>
                 )}
@@ -731,21 +755,73 @@ export const OasisResonance: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          {/* 分类栏（居中） */}
-          <div className="flex flex-wrap justify-center gap-x-5 md:gap-x-8 gap-y-2 mt-9 mb-7 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-4">
-            {CATEGORIES.map(cat => (
-              <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`relative flex items-baseline gap-1.5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-700 outline-none pb-2 ${activeCategory === cat.id ? 'text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                {cat.label}
-                <sup className={`text-[8px] tracking-normal transition-opacity duration-700 ${activeCategory === cat.id ? 'opacity-70' : 'opacity-40'}`}>{categoryCounts[cat.id] ?? 0}</sup>
-                {activeCategory === cat.id && (
-                  <motion.div layoutId="activeCategory" className="absolute -bottom-[1px] left-0 right-0 h-[2px] rounded-full transition-colors duration-[1500ms]" style={{ backgroundColor: currentTrack.color }} />
+          {/* 歌词 / 选碟：同一舞台的两种观看距离。 */}
+          <div className="shrink-0 inline-flex mt-7 mb-4 p-1 rounded-full bg-white/40 dark:bg-white/[0.035] border border-white/55 dark:border-white/[0.08] shadow-sm">
+            {(['lyrics', 'crate'] as const).map(panel => (
+              <button
+                key={panel}
+                type="button"
+                onClick={() => setDesktopPanel(panel)}
+                aria-pressed={desktopPanel === panel}
+                className={`relative min-w-20 h-8 px-4 rounded-full font-mono text-[9px] tracking-[0.24em] transition-colors outline-none ${desktopPanel === panel ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+              >
+                {desktopPanel === panel && (
+                  <motion.span
+                    layoutId="resonancePanelPill"
+                    className="absolute inset-0 rounded-full"
+                    style={{ backgroundColor: currentTrack.color, boxShadow: `0 4px 16px ${currentTrack.color}40` }}
+                    transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+                  />
                 )}
+                <span className="relative z-10">{panel === 'lyrics' ? '歌词' : '选碟'}</span>
               </button>
             ))}
           </div>
 
-          {/* 💿 选碟台 The Crate：一台拟真选碟箱，碟片在其中陈列，点选即「换碟上盘」 */}
-          <div className="w-full max-w-[520px] mx-auto flex flex-col h-[52vh] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {desktopPanel === 'lyrics' ? (
+              <motion.div
+                key="lyrics"
+                className="w-full max-w-[520px] mx-auto flex-1 min-h-0"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+              >
+                <LyricPanel
+                  track={currentTrack}
+                  color={currentTrack.color}
+                  isPlaying={isPlaying}
+                  active={active}
+                  currentTime={currentTime}
+                  seek={seek}
+                  getPlaybackTime={getPlaybackTime}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="crate"
+                className="w-full flex-1 min-h-0 flex flex-col items-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* 分类栏（居中） */}
+                <div className="flex flex-wrap justify-center gap-x-5 md:gap-x-8 gap-y-2 mt-2 mb-5 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-3">
+                  {CATEGORIES.map(cat => (
+                    <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`relative flex items-baseline gap-1.5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-700 outline-none pb-2 ${activeCategory === cat.id ? 'text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                      {cat.label}
+                      <sup className={`text-[8px] tracking-normal transition-opacity duration-700 ${activeCategory === cat.id ? 'opacity-70' : 'opacity-40'}`}>{categoryCounts[cat.id] ?? 0}</sup>
+                      {activeCategory === cat.id && (
+                        <motion.div layoutId="activeCategory" className="absolute -bottom-[1px] left-0 right-0 h-[2px] rounded-full transition-colors duration-[1500ms]" style={{ backgroundColor: currentTrack.color }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 💿 选碟台 The Crate：一台拟真选碟箱，碟片在其中陈列，点选即「换碟上盘」 */}
+                <div className="w-full max-w-[520px] mx-auto flex flex-col h-[52vh] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden">
 
             {/* 🏷️ 极简标签行：身份标识 + 碟数，去卡片化——直接坐落背景上，仅留一道渐变细线收束 */}
             <div className="shrink-0 flex items-center justify-between px-1 pb-3 mb-1 border-b border-transparent [border-image:linear-gradient(to_right,transparent,rgba(148,163,184,0.25),transparent)_1] dark:[border-image:linear-gradient(to_right,transparent,rgba(255,255,255,0.12),transparent)_1]">
@@ -838,7 +914,10 @@ export const OasisResonance: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
       </div>

@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // 临时工作树拥有自己的 tsconfig，纳入根项目会让 typescript-eslint 无法判定根目录。
+  globalIgnores(['dist', '.claude/worktrees/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
