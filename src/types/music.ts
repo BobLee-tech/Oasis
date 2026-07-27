@@ -22,11 +22,20 @@ export interface Track {
 
 export type LyricTranslationStatus = 'none' | 'machine' | 'reviewed';
 
+export interface LyricWord {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
 export interface LyricLine {
   startMs: number;
   endMs: number;
   ja: string;
   zh?: string;
+  /** v2 歌词可选的逐词/逐音节时间；缺失时仍以逐行墨迹展示。 */
+  words?: LyricWord[];
+  role?: 'lead' | 'backing' | 'duet-left' | 'duet-right';
 }
 
 export interface LyricsSource {
@@ -37,7 +46,7 @@ export interface LyricsSource {
 }
 
 export interface LyricsDocument {
-  version: 1;
+  version: 1 | 2;
   trackId: string;
   title: string;
   artist: string;

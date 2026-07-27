@@ -117,6 +117,90 @@ body {
     }
 }
 
+/* 🎼 水纹词场：不再把歌词关进卡片，以距离、余韵与柔边墨迹表达时间。 */
+.lyric-row {
+    --delay: min(calc(var(--d) * 28ms), 160ms);
+    opacity: max(0.12, calc(1 - var(--d) * 0.26));
+    transform:
+        translate3d(0, calc(var(--past) * -8px), 0)
+        scale(calc(1 - min(var(--d), 3) * 0.006));
+    transform-origin: left center;
+    transition:
+        opacity 500ms cubic-bezier(.22, .61, .36, 1) var(--delay),
+        transform 500ms cubic-bezier(.22, .61, .36, 1) var(--delay),
+        filter 500ms ease-out var(--delay),
+        color 500ms ease-out;
+}
+
+.lyric-row[data-role="backing"] {
+    opacity: max(0.1, calc(.78 - var(--d) * 0.24));
+}
+
+.lyric-row[data-active="true"] .lyric-ink-base {
+    color: rgb(51 65 85);
+}
+
+.dark .lyric-row[data-active="true"] .lyric-ink-base {
+    color: rgb(241 245 249);
+}
+
+.lyric-ink-wet {
+    color: var(--accent);
+    -webkit-mask-image: linear-gradient(
+        to right,
+        #000 calc(var(--p) * 100% - 2.5ch),
+        rgb(0 0 0 / .35) calc(var(--p) * 100%),
+        transparent calc(var(--p) * 100% + 1.5ch)
+    );
+    mask-image: linear-gradient(
+        to right,
+        #000 calc(var(--p) * 100% - 2.5ch),
+        rgb(0 0 0 / .35) calc(var(--p) * 100%),
+        transparent calc(var(--p) * 100% + 1.5ch)
+    );
+}
+
+.lyric-translation {
+    opacity: max(.28, calc(1 - var(--d) * .3));
+    transition: opacity 500ms ease-out var(--delay);
+}
+
+.lyric-drop {
+    border-color: color-mix(in srgb, var(--accent) 78%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.lyric-drop:nth-child(1) {
+    transform: scale(clamp(0, calc(var(--g) * 3), 1));
+    opacity: clamp(0, calc(var(--g) * 3), 1);
+}
+
+.lyric-drop:nth-child(2) {
+    transform: scale(clamp(0, calc((var(--g) - .18) * 3), calc(1 + var(--e) * .12)));
+    opacity: clamp(0, calc((var(--g) - .18) * 3), 1);
+}
+
+.lyric-drop:nth-child(3) {
+    transform: scale(clamp(0, calc((var(--g) - .36) * 3), calc(1 + var(--e) * .12)));
+    opacity: clamp(0, calc((var(--g) - .36) * 3), 1);
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .lyric-row {
+        filter: blur(min(calc(var(--d) * .6px), 3px));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lyric-ink-wet {
+        display: none;
+    }
+    .lyric-row[data-active="true"] .lyric-ink-base {
+        color: var(--accent);
+    }
+}
+
 /* ✍️ Markdown 排版细节：代码块 / 行内代码 / 表格的明暗双态外观 */
 @layer components {
     /* 代码块容器：柔和卡片，去掉 prose 默认深黑底 */
