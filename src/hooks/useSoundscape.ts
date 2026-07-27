@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Track } from '../types/music';
 
-// 💽 极致高保真本地黑胶曲库 (83首 · 歌词与编码终极校对版)
+// 💽 极致高保真本地黑胶曲库（歌词正文由独立清单按需加载）
 export const PLAYLIST: Track[] = [
   // ==========================================
   // 🎸 YORUSHIKA (ヨルシカ) 阵营
@@ -10,112 +10,144 @@ export const PLAYLIST: Track[] = [
   
   // 💿 2017.06.28 [Album] 夏草る (情绪色：初夏薄荷 #6EE7B7)
   // ⚠️ 已在代码中移除了 01 和 03 的空格，请确保你的文件也删除了空格！
-  { id: 'y_17_01', title: '夏陰、ピアノを弾く', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '君の匂いがする', url: '/audio/2017.06.28 [Album] 夏草/01 - 夏陰、ピアノを弾く.flac' },
-  { id: 'y_17_02', title: 'カトレア', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '貴方にはわからないよ', url: '/audio/2017.06.28 [Album] 夏草/02 - カトレア.flac' },
-  { id: 'y_17_03', title: '言って。', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '言って、あのね、私実は気付いてるの', url: '/audio/2017.06.28 [Album] 夏草/03 - 言って。.flac' },
-  { id: 'y_17_04', title: 'あの夏に咲け', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '君の笑った顔を見たいから', url: '/audio/2017.06.28 [Album] 夏草/04 - あの夏に咲け.flac' },
-  { id: 'y_17_05', title: '飛行', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '空を飛べたら', url: '/audio/2017.06.28 [Album] 夏草/05 - 飛行.flac' },
-  { id: 'y_17_06', title: '靴の花火', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: 'ねぇ、ねぇ、何か言おうとして', url: '/audio/2017.06.28 [Album] 夏草/06 - 靴の花火.flac' },
-  { id: 'y_17_07', title: '雲と幽霊', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', lyric: '幽霊になった僕は', url: '/audio/2017.06.28 [Album] 夏草/07 - 雲と幽霊.flac' },
+  { id: 'y_17_01', title: '夏陰、ピアノを弾く', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '君の匂いがする', url: '/audio/2017.06.28 [Album] 夏草/01 - 夏陰、ピアノを弾く.flac' },
+  { id: 'y_17_02', title: 'カトレア', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '貴方にはわからないよ', url: '/audio/2017.06.28 [Album] 夏草/02 - カトレア.flac' },
+  { id: 'y_17_03', title: '言って。', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '言って、あのね、私実は気付いてるの', url: '/audio/2017.06.28 [Album] 夏草/03 - 言って。.flac' },
+  { id: 'y_17_04', title: 'あの夏に咲け', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '君の笑った顔を見たいから', url: '/audio/2017.06.28 [Album] 夏草/04 - あの夏に咲け.flac' },
+  { id: 'y_17_05', title: '飛行', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '空を飛べたら', url: '/audio/2017.06.28 [Album] 夏草/05 - 飛行.flac' },
+  { id: 'y_17_06', title: '靴の花火', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: 'ねぇ、ねぇ、何か言おうとして', url: '/audio/2017.06.28 [Album] 夏草/06 - 靴の花火.flac' },
+  { id: 'y_17_07', title: '雲と幽霊', artist: 'Yorushika', category: 'Yorushika', color: '#6EE7B7', excerpt: '幽霊になった僕は', url: '/audio/2017.06.28 [Album] 夏草/07 - 雲と幽霊.flac' },
 
   // 💿 2018.05.09 [Album] 負け犬にアンコールはいらない (情绪色：冷雾灰蓝 #94A3B8)
-  { id: 'y_18_01', title: '前世', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '生まれ変わったら', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/01 - 前世.flac' },
-  { id: 'y_18_02', title: '負け犬にアンコールはいらない', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: 'アンコールはいらない', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/02 - 負け犬にアンコールはいらない.flac' },
-  { id: 'y_18_03', title: '爆弾魔', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: 'どうせならもう、全部が爆発してしまえばいい', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/03 - 爆弾魔.flac' },
-  { id: 'y_18_04', title: 'ヒッチコック', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '先生、人生相談です', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/04 - ヒッチコック.flac' },
-  { id: 'y_18_05', title: '落下', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '深く落ちていく', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/05 - 落下.flac' },
-  { id: 'y_18_06', title: '準透明少年', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '透明な僕のままで', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/06 - 準透明少年.flac' },
-  { id: 'y_18_07', title: 'ただ君に晴れ', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '追いつけないまま大人になって', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/07 - ただ君に晴れ.flac' },
-  { id: 'y_18_08', title: '冬眠', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '春を待っている', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/08 - 冬眠.flac' },
-  { id: 'y_18_09', title: '夏、バス停、君を待つ', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', lyric: '君のいない夏', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/09 - 夏、バス停、君を待つ.flac' },
+  { id: 'y_18_01', title: '前世', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '生まれ変わったら', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/01 - 前世.flac' },
+  { id: 'y_18_02', title: '負け犬にアンコールはいらない', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: 'アンコールはいらない', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/02 - 負け犬にアンコールはいらない.flac' },
+  { id: 'y_18_03', title: '爆弾魔', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: 'どうせならもう、全部が爆発してしまえばいい', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/03 - 爆弾魔.flac' },
+  { id: 'y_18_04', title: 'ヒッチコック', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '先生、人生相談です', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/04 - ヒッチコック.flac' },
+  { id: 'y_18_05', title: '落下', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '深く落ちていく', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/05 - 落下.flac' },
+  { id: 'y_18_06', title: '準透明少年', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '透明な僕のままで', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/06 - 準透明少年.flac' },
+  { id: 'y_18_07', title: 'ただ君に晴れ', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '追いつけないまま大人になって', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/07 - ただ君に晴れ.flac' },
+  { id: 'y_18_08', title: '冬眠', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '春を待っている', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/08 - 冬眠.flac' },
+  { id: 'y_18_09', title: '夏、バス停、君を待つ', artist: 'Yorushika', category: 'Yorushika', color: '#94A3B8', excerpt: '君のいない夏', url: '/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/09 - 夏、バス停、君を待つ.flac' },
 
   // 💿 2019.04.10 [Album] 僕は音楽を辞めた (情绪色：晚霞紫粉 #F472B6)
-  { id: 'y_19_01', title: '8_31', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 夏の終わり ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/01 - 8_31.flac' },
-  { id: 'y_19_02', title: '藍二乗', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'ただ、君の目を引きたくて', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/02 - 藍二乗.flac' },
-  { id: 'y_19_03', title: '八月、某、月明かり', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '人生なんて妥協の連続だ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/03 - 八月、某、月明かり.flac' },
-  { id: 'y_19_04', title: '詩書きとコーヒー', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'コーヒーが冷める前に', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/04 - 詩書きとコーヒー.flac' },
-  { id: 'y_19_05', title: '7_13', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 雨音 ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/05 - 7_13.flac' },
-  { id: 'y_19_06', title: '踊ろうぜ', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '馬鹿みたいに踊ろうぜ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/06 - 踊ろうぜ.flac' },
-  { id: 'y_19_07', title: '六月は雨上がりの街を書く', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '雨上がりの街を書く', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/07 - 六月は雨上がりの街を書く.flac' },
-  { id: 'y_19_08', title: '五月は花緑青の窓辺から', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '花緑青の窓辺から', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/08 - 五月は花緑青の窓辺から.flac' },
-  { id: 'y_19_09', title: '夜紛い', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '君のいない夜なんて', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/09 - 夜紛い.flac' },
-  { id: 'y_19_10', title: '5_6', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 静寂 ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/10 - 5_6.flac' },
-  { id: 'y_19_11', title: 'パレード', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'このままどこか遠くへ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/11 - パレード.flac' },
-  { id: 'y_19_12', title: 'エルマ', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: 'エルマ、君なんだよ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/12 - エルマ.flac' },
-  { id: 'y_19_13', title: '4_10', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '--- 旅立ち ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/13 - 4_10.flac' },
-  { id: 'y_19_14', title: '僕は音楽を辞めた', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', lyric: '間違ってないよな、間違ってないよな', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - だから僕は音楽を辞めた.flac' },
+  { id: 'y_19_01', title: '8_31', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '--- 夏の終わり ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/01 - 8_31.flac' },
+  { id: 'y_19_02', title: '藍二乗', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: 'ただ、君の目を引きたくて', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/02 - 藍二乗.flac' },
+  { id: 'y_19_03', title: '八月、某、月明かり', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '人生なんて妥協の連続だ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/03 - 八月、某、月明かり.flac' },
+  { id: 'y_19_04', title: '詩書きとコーヒー', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: 'コーヒーが冷める前に', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/04 - 詩書きとコーヒー.flac' },
+  { id: 'y_19_05', title: '7_13', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '--- 雨音 ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/05 - 7_13.flac' },
+  { id: 'y_19_06', title: '踊ろうぜ', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '馬鹿みたいに踊ろうぜ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/06 - 踊ろうぜ.flac' },
+  { id: 'y_19_07', title: '六月は雨上がりの街を書く', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '雨上がりの街を書く', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/07 - 六月は雨上がりの街を書く.flac' },
+  { id: 'y_19_08', title: '五月は花緑青の窓辺から', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '花緑青の窓辺から', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/08 - 五月は花緑青の窓辺から.flac' },
+  { id: 'y_19_09', title: '夜紛い', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '君のいない夜なんて', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/09 - 夜紛い.flac' },
+  { id: 'y_19_10', title: '5_6', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '--- 静寂 ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/10 - 5_6.flac' },
+  { id: 'y_19_11', title: 'パレード', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: 'このままどこか遠くへ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/11 - パレード.flac' },
+  { id: 'y_19_12', title: 'エルマ', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: 'エルマ、君なんだよ', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/12 - エルマ.flac' },
+  { id: 'y_19_13', title: '4_10', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '--- 旅立ち ---', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/13 - 4_10.flac' },
+  { id: 'y_19_14', title: '僕は音楽を辞めた', artist: 'Yorushika', category: 'Yorushika', color: '#F472B6', excerpt: '間違ってないよな、間違ってないよな', url: '/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - だから僕は音楽を辞めた.flac' },
 
   // 💿 2019.08.28 [Album] エルマ (情绪色：日落琥珀 #FBBF24)
-  { id: 'y_19e_01', title: '車窓', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 窓の外 ---', url: '/audio/2019.08.28 [Album] エルマ/01 - 車窓.flac' },
-  { id: 'y_19e_02', title: '憂一乗', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '憂鬱に乗せて', url: '/audio/2019.08.28 [Album] エルマ/02 - 憂一乗.flac' },
-  { id: 'y_19e_03', title: '夕凪、某、花惑い', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '夕凪に咲く花', url: '/audio/2019.08.28 [Album] エルマ/03 - 夕凪、某、花惑い.flac' },
-  { id: 'y_19e_04', title: '雨とカプチーノ', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '灰色に白んだ言葉はカプチーノみたいな色してる', url: '/audio/2019.08.28 [Album] エルマ/04 - 雨とカプチーノ.flac' },
-  { id: 'y_19e_05', title: '湖の街', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 波紋 ---', url: '/audio/2019.08.28 [Album] エルマ/05 - 湖の街.flac' },
-  { id: 'y_19e_06', title: '神様のダンス', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '神様が踊る', url: '/audio/2019.08.28 [Album] エルマ/06 - 神様のダンス.flac' },
-  { id: 'y_19e_07', title: '雨晴るる', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '空が晴れるように', url: '/audio/2019.08.28 [Album] エルマ/07 - 雨晴るる.flac' },
-  { id: 'y_19e_08', title: '歩く', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: 'ただ歩く', url: '/audio/2019.08.28 [Album] エルマ/08 - 歩く.flac' },
-  { id: 'y_19e_09', title: '心に穴が空いた', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '心に穴が空いたまま', url: '/audio/2019.08.28 [Album] エルマ/09 - 心に穴が空いた.flac' },
-  { id: 'y_19e_10', title: '森の教会', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 祈り ---', url: '/audio/2019.08.28 [Album] エルマ/10 - 森の教会.flac' },
-  { id: 'y_19e_11', title: '声', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '君の声が', url: '/audio/2019.08.28 [Album] エルマ/11 - 声.flac' },
-  { id: 'y_19e_12', title: 'エイミー', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: 'エイミー、君は僕の', url: '/audio/2019.08.28 [Album] エルマ/12 - エイミー.flac' },
-  { id: 'y_19e_13', title: '海底、月明かり', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '--- 沈む ---', url: '/audio/2019.08.28 [Album] エルマ/13 - 海底、月明かり.flac' },
-  { id: 'y_19e_14', title: 'ノーチラス', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', lyric: '喉の奥に引っかかった言葉を', url: '/audio/2019.08.28 [Album] エルマ/14 - ノーチラス.flac' },
+  { id: 'y_19e_01', title: '車窓', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '--- 窓の外 ---', url: '/audio/2019.08.28 [Album] エルマ/01 - 車窓.flac' },
+  { id: 'y_19e_02', title: '憂一乗', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '憂鬱に乗せて', url: '/audio/2019.08.28 [Album] エルマ/02 - 憂一乗.flac' },
+  { id: 'y_19e_03', title: '夕凪、某、花惑い', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '夕凪に咲く花', url: '/audio/2019.08.28 [Album] エルマ/03 - 夕凪、某、花惑い.flac' },
+  { id: 'y_19e_04', title: '雨とカプチーノ', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '灰色に白んだ言葉はカプチーノみたいな色してる', url: '/audio/2019.08.28 [Album] エルマ/04 - 雨とカプチーノ.flac' },
+  { id: 'y_19e_05', title: '湖の街', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '--- 波紋 ---', url: '/audio/2019.08.28 [Album] エルマ/05 - 湖の街.flac' },
+  { id: 'y_19e_06', title: '神様のダンス', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '神様が踊る', url: '/audio/2019.08.28 [Album] エルマ/06 - 神様のダンス.flac' },
+  { id: 'y_19e_07', title: '雨晴るる', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '空が晴れるように', url: '/audio/2019.08.28 [Album] エルマ/07 - 雨晴るる.flac' },
+  { id: 'y_19e_08', title: '歩く', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: 'ただ歩く', url: '/audio/2019.08.28 [Album] エルマ/08 - 歩く.flac' },
+  { id: 'y_19e_09', title: '心に穴が空いた', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '心に穴が空いたまま', url: '/audio/2019.08.28 [Album] エルマ/09 - 心に穴が空いた.flac' },
+  { id: 'y_19e_10', title: '森の教会', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '--- 祈り ---', url: '/audio/2019.08.28 [Album] エルマ/10 - 森の教会.flac' },
+  { id: 'y_19e_11', title: '声', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '君の声が', url: '/audio/2019.08.28 [Album] エルマ/11 - 声.flac' },
+  { id: 'y_19e_12', title: 'エイミー', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: 'エイミー、君は僕の', url: '/audio/2019.08.28 [Album] エルマ/12 - エイミー.flac' },
+  { id: 'y_19e_13', title: '海底、月明かり', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '--- 沈む ---', url: '/audio/2019.08.28 [Album] エルマ/13 - 海底、月明かり.flac' },
+  { id: 'y_19e_14', title: 'ノーチラス', artist: 'Yorushika', category: 'Yorushika', color: '#FBBF24', excerpt: '喉の奥に引っかかった言葉を', url: '/audio/2019.08.28 [Album] エルマ/14 - ノーチラス.flac' },
 
   // 💿 2020.07.29 [Album] 盗作 (情绪色：玫瑰朱红 #FB7185)
-  { id: 'y_20_01', title: '音楽泥棒の自白', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '--- 自白 ---', url: '/audio/2020.07.29 [Album] 盗作/01 - 音楽泥棒の自白.flac' },
-  { id: 'y_20_02', title: '昼鳶', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '飛んでいく', url: '/audio/2020.07.29 [Album] 盗作/02 - 昼鳶.flac' },
-  { id: 'y_20_03', title: '春ひさぎ', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '愛を売っている', url: '/audio/2020.07.29 [Album] 盗作/03 - 春ひさぎ.flac' },
-  { id: 'y_20_04', title: '爆弾魔 (Re-Recording)', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '全部が爆発してしまえばいい', url: '/audio/2020.07.29 [Album] 盗作/04 - 爆弾魔 (Re-Recording).flac' },
-  { id: 'y_20_05', title: '青年期、空き巣', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '--- 空っぽ ---', url: '/audio/2020.07.29 [Album] 盗作/05 - 青年期、空き巣.flac' },
-  { id: 'y_20_06', title: 'レプリカント', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '僕らはレプリカント', url: '/audio/2020.07.29 [Album] 盗作/06 - レプリカント.flac' },
-  { id: 'y_20_07', title: '花人局', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '騙されて', url: '/audio/2020.07.29 [Album] 盗作/07 - 花人局.flac' },
-  { id: 'y_20_08', title: '朱夏期、音楽泥棒', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '--- 泥棒 ---', url: '/audio/2020.07.29 [Album] 盗作/08 - 朱夏期、音楽泥棒.flac' },
-  { id: 'y_20_09', title: '盗作', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '君の言葉を盗んだ', url: '/audio/2020.07.29 [Album] 盗作/09 - 盗作.flac' },
-  { id: 'y_20_10', title: '思想犯', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '他人に優しい君に', url: '/audio/2020.07.29 [Album] 盗作/10 - 思想犯.flac' },
-  { id: 'y_20_11', title: '逃亡', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: 'どこまでも逃げていく', url: '/audio/2020.07.29 [Album] 盗作/11 - 逃亡.flac' },
-  { id: 'y_20_12', title: '幼年期、思い出の中', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '--- 記憶 ---', url: '/audio/2020.07.29 [Album] 盗作/12 - 幼年期、思い出の中.flac' },
-  { id: 'y_20_13', title: '夜行', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: '夜の底を歩いていた', url: '/audio/2020.07.29 [Album] 盗作/13 - 夜行.flac' },
-  { id: 'y_20_14', title: '花に亡霊', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', lyric: 'もう忘れてしまったかな', url: '/audio/2020.07.29 [Album] 盗作/14 - 花に亡霊.flac' },
+  { id: 'y_20_01', title: '音楽泥棒の自白', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '--- 自白 ---', url: '/audio/2020.07.29 [Album] 盗作/01 - 音楽泥棒の自白.flac' },
+  { id: 'y_20_02', title: '昼鳶', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '飛んでいく', url: '/audio/2020.07.29 [Album] 盗作/02 - 昼鳶.flac' },
+  { id: 'y_20_03', title: '春ひさぎ', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '愛を売っている', url: '/audio/2020.07.29 [Album] 盗作/03 - 春ひさぎ.flac' },
+  { id: 'y_20_04', title: '爆弾魔 (Re-Recording)', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '全部が爆発してしまえばいい', url: '/audio/2020.07.29 [Album] 盗作/04 - 爆弾魔 (Re-Recording).flac' },
+  { id: 'y_20_05', title: '青年期、空き巣', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '--- 空っぽ ---', url: '/audio/2020.07.29 [Album] 盗作/05 - 青年期、空き巣.flac' },
+  { id: 'y_20_06', title: 'レプリカント', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '僕らはレプリカント', url: '/audio/2020.07.29 [Album] 盗作/06 - レプリカント.flac' },
+  { id: 'y_20_07', title: '花人局', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '騙されて', url: '/audio/2020.07.29 [Album] 盗作/07 - 花人局.flac' },
+  { id: 'y_20_08', title: '朱夏期、音楽泥棒', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '--- 泥棒 ---', url: '/audio/2020.07.29 [Album] 盗作/08 - 朱夏期、音楽泥棒.flac' },
+  { id: 'y_20_09', title: '盗作', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '君の言葉を盗んだ', url: '/audio/2020.07.29 [Album] 盗作/09 - 盗作.flac' },
+  { id: 'y_20_10', title: '思想犯', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '他人に優しい君に', url: '/audio/2020.07.29 [Album] 盗作/10 - 思想犯.flac' },
+  { id: 'y_20_11', title: '逃亡', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: 'どこまでも逃げていく', url: '/audio/2020.07.29 [Album] 盗作/11 - 逃亡.flac' },
+  { id: 'y_20_12', title: '幼年期、思い出の中', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '--- 記憶 ---', url: '/audio/2020.07.29 [Album] 盗作/12 - 幼年期、思い出の中.flac' },
+  { id: 'y_20_13', title: '夜行', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: '夜の底を歩いていた', url: '/audio/2020.07.29 [Album] 盗作/13 - 夜行.flac' },
+  { id: 'y_20_14', title: '花に亡霊', artist: 'Yorushika', category: 'Yorushika', color: '#FB7185', excerpt: 'もう忘れてしまったかな', url: '/audio/2020.07.29 [Album] 盗作/14 - 花に亡霊.flac' },
 
   // 💿 2023.04.05 [Album] 幻燈 (情绪色：晨曦暖黄 #FDE047)
-  { id: 'y_23_01', title: '都落ち', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '落ちていく', url: '/audio/2023.04.05 [Album] 幻燈/01 - 都落ち.flac' },
-  { id: 'y_23_02', title: 'ブレーメン', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '歩いていく、ただ歩いていく', url: '/audio/2023.04.05 [Album] 幻燈/02 - ブレーメン.flac' },
-  { id: 'y_23_03', title: 'チノカテ', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '夕日が落ちるまで', url: '/audio/2023.04.05 [Album] 幻燈/03 - チノカテ.flac' },
-  { id: 'y_23_04', title: '月に吠える', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '月に吠える', url: '/audio/2023.04.05 [Album] 幻燈/04 - 月に吠える.flac' },
-  { id: 'y_23_05', title: '451', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '燃えていく', url: '/audio/2023.04.05 [Album] 幻燈/05 - 451.flac' },
-  { id: 'y_23_06', title: '又三郎', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '風が吹くのを待っている', url: '/audio/2023.04.05 [Album] 幻燈/06 - 又三郎.flac' },
-  { id: 'y_23_07', title: '老人と海', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '海を見る', url: '/audio/2023.04.05 [Album] 幻燈/07 - 老人と海.flac' },
-  { id: 'y_23_08', title: '左右盲', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '右も左もわからないまま', url: '/audio/2023.04.05 [Album] 幻燈/08 - 左右盲.flac' },
-  { id: 'y_23_09', title: 'アルジャーノン', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '少しずつ忘れていく', url: '/audio/2023.04.05 [Album] 幻燈/09 - アルジャーノン.flac' },
-  { id: 'y_23_10', title: '第一夜', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', lyric: '--- 幻燈 ---', url: '/audio/2023.04.05 [Album] 幻燈/10 - 第一夜.flac' },
+  { id: 'y_23_01', title: '都落ち', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '落ちていく', url: '/audio/2023.04.05 [Album] 幻燈/01 - 都落ち.flac' },
+  { id: 'y_23_02', title: 'ブレーメン', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '歩いていく、ただ歩いていく', url: '/audio/2023.04.05 [Album] 幻燈/02 - ブレーメン.flac' },
+  { id: 'y_23_03', title: 'チノカテ', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '夕日が落ちるまで', url: '/audio/2023.04.05 [Album] 幻燈/03 - チノカテ.flac' },
+  { id: 'y_23_04', title: '月に吠える', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '月に吠える', url: '/audio/2023.04.05 [Album] 幻燈/04 - 月に吠える.flac' },
+  { id: 'y_23_05', title: '451', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '燃えていく', url: '/audio/2023.04.05 [Album] 幻燈/05 - 451.flac' },
+  { id: 'y_23_06', title: '又三郎', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '風が吹くのを待っている', url: '/audio/2023.04.05 [Album] 幻燈/06 - 又三郎.flac' },
+  { id: 'y_23_07', title: '老人と海', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '海を見る', url: '/audio/2023.04.05 [Album] 幻燈/07 - 老人と海.flac' },
+  { id: 'y_23_08', title: '左右盲', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '右も左もわからないまま', url: '/audio/2023.04.05 [Album] 幻燈/08 - 左右盲.flac' },
+  { id: 'y_23_09', title: 'アルジャーノン', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '少しずつ忘れていく', url: '/audio/2023.04.05 [Album] 幻燈/09 - アルジャーノン.flac' },
+  { id: 'y_23_10', title: '第一夜', artist: 'Yorushika', category: 'Yorushika', color: '#FDE047', excerpt: '--- 幻燈 ---', url: '/audio/2023.04.05 [Album] 幻燈/10 - 第一夜.flac' },
 
   // ==========================================
   // 🌃 ATARAYO (あたらよ) 阵营
   // ==========================================
 
   // 💿 夜明け前 (情绪色：深夜靛蓝 #818CF8)
-  { id: 'a_01', title: '10月無口な君を忘れる', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '10月、無口な君を忘れるくらい', url: '/audio/Atarayo (あたらよ) - 夜明け前/01. 10月無口な君を忘れる.flac' },
-  { id: 'a_02', title: '夏霞', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '夏の匂いがした', url: '/audio/Atarayo (あたらよ) - 夜明け前/02. 夏霞.flac' },
-  { id: 'a_03', title: '晴るる', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '晴れ渡る空に', url: '/audio/Atarayo (あたらよ) - 夜明け前/03. 晴るる.flac' },
-  { id: 'a_04', title: '祥月', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '月が綺麗だね', url: '/audio/Atarayo (あたらよ) - 夜明け前/04. 祥月.flac' },
-  { id: 'a_05', title: '8.8', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '8.8の空', url: '/audio/Atarayo (あたらよ) - 夜明け前/05. 8.8.flac' },
-  { id: 'a_06', title: 'ピアス', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '耳に残る君の声', url: '/audio/Atarayo (あたらよ) - 夜明け前/06. ピアス.flac' },
-  { id: 'a_07', title: '嘘つき', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', lyric: '君は嘘つきだ', url: '/audio/Atarayo (あたらよ) - 夜明け前/07. 嘘つき.flac' },
+  { id: 'a_01', title: '10月無口な君を忘れる', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '10月、無口な君を忘れるくらい', url: '/audio/Atarayo (あたらよ) - 夜明け前/01. 10月無口な君を忘れる.flac' },
+  { id: 'a_02', title: '夏霞', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '夏の匂いがした', url: '/audio/Atarayo (あたらよ) - 夜明け前/02. 夏霞.flac' },
+  { id: 'a_03', title: '晴るる', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '晴れ渡る空に', url: '/audio/Atarayo (あたらよ) - 夜明け前/03. 晴るる.flac' },
+  { id: 'a_04', title: '祥月', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '月が綺麗だね', url: '/audio/Atarayo (あたらよ) - 夜明け前/04. 祥月.flac' },
+  { id: 'a_05', title: '8.8', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '8.8の空', url: '/audio/Atarayo (あたらよ) - 夜明け前/05. 8.8.flac' },
+  { id: 'a_06', title: 'ピアス', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '耳に残る君の声', url: '/audio/Atarayo (あたらよ) - 夜明け前/06. ピアス.flac' },
+  { id: 'a_07', title: '嘘つき', artist: 'Atarayo', category: 'Atarayo', color: '#818CF8', excerpt: '君は嘘つきだ', url: '/audio/Atarayo (あたらよ) - 夜明け前/07. 嘘つき.flac' },
 
   // 💿 季億の箱 (情绪色：记忆薰衣草 #C084FC)
-  { id: 'a_08', title: 'ただ好きと言えたら', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', lyric: 'ただ好きと言えたらよかったのに', url: '/audio/Atarayo (あたらよ) - 季億の箱/01. ただ好きと言えたら.flac' },
-  { id: 'a_09', title: '今夜2人だけのダンスを', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', lyric: '今夜、二人だけの', url: '/audio/Atarayo (あたらよ) - 季億の箱/02. 今夜2人だけのダンスを.flac' },
-  { id: 'a_10', title: '夏が来るたび', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', lyric: '君のいない夏が来る', url: '/audio/Atarayo (あたらよ) - 季億の箱/03. 夏が来るたび.flac' },
-  { id: 'a_11', title: '僕らはそれを愛と呼んだ', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', lyric: '僕らはそれを愛と呼んだんだ', url: '/audio/Atarayo (あたらよ) - 季億の箱/04. 僕らはそれを愛と呼んだ.flac' },
+  { id: 'a_08', title: 'ただ好きと言えたら', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', excerpt: 'ただ好きと言えたらよかったのに', url: '/audio/Atarayo (あたらよ) - 季億の箱/01. ただ好きと言えたら.flac' },
+  { id: 'a_09', title: '今夜2人だけのダンスを', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', excerpt: '今夜、二人だけの', url: '/audio/Atarayo (あたらよ) - 季億の箱/02. 今夜2人だけのダンスを.flac' },
+  { id: 'a_10', title: '夏が来るたび', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', excerpt: '君のいない夏が来る', url: '/audio/Atarayo (あたらよ) - 季億の箱/03. 夏が来るたび.flac' },
+  { id: 'a_11', title: '僕らはそれを愛と呼んだ', artist: 'Atarayo', category: 'Atarayo', color: '#C084FC', excerpt: '僕らはそれを愛と呼んだんだ', url: '/audio/Atarayo (あたらよ) - 季億の箱/04. 僕らはそれを愛と呼んだ.flac' },
 
   // ==========================================
   // 🌸 MIKU (初音ミク) 阵营
   // ==========================================
 
   // 💿 Miku 专属 (情绪色：初音绿 #39C5BB)
-  { id: 'm_01', title: 'Last Night, Good Night (Re-Dialed)', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', lyric: 'Last night, Good night... 今夜は眠ろう', url: '/audio/Miku/08 - livetune feat. 初音ミク - Last Night,Good Night(Re-Dialed).flac' },
-  { id: 'm_02', title: 'Last Night, Good Night', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', lyric: 'おやすみ...', url: '/audio/Miku/08.Last Night,Good Night.mp3' },
-  { id: 'm_03', title: 'One Way (Original Mix)', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', lyric: 'One way...', url: '/audio/Miku/Aura Qualic feat. 初音ミク Append (Sweet), 初音ミク Append (Dark) - ELATE - 02 - One Way (Original Mix).flac' }
+  { id: 'm_01', title: 'Last Night, Good Night (Re-Dialed)', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', excerpt: 'Last night, Good night... 今夜は眠ろう', url: '/audio/Miku/08 - livetune feat. 初音ミク - Last Night,Good Night(Re-Dialed).flac' },
+  { id: 'm_02', title: 'Last Night, Good Night', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', excerpt: 'おやすみ...', url: '/audio/Miku/08.Last Night,Good Night.mp3' },
+  { id: 'm_03', title: 'One Way (Original Mix)', artist: 'Hatsune Miku', category: 'Miku', color: '#39C5BB', excerpt: 'One way...', url: '/audio/Miku/Aura Qualic feat. 初音ミク Append (Sweet), 初音ミク Append (Dark) - ELATE - 02 - One Way (Original Mix).flac' },
+
+  // 💿 初音ミクベスト ~memories~（完整母带；忽略同目录的 4 首重复副本）
+  { id: 'm_04', title: 'intro ~memories~', artist: 'ケフィアP', category: 'Miku', color: '#8CE3DB', url: '/audio/Hatsune Miku Best ~memories~/01.intro ~memories~.flac' },
+  { id: 'm_05', title: 'ハジメテノオト', artist: 'malo', category: 'Miku', color: '#78DCD2', url: '/audio/Hatsune Miku Best ~memories~/02.ハジメテノオト.flac' },
+  { id: 'm_06', title: 'メルト', artist: 'supercell', category: 'Miku', color: '#FFB7C5', url: '/audio/Hatsune Miku Best ~memories~/03.メルト.flac' },
+  { id: 'm_07', title: 'ワールドイズマイン', artist: 'supercell', category: 'Miku', color: '#F79CB3', url: '/audio/Hatsune Miku Best ~memories~/04.ワールドイズマイン.flac' },
+  { id: 'm_08', title: 'ミラクルペイント', artist: 'OSTER project', category: 'Miku', color: '#F7C66A', url: '/audio/Hatsune Miku Best ~memories~/05.ミラクルペイント.flac' },
+  { id: 'm_09', title: '白の季節', artist: 'ゆうゆ', category: 'Miku', color: '#B9D8EA', url: '/audio/Hatsune Miku Best ~memories~/06.白の季節.flac' },
+  { id: 'm_10', title: 'サイハテ', artist: '小林オニキス', category: 'Miku', color: '#8AAFC7', url: '/audio/Hatsune Miku Best ~memories~/07.サイハテ.flac' },
+  { id: 'm_11', title: 'あなたの歌姫 Complete ver.', artist: 'azuma', category: 'Miku', color: '#64D8CC', url: '/audio/Hatsune Miku Best ~memories~/08.あなたの歌姫 Complete ver..flac' },
+  { id: 'm_12', title: 'えれくとりっく・えんじぇぅ', artist: 'ヤスオ', category: 'Miku', color: '#59CFE0', url: '/audio/Hatsune Miku Best ~memories~/09.えれくとりっく・えんじぇぅ.flac' },
+  { id: 'm_13', title: 'White Letter', artist: 'GonGoss', category: 'Miku', color: '#D6EAF2', url: '/audio/Hatsune Miku Best ~memories~/10.White Letter.flac' },
+  { id: 'm_14', title: 'melody...', artist: 'mikuru396', category: 'Miku', color: '#8DA4F0', url: '/audio/Hatsune Miku Best ~memories~/11.melody....flac' },
+  { id: 'm_15', title: 'そばかす', artist: 'ぢょんP', category: 'Miku', color: '#E8B78D', url: '/audio/Hatsune Miku Best ~memories~/12.そばかす.flac' },
+  { id: 'm_16', title: 'celluloid', artist: 'baker', category: 'Miku', color: '#95A9B8', url: '/audio/Hatsune Miku Best ~memories~/13.celluloid.flac' },
+  { id: 'm_17', title: 'Packaged', artist: 'livetune', category: 'Miku', color: '#54D6CA', url: '/audio/Hatsune Miku Best ~memories~/14.Packaged.flac' },
+  { id: 'm_18', title: 'from Y to Y', artist: 'OneRoom', category: 'Miku', color: '#84B9D4', url: '/audio/Hatsune Miku Best ~memories~/15.from Y to Y.flac' },
+  { id: 'm_19', title: '歌に形はないけれど', artist: 'doriko', category: 'Miku', color: '#EDB4C8', url: '/audio/Hatsune Miku Best ~memories~/16.歌に形はないけれど.flac' },
+  { id: 'm_20', title: 'outro ~タイムリミット -Endless-~', artist: 'North-T', category: 'Miku', color: '#6CBFB8', url: '/audio/Hatsune Miku Best ~memories~/17.outro ~タイムリミット -Endless-~.flac' },
+
+  // 💿 DECO*27 VOCALOID COLLECTION 2008~2012（仅收录 feat. 初音ミク，排除 3 首 GUMI）
+  { id: 'm_21', title: '愛言葉', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#F29FB6', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-01 DECO_27 feat. 初音ミク - 愛言葉.flac' },
+  { id: 'm_22', title: '僕みたいな君、君みたいな僕。', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#7ED5CC', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-02 DECO_27 feat. 初音ミク - 僕みたいな君、君みたいな僕。.flac' },
+  { id: 'm_23', title: '相愛性理論', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#EF9AAF', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-03 DECO_27 feat. 初音ミク - 相愛性理論.flac' },
+  { id: 'm_24', title: '心懐サミット', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#8DB6CB', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-04 DECO_27 feat. 初音ミク - 心懐サミット.flac' },
+  { id: 'm_25', title: '罪と罰', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#D9788E', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-05 DECO_27 feat. 初音ミク - 罪と罰.flac' },
+  { id: 'm_26', title: 'ゆめゆめ', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#F0B68B', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-06 DECO_27 feat. 初音ミク - ゆめゆめ.flac' },
+  { id: 'm_27', title: 'むかしむかしのきょうのぼく', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#91CDBE', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-07 DECO_27 feat. 初音ミク - むかしむかしのきょうのぼく.flac' },
+  { id: 'm_28', title: '二息歩行', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#789BAD', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-08 DECO_27 feat. 初音ミク - 二息歩行.flac' },
+  { id: 'm_29', title: 'キミ以上、ボク未満。', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#F3A9BE', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-09 DECO_27 feat. 初音ミク - キミ以上、ボク未満。.flac' },
+  { id: 'm_30', title: '愛迷エレジー', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#9A7FB6', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-10 DECO_27 feat. 初音ミク - 愛迷エレジー.flac' },
+  { id: 'm_31', title: '愛言葉II', artist: 'DECO*27 feat. 初音ミク', category: 'Miku', color: '#F0A1B9', url: '/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-14 DECO_27 feat. 初音ミク - 愛言葉II.flac' }
 ];
 
 export type PlayMode = 'loop' | 'sequence' | 'shuffle';
@@ -247,6 +279,9 @@ export const getSpectrum = (bars: number): number[] => {
   return out;
 };
 
+/** 歌词/可视化专用的只读精确时钟；调用方不得持有或修改全局 audio。 */
+export const getPlaybackTime = () => globalAudio.currentTime || globalCurrentTime;
+
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 
@@ -258,7 +293,7 @@ globalAudio.addEventListener('pause', () => { globalIsPlaying = false; notifyLis
 // 🎼 统一的「切到相邻曲目」逻辑，供 ended 自动续播与上一首/下一首手动操作复用
 const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
   const currentIndex = PLAYLIST.findIndex(t => t.id === globalCurrentTrack.id);
-  let nextIndex = 0;
+  let nextIndex: number;
 
   if (respectLoop && globalPlayMode === 'loop') {
     // 单曲循环：自然结束时重头再放
@@ -434,7 +469,7 @@ export const useSoundscape = () => {
       globalAudio.load();
       notifyListeners();
     }
-  }, [playTrack, globalIsPlaying]);
+  }, [playTrack]);
 
   const changeVolume = useCallback((val: number) => {
     cancelFade(); // 用户手动调音量时，立刻终止进行中的淡入淡出，避免被覆盖

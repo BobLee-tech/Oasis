@@ -1,12 +1,60 @@
 // src/types/music.ts
 export type MusicCategory = 'Yorushika' | 'Atarayo' | 'Miku' | 'All Tracks';
 
+export interface TrackLyricsRef {
+  /** R2 / dist-lyrics 中的相对键；不允许由用户输入直接拼接。 */
+  key: string;
+  /** 对个别母带做最终校准，不修改原始歌词文件。 */
+  offsetMs?: number;
+}
+
 export interface Track {
   id: string;
   title: string;
   artist: string;
   url: string;
   color: string;
-  lyric?: string;
-  category: MusicCategory; // ✅ 新增：歌曲所属的分类阵营
+  /** 播放器标题下方的一句策展摘句，不是逐行歌词。 */
+  excerpt?: string;
+  lyrics?: TrackLyricsRef;
+  category: MusicCategory;
+}
+
+export type LyricTranslationStatus = 'none' | 'machine' | 'reviewed';
+
+export interface LyricLine {
+  startMs: number;
+  endMs: number;
+  ja: string;
+  zh?: string;
+}
+
+export interface LyricsSource {
+  kind: 'local' | 'lrclib';
+  label: string;
+  url?: string;
+  fetchedAt?: string;
+}
+
+export interface LyricsDocument {
+  version: 1;
+  trackId: string;
+  title: string;
+  artist: string;
+  language: 'ja' | 'und';
+  offsetMs: number;
+  translationStatus: LyricTranslationStatus;
+  source: LyricsSource;
+  lines: LyricLine[];
+}
+
+export interface LyricsManifestEntry {
+  key: string;
+  translationStatus: LyricTranslationStatus;
+}
+
+export interface LyricsManifest {
+  version: 1;
+  generatedAt: string;
+  tracks: Record<string, LyricsManifestEntry>;
 }

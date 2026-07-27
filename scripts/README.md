@@ -8,6 +8,7 @@
 | `npm run img` | 截图 → webp → R2 → Markdown 图片语法 | `r2:oasis-picture` → `img.boblee.dev` |
 | `npm run art -- <图>` | 画作 → thumb/full 两档 webp → R2 → 「+ 装裱」表单字段 | `r2:oasis-picture/art/` → `img.boblee.dev/art` |
 | `npm run song -- <音频\|文件夹>` | 音频 → 归档 + AAC 转码 → R2 → PLAYLIST 代码行 | `oasis-r2:oasis-audio` → `audio.boblee.dev` |
+| `npm run lyric -- --track <id>` | 本地/网络同步歌词 → 校验 → 双语合并 → R2 | `oasis-r2:oasis-audio/lyrics` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
 | `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
 
@@ -19,6 +20,9 @@
 npm run song -- ~/Downloads/千本桜.flac              # 单曲，归入 Miku/
 npm run song -- ~/Downloads/某专辑/ --album "2024.03.09 [Album] 某专辑"
 npm run song -- ~/Downloads/千本桜.flac --dry        # 演练：只解析、只打印，不落盘不上传
+npm run lyric -- --track m_06 --lrc ~/Downloads/メルト.lrc
+npm run lyric -- --category Miku --fetch             # 缺失歌词从 LRCLIB 匹配
+npm run lyric -- --category Miku --fetch --publish   # 确认后发布并校验
 ```
 
 嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名（`art` 就是这么来的）：
@@ -44,9 +48,13 @@ head -20 scripts/post-song.mjs
 约定：
 
 1. **文件名** `post-<名词>.mjs`，`package.json` 里挂一个不超过 4 个字母的别名。
-2. **不自动改源码 / 不自动写数据库。** 打印出来让人过一眼再贴——这些内容都带审美判断（情绪色、那句歌词、画作的可见性），自动填只会填出二等公民。
+2. **不自动改源码 / 不自动写数据库。** 音频代码行仍要人工确认；歌词则写入 gitignored 的
+   `lyrics-src/` 与 `dist-lyrics/`，由版本化 manifest 发现，不把版权文本提交进代码仓库。
 3. **上传后必须校验。** `post-song.mjs` 传完会 `curl -I` 一次公开 URL 确认 200；空格与日文的转义不一致是这套流程唯一会静默失败的地方。
-4. **新增脚本记得回来更新上面那张表**，这份 README 是唯一的索引。
+4. **歌词网络匹配只在本地导入时发生。** 访客浏览器只请求自己的 R2，避免把第三方服务、
+   查询关键词和故障面暴露给线上用户。中文译词放在
+   `lyrics-src/<trackId>/translation.zh.lrc`，校对完成前用 `--machine` 标记。
+5. **新增脚本记得回来更新上面那张表**，这份 README 是唯一的索引。
 
 ## 外部依赖
 

@@ -11,13 +11,16 @@ node_modules
 dist
 dist-ssr
 dist-audio/
+dist-lyrics/
 dist-artworks/
 *.local
 .env
 
 # Editor directories and files
 /public/audio/
+/public/lyrics/
 /public/artworks-src/
+lyrics-src/
 .vscode/*
 !.vscode/extensions.json
 .idea

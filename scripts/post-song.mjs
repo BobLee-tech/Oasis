@@ -14,7 +14,7 @@
 //   --dry            只演练：解析元数据 + 打印代码行，不落盘、不转码、不上传
 //
 // ⚠️ 这一步只负责搬运字节 + 算出能填的字段，**不会自动改 useSoundscape.ts**。
-//    color（情绪色）与 lyric（那一句）留给你手挑——那是这个播放器最好的部分，
+//    color（情绪色）与 excerpt（那一句）留给你手挑——那是这个播放器最好的部分，
 //    自动生成的平均色和空歌词只会让曲库出现二等公民。见 docs/audio-hosting.md。
 //
 import { mkdir, copyFile, readdir, stat, readFile } from 'node:fs/promises';
@@ -235,7 +235,7 @@ const main = async () => {
   const ids = nextIds(playlistSource, prefix, rows.length);
   const snippet = rows.map((r, i) => {
     const color = CATEGORY_META[r.category]?.color ?? '#39C5BB';
-    return `  { id: '${ids[i]}', title: '${r.title.replace(/'/g, "\\'")}', artist: '${r.artist.replace(/'/g, "\\'")}', category: '${r.category}', color: '${color}', lyric: '', url: '${r.url}' },`;
+    return `  { id: '${ids[i]}', title: '${r.title.replace(/'/g, "\\'")}', artist: '${r.artist.replace(/'/g, "\\'")}', category: '${r.category}', color: '${color}', excerpt: '', url: '${r.url}' },`;
   }).join('\n');
 
   console.log('\n' + '─'.repeat(72));
@@ -248,7 +248,7 @@ const main = async () => {
     l.includes(`category: '${rows[0].category}'`) &&
     !(arr[idx + 1] ?? '').includes(`category: '${rows[0].category}'`));
   console.log(`\n📋 已复制到剪贴板。粘到 ${path.relative(PROJECT_ROOT, PLAYLIST_FILE)}${anchor >= 0 ? ` 第 ${anchor + 1} 行之后` : ''}（同专辑必须相邻，否则选碟台会拆成两个同名分组）`);
-  console.log(`✍️  还差两笔——每首的 color（情绪色）与 lyric（那一句），共 ${rows.length} 首：`);
+  console.log(`✍️  还差两笔——每首的 color（情绪色）与 excerpt（那一句），共 ${rows.length} 首：`);
   rows.forEach((r, i) => console.log(`     · ${ids[i]}  ${r.title}`));
   if (opts.dry) console.log('\n🌵 --dry 演练模式：没有落盘、没有转码、没有上传。');
 
