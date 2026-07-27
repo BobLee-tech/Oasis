@@ -15,6 +15,7 @@ import { useCategories } from '../hooks/useCategories';
 import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
 import { extractWikiLinks, buildTitleIndex } from '../lib/wikilinks';
+import { tagKey, buildTagCanonicalMap } from '../lib/tags';
 
 interface OasisOrchardProps { isAdmin: boolean; }
 
@@ -57,30 +58,35 @@ const blendColor = (a: string, b: string): string => {
 };
 
 // 🌌 构建知识图谱并用轻量力导布局松弛开，得到舒朗、不重叠的星座坐标
-const buildGraph = (posts: BlogPost[]) => {
-  // 标签 → 文章
-  const tagMap = new Map<string, BlogPost[]>();
-  posts.forEach(p => p.tags.forEach(t => {
-    if (!tagMap.has(t)) tagMap.set(t, []);
-    tagMap.get(t)!.push(p);
+//   typeColorOf：星核/连线颜色统一取「文章类型色」，与情绪色 post.color 脱钩——
+//   颜色作为唯一编码通道只表达一件事（类型），不然一颗绿星拖着粉线、右上角图例却对不上。
+const buildGraph = (posts: BlogPost[], typeColorOf: (post: BlogPost) => string) => {
+  // 标签 → 文章：按归一化 key 分组（大小写/全半角/首尾空白差异不再各自长出一团星云），
+  //   展示名取该组里出现次数最多的原始写法（见 lib/tags.ts）。
+  const canonicalOf = buildTagCanonicalMap(posts.flatMap(p => p.tags));
+  const tagMap = new Map<string, BlogPost[]>(); // key: tagKey() 归一化后的标签
+  posts.forEach(p => p.tags.forEach(raw => {
+    const k = tagKey(raw);
+    const arr = tagMap.get(k) ?? tagMap.set(k, []).get(k)!;
+    if (!arr.some(x => x.id === p.id)) arr.push(p); // 同篇文章把同义标签写了两遍也只算一次
   }));
-  const tagNames = [...tagMap.keys()];
+  const tagKeys = [...tagMap.keys()];
 
   const nodes: GNode[] = [];
   const core: GNode = { key: '__core', kind: 'core', x: CENTER.x, y: CENTER.y, r: 26 };
   nodes.push(core);
 
   // 标签核心：先用黄金角螺旋撒出初值，再交给力导松弛
-  const tagNodes = new Map<string, GNode>();
-  tagNames.forEach((t, i) => {
+  const tagNodes = new Map<string, GNode>(); // key: tagKey()
+  tagKeys.forEach((k, i) => {
     const ang = i * GOLDEN;
     const rad = 150 + i * 6;
     const n: GNode = {
-      key: 'tag:' + t, kind: 'tag', tag: t, count: tagMap.get(t)!.length,
+      key: 'tag:' + k, kind: 'tag', tag: canonicalOf.get(k) ?? k, count: tagMap.get(k)!.length,
       x: CENTER.x + Math.cos(ang) * rad, y: CENTER.y + Math.sin(ang) * rad,
-      r: 5 + Math.sqrt(tagMap.get(t)!.length) * 3.4,
+      r: 5 + Math.sqrt(tagMap.get(k)!.length) * 3.4,
     };
-    tagNodes.set(t, n); nodes.push(n);
+    tagNodes.set(k, n); nodes.push(n);
   });
 
   // 文章星：初值撒在更外圈
@@ -89,7 +95,7 @@ const buildGraph = (posts: BlogPost[]) => {
     const ang = i * GOLDEN + 0.6;
     const rad = 230 + seeded(p.id) * 90;
     const n: GNode = {
-      key: 'post:' + p.id, kind: 'post', post: p, color: p.color,
+      key: 'post:' + p.id, kind: 'post', post: p, color: typeColorOf(p),
       x: CENTER.x + Math.cos(ang) * rad, y: CENTER.y + Math.sin(ang) * rad,
       r: 6.5 + Math.min(4.5, p.content.length / 1100),
     };
@@ -97,13 +103,15 @@ const buildGraph = (posts: BlogPost[]) => {
   });
 
   // 连边：核心 → 标签；标签 → 文章（无标签文章直接连核心，避免孤岛）
+  //   连线染「文章类型色」而非情绪色 post.color——与星核、图例保持同一套颜色语义。
   const links: GLink[] = [];
-  tagNames.forEach(t => links.push({ a: core, b: tagNodes.get(t)!, color: '#94a3b8', core: true }));
+  tagKeys.forEach(k => links.push({ a: core, b: tagNodes.get(k)!, color: '#94a3b8', core: true }));
   posts.forEach(p => {
     const pn = postNodes.get(p.id)!;
-    const pts = p.tags.filter(t => tagNodes.has(t));
-    if (pts.length === 0) links.push({ a: core, b: pn, color: p.color || '#39C5BB', core: true });
-    else pts.forEach(t => links.push({ a: tagNodes.get(t)!, b: pn, color: p.color || '#39C5BB', core: false }));
+    const color = typeColorOf(p);
+    const ptKeys = [...new Set(p.tags.map(tagKey))].filter(k => tagNodes.has(k));
+    if (ptKeys.length === 0) links.push({ a: core, b: pn, color, core: true });
+    else ptKeys.forEach(k => links.push({ a: tagNodes.get(k)!, b: pn, color, core: false }));
   });
 
   // 🔗 双链 [[标题]]：正文里写下的直接引用，额外画一条引力线，把两颗星彼此拉近——
@@ -119,7 +127,7 @@ const buildGraph = (posts: BlogPost[]) => {
       if (wikiSeen.has(pairKey)) return;
       wikiSeen.add(pairKey);
       const tn = postNodes.get(target.id);
-      if (tn) links.push({ a: pn, b: tn, color: blendColor(p.color || '#39C5BB', target.color || '#39C5BB'), core: false, wikilink: true });
+      if (tn) links.push({ a: pn, b: tn, color: blendColor(typeColorOf(p), typeColorOf(target)), core: false, wikilink: true });
     });
   });
 
@@ -222,7 +230,9 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   }, []);
   const resetView = useCallback(() => setView({ scale: 1, x: 0, y: 0 }), []);
 
-  const graph = useMemo(() => buildGraph(posts), [posts]);
+  const graph = useMemo(() => buildGraph(posts, (p) => typeColor(p.type)), [posts, categories]);
+  // 原始标签写法 → 星图里的 canonical 展示名（同 tagKey 归一化组内出现最多的写法）
+  const canonicalTagOf = (raw: string) => graph.tagNodes.get(tagKey(raw))?.tag ?? raw;
   const focusTag = activeTag ?? hoverTag;
 
   // 当前点亮的节点与连边集合：悬停星点亮其所属星座，聚焦主题点亮其星团
@@ -237,7 +247,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
       const pn = graph.postNodes.get(hoverPostId);
       if (pn) litNodes.add(pn.key);
       if (p) {
-        const tagset = new Set(p.tags);
+        const tagKeySet = new Set(p.tags.map(tagKey));
         graph.links.forEach((l, idx) => {
           // 双链是唯一一种「文章连文章」的边，悬停任意一端都要点亮（其余边里 post 只会出现在 b 侧）
           if (l.b.key === pn?.key || (l.wikilink && l.a.key === pn?.key)) {
@@ -246,16 +256,17 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
         });
         // 点亮同一星座（共享标签）的姐妹星
         p.tags.forEach(t => {
-          const tn = graph.tagNodes.get(t);
-          if (tn) { litNodes.add(tn.key); (graph.tagMap.get(t) || []).forEach(sp => litNodes.add('post:' + sp.id)); }
+          const k = tagKey(t);
+          const tn = graph.tagNodes.get(k);
+          if (tn) { litNodes.add(tn.key); (graph.tagMap.get(k) || []).forEach(sp => litNodes.add('post:' + sp.id)); }
         });
         // 顺带点亮核心→这些标签的脉络
         graph.links.forEach((l, idx) => {
-          if (l.core && l.b.kind === 'tag' && l.b.tag && tagset.has(l.b.tag)) litLinks.add(idx);
+          if (l.core && l.b.kind === 'tag' && l.b.tag && tagKeySet.has(tagKey(l.b.tag))) litLinks.add(idx);
         });
       }
     } else if (focusTag) {
-      const tn = graph.tagNodes.get(focusTag);
+      const tn = graph.tagNodes.get(tagKey(focusTag));
       if (tn) litNodes.add(tn.key);
       litNodes.add('__core');
       graph.links.forEach((l, idx) => {
@@ -544,12 +555,12 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="relative w-full max-w-3xl max-h-[88vh] overflow-hidden flex flex-col rounded-[2rem] bg-[#FBFCFE] dark:bg-[#0C1222] border border-white/70 dark:border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.3)]"
             >
-              <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px] opacity-30 dark:opacity-20 pointer-events-none" style={{ backgroundColor: activePost.color }} />
+              <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px] opacity-30 dark:opacity-20 pointer-events-none" style={{ backgroundColor: typeColor(activePost.type) }} />
 
               <header className="relative px-6 md:px-14 pt-10 md:pt-12 pb-6 shrink-0">
                 <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 mb-6">
                   <span className="flex items-center gap-3">
-                    <span style={{ color: activePost.color }}>{activePost.date}</span>
+                    <span style={{ color: typeColor(activePost.type) }}>{activePost.date}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                     <span className="opacity-70">{calcReadingTime(activePost.content)}</span>
                   </span>
@@ -566,7 +577,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                     {activePost.tags.map(tag => (
                       <button
                         key={tag}
-                        onClick={() => { setActivePost(null); setActiveTag(tag); }}
+                        onClick={() => { setActivePost(null); setActiveTag(canonicalTagOf(tag)); }}
                         className="font-mono text-[10px] tracking-widest text-slate-500 dark:text-slate-400 uppercase border-b border-slate-300 dark:border-white/10 pb-0.5 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors"
                       >#{tag}</button>
                     ))}
