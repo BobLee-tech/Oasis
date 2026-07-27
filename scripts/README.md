@@ -1,0 +1,53 @@
+# 🛠 scripts/ — 内容管线速查
+
+这些脚本都是**本地跑的搬运工**：把桌面上的一个文件，变成线上能访问的资源 + 一段可粘贴的代码。
+它们不改数据库、不改源码，最后一步永远是「打印 / 复制到剪贴板」，由你自己决定要不要贴进去。
+
+| 命令 | 干什么 | 产物落点 |
+|---|---|---|
+| `npm run img` | 截图 → webp → R2 → Markdown 图片语法 | `r2:oasis-picture` → `img.boblee.dev` |
+| `npm run art -- <图>` | 画作 → thumb/full 两档 webp → R2 → 「+ 装裱」表单字段 | `r2:oasis-picture/art/` → `img.boblee.dev/art` |
+| `npm run song -- <音频\|文件夹>` | 音频 → 归档 + AAC 转码 → R2 → PLAYLIST 代码行 | `oasis-r2:oasis-audio` → `audio.boblee.dev` |
+| `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
+| `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
+
+## 怎么用
+
+统一是 `npm run <别名> -- <参数>`。**`--` 不能省**，否则参数会被 npm 自己吃掉。
+
+```bash
+npm run song -- ~/Downloads/千本桜.flac              # 单曲，归入 Miku/
+npm run song -- ~/Downloads/某专辑/ --album "2024.03.09 [Album] 某专辑"
+npm run song -- ~/Downloads/千本桜.flac --dry        # 演练：只解析、只打印，不落盘不上传
+```
+
+嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名（`art` 就是这么来的）：
+
+```zsh
+alias song='node /Users/nai/Developer/Oasis/scripts/post-song.mjs'
+```
+
+**忘了用法就看脚本开头**——每个脚本前 20 行都是完整的用法注释：
+
+```bash
+head -20 scripts/post-song.mjs
+```
+
+## 怎么维护
+
+写新脚本时照抄现有的三件套，别另起炉灶：
+
+- `run(cmd, args)` — 跑子进程，非 0 退出码直接 reject
+- `capture(cmd, args)` — 同上但收 stdout（`post-song.mjs` 用它读 ffprobe）
+- `copyToClipboard(text)` — `pbcopy`，最后一步的固定动作
+
+约定：
+
+1. **文件名** `post-<名词>.mjs`，`package.json` 里挂一个不超过 4 个字母的别名。
+2. **不自动改源码 / 不自动写数据库。** 打印出来让人过一眼再贴——这些内容都带审美判断（情绪色、那句歌词、画作的可见性），自动填只会填出二等公民。
+3. **上传后必须校验。** `post-song.mjs` 传完会 `curl -I` 一次公开 URL 确认 200；空格与日文的转义不一致是这套流程唯一会静默失败的地方。
+4. **新增脚本记得回来更新上面那张表**，这份 README 是唯一的索引。
+
+## 外部依赖
+
+`ffmpeg` / `ffprobe`（`brew install ffmpeg`）、`rclone`（`brew install rclone`，remote 见 `~/.config/rclone/rclone.conf`）、`sharp`（已在 devDependencies）、`pbcopy` / `sips`（macOS 自带）。

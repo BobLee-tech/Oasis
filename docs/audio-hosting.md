@@ -51,7 +51,23 @@ AAC 256k VBR，听感无损、全平台可播（含 iOS Safari）。
 
 ## 新增 / 修改曲目
 
-1. 把源文件放进 `public/audio/<专辑>/`，在 `useSoundscape.ts` 的 `PLAYLIST` 登记
-   （`url` 写 `.flac`/`.mp3` 源路径即可）。
-2. 重新运行 `bash scripts/transcode-audio.sh`（已存在的会自动跳过，仅转新文件）。
-3. 把新生成的 `.m4a` 上传到 R2 同名路径。
+用 `npm run song`（`scripts/post-song.mjs`）一步走完归档 → 转码 → 上传 → 校验：
+
+```bash
+npm run song -- ~/Downloads/千本桜.flac                    # 单曲，归入 public/audio/Miku/
+npm run song -- ~/Downloads/某专辑/ --album "2024.03.09 [Album] 某专辑"
+npm run song -- ~/Downloads/千本桜.flac --dry              # 演练，只打印不落盘
+```
+
+脚本会：归档源文件到 `public/audio/<专辑>/` → 转 AAC 256k 到 `dist-audio/` → `rclone` 传
+`oasis-r2:oasis-audio` → **`curl -I` 校验 `audio.boblee.dev` 上真的取得到**（专治空格/日文
+转义不一致导致的静默 404）→ 生成 `PLAYLIST` 代码行并复制到剪贴板。
+
+最后一步是手工的，**故意的**：`color`（情绪色）与 `lyric`（那一句）留空等你填。
+曲库里每首歌的这两个字段都是手挑的，Resonance 页面的唱片贴纸、光晕、声波全吃 `color`，
+歌词是右栏的主角；用封面平均色和空歌词自动补，只会在一个靠均质手感撑起来的地方留下二等公民。
+
+粘贴时注意：`OasisResonance.tsx` 的 `albumGroups` 按「**相邻**同目录」分组，
+新曲必须贴在同专辑那一块里，散着贴会被拆成两个同名分组。脚本会直接告诉你贴到第几行之后。
+
+批量重转整个 `public/audio/` 仍用 `bash scripts/transcode-audio.sh`（已存在的自动跳过）。

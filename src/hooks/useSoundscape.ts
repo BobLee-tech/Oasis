@@ -127,7 +127,7 @@ export type PlayMode = 'loop' | 'sequence' | 'shuffle';
 const AUDIO_BASE = (import.meta.env.VITE_AUDIO_BASE ?? '').replace(/\/$/, '');
 export const resolveAudioUrl = (rawUrl: string): string => {
   if (!AUDIO_BASE) return rawUrl; // 本地：直接用 public/audio 原文件
-  const rel = rawUrl.replace(/^\/audio\//, '').replace(/\.(flac|mp3)$/i, '.m4a');
+  const rel = rawUrl.replace(/^\/audio\//, '').replace(/\.(flac|mp3|m4a|wav|aiff?)$/i, '.m4a');
   return `${AUDIO_BASE}/${rel.split('/').map(encodeURIComponent).join('/')}`;
 };
 

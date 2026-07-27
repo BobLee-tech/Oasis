@@ -200,7 +200,9 @@ export const useGarden = () => {
     return () => { supabase.removeChannel(channel); };
   }, [fetchCloud]);
 
-  const plantSeed = useCallback((input: SeedInput) => {
+  // 返回新种下的文章（含生成的 id）：调用方需要它来实现「撤销」——
+  //   落定成 draft 那一刻若被撤销，得知道 uproot 哪一条。
+  const plantSeed = useCallback((input: SeedInput): BlogPost => {
     const now = Date.now();
     const title = input.title.trim() || 'Untitled Thought';
     const status = input.status ?? 'published';
@@ -219,14 +221,19 @@ export const useGarden = () => {
     };
     commit([newPost, ...postsRef.current]); // 乐观更新
     if (cloudOk.current) supabase.from(TABLE).insert(toRow(newPost)).then(({ error }) => { if (error) cloudOk.current = false; });
+    return newPost;
   }, [commit]);
 
-  const updateSeed = useCallback((id: string, input: SeedInput) => {
-    // 🌿 每次显式「Update」都是一次照料：updatedAt 刷新为此刻，供 Colophon 与「最近照料」展示
-    const updatedAt = Date.now();
+  // 🌿 opts.touch：是否算一次「照料」（updatedAt 刷新，供 Colophon / 「最近照料」展示）。
+  //   默认 true——编辑器里显式点 Update/Publish 一直是明确的照料动作，不改这条老路径的语义。
+  //   传 false 用于「关闭编辑器即落定」这类顺手保存：调用方已经算过 diff 够不够格，
+  //   不够格（只是改错别字）就不该让这篇文章显得「刚被认真修订过」。
+  const updateSeed = useCallback((id: string, input: SeedInput, opts?: { touch?: boolean }) => {
+    const existing = postsRef.current.find(p => p.id === id);
+    const touch = opts?.touch ?? true;
+    const updatedAt = touch ? Date.now() : (existing?.updatedAt ?? Date.now());
     const title = input.title.trim() || 'Untitled';
     const status = input.status ?? 'published';
-    const existing = postsRef.current.find(p => p.id === id);
     const patch = {
       title, tags: input.tags.length > 0 ? input.tags : ['Draft'],
       color: input.color, content: input.content, type: input.type ?? 'thought',

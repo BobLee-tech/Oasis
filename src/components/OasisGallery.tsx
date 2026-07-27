@@ -16,6 +16,7 @@ import { DAILY_QUOTES } from '../data/quotes';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
 import { emitMikuSignal } from '../lib/mikuSignal';
+import { tagKey, buildTagCanonicalMap } from '../lib/tags';
 
 const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
 
@@ -124,20 +125,29 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 供异步回调（图片加载完成后再定位续读位置）判断当前是否已经切走文章，避免过期跳转
   const activePostRef = useRef(activePost);
   activePostRef.current = activePost;
+  // 🚪 关闭编辑器的「最新实现」存一份在 ref 里：closeEditor 定义在组件靠后的位置（依赖一堆
+  // 之后才声明的 editXxx 状态），但下面这个 isPresent 副作用要在组件顶部注册、且只想注册一次。
+  // 每次渲染把最新闭包写进 ref，effect 永远通过 ref 调用，就不会读到过期的编辑器状态。
+  const closeEditorRef = useRef<() => void>(() => {});
   // 🌫️ 本视图开始退场（被 AnimatePresence 移除、isPresent 转 false）时，立即收起
   // portal 到 body 的阅读舱/书房覆盖层。它们脱离 ViewLayer 的 opacity 交叉溶解,
   // 若不主动收起，退场的 0.5s 里会以全不透明悬在新视图（如星图）之上
   // ——即「切到星图偶尔闪现 gallery 组件」的真凶。
   // 注意：退场中 props 被冻结，故不能靠 active prop，必须用 useIsPresent 的实时信号。
+  // ⚠️ 切走视图时编辑器若还开着，closeEditor() 会照常落定保存——不能让「切到别的视图」
+  //   变成又一条静默丢字的路径（这正是本次要修的 bug）。
   const isPresent = useIsPresent();
   useEffect(() => {
-    if (!isPresent) { setActivePost(null); setIsEditing(false); }
+    if (!isPresent) { setActivePost(null); closeEditorRef.current(); }
   }, [isPresent]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [showTags, setShowTags] = useState(false);
+  // 🔀 排序：默认最新在前（与旧行为一致）；「最早」「最近照料」两态让排序规则从隐式变可见
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'tended'>('newest');
+  const [showSort, setShowSort] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   // ✍️ 编辑器三档视图：纯写 / 左写右读分屏 / 纯预览
@@ -303,10 +313,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }
   };
 
-  // 🏷️ 标签 chip 输入：回车/逗号成签，退格删最后一枚，下拉复用已有标签
+  // 🏷️ 标签 chip 输入：回车/逗号成签，退格删最后一枚，下拉复用已有标签。
+  //   归一化去重（大小写/全半角/空白）：新标签若与已有写法只是变体，直接复用已有写法，
+  //   从源头掐断同义标签越长越多，星图才不会再长出两团一样的星云。
   const commitTag = (raw: string) => {
     const t = raw.trim().replace(/,+$/, '');
-    if (t && !editTagList.includes(t)) setEditTagList([...editTagList, t]);
+    if (!t) { setTagInput(''); return; }
+    const k = tagKey(t);
+    if (editTagList.some(existing => tagKey(existing) === k)) { setTagInput(''); return; }
+    const canonical = allTags.find(existing => tagKey(existing) === k) ?? t;
+    setEditTagList([...editTagList, canonical]);
     setTagInput('');
   };
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -317,6 +333,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 💾 草稿自动保存：编辑中 800ms 防抖落盘；发布 / 主动丢弃时清除
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const [draftMsg, setDraftMsg] = useState('');
+
+  // 🍂 关闭编辑器（✕ / Esc / 切走视图）的落定通知：8 秒内可反悔。
+  //   'update' 撤销 = 把关闭前的原文整篇回写；'new-draft' 撤销 = 把刚落定的草稿拔掉。
+  const [undoNotice, setUndoNotice] = useState<
+    | { kind: 'update'; postId: string; title: string; snapshot: BlogPost }
+    | { kind: 'new-draft'; postId: string; title: string }
+    | null
+  >(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); }, []);
   useEffect(() => {
     if (!isEditing) return;
     const timer = setTimeout(() => {
@@ -548,8 +574,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }, 400);
   };
 
+  // 🏷️ 归一化去重：大小写/全半角/首尾空白不同的写法（"Miku" / "miku" / "ＭＩＫＵ"）
+  //   曾各自当成独立标签，这里折成一个，展示名取出现次数最多的写法（见 lib/tags.ts）。
   const allTags = useMemo(() => {
-    const tags = new Set<string>(); listedPosts.forEach(p => p.tags.forEach(t => tags.add(t))); return Array.from(tags).sort();
+    const canonicalOf = buildTagCanonicalMap(listedPosts.flatMap(p => p.tags));
+    return Array.from(new Set(canonicalOf.values())).sort((a, b) => a.localeCompare(b));
   }, [listedPosts]);
 
   // 📚 合集索引（浏览用）：合集名 → 按时间正序的成员文章；「第 N 篇」由此推导，无需手工维护序号。
@@ -656,7 +685,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   const filteredPosts = useMemo(() => listedPosts.filter(post => {
     const matchType = selectedType ? post.type === selectedType : true;
-    const matchTag = selectedTag ? post.tags.includes(selectedTag) : true;
+    const matchTag = selectedTag ? post.tags.some(t => tagKey(t) === tagKey(selectedTag)) : true;
     const matchSeries = selectedSeries ? post.series === selectedSeries : true;
     // 🔍 全文检索：标题 / 摘要 / 正文 / 标签一并匹配，找回被藏在正文深处的思考
     const q = searchQuery.trim().toLowerCase();
@@ -669,10 +698,21 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     return matchType && matchTag && matchSeries && matchSearch;
   }), [selectedType, selectedTag, selectedSeries, searchQuery, listedPosts]);
 
-  // 📅 按月归档：周报 / 成长记录的时间叙事更清晰
+  // 📅 按月归档：周报 / 成长记录的时间叙事更清晰。
+  //   排序规则从「隐式硬编码最新在前」变成可见可选的三态（见筛选栏 Sort 抽屉）：
+  //   newest/oldest 仍按创建月份归档，只是组内外的方向一起翻转；
+  //   tended 脱离「创建月份」这个坐标系——按「最近照料」排序时，文章可能是三年前写的却是昨天改的，
+  //   硬套进创建月份分组只会制造新的困惑，所以退化成一条不分组的时间线。
   const groupedPosts = useMemo(() => {
+    if (sortMode === 'tended') {
+      const sorted = [...filteredPosts].sort((a, b) => b.updatedAt - a.updatedAt);
+      return sorted.length ? [{ key: 'tended', label: '最近照料', posts: sorted }] : [];
+    }
+    const ordered = sortMode === 'oldest'
+      ? [...filteredPosts].sort((a, b) => a.createdAt - b.createdAt)
+      : filteredPosts; // 'newest'：filteredPosts 本就继承 useGarden 的全局倒序，无需再排一次
     const groups: { key: string; label: string; posts: BlogPost[] }[] = [];
-    filteredPosts.forEach(post => {
+    ordered.forEach(post => {
       const d = new Date(post.createdAt);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -681,11 +721,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       g.posts.push(post);
     });
     return groups;
-  }, [filteredPosts]);
+  }, [filteredPosts, sortMode]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { 
-      if (e.key === 'Escape') { setActivePost(null); setIsEditing(false); setShowProfile(false); } 
+    // Esc 等同点 ✕：编辑器开着时走 closeEditorRef（落定保存），不再是纯粹的静默丢弃
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setActivePost(null); closeEditorRef.current(); setShowProfile(false); }
     };
     window.addEventListener('keydown', handleEsc); return () => window.removeEventListener('keydown', handleEsc);
   }, []);
@@ -752,6 +793,77 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setEditGrowth('seedling'); setEditStatus('published');
     setEditSlug(''); setEditExcerpt('');
     setEditContent(getTemplate(editType)); setEditColor('#39C5BB');
+  };
+
+  // 🚪 关闭编辑器（✕ / Esc / 切走视图）：过去只是 setIsEditing(false)——草稿只落 localStorage，
+  //   本体和云端毫无变化，"Update" 才会真的保存，点 ✕ 等于悄悄丢弃这次修改。现在按上下文自动落定：
+  //   · 改既有文章、且相对原文有实质变化 → 直接保存（updateSeed），8 秒内可撤销（原文整篇回写）。
+  //   · 新篇写了实质内容（超出空白模板）→ 落定成一枚 🌰 draft，进列表可见，
+  //     不再是要点开同一入口才会从 localStorage 里悄悄冒出来的幽灵草稿。
+  //   · 没动过 / 清空了 → 静默关闭，不留痕迹。
+  //   「照料」判定单独算一次 diff 阈值（见 useGarden.updateSeed 的 touch 参数）：只有标题/类型/
+  //   合集/标签变化，或正文变化超过 30 字符，才刷新 updatedAt——顺手改错别字不该让文章显得
+  //   「刚被认真修订过」，冒出到侧栏「最近照料」里。
+  const closeEditor = () => {
+    if (!isEditing) return;
+    const tagArray = [...editTagList, ...(tagInput.trim() ? [tagInput.trim()] : [])];
+    const trimmedTitle = editTitle.trim();
+    const trimmedContent = editContent.trim();
+
+    if (editingId) {
+      const original = posts.find(p => p.id === editingId);
+      if (!trimmedContent) {
+        // 清空了正文再关闭：不当成一次有效编辑，顺手清掉可能残留的旧草稿——
+        // 否则下次打开这篇文章会被一份空草稿悄悄顶替（旧的已知坑）。
+        clearDraft();
+      } else if (original) {
+        const titleChanged = trimmedTitle !== original.title.trim();
+        const typeChanged = editType !== original.type;
+        const seriesChanged = (editSeries.trim() || undefined) !== (original.series ?? undefined);
+        const statusChanged = editStatus !== original.status;
+        const growthChanged = editGrowth !== original.growth;
+        const tagsChanged = tagArray.length !== original.tags.length || tagArray.some((t, i) => t !== original.tags[i]);
+        const contentChanged = editContent !== original.content;
+
+        if (contentChanged || titleChanged || typeChanged || seriesChanged || statusChanged || growthChanged || tagsChanged) {
+          const touch = titleChanged || typeChanged || seriesChanged || tagsChanged || Math.abs(editContent.length - original.content.length) > 30;
+          const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: editStatus, slug: editSlug, excerpt: editExcerpt };
+          updateSeed(editingId, input, { touch });
+          clearDraft();
+          if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+          setUndoNotice({ kind: 'update', postId: editingId, title: original.title, snapshot: original });
+          undoTimerRef.current = setTimeout(() => setUndoNotice(null), 8000);
+        } else {
+          clearDraft(); // 没有实质变化，顺手清掉可能残留的旧草稿副本
+        }
+      }
+    } else {
+      // 新篇：内容偏离全部分类的空白模板才算「写了东西」，与「重新打开时是否恢复草稿」的判定口径一致
+      const isBlank = !trimmedContent || categories.some(c => editContent === getTemplate(c.id));
+      if (!isBlank) {
+        const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: 'draft' as PostStatus, slug: editSlug, excerpt: editExcerpt };
+        const planted = plantSeed(input);
+        clearDraft();
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        setUndoNotice({ kind: 'new-draft', postId: planted.id, title: planted.title });
+        undoTimerRef.current = setTimeout(() => setUndoNotice(null), 8000);
+      }
+    }
+    setIsEditing(false);
+  };
+  closeEditorRef.current = closeEditor;
+
+  // ↺ 撤销：'update' 把关闭前的原文整篇回写（不再算一次照料）；'new-draft' 把刚落定的草稿拔掉
+  const handleUndo = () => {
+    if (!undoNotice) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    if (undoNotice.kind === 'update') {
+      const s = undoNotice.snapshot;
+      updateSeed(s.id, { title: s.title, tags: s.tags, color: s.color, content: s.content, type: s.type, series: s.series, growth: s.growth, status: s.status, slug: s.slug, excerpt: s.excerpt }, { touch: false });
+    } else {
+      uprootSeed(undoNotice.postId);
+    }
+    setUndoNotice(null);
   };
 
   const handlePublish = () => {
@@ -903,6 +1015,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     {allTags.length > 0 && (
                       <button onClick={() => setShowTags(v => !v)} className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showTags || selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># Tags</button>
                     )}
+                    {filteredPosts.length > 1 && (
+                      <button onClick={() => setShowSort(v => !v)} title="排序规则" className={`font-mono text-[10px] tracking-[0.18em] uppercase transition-colors ${showSort || sortMode !== 'newest' ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>↓ Sort</button>
+                    )}
                     {isAdmin && (
                       <>
                         <button onClick={handleSyncToCloud} disabled={syncState === 'syncing'} title="把本地全部文章一键同步到 Supabase 云端" className="font-mono text-[10px] tracking-[0.18em] uppercase text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-40">{syncState === 'syncing' ? '☁ …' : '☁'}</button>
@@ -940,6 +1055,19 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         <button onClick={() => setSelectedTag(null)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${!selectedTag ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}># all</button>
                         {allTags.map(tag => (
                           <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${selectedTag === tag ? 'text-[#39C5BB] border-b border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>#{tag}</button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* 🔀 排序抽屉：把此前隐式的「最新在前」规则摆到明处，可切换 */}
+                <AnimatePresence>
+                  {showSort && filteredPosts.length > 1 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+                      <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-4 pb-1">
+                        {([['newest', '最新在前'], ['oldest', '最早在前'], ['tended', '最近照料']] as const).map(([mode, label]) => (
+                          <button key={mode} onClick={() => setSortMode(mode)} className={`font-mono text-[9px] tracking-widest uppercase transition-colors duration-500 ${sortMode === mode ? 'text-[#39C5BB] border-b border-[#39C5BB]/60' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>{label}</button>
                         ))}
                       </div>
                     </motion.div>
@@ -992,7 +1120,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         <span className="font-mono text-[9px] text-slate-300 dark:text-slate-600">{group.posts.length}</span>
                       </div>
 
-                      <div className="columns-1 xl:columns-2 gap-8 space-y-8">
+                      {/* 🗂️ 行优先 grid（非列优先的 CSS multicol）：卡片高度参差不齐时，
+                          multicol 会先灌满左列再灌右列，导致「第 6 新」的文章显示在「第 2、3 新」上方，
+                          时间线肉眼不可读。grid + items-start 保证 1|2 / 3|4 逐行铺开，顺序即时间。 */}
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                         {group.posts.map((post) => {
                           const meta = metaOf(post.type);
                           // 📍 续读进度：2%~92% 之间视为「读到一半」，读完或未读都不打扰
@@ -1000,7 +1131,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
-                            <motion.div key={post.id} className={`break-inside-avoid relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            <motion.div key={post.id} className={`relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
@@ -1063,7 +1194,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        </motion.span>
                      )}
                    </AnimatePresence>
-                   <button onClick={() => setIsEditing(false)} title="收起编辑器（草稿已自动保存）" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                   <button onClick={closeEditor} title="收起编辑器（修改会直接落定，8 秒内可撤销）" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                  </div>
                </div>
                
@@ -1250,9 +1381,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                              <input type="text" placeholder={editTagList.length ? '' : '回车添加'} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
                                className="flex-1 min-w-[120px] bg-transparent font-mono text-xs tracking-widest text-slate-500 dark:text-slate-400 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 uppercase transition-colors" />
                              {/* 已有标签联想：贴近屏幕底部，向上弹出 */}
-                             {tagInput.trim() && allTags.some(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)) && (
+                             {tagInput.trim() && allTags.some(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.some(e => tagKey(e) === tagKey(t))) && (
                                <div className="absolute bottom-full left-0 mb-2 z-30 flex flex-wrap gap-2 max-w-full p-3 rounded-xl bg-white/90 dark:bg-[#111827]/95 backdrop-blur-xl border border-slate-200/70 dark:border-white/10 shadow-lg">
-                                 {allTags.filter(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.includes(t)).slice(0, 8).map(t => (
+                                 {allTags.filter(t => t.toLowerCase().includes(tagInput.trim().toLowerCase()) && !editTagList.some(e => tagKey(e) === tagKey(t))).slice(0, 8).map(t => (
                                    <button key={t} onClick={() => commitTag(t)} className="font-mono text-[10px] tracking-widest uppercase text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] transition-colors">#{t}</button>
                                  ))}
                                </div>
@@ -1570,6 +1701,31 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
           </div>
         )}
       </AnimatePresence>, document.body)}
+
+      {/* 🍂 关闭编辑器的落定通知：8 秒内可撤销，portal 到 body 保证切视图时依然浮在最上层 */}
+      {createPortal(
+        <AnimatePresence>
+          {undoNotice && (
+            <motion.div
+              key="undo-toast"
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.96 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-4 md:right-8 z-[220] flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/85 dark:bg-[#0E1424]/90 backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-lg"
+            >
+              <span className="font-serif text-sm text-slate-600 dark:text-slate-200 max-w-[240px] truncate">
+                {undoNotice.kind === 'update'
+                  ? <>已收起 · <span className="italic">{undoNotice.title || 'Untitled'}</span> 的修改已保存</>
+                  : <>🌰 已落为草稿 · <span className="italic">{undoNotice.title || 'Untitled'}</span></>}
+              </span>
+              <button onClick={handleUndo} className="shrink-0 font-mono text-[10px] tracking-widest uppercase text-[#39C5BB] hover:text-[#2da098] underline decoration-dotted transition-colors">撤销</button>
+              <button onClick={() => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); setUndoNotice(null); }} aria-label="知道了" className="shrink-0 text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors text-xs">✕</button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* 🖼️ 图片灯箱：监听正文图片点击，全屏放大 */}
       <Lightbox />

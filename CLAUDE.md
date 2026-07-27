@@ -16,7 +16,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - [useGarden.ts](src/hooks/useGarden.ts) — 博客文章。Supabase `garden_posts` 表为权威源 + localStorage(`oasis_garden_posts`)缓存兜底;实时订阅表变更;云端失败静默回落本地。API:`{ posts, plantSeed, updateSeed, uprootSeed }`(均支持可选 `series` 参数)。BlogPost 含 `series?`(合集名);合集内序号不存库,按 createdAt 在合集内推导(OasisGallery 的 `chapterOf`)。
 - [useCategories.tsx](src/hooks/useCategories.tsx) — 自定义分类,`garden_categories` 表,同样 localStorage 兜底。
 - [useAuth.ts](src/hooks/useAuth.ts) — Supabase Auth;`isAdmin` = 有 session。getSession 有 3s 超时兜底(受限浏览器 navigator.locks 会卡死)。
-- [useSoundscape.ts](src/hooks/useSoundscape.ts)(495 行) — 音乐核心:内嵌 83 首曲库 `PLAYLIST`(Yorushika/Atarayo/Miku,含歌词与情绪色);全局单例 `<audio>`;`resolveAudioUrl()` 在设置了 `VITE_AUDIO_BASE` 时把 `/audio/...flac` 改写为 R2 上的 `.m4a`,否则回退 `public/audio/` 原始文件(本地开发)。
+- [useSoundscape.ts](src/hooks/useSoundscape.ts)(495 行) — 音乐核心:内嵌 82 首曲库 `PLAYLIST`(Yorushika/Atarayo/Miku,含歌词与情绪色);全局单例 `<audio>`;`resolveAudioUrl()` 在设置了 `VITE_AUDIO_BASE` 时把 `/audio/...flac` 改写为 R2 上的 `.m4a`,否则回退 `public/audio/` 原始文件(本地开发)。
 - [useAutoTheme.ts](src/hooks/useAutoTheme.ts) — auto/light/dark 三态,auto 按时间;dark 通过 `document.documentElement.classList` 切换。
 - useDiary / usePostResonance — 日记回声与文章共鸣(点赞类)。
 
@@ -31,7 +31,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/garden_artworks.sql](supabase/garden_artworks.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
 
 ## 音频流程(详见 docs/audio-hosting.md)
-`public/audio/` 存 flac 源文件(不部署) → `scripts/transcode-audio.sh` 转 AAC 256k 到 `dist-audio/`(gitignored) → rclone 上传 R2 → 线上设 `VITE_AUDIO_BASE`。
+加歌用 `npm run song -- <文件|文件夹>`([scripts/post-song.mjs](scripts/post-song.mjs)):归档到 `public/audio/`(不部署) → 转 AAC 256k 到 `dist-audio/`(gitignored) → rclone 传 `oasis-r2:oasis-audio` → curl 校验 `audio.boblee.dev` 可访问 → 打印 PLAYLIST 代码行(`color`/`lyric` **故意留空**手填)。批量重转用 `scripts/transcode-audio.sh`;线上设 `VITE_AUDIO_BASE`。脚本总览见 [scripts/README.md](scripts/README.md)。
 
 ## 注意事项
 - 移动端性能敏感:噪点层 `hidden md:block`、触屏走轻量涟漪(pointer: coarse)、动画只用 opacity/transform;改动画时保持合成器友好并尊重 `prefers-reduced-motion`。
