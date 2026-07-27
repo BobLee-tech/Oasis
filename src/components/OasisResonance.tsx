@@ -1,70 +1,11 @@
 // src/components/OasisResonance.tsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
-import { useSoundscape, getPlaybackTime, getSpectrum } from '../hooks/useSoundscape';
+import { motion, AnimatePresence, LayoutGroup, useIsPresent } from 'framer-motion';
+import { useSoundscape, getEnergy, getPlaybackTime } from '../hooks/useSoundscape';
 import type { MusicCategory, Track } from '../types/music';
+import { useTicker } from '../lib/ticker';
 import { LyricPanel } from './resonance/LyricPanel';
-
-// 🌊 实时声波条：直接订阅 Web Audio 频谱，与正在播放的音乐律动同步。
-// 独立成组件，把每帧的高频刷新隔离在这里，避免整个面板 60fps 重渲染。
-const LiveSpectrum: React.FC<{ color: string; isPlaying: boolean; bars?: number; active?: boolean }> = ({ color, isPlaying, bars = 11, active = true }) => {
-  const barsRef = useRef<HTMLDivElement>(null);
-  const playingRef = useRef(isPlaying);
-  useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
-
-  // rAF 常驻：播放时读取真实频谱，暂停时 getSpectrum 自然返回 0，
-  // 声波借 CSS 过渡柔和落回静息线，而非瞬间归零。
-  // 对称布局：低频置于正中央、向两侧镜像生长，能量「从中间开始」而非自左铺开。
-  // ⚡ 直接用 ref 写 DOM 样式：每帧 setState 会让 React 重渲染整排声条，移动端掉帧明显。
-  useEffect(() => {
-    if (!active) return; // 视图非激活（含切换退场期间）时停转，避免高频刷新争用主线程
-    let raf = 0;
-    const half = Math.ceil(bars / 2);
-    const center = (bars - 1) / 2;
-    const tick = () => {
-      const container = barsRef.current;
-      if (container) {
-        const spec = getSpectrum(half);            // 低→高
-        const playing = playingRef.current;
-        const children = container.children;
-        for (let i = 0; i < children.length; i++) {
-          const d = Math.round(Math.abs(i - center)); // 到中心的距离 → 频段（中心=低频）
-          const lv = spec[Math.min(half - 1, d)];
-          const e = Math.pow(lv, 0.72); // 更大的动态范围，弱信号也清晰可辨
-          const el = children[i] as HTMLElement;
-          el.style.height = `${3 + e * 97}%`;
-          el.style.opacity = `${playing ? 0.22 + e * 0.78 : 0.16}`;
-          el.style.boxShadow = e > 0.55 ? `0 0 ${5 + e * 8}px ${color}` : 'none';
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [bars, active, color]);
-
-  // 镜像波形：声条以中线为基准上下对称生长，比单边触底更具音乐性与美感
-  return (
-    <div className="relative flex items-center justify-center h-16 w-full">
-      {/* 静息中线，暂停时声条柔和落回这条线 */}
-      <span className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-current to-transparent opacity-10 pointer-events-none" style={{ color }} />
-      <div ref={barsRef} className="flex items-center justify-center gap-[2px] h-full w-full">
-        {Array.from({ length: bars }, (_, i) => (
-          <span
-            key={i}
-            className="w-[2px] rounded-full flex-shrink-0"
-            style={{
-              height: '3%',
-              backgroundColor: color,
-              opacity: 0.16,
-              transition: 'height 90ms cubic-bezier(0.22,0.61,0.36,1), opacity 200ms linear, box-shadow 200ms linear',
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
+import { StageMeter } from './resonance/StageMeter';
 
 // 💿 唱片光晕：染当前曲目情绪色。播放时随频谱节拍律动（鼓点点亮、缓落呼吸），
 //    暂停时丝滑淡出、重新播放时丝滑淡入——常驻 rAF + presence 包络做无缝渐变，
@@ -74,40 +15,18 @@ const DiscHalo: React.FC<{ color: string; isPlaying: boolean; active?: boolean }
   const playingRef = React.useRef(isPlaying);
   useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
 
-  useEffect(() => {
-    if (!active) return; // 非激活时停转：避免每帧重栅格化 blur-3xl 大模糊层
-    let raf = 0;
-    let fast = 0;       // 快包络：锐利捕捉鼓点/瞬态，毫秒级起跳
-    let slow = 0;       // 慢包络：沉稳的呼吸底色
-    let presence = 0;   // 播放存在度 0→1，驱动丝滑淡入淡出
-    const tick = () => {
-      const el = ref.current;
-      if (el) {
-        const playing = playingRef.current;
-        presence += ((playing ? 1 : 0) - presence) * 0.05; // 柔和淡入淡出（约数百毫秒）
-        let beat = 0;
-        if (playing) {
-          // 高分辨率取谱，低频加权——鼓点的力度被更细腻地拾取
-          const spec = getSpectrum(32);
-          let bass = 0, mid = 0;
-          for (let i = 0; i < 6; i++) bass += spec[i];
-          for (let i = 6; i < 18; i++) mid += spec[i];
-          bass /= 6; mid /= 12;
-          const energy = spec.reduce((a, b) => a + b, 0) / spec.length;
-          beat = Math.max(bass * 1.15, mid * 0.85, energy);
-        }
-        // 双包络：快包络抓节奏的「点」，慢包络铺律动的「线」，叠加后既灵动又不闪烁
-        fast += (beat - fast) * (beat > fast ? 0.55 : 0.16);
-        slow += (beat - slow) * (beat > slow ? 0.22 : 0.05);
-        const level = slow * 0.62 + fast * 0.5;
-        el.style.opacity = `${presence * (0.15 + level * 0.62)}`;
-        el.style.transform = `scale(${1 + level * 0.16 * presence})`;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active]);
+  const presenceRef = useRef(0);
+  useTicker(() => {
+    const el = ref.current;
+    if (!el) return;
+    const presence = presenceRef.current +
+      ((playingRef.current ? 1 : 0) - presenceRef.current) * 0.05;
+    presenceRef.current = presence;
+    const signal = getEnergy();
+    const level = signal.low * 0.62 + signal.beat * 0.5;
+    el.style.opacity = `${presence * (0.15 + level * 0.62)}`;
+    el.style.transform = `scale(${1 + level * 0.16 * presence})`;
+  }, active);
 
   return (
     <div
@@ -123,34 +42,17 @@ const DiscHalo: React.FC<{ color: string; isPlaying: boolean; active?: boolean }
 const AmbientGlow: React.FC<{ color: string; isPlaying: boolean; active?: boolean }> = ({ color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!active) return; // 非激活时停转：blur-[100px] 巨型模糊层每帧变换极昂贵，切换时尤甚
-    let raf = 0;
-    let smooth = 0;
-    const tick = () => {
-      const el = ref.current;
-      if (el) {
-        if (isPlaying) {
-          const spec = getSpectrum(24);
-          // 偏重低频做「节拍包络」：鼓点一来迅速点亮，再缓缓回落，呼吸跟着节奏走
-          const bass = (spec[0] + spec[1] + spec[2] + spec[3]) / 4;
-          const energy = spec.reduce((a, b) => a + b, 0) / spec.length;
-          const beat = Math.max(bass, energy);
-          const rate = beat > smooth ? 0.4 : 0.05; // 快起慢落
-          smooth += (beat - smooth) * rate;
-          el.style.transform = `translate(-50%, -50%) scale(${1 + smooth * 0.24})`;
-          el.style.opacity = `${0.08 + smooth * 0.55}`;
-        } else {
-          smooth += (0 - smooth) * 0.04;
-          el.style.transform = `translate(-50%, -50%) scale(${1 + smooth * 0.24})`;
-          el.style.opacity = `${0.05 + smooth * 0.3}`;
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [isPlaying, active]);
+  const smoothRef = useRef(0);
+  useTicker(() => {
+    const el = ref.current;
+    if (!el) return;
+    const target = isPlaying ? Math.max(getEnergy().low, getEnergy().mid * 0.8) : 0;
+    const rate = target > smoothRef.current ? 0.4 : 0.05;
+    smoothRef.current += (target - smoothRef.current) * rate;
+    el.style.transform =
+      `translate(-50%, -50%) scale(${1 + smoothRef.current * 0.24})`;
+    el.style.opacity = `${isPlaying ? 0.08 + smoothRef.current * 0.55 : 0.05}`;
+  }, active);
 
   return (
     <div
@@ -168,26 +70,17 @@ const alphaHex = (a: number) => Math.round(Math.max(0, Math.min(1, a)) * 255).to
 const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean; active?: boolean }> = ({ title, color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => {
-    if (!active) return; // 非激活时停转
-    let raf = 0;
-    let smooth = 0;
-    const tick = () => {
-      const el = ref.current;
-      if (el) {
-        const spec = isPlaying ? getSpectrum(16) : [];
-        const energy = spec.length ? spec.reduce((a, b) => a + b, 0) / spec.length : 0;
-        smooth += (energy - smooth) * 0.14;
-        const glow = isPlaying ? 0.18 + smooth * 0.55 : 0;
-        el.style.textShadow = glow > 0.01
-          ? `0 0 ${10 + smooth * 38}px ${color}${alphaHex(glow)}`
-          : 'none';
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [color, isPlaying, active]);
+  const smoothRef = useRef(0);
+  useTicker(() => {
+    const el = ref.current;
+    if (!el) return;
+    const target = isPlaying ? getEnergy().mid : 0;
+    smoothRef.current += (target - smoothRef.current) * 0.14;
+    const glow = isPlaying ? 0.18 + smoothRef.current * 0.55 : 0;
+    el.style.textShadow = glow > 0.01
+      ? `0 0 ${10 + smoothRef.current * 38}px ${color}${alphaHex(glow)}`
+      : 'none';
+  }, active);
 
   return (
     <h2
@@ -269,22 +162,12 @@ export const OasisResonance: React.FC = () => {
   const spin = useRef({ angle: 0, vel: 0 });        // 当前角度(deg) 与角速度(deg/s)
   const targetVel = useRef(0);                       // 目标角速度：播放 20deg/s(≈18s 一圈)，暂停 0
   useEffect(() => { targetVel.current = isPlaying ? 20 : 0; }, [isPlaying]);
-  useEffect(() => {
-    if (!active) return; // 非激活时停转盘
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      const s = spin.current;
-      // 指数趋近：时间常数 ≈1.4s，启转与滑停都舒缓自然
-      s.vel += (targetVel.current - s.vel) * (1 - Math.exp(-dt / 1.4));
-      s.angle = (s.angle + s.vel * dt) % 360;
-      if (discRef.current) discRef.current.style.transform = `rotate(${s.angle}deg)`;
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active]);
+  useTicker((_now, dt) => {
+    const state = spin.current;
+    state.vel += (targetVel.current - state.vel) * (1 - Math.exp(-dt / 1.4));
+    state.angle = (state.angle + state.vel * dt) % 360;
+    if (discRef.current) discRef.current.style.transform = `rotate(${state.angle}deg)`;
+  }, active);
 
   const modeDisplay = useMemo(() => {
     if (playMode === 'loop') return { icon: Icons.loop, text: 'LOOP' };
@@ -380,7 +263,7 @@ export const OasisResonance: React.FC = () => {
 
             {/* 正在共鸣：声波 → 歌名 → 艺术家 */}
             <div className="w-full flex flex-col items-center text-center px-2 min-h-0">
-              <div className="w-full max-w-[280px] mt-5"><LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={40} active={active} /></div>
+              <div className="w-full max-w-[280px] mt-5"><StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={40} active={active} /></div>
               <AnimatePresence mode="wait">
                 <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-3">
                   <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
@@ -513,6 +396,7 @@ export const OasisResonance: React.FC = () => {
       </div>
 
       {/* ✨ 核心排版：左侧唱机（7/12，主角）/ 右侧选碟台（5/12），整屏锁定、底部留 Dock 安全区 */}
+      <LayoutGroup id="resonance-stage">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-14 lg:gap-x-20 xl:gap-x-28 w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
 
         {/* ================= 左侧 (7/12)：拟真转盘唱机（主角） ================= */}
@@ -617,6 +501,15 @@ export const OasisResonance: React.FC = () => {
           {/* ✨ 播放控制台：进度 + 走带，收束于唱机正下方 */}
           <div className="w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] mt-10 lg:mt-12 relative z-20 flex flex-col gap-6">
 
+            {desktopPanel === 'lyrics' && (
+              <motion.div
+                layoutId="stage-meter"
+                transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              >
+                <StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={44} active={active} compact />
+              </motion.div>
+            )}
+
             {/* 进度条 */}
             <div className="flex items-center gap-4 px-2">
               <span className="font-mono text-[10px] tabular-nums text-slate-500 dark:text-slate-400 w-9 text-right transition-colors duration-[1500ms]">
@@ -710,24 +603,30 @@ export const OasisResonance: React.FC = () => {
         {/* ================= 右侧 (5/12)：曲目信息（居中） + 选碟台 ================= */}
         <div className="col-span-1 lg:col-span-5 flex flex-col items-center text-center w-full h-full min-h-0 relative z-20">
 
-          {/* 🎶 正在共鸣 · 居中置于歌单上方中央，声波 → 歌名 → 艺术家 → 歌词 自上而下 */}
-          <div className="w-full max-w-[480px] flex flex-col items-center">
-
-            {/* 状态标签：左右对称细线，更具仪式感 */}
-            <div className="flex items-center gap-3 w-full max-w-[280px] mb-3">
-              <span className="h-px flex-1 bg-gradient-to-l from-slate-300/50 dark:from-white/10 to-transparent" />
-              <span className="font-mono text-[8px] tracking-[0.45em] uppercase text-slate-400/80 dark:text-slate-500 whitespace-nowrap select-none">
-                {isPlaying ? 'Now Resonating' : 'Paused'}
-              </span>
-              <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
-            </div>
-
-            <LiveSpectrum color={currentTrack.color} isPlaying={isPlaying} bars={72} active={active} />
+          {/* 选碟时展示封套式曲目信息；进歌词后它们迁入无框词场。 */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {desktopPanel === 'crate' && (
+            <motion.div
+              key="track-rubric"
+              className="w-full max-w-[480px] flex flex-col items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                layoutId="stage-meter"
+                className="w-full"
+                transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              >
+                <StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={72} active={active} />
+              </motion.div>
 
             <AnimatePresence mode="wait">
               <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-4">
 
-                <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
+                <motion.div layoutId="track-title" className="w-full" transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
+                  <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
+                </motion.div>
 
                 <div className="flex items-center justify-center gap-3 mt-5">
                   <motion.span
@@ -741,8 +640,9 @@ export const OasisResonance: React.FC = () => {
                   </p>
                 </div>
 
-                {desktopPanel === 'crate' && currentTrack.excerpt && (
+                {currentTrack.excerpt && (
                   <motion.p
+                    layoutId="track-excerpt"
                     animate={{ opacity: isPlaying ? 1 : 0.55 }} transition={{ duration: 1.5, ease: 'easeOut' }}
                     className="mt-7 max-w-[420px] font-serif italic text-slate-600 dark:text-slate-300 tracking-wider text-base md:text-lg leading-loose transition-colors duration-[1500ms]"
                   >
@@ -753,7 +653,9 @@ export const OasisResonance: React.FC = () => {
                 )}
               </motion.div>
             </AnimatePresence>
-          </div>
+            </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 歌词 / 选碟：同一舞台的两种观看距离。 */}
           <div className="shrink-0 inline-flex mt-7 mb-4 p-1 rounded-full bg-white/40 dark:bg-white/[0.035] border border-white/55 dark:border-white/[0.08] shadow-sm">
@@ -778,15 +680,15 @@ export const OasisResonance: React.FC = () => {
             ))}
           </div>
 
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence mode="popLayout" initial={false}>
             {desktopPanel === 'lyrics' ? (
               <motion.div
                 key="lyrics"
-                className="w-full max-w-[520px] mx-auto flex-1 min-h-0"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                className="w-full max-w-[540px] mx-auto flex-1 min-h-0"
+                initial={{ opacity: 0, scaleY: 0.98 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.28, delay: 0.08 }}
               >
                 <LyricPanel
                   track={currentTrack}
@@ -921,6 +823,7 @@ export const OasisResonance: React.FC = () => {
 
         </div>
       </div>
+      </LayoutGroup>
     </motion.div>
   );
 };

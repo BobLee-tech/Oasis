@@ -244,6 +244,18 @@ let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let freqData: Uint8Array<ArrayBuffer> | null = null;
 
+export interface Energy {
+  low: number;
+  mid: number;
+  high: number;
+  beat: number;
+}
+
+const energy: Energy = { low: 0, mid: 0, high: 0, beat: 0 };
+let fastEnvelope = 0;
+let slowEnvelope = 0;
+let cachedSpectrum: number[] = new Array(45).fill(0);
+
 const ensureAnalyser = () => {
   if (analyser) {
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -264,17 +276,65 @@ const ensureAnalyser = () => {
   }
 };
 
-// 取 N 段归一化频谱能量（0~1），无音频时回退到柔和的伪波形
-export const getSpectrum = (bars: number): number[] => {
-  if (!analyser || !freqData || !globalIsPlaying) return new Array(bars).fill(0);
+const meanBins = (from: number, to: number) => {
+  if (!freqData) return 0;
+  let sum = 0;
+  const end = Math.min(to, freqData.length);
+  for (let index = from; index < end; index += 1) sum += freqData[index] ?? 0;
+  return end > from ? sum / (end - from) / 255 : 0;
+};
+
+/**
+ * 全局 ticker 每个视觉帧只调用一次。这里保留一份细分频谱供 VU 使用，
+ * 同时生成一致的 low/mid/high/beat 能量口径。
+ */
+export const sampleEnergy = () => {
+  if (!analyser || !freqData || !globalIsPlaying) {
+    fastEnvelope *= 0.78;
+    slowEnvelope *= 0.94;
+    energy.low *= 0.86;
+    energy.mid *= 0.86;
+    energy.high *= 0.86;
+    energy.beat *= 0.72;
+    for (let index = 0; index < cachedSpectrum.length; index += 1) {
+      cachedSpectrum[index] *= 0.82;
+    }
+    return;
+  }
+
   analyser.getByteFrequencyData(freqData);
-  const usable = Math.floor(freqData.length * 0.7); // 丢弃最高频的噪声段
+  const low = Math.min(1, meanBins(0, 5) * 1.35);
+  const mid = Math.min(1, meanBins(5, 20) * 1.45);
+  const high = Math.min(1, meanBins(20, 45) * 1.7);
+  const transient = Math.max(low, mid * 0.9);
+
+  fastEnvelope += (transient - fastEnvelope) * (transient > fastEnvelope ? 0.48 : 0.18);
+  slowEnvelope += (transient - slowEnvelope) * 0.08;
+  energy.low += (low - energy.low) * 0.12;
+  energy.mid += (mid - energy.mid) * 0.12;
+  energy.high += (high - energy.high) * 0.12;
+  energy.beat = Math.max(0, Math.min(1, (fastEnvelope - slowEnvelope) * 3.2));
+  const cachedBins = Math.min(45, freqData.length);
+  if (cachedSpectrum.length !== cachedBins) cachedSpectrum = new Array(cachedBins).fill(0);
+  for (let index = 0; index < cachedBins; index += 1) {
+    cachedSpectrum[index] = Math.min(1, (freqData[index] ?? 0) / 255 * 1.4);
+  }
+};
+
+export const getEnergy = (): Readonly<Energy> => energy;
+
+// 从本帧缓存重采样，任意数量的 VU 都不会再次读取 AnalyserNode。
+export const getSpectrum = (bars: number): number[] => {
+  if (bars <= 0) return [];
+  if (!globalIsPlaying && cachedSpectrum.every(value => value < 0.001)) return new Array(bars).fill(0);
   const out: number[] = [];
-  const bucket = Math.max(1, Math.floor(usable / bars));
+  const bucket = cachedSpectrum.length / bars;
   for (let i = 0; i < bars; i++) {
+    const from = Math.floor(i * bucket);
+    const to = Math.max(from + 1, Math.floor((i + 1) * bucket));
     let sum = 0;
-    for (let j = 0; j < bucket; j++) sum += freqData[i * bucket + j] ?? 0;
-    out.push(Math.min(1, (sum / bucket / 255) * 1.4));
+    for (let j = from; j < to; j += 1) sum += cachedSpectrum[j] ?? 0;
+    out.push(sum / (to - from));
   }
   return out;
 };

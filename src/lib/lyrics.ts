@@ -157,7 +157,7 @@ const translationStatus = (value: unknown): LyricTranslationStatus =>
 
 /** 网络 JSON 的运行时边界：只接受有限、单调、纯文本的数据。 */
 export const validateLyricsDocument = (value: unknown, expectedTrackId: string): LyricsDocument => {
-  if (!isRecord(value) || value.version !== 1 || value.trackId !== expectedTrackId) {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || value.trackId !== expectedTrackId) {
     throw new Error('歌词文件与当前曲目不匹配');
   }
   if (!Array.isArray(value.lines) || value.lines.length === 0 || value.lines.length > MAX_LINES) {
@@ -181,7 +181,37 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
       !ja
     ) throw new Error(`歌词第 ${index + 1} 行内容异常`);
     previousStart = startMs;
-    return { startMs, endMs, ja, ...(zh ? { zh } : {}) };
+    const words = Array.isArray(raw.words)
+      ? raw.words.map((word, wordIndex) => {
+          if (!isRecord(word)) throw new Error(`歌词第 ${index + 1} 行第 ${wordIndex + 1} 词格式异常`);
+          const wordStart = Math.round(Number(word.startMs));
+          const wordEnd = Math.round(Number(word.endMs));
+          const text = cleanText(String(word.text ?? ''));
+          if (
+            !text ||
+            !Number.isFinite(wordStart) ||
+            !Number.isFinite(wordEnd) ||
+            wordStart < startMs ||
+            wordEnd <= wordStart ||
+            wordEnd > endMs
+          ) throw new Error(`歌词第 ${index + 1} 行逐词时间异常`);
+          return { text, startMs: wordStart, endMs: wordEnd };
+        })
+      : undefined;
+    const role =
+      raw.role === 'backing' || raw.role === 'duet-left' || raw.role === 'duet-right'
+        ? raw.role
+        : raw.role === 'lead'
+          ? 'lead'
+          : undefined;
+    return {
+      startMs,
+      endMs,
+      ja,
+      ...(zh ? { zh } : {}),
+      ...(words?.length ? { words } : {}),
+      ...(role ? { role } : {}),
+    };
   });
 
   const source = isRecord(value.source) ? value.source : {};
@@ -189,7 +219,7 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
   const offset = Math.round(Number(value.offsetMs ?? 0));
 
   return {
-    version: 1,
+    version: value.version,
     trackId: expectedTrackId,
     title: cleanText(String(value.title ?? '')),
     artist: cleanText(String(value.artist ?? '')),
