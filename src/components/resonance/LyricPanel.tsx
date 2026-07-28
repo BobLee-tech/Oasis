@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLyrics } from '../../hooks/useLyrics';
-import type { Track } from '../../types/music';
+import type { LyricLanguage, Track } from '../../types/music';
 import { LyricField } from './LyricField';
-import type { LyricLanguage } from './LyricField';
 
 interface LyricPanelProps {
   track: Track;
@@ -18,7 +17,8 @@ interface LyricPanelProps {
 
 const preference = (): LyricLanguage => {
   if (typeof window === 'undefined') return 'bilingual';
-  return window.localStorage.getItem('oasis_lyric_language') === 'ja' ? 'ja' : 'bilingual';
+  const stored = window.localStorage.getItem('oasis_lyric_language');
+  return stored === 'ja' || stored === 'zh' ? stored : 'bilingual';
 };
 
 const LyricLoading: React.FC<{ color: string }> = ({ color }) => (
@@ -48,6 +48,31 @@ const LyricEmpty: React.FC<{ track: Track; error?: string | null }> = ({ track, 
     {track.excerpt && (
       <p className="mt-5 max-w-sm font-serif text-base leading-loose tracking-wide text-slate-600/80 dark:text-slate-300/75">
         “{track.excerpt}”
+      </p>
+    )}
+  </div>
+);
+
+const InstrumentalEmpty: React.FC<{ track: Track; color: string }> = ({ track, color }) => (
+  <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+    <div
+      className="instrumental-orbit relative h-24 w-24 rounded-full"
+      style={{ '--accent': color } as React.CSSProperties}
+      aria-hidden="true"
+    >
+      <span className="absolute inset-[18%] rounded-full border border-current" />
+      <span className="absolute inset-[36%] rounded-full border border-current" />
+      <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+    </div>
+    <p className="mt-7 font-ja text-lg tracking-[0.16em] text-slate-600 dark:text-slate-300">
+      纯器乐
+    </p>
+    <p className="mt-2 font-zh text-sm tracking-[0.12em] text-slate-400 dark:text-slate-500">
+      此曲无词，且听水纹
+    </p>
+    {track.excerpt && (
+      <p className="mt-6 max-w-sm font-zh text-sm leading-loose text-slate-500/75 dark:text-slate-400/70">
+        {track.excerpt.replace(/^---\s*|\s*---$/g, '')}
       </p>
     )}
   </div>
@@ -104,8 +129,9 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
                   aria-label="歌词语言"
                 >
                   {([
-                    ['bilingual', '中 · 日'],
                     ['ja', '日'],
+                    ['bilingual', '日中'],
+                    ['zh', '中'],
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
@@ -135,8 +161,18 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
               seek={seek}
               getPlaybackTime={getPlaybackTime}
               compact={compact}
-              language={language}
+              language={lyrics.hasTranslation ? language : 'ja'}
             />
+          </motion.div>
+        ) : lyrics.status === 'instrumental' ? (
+          <motion.div
+            key="instrumental"
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <InstrumentalEmpty track={track} color={color} />
           </motion.div>
         ) : (
           <motion.div

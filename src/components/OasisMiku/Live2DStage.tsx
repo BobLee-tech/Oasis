@@ -80,6 +80,9 @@ export interface MikuStageHandle {
    *  具体「最前那个 drawable → 算哪个身体分区」的语义由调用方（useMikuBrain）决定，换模型命名对不上
    *  也只是返回空数组，不会报错。 */
   hitTestDrawables: (clientX: number, clientY: number) => string[];
+  /** 把当前画面截一张头像：裁切区域用「舞台尺寸的分数」表达（不是像素），换模型/换挂坠尺寸都不必
+   *  跟着改调用方的数字。失败（画布还没起来）就回 null，调用方原样保留上一张或占位图形即可。 */
+  captureFace: (opts: { size: number; topFrac: number; sideFrac: number; offsetXFrac?: number }) => string | null;
 }
 
 interface Live2DStageProps {
@@ -102,6 +105,12 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
   // 在 afterMotionUpdate 钩子里统一发生（见下方 effect），这里只负责记账，不直接碰 coreModel
   const offsetsRef = useRef(new Map<string, { value: number; mode: 'add' | 'override'; floor: number }>());
   const yieldRef = useRef(1);
+  // captureFace 要用到 PIXI.Rectangle 和当前舞台的像素尺寸；用 ref 存而不是直接闭包 props，
+  // 是因为 useImperativeHandle 的 deps 是 []（见下方），闭包只会捕获首次渲染的 width/height，
+  // 尺寸变化（触屏/桌面切换断点）时读它俩会读到过期值——ref 每次渲染都重新赋值，不存在这个问题
+  const pixiRef = useRef<typeof import('pixi.js') | null>(null);
+  const sizeRef = useRef({ width, height });
+  sizeRef.current = { width, height };
 
   useImperativeHandle(ref, () => ({
     focus: (clientX, clientY, instant) => {
@@ -149,6 +158,29 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       hits.sort((a, b) => b.renderOrder - a.renderOrder);
       return hits.map((h) => h.id);
     },
+    captureFace: ({ size, topFrac, sideFrac, offsetXFrac = 0 }) => {
+      const app = appRef.current;
+      const PIXI = pixiRef.current;
+      if (!app || !PIXI) return null;
+      const { width: w, height: h } = sizeRef.current;
+      const side = h * sideFrac;
+      const frame = new PIXI.Rectangle(w / 2 - side / 2 + w * offsetXFrac, h * topFrac, side, side);
+      let src: HTMLCanvasElement;
+      try {
+        src = app.renderer.plugins.extract.canvas(app.stage, frame) as HTMLCanvasElement;
+      } catch {
+        return null;
+      }
+      const out = document.createElement('canvas');
+      out.width = size;
+      out.height = size;
+      const ctx = out.getContext('2d');
+      if (!ctx) return null;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(src, 0, 0, size, size);
+      return out.toDataURL('image/png');
+    },
   }), []);
 
   useEffect(() => {
@@ -192,6 +224,7 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       try {
         const { PIXI, Live2DModel: ModelCtor, MotionPreloadStrategy } = await loadLive2DRuntime();
         if (cancelled || !containerRef.current) return;
+        pixiRef.current = PIXI;
 
         app = new PIXI.Application({
           width,

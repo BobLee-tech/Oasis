@@ -13,12 +13,16 @@
     "art": "node scripts/post-artwork.mjs",
     "song": "node scripts/post-song.mjs",
     "lyric": "node scripts/post-lyrics.mjs",
+    "lyric:identity": "node scripts/build-track-identity.mjs",
+    "lyric:translate": "node scripts/translate-lyrics.mjs",
+    "lyric:review": "node scripts/review-lyrics.mjs",
     "test": "vitest run",
     "init-tailwind": "tailwindcss init -p"
   },
   "dependencies": {
     "@fontsource/eb-garamond": "^5.2.7",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/klee-one": "^5.3.0",
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.3.0",

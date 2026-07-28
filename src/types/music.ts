@@ -21,6 +21,7 @@ export interface Track {
 }
 
 export type LyricTranslationStatus = 'none' | 'machine' | 'reviewed';
+export type LyricLanguage = 'ja' | 'bilingual' | 'zh';
 
 export interface LyricWord {
   text: string;
@@ -57,10 +58,19 @@ export interface LyricsDocument {
   lines: LyricLine[];
 }
 
-export interface LyricsManifestEntry {
+export interface LyricsManifestLyricsEntry {
+  kind: 'lyrics';
   key: string;
   translationStatus: LyricTranslationStatus;
 }
+
+export interface LyricsManifestInstrumentalEntry {
+  kind: 'instrumental';
+}
+
+export type LyricsManifestEntry =
+  | LyricsManifestLyricsEntry
+  | LyricsManifestInstrumentalEntry;
 
 export interface LyricsManifest {
   version: 1;

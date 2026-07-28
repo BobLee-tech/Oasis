@@ -1,6 +1,7 @@
 import React, { forwardRef, memo, useMemo } from 'react';
 import { beatsOf } from '../../lib/lyricTiming';
 import type { TimedLyricLine } from '../../lib/lyricTiming';
+import type { LyricLanguage } from '../../types/music';
 
 type LyricRowStyle = React.CSSProperties & { '--accent': string };
 type LyricBeatStyle = React.CSSProperties & { '--a': number; '--b': number };
@@ -9,7 +10,7 @@ interface LyricRowProps {
   line: TimedLyricLine;
   index: number;
   isCurrent: boolean;
-  showTranslation: boolean;
+  language: LyricLanguage;
   compact: boolean;
   color: string;
   onChoose: (index: number) => void;
@@ -25,8 +26,11 @@ const round = (value: number) => Math.round(value * 1e4) / 1e4;
  * 结构与那些真正会变的内容。
  */
 const LyricRowView = forwardRef<HTMLButtonElement, LyricRowProps>(
-  ({ line, index, isCurrent, showTranslation, compact, color, onChoose }, ref) => {
-    const beats = useMemo(() => beatsOf(line.ja), [line.ja]);
+  ({ line, index, isCurrent, language, compact, color, onChoose }, ref) => {
+    const beats = useMemo(() => beatsOf(line), [line]);
+    const showJapanese = language !== 'zh' || !line.zh;
+    const showTranslation = language === 'bilingual' && Boolean(line.zh);
+    const showChinesePrimary = language === 'zh' && Boolean(line.zh);
 
     const alignment =
       line.role === 'backing'
@@ -49,32 +53,47 @@ const LyricRowView = forwardRef<HTMLButtonElement, LyricRowProps>(
         data-breath={line.breath}
         data-lyric-index={index}
         onClick={() => onChoose(index)}
-        aria-label={`跳转到 ${(line.startMs / 1_000).toFixed(1)} 秒：${line.ja}`}
+        aria-label={`跳转到 ${(line.startMs / 1_000).toFixed(1)} 秒：${line.ja}${line.zh ? `，${line.zh}` : ''}`}
         className={`lyric-row group relative block outline-none ${alignment} ${
           compact ? 'px-2 py-3' : 'px-3 py-3.5 xl:py-4'
         }`}
         style={{ '--accent': color } as LyricRowStyle}
       >
-        <span
-          className={`lyric-ja relative inline-block max-w-full font-serif font-medium leading-[1.6] tracking-[0.075em] ${
-            compact ? 'text-[1.3rem]' : 'text-[1.42rem] xl:text-[1.68rem]'
-          }`}
-        >
-          {beats.map((beat, beatIndex) => (
-            <span
-              key={beatIndex}
-              className="lyric-beat"
-              style={{ '--a': round(beat.from), '--b': round(beat.to) } as LyricBeatStyle}
-            >
-              {beat.text}
-            </span>
-          ))}
-        </span>
+        {showJapanese && (
+          <span
+            lang="ja"
+            className={`lyric-ja relative inline-block max-w-full leading-[1.6] ${
+              compact ? 'text-[1.3rem]' : 'text-[1.42rem] xl:text-[1.68rem]'
+            }`}
+          >
+            {beats.map((beat, beatIndex) => (
+              <span
+                key={beatIndex}
+                className="lyric-beat"
+                style={{ '--a': round(beat.from), '--b': round(beat.to) } as LyricBeatStyle}
+              >
+                {beat.text}
+              </span>
+            ))}
+          </span>
+        )}
 
         {showTranslation && (
           <span
-            className={`lyric-translation mt-1.5 block font-sans leading-relaxed tracking-[0.04em] text-slate-400 dark:text-slate-500 ${
-              compact ? 'text-[11px]' : 'text-[12px] xl:text-[13px]'
+            lang="zh-Hans"
+            className={`lyric-translation mt-1.5 block ${
+              compact ? 'text-[0.78rem]' : 'text-[0.88rem] xl:text-[0.98rem]'
+            }`}
+          >
+            {line.zh}
+          </span>
+        )}
+
+        {showChinesePrimary && (
+          <span
+            lang="zh-Hans"
+            className={`lyric-zh-primary inline-block max-w-full leading-[1.7] ${
+              compact ? 'text-[1.18rem]' : 'text-[1.32rem] xl:text-[1.52rem]'
             }`}
           >
             {line.zh}

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "artistAliases": {
+    "ヨルシカ": ["Yorushika"],
+    "あたらよ": ["Atarayo"],
+    "初音ミク": ["Hatsune Miku", "Miku"]
+  },
+  "tracks": {
+    "y_19_01": { "kind": "instrumental" },
+    "y_19_05": { "kind": "instrumental" },
+    "y_19_10": { "kind": "instrumental" },
+    "y_19_13": { "kind": "instrumental" },
+    "y_19e_01": { "kind": "instrumental" },
+    "y_19e_05": { "kind": "instrumental" },
+    "y_19e_10": { "kind": "instrumental" },
+    "y_19e_13": { "kind": "instrumental" },
+    "y_20_01": { "kind": "instrumental" },
+    "y_20_05": { "kind": "instrumental" },
+    "y_20_08": { "kind": "instrumental" },
+    "y_20_12": { "kind": "instrumental" },
+    "y_20_04": { "sameLyricsAs": "y_18_03" },
+    "m_04": { "kind": "instrumental" },
+    "m_20": { "kind": "instrumental" }
+  }
+}

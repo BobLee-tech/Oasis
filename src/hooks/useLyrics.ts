@@ -3,7 +3,7 @@ import type { LyricsDocument, LyricsManifest, Track } from '../types/music';
 import { validateLyricsDocument, validateLyricsManifest } from '../lib/lyrics';
 
 type LyricsState =
-  | { status: 'idle' | 'loading' | 'unavailable'; document: null; error: null }
+  | { status: 'idle' | 'loading' | 'unavailable' | 'instrumental'; document: null; error: null }
   | { status: 'ready'; document: LyricsDocument; error: null }
   | { status: 'error'; document: null; error: string };
 
@@ -62,12 +62,19 @@ export const useLyrics = (track: Track, enabled: boolean) => {
     const load = async () => {
       try {
         const manifestRef = track.lyrics
-          ? track.lyrics
+          ? { kind: 'lyrics' as const, ...track.lyrics }
           : (await loadManifest()).tracks[track.id];
         if (!manifestRef) {
           if (!disposed) setResource({
             trackId: track.id,
             state: { status: 'unavailable', document: null, error: null },
+          });
+          return;
+        }
+        if (manifestRef.kind === 'instrumental') {
+          if (!disposed) setResource({
+            trackId: track.id,
+            state: { status: 'instrumental', document: null, error: null },
           });
           return;
         }

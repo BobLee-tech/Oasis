@@ -245,9 +245,17 @@ export const validateLyricsManifest = (value: unknown): LyricsManifest => {
   const tracks: Record<string, LyricsManifestEntry> = {};
   Object.entries(value.tracks).slice(0, 5_000).forEach(([trackId, raw]) => {
     if (!/^[a-z0-9_-]{1,80}$/i.test(trackId) || !isRecord(raw)) return;
+    if (raw.kind === 'instrumental') {
+      tracks[trackId] = { kind: 'instrumental' };
+      return;
+    }
     const key = String(raw.key ?? '');
     if (!/^[a-z0-9/_-]{1,160}\.json$/i.test(key) || key.includes('..')) return;
-    tracks[trackId] = { key, translationStatus: translationStatus(raw.translationStatus) };
+    tracks[trackId] = {
+      kind: 'lyrics',
+      key,
+      translationStatus: translationStatus(raw.translationStatus),
+    };
   });
   return {
     version: 1,

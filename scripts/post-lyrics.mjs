@@ -17,9 +17,20 @@ import { access, copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/prom
 import { constants as fsConstants, existsSync } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import {
+  buildTrackIdentities,
+  parsePlaylist,
+  readIdentityConfig,
+} from './lib/track-identity.mjs';
+import {
+  acceptableLrclibCandidate,
+  overlap,
+  rankLrclibCandidates,
+} from './lib/lyrics-match.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(PROJECT_ROOT, 'src/hooks/useSoundscape.ts');
+const IDENTITY_CONFIG_FILE = path.join(PROJECT_ROOT, 'lyrics-config/overrides.json');
 const SOURCE_DIR = path.join(PROJECT_ROOT, 'lyrics-src');
 const OUT_DIR = path.join(PROJECT_ROOT, 'dist-lyrics');
 const DEV_DIR = path.join(PROJECT_ROOT, 'public/lyrics');
@@ -28,6 +39,7 @@ const PUBLIC_BASE = 'https://audio.boblee.dev/lyrics';
 const MAX_LRC_BYTES = 2 * 1024 * 1024;
 const MAX_LINES = 2_000;
 const TIMESTAMP = /\[(\d{1,3}):([0-5]\d)(?:[.:](\d{1,3}))?\]/g;
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const run = (cmd, args) => new Promise((resolve, reject) => {
   const child = spawn(cmd, args, { stdio: ['ignore', 'inherit', 'inherit'] });
@@ -52,25 +64,6 @@ const clean = value => String(value ?? '')
   .trim()
   .slice(0, 500);
 
-const unquote = value => value.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
-
-const field = (line, key) => {
-  const match = line.match(new RegExp(`${key}: '((?:\\\\'|[^'])*)'`));
-  return match ? unquote(match[1]) : '';
-};
-
-const parsePlaylist = source => source
-  .split('\n')
-  .filter(line => line.includes("{ id: '") && line.includes("url: '/audio/"))
-  .map(line => ({
-    id: field(line, 'id'),
-    title: field(line, 'title'),
-    artist: field(line, 'artist'),
-    category: field(line, 'category'),
-    url: field(line, 'url'),
-  }))
-  .filter(track => track.id && track.title && track.url);
-
 const parseArgs = argv => {
   const options = {
     trackIds: [],
@@ -82,8 +75,9 @@ const parseArgs = argv => {
     dry: false,
     force: false,
     refresh: false,
+    debug: false,
     offsetMs: 0,
-    translationStatus: 'reviewed',
+    translationStatus: 'machine',
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -93,11 +87,13 @@ const parseArgs = argv => {
     else if (arg === '--translation') options.translation = argv[++i] ?? '';
     else if (arg === '--offset') options.offsetMs = Number(argv[++i] ?? 0);
     else if (arg === '--machine') options.translationStatus = 'machine';
+    else if (arg === '--reviewed') options.translationStatus = 'reviewed';
     else if (arg === '--fetch') options.fetch = true;
     else if (arg === '--publish') options.publish = true;
     else if (arg === '--dry') options.dry = true;
     else if (arg === '--force') options.force = true;
     else if (arg === '--refresh') options.refresh = true;
+    else if (arg === '--debug') options.debug = true;
     else throw new Error(`未知参数：${arg}`);
   }
   if (options.lrc && options.trackIds.length !== 1) throw new Error('--lrc 必须与单个 --track 一起使用');
@@ -193,64 +189,54 @@ const safeReadLrc = async filename => {
   return readFile(filename, 'utf8');
 };
 
-const normalize = value => String(value ?? '')
-  .normalize('NFKC')
-  .toLocaleLowerCase('ja')
-  .replace(/\b(?:feat|featuring|ver|version|complete|original|mix)\b/gi, '')
-  .replace(/初音ミク|hatsune miku/gi, 'miku')
-  .replace(/[^\p{L}\p{N}]+/gu, '');
-
-const overlap = (a, b) => {
-  const left = normalize(a);
-  const right = normalize(b);
-  if (!left || !right) return 0;
-  if (left === right) return 1;
-  if (left.includes(right) || right.includes(left)) return Math.min(left.length, right.length) / Math.max(left.length, right.length);
-  const leftSet = new Set([...left]);
-  const common = [...new Set([...right])].filter(char => leftSet.has(char)).length;
-  return common / Math.max(leftSet.size, new Set([...right]).size);
-};
-
-const probeDuration = async track => {
-  const local = path.join(PROJECT_ROOT, 'public', track.url.replace(/^\//, ''));
-  if (!existsSync(local)) return 0;
-  try {
-    return Number((await capture('ffprobe', [
-      '-v', 'quiet', '-show_entries', 'format=duration', '-of', 'default=nokey=1:noprint_wrappers=1', local,
-    ])).trim()) || 0;
-  } catch {
-    return 0;
+const fetchLrclib = async (track, identity, identityConfig) => {
+  const query = new URLSearchParams({ track_name: identity.lookup.title });
+  // 搜索端只给曲名，避免合集/再版专辑名把正确条目预先过滤掉；
+  // 艺人、专辑和时长均在本地候选排序中校验，其中艺人是硬门槛。
+  let response;
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetch(`https://lrclib.net/api/search?${query}`, {
+        headers: { 'User-Agent': 'Oasis personal music garden/1.0 (lyrics import)' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (response.status !== 429 && response.status < 500) break;
+      const retryAfter = Number(response.headers.get('retry-after') ?? 0);
+      await wait(Math.min(8_000, Math.max(500 * 2 ** attempt, retryAfter * 1_000)));
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await wait(500 * 2 ** attempt);
+    }
   }
-};
-
-const fetchLrclib = async (track, duration) => {
-  const query = new URLSearchParams({ track_name: track.title });
-  const response = await fetch(`https://lrclib.net/api/search?${query}`, {
-    headers: { 'User-Agent': 'Oasis personal music garden/1.0 (lyrics import)' },
-    signal: AbortSignal.timeout(15_000),
-  });
+  if (!response) throw lastError ?? new Error('LRCLIB 请求失败');
   if (!response.ok) throw new Error(`LRCLIB HTTP ${response.status}`);
   const body = await response.text();
   if (body.length > MAX_LRC_BYTES) throw new Error('LRCLIB 响应过大');
   const candidates = JSON.parse(body);
   if (!Array.isArray(candidates)) throw new Error('LRCLIB 响应格式异常');
 
-  const ranked = candidates
-    .filter(candidate => typeof candidate?.syncedLyrics === 'string' && candidate.syncedLyrics.trim())
-    .map(candidate => {
-      const titleScore = overlap(track.title, candidate.trackName);
-      const artistScore = Math.max(overlap(track.artist, candidate.artistName), overlap('初音ミク', candidate.artistName));
-      const durationScore = duration && Number(candidate.duration)
-        ? Math.max(0, 1 - Math.abs(duration - Number(candidate.duration)) / 12)
-        : 0.5;
-      return { candidate, score: titleScore * 0.68 + durationScore * 0.24 + artistScore * 0.08, titleScore };
-    })
-    .sort((a, b) => b.score - a.score);
+  const ranked = rankLrclibCandidates(candidates, identity, identityConfig);
 
   const best = ranked[0];
-  // 标题必须高度相似，综合分还要同时经得起时长/艺术家复核。
-  // 例如「愛言葉II」与「愛言葉」时长接近，只靠模糊标题会产生危险的高分错配。
-  if (!best || best.titleScore < 0.84 || best.score < 0.8) return null;
+  // 艺人是硬门槛；时长仍保持宽容，只参与排序。
+  // 这能拒绝标题/时长碰巧相同的跨艺人曲目，又不误伤不同母带。
+  if (!acceptableLrclibCandidate(best)) {
+    if ((process.env.LYRICS_DEBUG || process.argv.includes('--debug')) && best) {
+      console.log('候选未通过：', {
+        id: track.id,
+        candidate: best.candidate.trackName,
+        artist: best.candidate.artistName,
+        album: best.candidate.albumName,
+        score: best.score,
+        titleScore: best.titleScore,
+        artistScore: best.artistScore,
+        albumScore: best.albumScore,
+        durationDelta: best.durationDelta,
+      });
+    }
+    return null;
+  }
   return {
     lrc: best.candidate.syncedLyrics,
     source: {
@@ -260,6 +246,15 @@ const fetchLrclib = async (track, duration) => {
       fetchedAt: new Date().toISOString(),
     },
     score: best.score,
+    match: {
+      trackName: clean(best.candidate.trackName),
+      artistName: clean(best.candidate.artistName),
+      albumName: clean(best.candidate.albumName),
+      durationDelta: best.durationDelta,
+      titleScore: best.titleScore,
+      artistScore: best.artistScore,
+      albumScore: best.albumScore,
+    },
   };
 };
 
@@ -286,22 +281,31 @@ const loadManifest = async () => {
   }
 };
 
-const assertNoSuspiciousDuplicate = async (document, track, manifest) => {
+const assertNoSuspiciousDuplicate = async (document, track, manifest, identities) => {
   const signature = document.lines.map(line => line.ja).join('\n');
   for (const [otherId, entry] of Object.entries(manifest.tracks)) {
     if (otherId === track.id) continue;
+    if (entry.kind === 'instrumental' || !entry.key) continue;
     try {
       const other = JSON.parse(await readFile(path.join(OUT_DIR, entry.key), 'utf8'));
       const otherSignature = Array.isArray(other.lines) ? other.lines.map(line => line.ja).join('\n') : '';
+      const identity = identities.get(track.id);
+      const otherIdentity = identities.get(otherId);
+      const declaredReuse =
+        identity?.sameLyricsAs === otherId ||
+        otherIdentity?.sameLyricsAs === track.id;
       if (
         signature &&
         signature === otherSignature &&
-        overlap(track.title, other.title) < 0.65
+        overlap(track.title, other.title) < 0.65 &&
+        !declaredReuse
       ) {
-        throw new Error(`歌词正文与 ${otherId}「${other.title}」完全相同，疑似来源误标`);
+        // 不让导入顺序决定谁留下：冲突组全部从 manifest 隔离，等待人工定夺。
+        delete manifest.tracks[otherId];
+        throw new Error(`歌词正文与 ${otherId}「${other.title}」完全相同，双方已隔离等待复核`);
       }
     } catch (error) {
-      if (error instanceof Error && error.message.includes('疑似来源误标')) throw error;
+      if (error instanceof Error && error.message.includes('双方已隔离')) throw error;
       // 旧清单里的缺失/损坏项由前端边界校验处理，不阻塞当前曲目。
     }
   }
@@ -330,6 +334,9 @@ const main = async () => {
   }
 
   const playlist = parsePlaylist(await readFile(PLAYLIST_FILE, 'utf8'));
+  const identityConfig = await readIdentityConfig(IDENTITY_CONFIG_FILE);
+  const identityList = await buildTrackIdentities(PROJECT_ROOT, playlist, identityConfig);
+  const identities = new Map(identityList.map(identity => [identity.id, identity]));
   const selected = playlist.filter(track =>
     options.trackIds.includes(track.id) || (options.category && track.category === options.category));
   const missing = options.trackIds.filter(id => !selected.some(track => track.id === id));
@@ -338,13 +345,26 @@ const main = async () => {
 
   const manifest = await loadManifest();
   const generatedKeys = [];
-  const report = { ready: [], unavailable: [], skipped: [], failed: [] };
+  const report = { ready: [], instrumental: [], unavailable: [], skipped: [], failed: [] };
 
   for (const [index, track] of selected.entries()) {
     const label = `[${index + 1}/${selected.length}] ${track.id} ${track.title}`;
     try {
+      const identity = identities.get(track.id);
+      if (!identity) throw new Error('缺少音频身份信息');
+      if (identity.kind === 'instrumental') {
+        manifest.tracks[track.id] = { kind: 'instrumental' };
+        console.log(`${label} · 纯器乐`);
+        report.instrumental.push(track.id);
+        continue;
+      }
       const key = `${track.id}.json`;
-      if (!options.force && manifest.tracks[track.id] && existsSync(path.join(OUT_DIR, key))) {
+      if (
+        !options.force &&
+        manifest.tracks[track.id]?.kind !== 'instrumental' &&
+        manifest.tracks[track.id] &&
+        existsSync(path.join(OUT_DIR, key))
+      ) {
         console.log(`${label} · 已存在，跳过`);
         report.skipped.push(track.id);
         continue;
@@ -375,11 +395,15 @@ const main = async () => {
         }
         console.log(`${label} · 本地歌词`);
       } else if (options.fetch) {
-        const found = await fetchLrclib(track, await probeDuration(track));
+        const found = await fetchLrclib(track, identity, identityConfig);
         if (found) {
           originalText = found.lrc;
           source = found.source;
-          console.log(`${label} · LRCLIB 匹配 ${(found.score * 100).toFixed(0)}%`);
+          console.log(
+            `${label} · LRCLIB 匹配 ${(found.score * 100).toFixed(0)}%` +
+            ` · ${found.match.artistName || '未知艺人'}` +
+            `${found.match.durationDelta === null ? '' : ` · Δ${found.match.durationDelta.toFixed(1)}s`}`,
+          );
         }
       }
 
@@ -419,7 +443,7 @@ const main = async () => {
         source,
         lines,
       };
-      await assertNoSuspiciousDuplicate(document, track, manifest);
+      await assertNoSuspiciousDuplicate(document, track, manifest, identities);
 
       if (!options.dry) {
         await mkdir(sourceFolder, { recursive: true });
@@ -436,7 +460,7 @@ const main = async () => {
         await writeJson(path.join(DEV_DIR, key), document);
       }
 
-      manifest.tracks[track.id] = { key, translationStatus };
+      manifest.tracks[track.id] = { kind: 'lyrics', key, translationStatus };
       generatedKeys.push(key);
       report.ready.push(track.id);
     } catch (error) {
@@ -455,13 +479,20 @@ const main = async () => {
   }
 
   if (options.publish && !options.dry && Object.keys(manifest.tracks).length) {
-    const publishedKeys = [...new Set(Object.values(manifest.tracks).map(entry => entry.key))];
+    const publishedKeys = [...new Set(
+      Object.values(manifest.tracks)
+        .map(entry => entry.key)
+        .filter(Boolean),
+    )];
     await publishAndVerify(publishedKeys);
     console.log(`\n☁️  已发布并校验 ${publishedKeys.length} 首歌词`);
   }
 
   console.log('\n' + '─'.repeat(64));
-  console.log(`可用 ${report.ready.length} · 已有 ${report.skipped.length} · 暂缺 ${report.unavailable.length} · 失败 ${report.failed.length}`);
+  console.log(
+    `可用 ${report.ready.length} · 已有 ${report.skipped.length} · 纯器乐 ${report.instrumental.length}` +
+    ` · 暂缺 ${report.unavailable.length} · 失败 ${report.failed.length}`,
+  );
   if (report.unavailable.length) console.log(`暂缺：${report.unavailable.join(', ')}`);
   if (report.failed.length) report.failed.forEach(item => console.log(`失败：${item.id} ${item.message}`));
   if (options.dry) console.log('演练模式：没有写文件或上传。');

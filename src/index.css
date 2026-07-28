@@ -9,6 +9,8 @@
    · oasis-teal / oasis-sakura 生成 text-/bg-/border- 等工具类，作为界面 chrome 层的一主一辅 */
 @theme {
     --font-serif: "EB Garamond", "LXGW WenKai Screen", ui-serif, Georgia, serif;
+    --font-ja: "Klee One", "Yu Kyokasho", "Hiragino Mincho ProN", serif;
+    --font-zh: "LXGW WenKai Screen", "Songti SC", ui-serif, serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     --color-oasis-teal: #39C5BB;
     --color-oasis-sakura: #FFB7C5;
@@ -166,6 +168,23 @@ body {
     opacity: max(0.1, calc(.78 - var(--d) * 0.24));
 }
 
+.lyric-ja {
+    max-inline-size: min(100%, 22em);
+    font-family: var(--font-ja);
+    font-weight: 600;
+    letter-spacing: .055em;
+    line-break: strict;
+    text-wrap: pretty;
+}
+
+@supports (text-spacing-trim: trim-start) {
+    .lyric-ja { text-spacing-trim: trim-start; }
+}
+
+@supports (hanging-punctuation: allow-end) {
+    .lyric-ja { hanging-punctuation: allow-end; }
+}
+
 /* 呼吸：停顿越久留白越大，视觉节奏照抄音乐的乐句划分 */
 .lyric-row[data-breath="1"] { margin-bottom: 1rem; }
 .lyric-row[data-breath="2"] { margin-bottom: 2.4rem; }
@@ -191,8 +210,78 @@ body {
 }
 
 .lyric-translation {
-    opacity: max(.24, calc(1 - var(--d) * .32));
-    transition: opacity 480ms ease-out var(--delay);
+    max-inline-size: min(100%, 38em);
+    padding-inline-start: .28em;
+    font-family: var(--font-zh);
+    font-weight: 400;
+    line-height: 1.72;
+    letter-spacing: .02em;
+    color: rgb(100 116 139);
+    opacity: max(.3, calc(.86 - var(--d) * .24));
+    transform: translate3d(0, 0, 0);
+    transition:
+        color 480ms ease-out var(--delay),
+        opacity 480ms ease-out var(--delay),
+        transform 480ms ease-out var(--delay);
+}
+
+.dark .lyric-translation {
+    color: rgb(148 163 184);
+}
+
+.lyric-row[data-active="true"] .lyric-translation {
+    --translation-rise: clamp(0, calc(var(--p) / .18), 1);
+    color: color-mix(in oklab, var(--accent-ink) 20%, var(--lyric-ink));
+    opacity: calc(.48 + var(--translation-rise) * .28);
+    transform: translate3d(0, calc((1 - var(--translation-rise)) * 2px), 0);
+}
+
+.lyric-zh-primary {
+    max-inline-size: min(100%, 24em);
+    font-family: var(--font-zh);
+    font-weight: 400;
+    letter-spacing: .035em;
+    text-wrap: pretty;
+    color: var(--lyric-ink);
+    transition: color 480ms ease-out var(--delay);
+}
+
+.lyric-row[data-active="true"] .lyric-zh-primary {
+    color: color-mix(in oklab, var(--accent-ink) 34%, var(--lyric-ink));
+}
+
+.instrumental-orbit {
+    color: color-mix(in oklab, var(--accent) 65%, #64748b);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    box-shadow:
+        0 0 48px color-mix(in srgb, var(--accent) 14%, transparent),
+        inset 0 0 28px color-mix(in srgb, var(--accent) 9%, transparent);
+    animation: instrumental-breathe 5.4s ease-in-out infinite;
+}
+
+.instrumental-orbit::before,
+.instrumental-orbit::after {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    border-radius: inherit;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    animation: instrumental-ripple 4.8s ease-out infinite;
+}
+
+.instrumental-orbit::after {
+    animation-delay: 2.4s;
+}
+
+@keyframes instrumental-breathe {
+    0%, 100% { transform: scale(.96); opacity: .72; }
+    50% { transform: scale(1.035); opacity: 1; }
+}
+
+@keyframes instrumental-ripple {
+    0% { opacity: 0; transform: scale(.72); }
+    18% { opacity: .48; }
+    100% { opacity: 0; transform: scale(1.52); }
 }
 
 /* 焦点位的柔光：取代旧的逐帧 textShadow，只动 opacity/transform */
@@ -274,6 +363,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .lyric-row[data-active="true"] .lyric-beat { text-shadow: none; }
     .lyric-focus-ripple { display: none; }
+    .lyric-row[data-active="true"] .lyric-translation {
+        opacity: .76;
+        transform: none;
+    }
+    .instrumental-orbit,
+    .instrumental-orbit::before,
+    .instrumental-orbit::after {
+        animation: none;
+    }
 }
 
 /* ✍️ Markdown 排版细节：代码块 / 行内代码 / 表格的明暗双态外观 */

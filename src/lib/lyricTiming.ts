@@ -75,7 +75,23 @@ const beatWeight = (token: string) => {
  * 所以点亮位置只能估——但按 mora 权重估，比按像素线性扫准得多：
  * 汉字比小假名唱得久，标点几乎不占时值。
  */
-export const beatsOf = (text: string): LyricBeat[] => {
+export const beatsOf = (value: LyricLine | string): LyricBeat[] => {
+  const line = typeof value === 'string'
+    ? { ja: value, startMs: 0, endMs: 1_000 }
+    : value;
+  const text = line.ja;
+  const timedWords = line.words;
+  if (
+    timedWords?.length &&
+    timedWords.map(word => word.text).join('') === text
+  ) {
+    const duration = Math.max(1, sungMsOf(line));
+    return timedWords.map(word => ({
+      text: word.text,
+      from: clamp((word.startMs - line.startMs) / duration, 0, 1),
+      to: clamp((word.endMs - line.startMs) / duration, 0, 1),
+    }));
+  }
   const tokens: string[] = [];
   let latin = '';
   for (const character of text) {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { findActiveLine, mergeTranslation, parseLrc, validateLyricsDocument } from './lyrics';
+import {
+  findActiveLine,
+  mergeTranslation,
+  parseLrc,
+  validateLyricsDocument,
+  validateLyricsManifest,
+} from './lyrics';
 
 describe('parseLrc', () => {
   it('parses multiple timestamps, offset and bilingual same-time lines', () => {
@@ -40,5 +46,24 @@ describe('validateLyricsDocument', () => {
   it('rejects a document for a different track', () => {
     expect(() => validateLyricsDocument({ version: 1, trackId: 'other', lines: [] }, 'm_01'))
       .toThrow('不匹配');
+  });
+});
+
+describe('validateLyricsManifest', () => {
+  it('accepts lyric entries from v1 and explicit instrumental entries', () => {
+    const manifest = validateLyricsManifest({
+      version: 1,
+      generatedAt: '',
+      tracks: {
+        m_06: { key: 'm_06.json', translationStatus: 'machine' },
+        m_04: { kind: 'instrumental' },
+      },
+    });
+    expect(manifest.tracks.m_06).toEqual({
+      kind: 'lyrics',
+      key: 'm_06.json',
+      translationStatus: 'machine',
+    });
+    expect(manifest.tracks.m_04).toEqual({ kind: 'instrumental' });
   });
 });
