@@ -6,6 +6,7 @@ import type { MusicCategory, Track } from '../types/music';
 import { useTicker } from '../lib/ticker';
 import { LyricPanel } from './resonance/LyricPanel';
 import { StageMeter } from './resonance/StageMeter';
+import { StageGlow } from './resonance/StageGlow';
 
 // 💿 唱片光晕：染当前曲目情绪色。播放时随频谱节拍律动（鼓点点亮、缓落呼吸），
 //    暂停时丝滑淡出、重新播放时丝滑淡入——常驻 rAF + presence 包络做无缝渐变，
@@ -397,7 +398,10 @@ export const OasisResonance: React.FC = () => {
 
       {/* ✨ 核心排版：左侧唱机（7/12，主角）/ 右侧选碟台（5/12），整屏锁定、底部留 Dock 安全区 */}
       <LayoutGroup id="resonance-stage">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-14 lg:gap-x-20 xl:gap-x-28 w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
+      <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-y-14 lg:gap-x-20 xl:gap-x-28 w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
+
+        {/* 🕯️ 共享光场：把唱机与词场焊成同一个空间，而非并排的两件事 */}
+        {isDesktop && <StageGlow color={currentTrack.color} isPlaying={isPlaying} active={active} />}
 
         {/* ================= 左侧 (7/12)：拟真转盘唱机（主角） ================= */}
         <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center relative h-full min-h-0">

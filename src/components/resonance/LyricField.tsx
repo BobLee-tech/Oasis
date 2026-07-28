@@ -1,14 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getEnergy } from '../../hooks/useSoundscape';
-import { interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
+import { formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
 import { findActiveLine } from '../../lib/lyrics';
 import { useTicker } from '../../lib/ticker';
 import type { LyricsDocument, Track } from '../../types/music';
@@ -30,10 +23,17 @@ interface LyricFieldProps {
   language: LyricLanguage;
 }
 
-const alphaHex = (alpha: number) =>
-  Math.round(Math.max(0, Math.min(1, alpha)) * 255)
-    .toString(16)
-    .padStart(2, '0');
+/** 焦点行停在词场高度的这个位置：上方留 42% 的已唱，下方留 58% 的将唱。 */
+const FOCUS_RATIO = 0.42;
+const TAP_SLOP = 6;          // px，小于此位移算点击而非拖拽
+const FLING_TAU = 0.32;      // s，惯性衰减时间常数
+const FLING_STOP = 60;       // px/s，低于此速度就吸附
+const FLING_MAX = 4_000;     // px/s，单次抛掷的速度上限
+const WHEEL_SETTLE_MS = 170;
+const IDLE_RETURN_MS = 4_200;
+
+const clamp = (value: number, minimum: number, maximum: number) =>
+  Math.min(maximum, Math.max(minimum, value));
 
 const reducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -53,8 +53,8 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   const timedLines = useMemo(() => prepareTimedLines(lyrics.lines), [lyrics.lines]);
   const offsetMs = lyrics.offsetMs + (track.lyrics?.offsetMs ?? 0);
   const initialIndex = findActiveLine(timedLines, currentTime * 1_000 - offsetMs);
+
   const [playbackIndex, setPlaybackIndex] = useState(initialIndex);
-  const [browseIndex, setBrowseIndex] = useState(Math.max(0, initialIndex));
   const [following, setFollowing] = useState(true);
   const [interludeVisible, setInterludeVisible] = useState(false);
 
@@ -63,46 +63,53 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   const titleRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const interludeRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const rippleRef = useRef<HTMLSpanElement>(null);
+  const waterClockRef = useRef<HTMLSpanElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const measurementsRef = useRef<{ tops: number[]; heights: number[]; fieldHeight: number }>({
-    tops: [],
-    heights: [],
+
+  const measurementsRef = useRef({
+    tops: [] as number[],
+    heights: [] as number[],
     fieldHeight: 0,
+    minY: 0,
+    maxY: 0,
   });
   const springRef = useRef({ y: 0, target: 0, velocity: 0, initialized: false });
+
+  /** 一次指针/滚轮手势的全部瞬时状态。全放 ref 里，60fps 不触发任何重渲染。 */
+  const gestureRef = useRef({
+    pointerId: -1,
+    active: false,
+    lastY: 0,
+    lastAt: 0,
+    moved: 0,
+    velocity: 0,
+    downTarget: null as HTMLElement | null,
+    fling: false,
+    wheelUntil: 0,
+    needsSnap: false,
+  });
+
   const playbackIndexRef = useRef(initialIndex);
-  const displayIndexRef = useRef(initialIndex);
-  const previousDisplayIndexRef = useRef(initialIndex);
-  const interludeVisibleRef = useRef(false);
+  const focusRef = useRef(initialIndex);
+  const appliedFocusRef = useRef(Number.NaN);
+  const appliedPlaybackRef = useRef(Number.NaN);
+  const appliedBrowsingRef = useRef(false);
   const followingRef = useRef(true);
-  const browseIndexRef = useRef(Math.max(0, initialIndex));
-  const gestureStartRef = useRef<number | null>(null);
-  const wheelAtRef = useRef(0);
+  const interludeVisibleRef = useRef(false);
+  const lastInputRef = useRef(0);
 
-  const displayIndex = following ? playbackIndex : browseIndex;
-
-  useEffect(() => {
-    playbackIndexRef.current = playbackIndex;
-  }, [playbackIndex]);
-  useEffect(() => {
-    displayIndexRef.current = displayIndex;
-  }, [displayIndex]);
-  useEffect(() => {
-    followingRef.current = following;
-  }, [following]);
-  useEffect(() => {
-    browseIndexRef.current = browseIndex;
-  }, [browseIndex]);
+  const markInput = useCallback(() => {
+    lastInputRef.current = performance.now();
+  }, []);
 
   const targetFor = useCallback((index: number) => {
-    const { tops, heights, fieldHeight } = measurementsRef.current;
+    const { tops, heights, fieldHeight, maxY } = measurementsRef.current;
     if (!fieldHeight) return springRef.current.target;
-    if (index < 0) {
-      const title = titleRef.current;
-      return title ? fieldHeight * 0.19 - title.offsetTop : 0;
-    }
+    if (index < 0) return maxY;
     if (tops[index] === undefined) return springRef.current.target;
-    return -(tops[index] + heights[index] / 2) + fieldHeight * 0.42;
+    return -(tops[index] + heights[index] / 2) + fieldHeight * FOCUS_RATIO;
   }, []);
 
   const measure = useCallback(() => {
@@ -112,78 +119,234 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     field.scrollTop = 0;
     const fieldTop = field.getBoundingClientRect().top;
     const currentY = springRef.current.initialized ? springRef.current.y : 0;
-    measurementsRef.current = {
+    const fieldHeight = field.clientHeight;
+    const count = timedLines.length;
+    const tops: number[] = new Array(count);
+    const heights: number[] = new Array(count);
+    for (let index = 0; index < count; index += 1) {
+      const row = rowRefs.current[index];
       // 用视觉坐标反推 y=0 时的位置，兼容 Framer layout projection 在祖先层施加的变换。
-      tops: rowRefs.current.map(row =>
-        row ? row.getBoundingClientRect().top - fieldTop - currentY : 0),
-      heights: rowRefs.current.map(row => row?.offsetHeight ?? 0),
-      fieldHeight: field.clientHeight,
-    };
+      tops[index] = row ? row.getBoundingClientRect().top - fieldTop - currentY : 0;
+      heights[index] = row?.offsetHeight ?? 0;
+    }
+    const title = titleRef.current;
+    const maxY = title ? fieldHeight * 0.19 - title.offsetTop : 0;
+    const minY = count
+      ? -(tops[count - 1] + heights[count - 1] / 2) + fieldHeight * FOCUS_RATIO
+      : 0;
+    measurementsRef.current = { tops, heights, fieldHeight, minY, maxY };
+
     const spring = springRef.current;
-    spring.target = targetFor(displayIndexRef.current);
+    spring.target = targetFor(focusRef.current);
     if (!spring.initialized) {
       spring.y = spring.target;
       spring.velocity = 0;
       spring.initialized = true;
-      if (trackRef.current) trackRef.current.style.transform = `translate3d(0,${spring.y}px,0)`;
+      trackElement.style.transform = `translate3d(0,${spring.y}px,0)`;
     }
-  }, [targetFor]);
+  }, [targetFor, timedLines]);
+
+  /** 与焦点的距离 → 每行的 --d，只在焦点真的变了时才遍历。 */
+  const applyFocus = useCallback((focus: number) => {
+    const rows = rowRefs.current;
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      if (row) row.style.setProperty('--d', String(focus < 0 ? index + 1 : Math.abs(index - focus)));
+    }
+  }, []);
+
+  /** 已唱/未唱 → 每行的 --past 与 --p 端值；焦点行的 --p 每帧单独更新。 */
+  const applyPlayback = useCallback((playback: number) => {
+    const rows = rowRefs.current;
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      if (!row) continue;
+      const past = index < playback;
+      row.style.setProperty('--past', past ? '1' : '0');
+      if (index !== playback) row.style.setProperty('--p', past ? '1' : '0');
+    }
+  }, []);
 
   useLayoutEffect(() => {
+    rowRefs.current.length = timedLines.length;
     measure();
+    applyFocus(focusRef.current);
+    applyPlayback(playbackIndexRef.current);
+    appliedFocusRef.current = focusRef.current;
+    appliedPlaybackRef.current = playbackIndexRef.current;
+
+    // 行高会随字体加载 / 译文语言 / 容器尺寸变化，任何一处漏测都会让焦点行慢慢跑偏
     const observer = new ResizeObserver(measure);
     if (fieldRef.current) observer.observe(fieldRef.current);
+    if (trackRef.current) observer.observe(trackRef.current);
     void document.fonts?.ready.then(measure);
     return () => observer.disconnect();
-  }, [measure, timedLines, language, compact, track.id]);
+  }, [measure, applyFocus, applyPlayback, timedLines, language, compact, track.id]);
+
+  const nearestIndex = useCallback((y: number) => {
+    const { tops, heights, fieldHeight } = measurementsRef.current;
+    const focusAt = fieldHeight * FOCUS_RATIO - y;
+    let best = 0;
+    let bestDistance = Infinity;
+    for (let index = 0; index < tops.length; index += 1) {
+      const distance = Math.abs(tops[index] + heights[index] / 2 - focusAt);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = index;
+      }
+    }
+    return best;
+  }, []);
+
+  const settle = useCallback(() => {
+    const gesture = gestureRef.current;
+    gesture.fling = false;
+    gesture.needsSnap = false;
+    if (!measurementsRef.current.fieldHeight) return;
+    const index = nearestIndex(springRef.current.y);
+    focusRef.current = index;
+    springRef.current.target = targetFor(index);
+  }, [nearestIndex, targetFor]);
+
+  /** 位移直连：手指走多远内容走多远，越出首尾时才逐渐变沉。 */
+  const dragBy = useCallback((dy: number) => {
+    const spring = springRef.current;
+    const { minY, maxY } = measurementsRef.current;
+    const over = spring.y > maxY ? spring.y - maxY : spring.y < minY ? minY - spring.y : 0;
+    const outward = (spring.y > maxY && dy > 0) || (spring.y < minY && dy < 0);
+    spring.y += outward ? dy * Math.max(0.12, 1 - over / 260) : dy;
+    spring.target = spring.y;
+    spring.velocity = 0;
+    if (measurementsRef.current.fieldHeight) focusRef.current = nearestIndex(spring.y);
+  }, [nearestIndex]);
+
+  const browseTo = useCallback((index: number) => {
+    const next = clamp(index, 0, timedLines.length - 1);
+    focusRef.current = next;
+    springRef.current.target = targetFor(next);
+    gestureRef.current.fling = false;
+    markInput();
+    if (followingRef.current) setFollowing(false);
+  }, [markInput, targetFor, timedLines.length]);
+
+  const chooseLine = useCallback((index: number) => {
+    const line = timedLines[index];
+    if (!line) return;
+    seek(Math.max(0, (line.startMs + offsetMs) / 1_000));
+    if (fieldRef.current) fieldRef.current.scrollTop = 0;
+    focusRef.current = index;
+    springRef.current.target = targetFor(index);
+    springRef.current.y = springRef.current.target;
+    springRef.current.velocity = 0;
+    gestureRef.current.fling = false;
+    markInput();
+    setFollowing(true);
+  }, [markInput, offsetMs, seek, targetFor, timedLines]);
 
   useEffect(() => {
-    const spring = springRef.current;
-    const nextTarget = targetFor(displayIndex);
-    const jumped = Math.abs(displayIndex - previousDisplayIndexRef.current) > 3;
-    spring.target = nextTarget;
-    if (jumped || reducedMotion()) {
-      spring.y = nextTarget;
-      spring.velocity = 0;
-    }
-    previousDisplayIndexRef.current = displayIndex;
+    followingRef.current = following;
+    if (following) focusRef.current = playbackIndexRef.current;
+    markInput();
+  }, [following, markInput]);
 
-    rowRefs.current.forEach((row, index) => {
-      if (!row) return;
-      row.style.setProperty('--d', String(Math.abs(index - displayIndex)));
-      row.style.setProperty('--past', index < displayIndex ? '1' : '0');
-      if (index < playbackIndexRef.current) row.style.setProperty('--p', '1');
-      else if (index > playbackIndexRef.current) row.style.setProperty('--p', '0');
-    });
-  }, [displayIndex, targetFor]);
+  // 滚轮必须非 passive 才能 preventDefault，React 的 onWheel 给不了这个保证
+  useEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!measurementsRef.current.fieldHeight) return;
+      event.preventDefault();
+      const gesture = gestureRef.current;
+      gesture.fling = false;
+      gesture.wheelUntil = performance.now() + WHEEL_SETTLE_MS;
+      gesture.needsSnap = true;
+      if (followingRef.current) setFollowing(false);
+      dragBy(-event.deltaY * (event.deltaMode === 1 ? 16 : 1));
+      markInput();
+    };
+    field.addEventListener('wheel', onWheel, { passive: false });
+    return () => field.removeEventListener('wheel', onWheel);
+  }, [dragBy, markInput]);
 
   useTicker(
-    (_now, dt) => {
+    (now, dt) => {
+      const spring = springRef.current;
+      const gesture = gestureRef.current;
+      const measurements = measurementsRef.current;
+
       const playbackMs = (isPlaying ? getPlaybackTime() : currentTime) * 1_000 - offsetMs;
       const nextIndex = findActiveLine(timedLines, playbackMs);
       if (nextIndex !== playbackIndexRef.current) {
         playbackIndexRef.current = nextIndex;
         setPlaybackIndex(nextIndex);
-        if (followingRef.current) displayIndexRef.current = nextIndex;
+      }
+      if (followingRef.current) focusRef.current = nextIndex;
+
+      if (focusRef.current !== appliedFocusRef.current) {
+        const jumped = Math.abs(focusRef.current - appliedFocusRef.current) > 3;
+        appliedFocusRef.current = focusRef.current;
+        applyFocus(focusRef.current);
+        if (waterClockRef.current) {
+          waterClockRef.current.textContent = formatClock(
+            timedLines[Math.max(0, focusRef.current)]?.startMs ?? 0,
+          );
+        }
+        if (followingRef.current) {
+          spring.target = targetFor(focusRef.current);
+          if (jumped || reducedMotion()) {
+            spring.y = spring.target;
+            spring.velocity = 0;
+          }
+          // 换行涟漪：从行首荡开一圈，呼应站点的水波语汇
+          const ripple = rippleRef.current;
+          if (ripple && !reducedMotion()) {
+            ripple.style.animation = 'none';
+            void ripple.offsetWidth;
+            ripple.style.animation = '';
+          }
+        }
+      }
+      if (playbackIndexRef.current !== appliedPlaybackRef.current) {
+        appliedPlaybackRef.current = playbackIndexRef.current;
+        applyPlayback(playbackIndexRef.current);
       }
 
-      const spring = springRef.current;
-      if (!spring.initialized) {
-        spring.target = targetFor(displayIndexRef.current);
+      if (!spring.initialized && measurements.fieldHeight) {
+        spring.target = targetFor(focusRef.current);
         spring.y = spring.target;
         spring.initialized = true;
       }
-      if (reducedMotion()) {
+
+      const wheeling = now < gesture.wheelUntil;
+      if (gesture.active || wheeling) {
+        // 位置完全由手势掌控，弹簧让路
+      } else if (gesture.needsSnap) {
+        settle();
+      } else if (gesture.fling) {
+        spring.y += gesture.velocity * dt;
+        gesture.velocity *= Math.exp(-dt / FLING_TAU);
+        const over =
+          spring.y > measurements.maxY
+            ? spring.y - measurements.maxY
+            : spring.y < measurements.minY
+              ? measurements.minY - spring.y
+              : 0;
+        if (over > 0) gesture.velocity *= 0.55;
+        if (Math.abs(gesture.velocity) < FLING_STOP || over > 140) settle();
+        else focusRef.current = nearestIndex(spring.y);
+        spring.target = spring.y;
+      } else if (reducedMotion()) {
         spring.y = spring.target;
         spring.velocity = 0;
       } else {
         const distance = Math.abs(spring.y - spring.target);
-        const omega = 11.5 * Math.max(0.75, Math.min(1, 1 - distance / 2_000 * 0.25));
+        const omega = 11.5 * Math.max(0.75, Math.min(1, 1 - (distance / 2_000) * 0.25));
         const acceleration =
           -omega * omega * (spring.y - spring.target) - 2 * omega * spring.velocity;
         spring.velocity += acceleration * dt;
         spring.y += spring.velocity * dt;
       }
+
       if (trackRef.current) {
         trackRef.current.style.transform = `translate3d(0,${spring.y.toFixed(2)}px,0)`;
       }
@@ -192,9 +355,13 @@ export const LyricField: React.FC<LyricFieldProps> = ({
       const currentRow = rowRefs.current[nextIndex];
       if (currentLine && currentRow) {
         currentRow.style.setProperty('--p', String(lineProgress(currentLine, playbackMs)));
+      }
+
+      // 焦点柔光取代了旧的逐帧 textShadow：同样的呼吸感，但只动 opacity/transform
+      if (glowRef.current) {
         const mid = isPlaying ? getEnergy().mid : 0;
-        const glowAlpha = 0.14 + mid * 0.32;
-        currentRow.style.textShadow = `0 0 ${10 + mid * 26}px ${color}${alphaHex(glowAlpha)}`;
+        glowRef.current.style.opacity = String(0.06 + mid * 0.42);
+        glowRef.current.style.transform = `translate3d(0,-50%,0) scaleY(${1 + mid * 0.3})`;
       }
 
       const interlude = interludeAt(timedLines, nextIndex, playbackMs);
@@ -215,38 +382,112 @@ export const LyricField: React.FC<LyricFieldProps> = ({
           Math.max(0, Math.min(1, (-spring.y - titleBottom) / 24)),
         );
       }
+
+      const browsing = !followingRef.current;
+      if (browsing !== appliedBrowsingRef.current) {
+        appliedBrowsingRef.current = browsing;
+        if (fieldRef.current) fieldRef.current.dataset.browsing = browsing ? 'true' : 'false';
+      }
+
+      // 松手后停在原地 4 秒多，就自己回到此刻——不必非得去点那颗按钮
+      if (
+        browsing &&
+        !gesture.active &&
+        !gesture.fling &&
+        !wheeling &&
+        now - lastInputRef.current > IDLE_RETURN_MS
+      ) {
+        setFollowing(true);
+      }
     },
     active,
   );
 
-  const chooseLine = (index: number) => {
-    const line = timedLines[index];
-    if (!line) return;
-    seek(Math.max(0, (line.startMs + offsetMs) / 1_000));
-    if (fieldRef.current) fieldRef.current.scrollTop = 0;
-    springRef.current.target = targetFor(index);
-    springRef.current.y = springRef.current.target;
-    springRef.current.velocity = 0;
-    setFollowing(true);
-  };
+  // 手势期间监听 window 而不是 setPointerCapture：指针捕获会把 click 一并重定向到
+  // 词场，「回到此刻」这类子按钮就再也点不动了。
+  const detachRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => detachRef.current?.(), []);
 
-  const browseTo = (index: number) => {
-    const next = Math.max(0, Math.min(timedLines.length - 1, index));
-    browseIndexRef.current = next;
-    setBrowseIndex(next);
-    setFollowing(false);
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const gesture = gestureRef.current;
+    detachRef.current?.();
+    gesture.pointerId = event.pointerId;
+    gesture.active = true;
+    gesture.lastY = event.clientY;
+    gesture.lastAt = performance.now();
+    gesture.moved = 0;
+    gesture.velocity = 0;
+    gesture.fling = false;
+    gesture.downTarget = event.target as HTMLElement;
+    markInput();
+
+    const onMove = (native: PointerEvent) => {
+      if (!gesture.active || native.pointerId !== gesture.pointerId) return;
+      const now = performance.now();
+      const dy = native.clientY - gesture.lastY;
+      const elapsed = Math.max(1, now - gesture.lastAt) / 1_000;
+      gesture.lastY = native.clientY;
+      gesture.lastAt = now;
+      gesture.moved += Math.abs(dy);
+      if (gesture.moved <= TAP_SLOP) return;
+      if (followingRef.current) setFollowing(false);
+      gesture.velocity = gesture.velocity * 0.7 + (dy / elapsed) * 0.3;
+      dragBy(dy);
+      markInput();
+    };
+
+    const onEnd = (native: PointerEvent) => {
+      if (native.pointerId !== gesture.pointerId) return;
+      detach();
+      gesture.active = false;
+      gesture.pointerId = -1;
+      markInput();
+      const target = gesture.downTarget;
+      gesture.downTarget = null;
+
+      if (gesture.moved <= TAP_SLOP) {
+        // 位移够小 → 当作点击。点击一律由手势判定，行上的 click 会被拦掉，
+        // 免得「想滑歌词结果跳了进度」。
+        const row = target?.closest<HTMLElement>('[data-lyric-index]');
+        const index = row ? Number(row.dataset.lyricIndex) : Number.NaN;
+        if (Number.isInteger(index)) chooseLine(index);
+        return;
+      }
+      // 限速：高刷屏上事件间隔可以短到几毫秒，不封顶的话一次快甩能把词场抛出几千像素
+      gesture.velocity = clamp(gesture.velocity, -FLING_MAX, FLING_MAX);
+      if (Math.abs(gesture.velocity) > FLING_STOP) gesture.fling = true;
+      else settle();
+    };
+
+    const detach = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      detachRef.current = null;
+    };
+    detachRef.current = detach;
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      browseTo((following ? Math.max(0, playbackIndex) : browseIndex) + 1);
+      browseTo(Math.max(0, focusRef.current) + 1);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      browseTo((following ? Math.max(0, playbackIndex) : browseIndex) - 1);
-    } else if (event.key === 'Enter' && !following) {
+      browseTo(Math.max(0, focusRef.current) - 1);
+    } else if (event.key === 'Enter') {
       event.preventDefault();
-      chooseLine(browseIndex);
+      chooseLine(Math.max(0, focusRef.current));
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      seek(Math.max(0, getPlaybackTime() - 5));
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      seek(getPlaybackTime() + 5);
     } else if (event.key === 'Home') {
       event.preventDefault();
       setFollowing(true);
@@ -254,43 +495,23 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     }
   };
 
-  const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    const now = performance.now();
-    if (Math.abs(event.deltaY) < 8 || now - wheelAtRef.current < 140) return;
-    wheelAtRef.current = now;
-    browseTo(
-      (following ? Math.max(0, playbackIndexRef.current) : browseIndexRef.current) +
-        (event.deltaY > 0 ? 1 : -1),
-    );
-  };
-
   return (
     <div
       ref={fieldRef}
       tabIndex={0}
+      data-browsing="false"
       onKeyDown={onKeyDown}
-      onWheel={onWheel}
-      onPointerDown={event => {
-        gestureStartRef.current = event.clientY;
-      }}
-      onPointerUp={event => {
-        if (gestureStartRef.current === null) return;
-        const delta = gestureStartRef.current - event.clientY;
-        gestureStartRef.current = null;
-        if (Math.abs(delta) > 32) {
-          browseTo(
-            (following ? Math.max(0, playbackIndexRef.current) : browseIndexRef.current) +
-              (delta > 0 ? 1 : -1),
-          );
+      onPointerDown={onPointerDown}
+      onClickCapture={event => {
+        // 歌词行上的真实点击已由手势判定过，这里拦掉避免重复；
+        // 辅助技术合成的 click(detail=0) 与词场里的其它按钮照常放行。
+        if (event.detail > 0 && (event.target as HTMLElement).closest('[data-lyric-index]')) {
+          event.preventDefault();
+          event.stopPropagation();
         }
       }}
-      className="relative h-full min-h-0 overflow-clip text-left outline-none"
-      style={{
-        maskImage: 'linear-gradient(to bottom, transparent 0, #000 11%, #000 88%, transparent 100%)',
-        WebkitMaskImage:
-          'linear-gradient(to bottom, transparent 0, #000 11%, #000 88%, transparent 100%)',
-      }}
-      aria-label={`${track.title} 流动歌词，方向键浏览，回车跳转`}
+      className="lyric-field relative h-full min-h-0 touch-none overflow-clip overscroll-contain text-left outline-none"
+      aria-label={`${track.title} 流动歌词，上下键浏览，回车跳转，左右键快退快进`}
     >
       <div
         ref={headerRef}
@@ -301,6 +522,29 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         </span>
         <span className="font-mono text-[8px] tracking-[0.25em] uppercase text-slate-400/70 dark:text-slate-600">
           {track.artist}
+        </span>
+      </div>
+
+      {/* 焦点位的柔光与水面线：歌词落进来的那道光 */}
+      <div
+        ref={glowRef}
+        aria-hidden="true"
+        className="lyric-focus-glow pointer-events-none absolute inset-x-0 z-0"
+        style={{ top: `${FOCUS_RATIO * 100}%`, '--accent': color } as React.CSSProperties}
+      >
+        <span ref={rippleRef} className="lyric-focus-ripple" />
+      </div>
+      <div
+        aria-hidden="true"
+        className="lyric-waterline pointer-events-none absolute inset-x-0 z-10 flex items-center gap-2 px-2"
+        style={{ top: `${FOCUS_RATIO * 100}%`, '--accent': color } as React.CSSProperties}
+      >
+        <span className="lyric-waterline-rule h-px flex-1" />
+        <span
+          ref={waterClockRef}
+          className="font-mono text-[8px] tabular-nums tracking-[0.18em] text-slate-500 dark:text-slate-400"
+        >
+          0:00
         </span>
       </div>
 
@@ -334,26 +578,21 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         </div>
 
         <div role="list" aria-live="off">
-          {timedLines.map((line, index) => {
-            const distance = displayIndex < 0 ? index + 1 : Math.abs(index - displayIndex);
-            return (
-              <LyricRow
-                key={`${line.startMs}-${index}`}
-                ref={node => {
-                  rowRefs.current[index] = node;
-                }}
-                line={line}
-                index={index}
-                distance={distance}
-                isCurrent={index === playbackIndex}
-                isPast={index < playbackIndex}
-                showTranslation={language === 'bilingual' && distance <= 1}
-                compact={compact}
-                color={color}
-                onChoose={chooseLine}
-              />
-            );
-          })}
+          {timedLines.map((line, index) => (
+            <LyricRow
+              key={`${line.startMs}-${index}`}
+              ref={node => {
+                rowRefs.current[index] = node;
+              }}
+              line={line}
+              index={index}
+              isCurrent={index === playbackIndex}
+              showTranslation={language === 'bilingual' && !!line.zh}
+              compact={compact}
+              color={color}
+              onChoose={chooseLine}
+            />
+          ))}
         </div>
       </div>
 

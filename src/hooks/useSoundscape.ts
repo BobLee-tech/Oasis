@@ -243,6 +243,7 @@ const fadeVolume = (target: number, duration: number, onDone?: () => void) => {
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let freqData: Uint8Array<ArrayBuffer> | null = null;
+let binHz = 0;
 
 export interface Energy {
   low: number;
@@ -254,7 +255,36 @@ export interface Energy {
 const energy: Energy = { low: 0, mid: 0, high: 0, beat: 0 };
 let fastEnvelope = 0;
 let slowEnvelope = 0;
-let cachedSpectrum: number[] = new Array(45).fill(0);
+
+/**
+ * 🎚️ 对数频带：人耳按倍频程听音，而 FFT 的 bin 在赫兹上是线性的。
+ * 直接画线性 bin 的结果永远是「中间几根疯狂抽搐、两侧常年贴底」——
+ * 所以这里把 40Hz–14kHz 按等比切成 BAND_COUNT 段，并做 +3dB/oct 的
+ * 粉噪补偿，让整条谱都活起来。
+ */
+const BAND_COUNT = 64;
+const BAND_F_MIN = 40;
+const BAND_F_MAX = 14_000;
+const bands = new Float32Array(BAND_COUNT);
+const bandEdges = new Float32Array(BAND_COUNT + 1); // 分数 bin 下标
+const bandTilt = new Float32Array(BAND_COUNT);
+let bandsReady = false;
+
+const buildBands = () => {
+  if (!analyser || !audioCtx) return;
+  binHz = audioCtx.sampleRate / analyser.fftSize;
+  const maxBin = analyser.frequencyBinCount - 1;
+  for (let index = 0; index <= BAND_COUNT; index += 1) {
+    const hz = BAND_F_MIN * Math.pow(BAND_F_MAX / BAND_F_MIN, index / BAND_COUNT);
+    bandEdges[index] = Math.min(maxBin, hz / binHz);
+  }
+  for (let index = 0; index < BAND_COUNT; index += 1) {
+    const hz = BAND_F_MIN * Math.pow(BAND_F_MAX / BAND_F_MIN, (index + 0.5) / BAND_COUNT);
+    // 温和的高频提升。补偿过头会把中高频整段顶到满量程，缎带就削成一块平台了
+    bandTilt[index] = Math.min(2.2, Math.pow(hz / 500, 0.28));
+  }
+  bandsReady = true;
+};
 
 const ensureAnalyser = () => {
   if (analyser) {
@@ -266,77 +296,117 @@ const ensureAnalyser = () => {
     audioCtx = new Ctx();
     const source = audioCtx.createMediaElementSource(globalAudio);
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 128;
-    analyser.smoothingTimeConstant = 0.82; // 平滑，声波起伏舒缓自然
+    // 2048 → bin 宽约 21Hz：低音区终于有足够分辨率，不再是 3 个 bin 兜住整个 0–1kHz
+    analyser.fftSize = 2_048;
+    analyser.smoothingTimeConstant = 0.6; // 留出余量，细致的包络交给下面自己做
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
     freqData = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+    buildBands();
   } catch (e) {
     console.warn('Analyser init failed', e);
   }
 };
 
-const meanBins = (from: number, to: number) => {
-  if (!freqData) return 0;
+const meanHz = (fromHz: number, toHz: number) => {
+  if (!freqData || !binHz) return 0;
+  const from = Math.max(0, Math.round(fromHz / binHz));
+  const to = Math.min(freqData.length, Math.round(toHz / binHz));
   let sum = 0;
-  const end = Math.min(to, freqData.length);
-  for (let index = from; index < end; index += 1) sum += freqData[index] ?? 0;
-  return end > from ? sum / (end - from) / 255 : 0;
+  for (let index = from; index < to; index += 1) sum += freqData[index] ?? 0;
+  return to > from ? sum / (to - from) / 255 : 0;
 };
+
+/** 读一段分数 bin 区间；窄于一个 bin 时线性插值，免得低频区退化成阶梯。 */
+const readBand = (from: number, to: number) => {
+  if (!freqData) return 0;
+  if (to - from < 1) {
+    const at = (from + to) * 0.5;
+    const index = Math.floor(at);
+    const a = freqData[index] ?? 0;
+    const b = freqData[index + 1] ?? a;
+    return (a + (b - a) * (at - index)) / 255;
+  }
+  let sum = 0;
+  let count = 0;
+  for (let index = Math.floor(from), end = Math.ceil(to); index < end; index += 1) {
+    sum += freqData[index] ?? 0;
+    count += 1;
+  }
+  return count ? sum / count / 255 : 0;
+};
+
+/** 帧率无关的一阶滤波系数：触屏上 ticker 跑 30fps 也不会让包络变快一倍。 */
+const rate = (tau: number, dt: number) => 1 - Math.exp(-dt / tau);
+const decay = (value: number, tau: number, dt: number) => value * Math.exp(-dt / tau);
 
 /**
  * 全局 ticker 每个视觉帧只调用一次。这里保留一份细分频谱供 VU 使用，
  * 同时生成一致的 low/mid/high/beat 能量口径。
  */
-export const sampleEnergy = () => {
+export const sampleEnergy = (dt = 1 / 60) => {
   if (!analyser || !freqData || !globalIsPlaying) {
-    fastEnvelope *= 0.78;
-    slowEnvelope *= 0.94;
-    energy.low *= 0.86;
-    energy.mid *= 0.86;
-    energy.high *= 0.86;
-    energy.beat *= 0.72;
-    for (let index = 0; index < cachedSpectrum.length; index += 1) {
-      cachedSpectrum[index] *= 0.82;
+    // 静默滑落而非瞬间归零：暂停时所有可视化是「落下去」，不是「啪地塌掉」
+    fastEnvelope = decay(fastEnvelope, 0.1, dt);
+    slowEnvelope = decay(slowEnvelope, 0.3, dt);
+    energy.low = decay(energy.low, 0.22, dt);
+    energy.mid = decay(energy.mid, 0.22, dt);
+    energy.high = decay(energy.high, 0.22, dt);
+    energy.beat = decay(energy.beat, 0.08, dt);
+    for (let index = 0; index < BAND_COUNT; index += 1) {
+      bands[index] = decay(bands[index], 0.26, dt);
     }
     return;
   }
 
   analyser.getByteFrequencyData(freqData);
-  const low = Math.min(1, meanBins(0, 5) * 1.35);
-  const mid = Math.min(1, meanBins(5, 20) * 1.45);
-  const high = Math.min(1, meanBins(20, 45) * 1.7);
+  if (!bandsReady) buildBands();
+
+  // 现在按真实频率取值，口径终于名副其实：low 是鼓与贝斯，mid 是人声主体
+  const low = Math.min(1, meanHz(20, 200) * 1.15);
+  const mid = Math.min(1, meanHz(200, 2_000) * 1.5);
+  const high = Math.min(1, meanHz(2_000, 9_000) * 2.4);
   const transient = Math.max(low, mid * 0.9);
 
-  fastEnvelope += (transient - fastEnvelope) * (transient > fastEnvelope ? 0.48 : 0.18);
-  slowEnvelope += (transient - slowEnvelope) * 0.08;
-  energy.low += (low - energy.low) * 0.12;
-  energy.mid += (mid - energy.mid) * 0.12;
-  energy.high += (high - energy.high) * 0.12;
+  fastEnvelope += (transient - fastEnvelope) * rate(transient > fastEnvelope ? 0.03 : 0.09, dt);
+  slowEnvelope += (transient - slowEnvelope) * rate(0.22, dt);
+  const bandRate = rate(0.14, dt);
+  energy.low += (low - energy.low) * bandRate;
+  energy.mid += (mid - energy.mid) * bandRate;
+  energy.high += (high - energy.high) * bandRate;
   energy.beat = Math.max(0, Math.min(1, (fastEnvelope - slowEnvelope) * 3.2));
-  const cachedBins = Math.min(45, freqData.length);
-  if (cachedSpectrum.length !== cachedBins) cachedSpectrum = new Array(cachedBins).fill(0);
-  for (let index = 0; index < cachedBins; index += 1) {
-    cachedSpectrum[index] = Math.min(1, (freqData[index] ?? 0) / 255 * 1.4);
+
+  // 快起慢落的包络：抬升跟得上鼓点，回落留出余韵，不靠 CSS transition 补
+  const attack = rate(0.035, dt);
+  const release = rate(0.17, dt);
+  for (let index = 0; index < BAND_COUNT; index += 1) {
+    // tanh 软拐点代替 min(1, …)：接近满量程时压缩而不是硬切，峰顶的起伏才留得住
+    const raw = Math.tanh(readBand(bandEdges[index], bandEdges[index + 1]) * bandTilt[index] * 1.15);
+    bands[index] += (raw - bands[index]) * (raw > bands[index] ? attack : release);
   }
 };
 
 export const getEnergy = (): Readonly<Energy> => energy;
 
-// 从本帧缓存重采样，任意数量的 VU 都不会再次读取 AnalyserNode。
+/** 本帧的对数频带读数。返回的是共用缓冲区，调用方只读、且必须当帧用完。 */
+export const getBands = (): Readonly<Float32Array> => bands;
+
+export const BAND_RESOLUTION = BAND_COUNT;
+
+// 兼容旧调用方（Miku 口型）：从对数频带重采样，复用同一个数组不再每帧分配。
+const spectrumOut: number[] = [];
 export const getSpectrum = (bars: number): number[] => {
   if (bars <= 0) return [];
-  if (!globalIsPlaying && cachedSpectrum.every(value => value < 0.001)) return new Array(bars).fill(0);
-  const out: number[] = [];
-  const bucket = cachedSpectrum.length / bars;
-  for (let i = 0; i < bars; i++) {
+  spectrumOut.length = bars;
+  const bucket = BAND_COUNT / bars;
+  for (let i = 0; i < bars; i += 1) {
     const from = Math.floor(i * bucket);
     const to = Math.max(from + 1, Math.floor((i + 1) * bucket));
     let sum = 0;
-    for (let j = from; j < to; j += 1) sum += cachedSpectrum[j] ?? 0;
-    out.push(sum / (to - from));
+    for (let j = from; j < to; j += 1) sum += bands[j] ?? 0;
+    spectrumOut[i] = sum / (to - from);
   }
-  return out;
+  return spectrumOut;
 };
 
 /** 歌词/可视化专用的只读精确时钟；调用方不得持有或修改全局 audio。 */
