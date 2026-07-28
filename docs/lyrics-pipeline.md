@@ -58,7 +58,15 @@ npm run lyric:review -- --track m_06
 # 导回校对页下载的 JSON，并升级为 reviewed
 npm run lyric:translate -- --track m_06 \
   --import-reviewed ~/Downloads/m_06.reviewed.json
+
+# 明确声明为同词版本时，安全复用已审校译文并重建目标时间轴
+npm run lyric:translate -- --track y_18_03 \
+  --reuse-reviewed-from y_20_04
 ```
+
+`--reuse-reviewed-from` 只接受单曲：两版必须在身份配置中声明 `sameLyricsAs`，
+行数相同，且日文文本完全相同或仅存在一个字符的增删。原文差异会记录进目标
+`translation.reviewed.json`，不会使用模糊匹配强行复用。
 
 线上可单独设置 `VITE_LYRICS_BASE=https://audio.boblee.dev/lyrics`。未设置时会自动使用
 `VITE_AUDIO_BASE + /lyrics`；本地未配置对象存储时回退 `/lyrics`，对应脚本生成的

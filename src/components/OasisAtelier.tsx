@@ -9,6 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useAtelier, filterVisible, resolveArtSrc, type Artwork, type ArtworkInput, type ArtPlatform, type ArtVisibility } from '../hooks/useAtelier';
 import { useHashRoute } from '../lib/route';
 import { BLOOM_EASE, type RippleOrigin } from '../lib/transitions';
+import { emitMikuSignal } from '../lib/mikuSignal';
 
 const ATELIER_ACCENT = '#FFB7C5'; // 樱粉：绘阁默认强调色
 const MIKU_ACCENT = '#39C5BB';    // 初音绿：miku 标签的专属强调色
@@ -95,6 +96,11 @@ export const OasisAtelier: React.FC<OasisAtelierProps> = ({ isAdmin }) => {
   // 键盘导航：← → 切换，Esc 关闭（编辑器打开时交给编辑器自己处理，这里让位）
   const [editor, setEditor] = useState<EditorMode | null>(null);
   useEffect(() => {
+    const active = !!activeArtwork || !!editor;
+    emitMikuSignal({ type: active ? 'focus-open' : 'focus-close', source: 'atelier-overlay' });
+    return () => emitMikuSignal({ type: 'focus-close', source: 'atelier-overlay' });
+  }, [activeArtwork, editor]);
+  useEffect(() => {
     if (!activeArtwork || editor) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeArtwork();
@@ -122,7 +128,7 @@ export const OasisAtelier: React.FC<OasisAtelierProps> = ({ isAdmin }) => {
   }, [unframeArtwork, closeArtwork]);
 
   return (
-    <motion.div className="absolute inset-0 w-full h-full overflow-y-auto no-scrollbar flex flex-col items-center pt-20 md:pt-28 pb-40 px-4 md:px-8 z-10">
+    <motion.div className="oasis-bottom-scroll-safe absolute inset-0 w-full h-full overflow-y-auto no-scrollbar flex flex-col items-center pt-20 md:pt-28 pb-40 px-4 md:px-8 z-10">
       {/* 报头：与其他场所同款的安静排版 */}
       <div className="text-center mb-8 md:mb-10 shrink-0">
         <div className="font-mono text-[10px] tracking-[0.5em] uppercase text-slate-400/70 dark:text-slate-500 mb-3 transition-colors duration-[1500ms]">Atelier</div>

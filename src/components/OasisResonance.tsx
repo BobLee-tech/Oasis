@@ -215,7 +215,7 @@ export const OasisResonance: React.FC = () => {
   // ================= 📱 移动端：分段版式（唱片 ↔ 歌单），只呈现当前段，减负增美 =================
   if (!isDesktop) {
     return (
-      <div className="relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] px-5">
+      <div className="oasis-bottom-scroll-safe relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] px-5">
 
         {/* 分段切换：一枚水滴形药丸，选中段染当前情绪色 */}
         <div className="shrink-0 flex items-center justify-center mb-5">
@@ -390,7 +390,7 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div
-      className="relative w-full max-w-[1680px] mx-auto h-full max-h-full overflow-y-auto no-scrollbar lg:overflow-visible lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-28 lg:pb-28 px-6 md:px-14 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
+      className="oasis-bottom-scroll-safe relative w-full max-w-[1680px] mx-auto h-full max-h-full overflow-y-auto no-scrollbar lg:overflow-visible lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-28 lg:pb-28 px-6 md:px-14 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
         Resonance Chamber

@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BlogPost } from '../hooks/useGarden';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
+import { emitMikuSignal } from '../lib/mikuSignal';
 
 // 🔔 跨组件唤起：与 Markdown.tsx 的 LIGHTBOX_EVENT 同一种约定——
 //   任何深处的组件（如 Gallery 的搜索图标）都能 dispatch 这个事件唤起面板，
@@ -77,6 +78,11 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
       setCursor(0);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
+  }, [open]);
+
+  useEffect(() => {
+    emitMikuSignal({ type: open ? 'focus-open' : 'focus-close', source: 'palette' });
+    return () => emitMikuSignal({ type: 'focus-close', source: 'palette' });
   }, [open]);
 
   // 正文预先转纯文本 + 小写缓存，避免每次按键都重新清洗一遍 markdown

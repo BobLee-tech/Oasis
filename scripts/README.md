@@ -28,6 +28,8 @@ npm run lyric -- --category Miku --fetch             # 缺失歌词从 LRCLIB �
 npm run lyric -- --category Miku --fetch --publish   # 确认后发布并校验
 npm run lyric:identity                               # 更新标签身份清单
 npm run lyric:review -- --track m_06                # 生成校对页
+npm run lyric:translate -- --track y_18_03 \
+  --reuse-reviewed-from y_20_04                      # 同词版本复用审校译文
 ```
 
 嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名（`art` 就是这么来的）：

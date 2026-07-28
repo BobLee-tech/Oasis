@@ -6,7 +6,9 @@ export type MikuSignal =
   | { type: 'editor-close' }
   | { type: 'published' }
   | { type: 'reading-open' }
-  | { type: 'reading-close' };
+  | { type: 'reading-close' }
+  | { type: 'focus-open'; source: string }
+  | { type: 'focus-close'; source: string };
 
 const EVENT_NAME = 'oasis:miku-signal';
 

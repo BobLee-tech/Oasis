@@ -22,6 +22,13 @@
     --oasis-sakura: #FFB7C5;
     --oasis-paper: #FAF8F3;   /* 暖纸白：替代旧的冷调 #F8FAFC */
     --oasis-ink: #0A0F1D;     /* 夜墨：暗色底 */
+    --oasis-bottom-chrome-height: 4rem;
+    --oasis-bottom-chrome-gap: 0.75rem;
+    --oasis-bottom-safe-space: calc(
+        var(--oasis-bottom-chrome-height) +
+        var(--oasis-bottom-chrome-gap) +
+        env(safe-area-inset-bottom)
+    );
 }
 
 html, body {
@@ -60,6 +67,11 @@ body {
     }
 }
 
+/* 底部 Chrome 覆盖内容时，滚动容器仍能把最后一个可聚焦元素完整送到它上方。 */
+.oasis-bottom-scroll-safe {
+    scroll-padding-bottom: var(--oasis-bottom-safe-space);
+}
+
 /* ⌨️ 统一键盘焦点环：仅在键盘导航时出现，不打扰鼠标用户 */
 @layer base {
     :focus-visible {
@@ -85,15 +97,27 @@ body {
     100% { transform: scale(1.9); opacity: 0; }
 }
 
-/* 🎐 Miku 挂坠呼吸：听歌时用纯 CSS 驱动的轻微脉动，暗示她在里面跟着哼——
-   刻意不用 framer-motion 的重复 keyframe 动画，那种写法在父组件频繁重渲染时
-   （比如每秒跳动的时钟）容易被打断重启，视觉上会卡死在起始帧动不了。 */
-@keyframes oasis-miku-breathe {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.045); }
+/* 🎐 Miku 的生命感只发生在图标内部：按钮本身保持稳定，双马尾负责回应，水环负责播放状态。 */
+.miku-tail {
+    transform-box: fill-box;
+    transform-origin: center top;
+    transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-.animate-miku-breathe {
-    animation: oasis-miku-breathe 1.6s ease-in-out infinite;
+.miku-pendant:hover .miku-tail-left,
+.miku-pendant:focus-visible .miku-tail-left {
+    transform: rotate(-3deg) translateX(-0.2px);
+}
+.miku-pendant:hover .miku-tail-right,
+.miku-pendant:focus-visible .miku-tail-right {
+    transform: rotate(3deg) translateX(0.2px);
+}
+
+@keyframes oasis-miku-halo {
+    0%, 100% { transform: scale(1); opacity: 0.28; }
+    50% { transform: scale(1.16); opacity: 0.08; }
+}
+.miku-playing-halo {
+    animation: oasis-miku-halo 1.8s ease-in-out infinite;
 }
 
 /* 📱 移动端性能降级：大半径 backdrop-blur 是手机端最贵的合成开销之一，

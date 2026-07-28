@@ -89,13 +89,15 @@ interface Live2DStageProps {
   modelUrl: string;
   width: number;
   height: number;
+  /** > 1 时把模型按更高的虚拟舞台缩放，画布自然裁掉下半身；窄屏用来保住脸和上身的可读性。 */
+  modelHeightRatio?: number;
   reduceMotion: boolean;
   onReady?: () => void;
   onError?: (error: unknown) => void;
 }
 
 export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(function Live2DStage(
-  { modelUrl, width, height, reduceMotion, onReady, onError },
+  { modelUrl, width, height, modelHeightRatio = 1, reduceMotion, onReady, onError },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -250,11 +252,12 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
         // 停在更泛化的基类，这里窄化一下类型才能拿到它——运行时就是同一个对象，不是真的转型
         (model.internalModel as Cubism4InternalModel).eyeBlink = undefined;
 
-        const scale = height / model.internalModel.originalHeight;
+        const virtualHeight = height * modelHeightRatio;
+        const scale = virtualHeight / model.internalModel.originalHeight;
         model.scale.set(scale);
         model.anchor.set(0.5, 1);
         model.x = width / 2;
-        model.y = height;
+        model.y = virtualHeight;
 
         app.stage.addChild(model);
         modelRef.current = model;
@@ -293,7 +296,7 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       offsets.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelUrl, width, height]);
+  }, [modelUrl, width, height, modelHeightRatio]);
 
   // 尊重 prefers-reduced-motion：中途切换时同步暂停/恢复渲染循环
   useEffect(() => {

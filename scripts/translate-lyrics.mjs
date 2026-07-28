@@ -25,6 +25,7 @@ const parseArgs = argv => {
     album: '',
     force: false,
     importReviewed: '',
+    reuseReviewedFrom: '',
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -33,6 +34,7 @@ const parseArgs = argv => {
     else if (arg === '--album') options.album = argv[++index] ?? '';
     else if (arg === '--force') options.force = true;
     else if (arg === '--import-reviewed') options.importReviewed = argv[++index] ?? '';
+    else if (arg === '--reuse-reviewed-from') options.reuseReviewedFrom = argv[++index] ?? '';
     else throw new Error(`未知参数：${arg}`);
   }
   if (!options.trackIds.length && !options.category && !options.album) {
@@ -40,6 +42,12 @@ const parseArgs = argv => {
   }
   if (options.importReviewed && options.trackIds.length !== 1) {
     throw new Error('--import-reviewed 必须与单个 --track 一起使用');
+  }
+  if (options.reuseReviewedFrom && options.trackIds.length !== 1) {
+    throw new Error('--reuse-reviewed-from 必须与单个 --track 一起使用');
+  }
+  if (options.importReviewed && options.reuseReviewedFrom) {
+    throw new Error('--import-reviewed 与 --reuse-reviewed-from 不能同时使用');
   }
   return options;
 };
@@ -223,6 +231,58 @@ const main = async () => {
     const sourceHash = sourceHashOf(sourceLines);
     const sourceFolder = path.join(SOURCE_DIR, track.id);
     await mkdir(sourceFolder, { recursive: true });
+
+    if (options.reuseReviewedFrom) {
+      const originId = options.reuseReviewedFrom;
+      const originDocument = await readJson(path.join(OUT_DIR, `${originId}.json`));
+      const originReviewed = await readJson(
+        path.join(SOURCE_DIR, originId, 'translation.reviewed.json'),
+      );
+      const originIdentity = identityMap.get(originId);
+      const declaredSameLyrics = identity.sameLyricsAs === originId ||
+        originIdentity?.sameLyricsAs === track.id;
+      const lineDifferences = originDocument.lines.flatMap((line, index) => {
+        const originJa = line.ja.trim();
+        const targetJa = sourceLines[index]?.ja.trim() ?? '';
+        return originJa === targetJa ? [] : [{ index: index + 1, originJa, targetJa }];
+      });
+      const differsByOneInsertion = (left, right) => {
+        const [shorter, longer] = left.length <= right.length ? [left, right] : [right, left];
+        return longer.length - shorter.length === 1 &&
+          [...longer].some((_, index) => longer.slice(0, index) + longer.slice(index + 1) === shorter);
+      };
+      const onlyMinorEdits = lineDifferences.every(({ originJa, targetJa }) =>
+        differsByOneInsertion(originJa, targetJa));
+      const reusable = originDocument.lines.length === sourceLines.length &&
+        (lineDifferences.length === 0 || (declaredSameLyrics && onlyMinorEdits));
+      if (!reusable) throw new Error(`${originId} 与 ${track.id} 的日文歌词不满足安全复用条件`);
+      const lines = assertTranslation(
+        sourceLines,
+        originReviewed.lines.map((line, index) => ({ index: index + 1, zh: line.zh })),
+      );
+      await writeJson(path.join(sourceFolder, 'translation.reviewed.json'), {
+        version: 1,
+        trackId: track.id,
+        sourceHash,
+        translationStatus: 'reviewed',
+        reviewedAt: new Date().toISOString(),
+        reusedFrom: originId,
+        ...(lineDifferences.length ? { sourceTextDifferences: lineDifferences } : {}),
+        lines,
+      });
+      await writeTranslationLrc(track.id, sourceLines, lines);
+      const child = spawn(process.execPath, [
+        path.join(PROJECT_ROOT, 'scripts/post-lyrics.mjs'),
+        '--track', track.id,
+        '--force',
+        '--reviewed',
+      ], { cwd: PROJECT_ROOT, stdio: 'inherit' });
+      await new Promise((resolve, reject) => {
+        child.on('error', reject);
+        child.on('close', code => code === 0 ? resolve() : reject(new Error(`复用译文合并失败，退出码 ${code}`)));
+      });
+      continue;
+    }
 
     if (options.importReviewed) {
       const reviewed = await readJson(path.resolve(options.importReviewed));
