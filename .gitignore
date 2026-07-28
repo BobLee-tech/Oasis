@@ -19,6 +19,7 @@ dist-artworks/
 # Editor directories and files
 /public/audio/
 /public/lyrics/
+/public/__lyrics-review/
 /public/artworks-src/
 lyrics-src/
 .vscode/*

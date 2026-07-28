@@ -86,6 +86,22 @@ describe('lyric timing model', () => {
     it('returns nothing for an empty line rather than dividing by zero', () => {
       expect(beatsOf('')).toEqual([]);
     });
+
+    it('uses real word timing when v2 words exactly cover the displayed line', () => {
+      const beats = beatsOf({
+        startMs: 1_000,
+        endMs: 3_000,
+        ja: '君へ',
+        words: [
+          { text: '君', startMs: 1_000, endMs: 1_600 },
+          { text: 'へ', startMs: 1_600, endMs: 2_500 },
+        ],
+      });
+      expect(beats).toEqual([
+        { text: '君', from: 0, to: 0.4 },
+        { text: 'へ', from: 0.4, to: 1 },
+      ]);
+    });
   });
 
   it('recognizes long rests and exposes a stable ink progress', () => {

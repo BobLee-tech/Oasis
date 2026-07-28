@@ -448,7 +448,7 @@ function App() {
                 );
               })()}
               {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
-              <OasisDock currentView={appView} onViewChange={handleViewChange} isAdmin={effectiveIsAdmin} />
+              <OasisDock currentView={appView} onViewChange={handleViewChange} isAdmin={effectiveIsAdmin} isDark={isDarkMode} />
             </motion.div>
           )}
         </AnimatePresence>

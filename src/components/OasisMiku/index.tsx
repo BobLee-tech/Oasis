@@ -21,13 +21,18 @@ const DEFAULT_BUBBLE_BORDER = 'border-slate-300/40 dark:border-white/10';
 
 const MODEL_URL = '/live2d/miku/miku_sample_t04.model3.json';
 
-// 折叠态的小挂坠图标：双马尾剪影，纯线条，呼应站内其余图标的极简风格
+// 展开后成功截到脸就把它存起来，同一次会话不用每次展开都重截一遍——
+// 挂坠因此才是「真的她」而不是随便一张外部插画：直接来自站内正在跑的这具模型。
+const AVATAR_CACHE_KEY = 'oasis_miku_avatar_v1';
+
+// 折叠态在还没截到脸之前的占位：发丝轮廓 + 一点发饰高光，24 网格，与站内其余图标同一根线宽——
+// 不画肩膀/身体，纯发型剪影，不会被误读成通用的「用户」图标
 const PendantIcon = () => (
-  <svg viewBox="0 0 32 32" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-    <path d="M11 13 C7 17 6 23 8 27" />
-    <path d="M21 13 C25 17 26 23 24 27" />
-    <circle cx="16" cy="14" r="7" fill="none" />
-    <path d="M12 13 Q16 10 20 13" />
+  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.4 10.7a5.6 5.6 0 0 1 11.2 0" />
+    <path d="M6.4 10.7c-2.6 1.5-3.6 4.9-2.7 8.2" />
+    <path d="M17.6 10.7c2.6 1.5 3.6 4.9 2.7 8.2" />
+    <circle cx="16.3" cy="6.2" r="1.1" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -44,6 +49,12 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const [expanded, setExpanded] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // 折叠态的挂坠头像：本会话截过一次就存住，跨次展开/收起不用重截。
+  // 从没截到过（这次会话第一次展开、或截取失败）就用 PendantIcon 占位。
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(AVATAR_CACHE_KEY); } catch { return null; }
+  });
+  const avatarCapturedRef = useRef(!!avatarUrl);
   // 星图右下角另有缩放控制，移动端把挂坠再抬高一层；其他场所只需避开 Dock。
   const mobileBottom = view === 'orchard'
     ? 'bottom-[calc(env(safe-area-inset-bottom)+13rem)]'
@@ -64,8 +75,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   // ready/failed 的复位放在「展开」这个用户动作本身里，不必为此单独起一个 effect。
   const expand = () => { setReady(false); setFailed(false); setExpanded(true); };
 
+  // md:bottom-[43px]：让挂坠的视觉中心与 Dock 玻璃托盘的中心对齐（Dock 中心距底边 65px，
+  // 挂坠自身 44px 高，(65-44/2)≈43），而不是各自贴着 8px 基线各荡各的
   return (
-    <div className={`fixed ${mobileBottom} right-5 md:bottom-8 md:right-8 z-[90] flex flex-col items-end gap-2 select-none`}>
+    <div className={`fixed ${mobileBottom} right-5 md:bottom-[43px] md:right-8 z-[90] flex flex-col items-end gap-2 select-none`}>
       <AnimatePresence>
         {bubble && (
           <motion.div
@@ -111,7 +124,18 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                   width={expandedW}
                   height={expandedH}
                   reduceMotion={prefersReducedMotion}
-                  onReady={() => setReady(true)}
+                  onReady={() => {
+                    setReady(true);
+                    if (avatarCapturedRef.current) return;
+                    avatarCapturedRef.current = true;
+                    // 延后半秒再截：让 idle 动作、物理摇摆先跑起来，别截到刚加载完的僵硬绑定姿势
+                    window.setTimeout(() => {
+                      const url = stageRef.current?.captureFace({ size: 128, topFrac: 0.025, sideFrac: 0.185, offsetXFrac: 0.08 }) ?? null;
+                      if (!url) return;
+                      setAvatarUrl(url);
+                      try { sessionStorage.setItem(AVATAR_CACHE_KEY, url); } catch { /* 隐私模式等场景存不下就算了，不影响当次展示 */ }
+                    }, 550);
+                  }}
                   onError={() => setFailed(true)}
                 />
               )}
@@ -147,9 +171,19 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
             transition={{ delay: 0.7, type: 'spring', stiffness: 260, damping: 22 }}
             onClick={expand}
             title="喊她出来"
-            className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/40 dark:bg-white/5 border text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-sm transition-colors duration-500 ${isPlaying ? 'border-[#39C5BB]/40 shadow-[0_0_12px_rgba(57,197,187,0.35)] animate-miku-breathe' : 'border-slate-300/40 dark:border-white/10'}`}
+            aria-label="喊她出来"
+            // 玻璃语言与 Dock 同源（同等级模糊 + 双色描边 + 复合投影），但保持全圆——
+            // 她是同伴不是去处，形状上刻意跟五枚场所图标区分开
+            className={`group relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center backdrop-blur-2xl bg-white/35 dark:bg-[#0A0F1D]/45 border border-t-white/60 dark:border-t-white/20 text-slate-500 dark:text-slate-300 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 shadow-[0_10px_28px_-14px_rgba(15,23,42,0.35),inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-[0_10px_28px_-14px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-500 ${isPlaying ? 'border-[#39C5BB]/40 animate-miku-breathe' : 'border-slate-300/40 dark:border-white/10'}`}
           >
-            <PendantIcon />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <PendantIcon />
+            )}
+            {/* 呼唤涟漪：hover 时一圈圈荡开，邀请点开——复用作者头像同一套水波语言 */}
+            <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full border border-[#39C5BB]/50 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_infinite]" />
+            <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full border border-[#FFB7C5]/45 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_0.45s_infinite]" />
           </motion.button>
         )}
       </AnimatePresence>

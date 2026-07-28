@@ -1,0 +1,3399 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-28T11:26:17.249Z",
+  "tracks": {
+    "y_17_01": {
+      "id": "y_17_01",
+      "display": {
+        "title": "夏陰、ピアノを弾く",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/01 - 夏陰、ピアノを弾く.flac",
+      "tags": {
+        "title": "夏陰、ピアノを弾く",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03788",
+        "durationMs": 94007
+      },
+      "lookup": {
+        "title": "夏陰、ピアノを弾く",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_02": {
+      "id": "y_17_02",
+      "display": {
+        "title": "カトレア",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/02 - カトレア.flac",
+      "tags": {
+        "title": "カトレア",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03789",
+        "durationMs": 188387
+      },
+      "lookup": {
+        "title": "カトレア",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_03": {
+      "id": "y_17_03",
+      "display": {
+        "title": "言って。",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/03 - 言って。.flac",
+      "tags": {
+        "title": "言って。",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03790",
+        "durationMs": 242189
+      },
+      "lookup": {
+        "title": "言って。",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_04": {
+      "id": "y_17_04",
+      "display": {
+        "title": "あの夏に咲け",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/04 - あの夏に咲け.flac",
+      "tags": {
+        "title": "あの夏に咲け",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03791",
+        "durationMs": 258883
+      },
+      "lookup": {
+        "title": "あの夏に咲け",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_05": {
+      "id": "y_17_05",
+      "display": {
+        "title": "飛行",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/05 - 飛行.flac",
+      "tags": {
+        "title": "飛行",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03792",
+        "durationMs": 90652
+      },
+      "lookup": {
+        "title": "飛行",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_06": {
+      "id": "y_17_06",
+      "display": {
+        "title": "靴の花火",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/06 - 靴の花火.flac",
+      "tags": {
+        "title": "靴の花火",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03793",
+        "durationMs": 303238
+      },
+      "lookup": {
+        "title": "靴の花火",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_17_07": {
+      "id": "y_17_07",
+      "display": {
+        "title": "雲と幽霊",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2017.06.28 [Album] 夏草/07 - 雲と幽霊.flac",
+      "tags": {
+        "title": "雲と幽霊",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "夏草が邪魔をする",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JP-A65-17-03794",
+        "durationMs": 315478
+      },
+      "lookup": {
+        "title": "雲と幽霊",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "夏草が邪魔をする"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_01": {
+      "id": "y_18_01",
+      "display": {
+        "title": "前世",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/01 - 前世.flac",
+      "tags": {
+        "title": "前世",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04018",
+        "durationMs": 79257
+      },
+      "lookup": {
+        "title": "前世",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_02": {
+      "id": "y_18_02",
+      "display": {
+        "title": "負け犬にアンコールはいらない",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/02 - 負け犬にアンコールはいらない.flac",
+      "tags": {
+        "title": "負け犬にアンコールはいらない",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04019",
+        "durationMs": 234290
+      },
+      "lookup": {
+        "title": "負け犬にアンコールはいらない",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_03": {
+      "id": "y_18_03",
+      "display": {
+        "title": "爆弾魔",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/03 - 爆弾魔.flac",
+      "tags": {
+        "title": "爆弾魔",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04020",
+        "durationMs": 217039
+      },
+      "lookup": {
+        "title": "爆弾魔",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_04": {
+      "id": "y_18_04",
+      "display": {
+        "title": "ヒッチコック",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/04 - ヒッチコック.flac",
+      "tags": {
+        "title": "ヒッチコック",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04021",
+        "durationMs": 222820
+      },
+      "lookup": {
+        "title": "ヒッチコック",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_05": {
+      "id": "y_18_05",
+      "display": {
+        "title": "落下",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/05 - 落下.flac",
+      "tags": {
+        "title": "落下",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04022",
+        "durationMs": 74867
+      },
+      "lookup": {
+        "title": "落下",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_06": {
+      "id": "y_18_06",
+      "display": {
+        "title": "準透明少年",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/06 - 準透明少年.flac",
+      "tags": {
+        "title": "準透明少年",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04023",
+        "durationMs": 281474
+      },
+      "lookup": {
+        "title": "準透明少年",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_07": {
+      "id": "y_18_07",
+      "display": {
+        "title": "ただ君に晴れ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/07 - ただ君に晴れ.flac",
+      "tags": {
+        "title": "ただ君に晴れ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04024",
+        "durationMs": 198978
+      },
+      "lookup": {
+        "title": "ただ君に晴れ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_08": {
+      "id": "y_18_08",
+      "display": {
+        "title": "冬眠",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/08 - 冬眠.flac",
+      "tags": {
+        "title": "冬眠",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04025",
+        "durationMs": 301193
+      },
+      "lookup": {
+        "title": "冬眠",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_18_09": {
+      "id": "y_18_09",
+      "display": {
+        "title": "夏、バス停、君を待つ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2018.05.09 [Album] 負け犬にアンコールはいらない/09 - 夏、バス停、君を待つ.flac",
+      "tags": {
+        "title": "夏、バス停、君を待つ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "負け犬にアンコールはいらない",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04026",
+        "durationMs": 116054
+      },
+      "lookup": {
+        "title": "夏、バス停、君を待つ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "負け犬にアンコールはいらない"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_01": {
+      "id": "y_19_01",
+      "display": {
+        "title": "8_31",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/01 - 8_31.flac",
+      "tags": {
+        "title": "8/31",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04573",
+        "durationMs": 114220
+      },
+      "lookup": {
+        "title": "8/31",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_02": {
+      "id": "y_19_02",
+      "display": {
+        "title": "藍二乗",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/02 - 藍二乗.flac",
+      "tags": {
+        "title": "藍二乗",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JP-A65-18-04340",
+        "durationMs": 245910
+      },
+      "lookup": {
+        "title": "藍二乗",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_03": {
+      "id": "y_19_03",
+      "display": {
+        "title": "八月、某、月明かり",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/03 - 八月、某、月明かり.flac",
+      "tags": {
+        "title": "八月、某、月明かり",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04574",
+        "durationMs": 276236
+      },
+      "lookup": {
+        "title": "八月、某、月明かり",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_04": {
+      "id": "y_19_04",
+      "display": {
+        "title": "詩書きとコーヒー",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/04 - 詩書きとコーヒー.flac",
+      "tags": {
+        "title": "詩書きとコーヒー",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04575",
+        "durationMs": 247439
+      },
+      "lookup": {
+        "title": "詩書きとコーヒー",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_05": {
+      "id": "y_19_05",
+      "display": {
+        "title": "7_13",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/05 - 7_13.flac",
+      "tags": {
+        "title": "7/13",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04576",
+        "durationMs": 98882
+      },
+      "lookup": {
+        "title": "7/13",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_06": {
+      "id": "y_19_06",
+      "display": {
+        "title": "踊ろうぜ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/06 - 踊ろうぜ.flac",
+      "tags": {
+        "title": "踊ろうぜ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04577",
+        "durationMs": 253786
+      },
+      "lookup": {
+        "title": "踊ろうぜ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_07": {
+      "id": "y_19_07",
+      "display": {
+        "title": "六月は雨上がりの街を書く",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/07 - 六月は雨上がりの街を書く.flac",
+      "tags": {
+        "title": "六月は雨上がりの街を書く",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04578",
+        "durationMs": 238489
+      },
+      "lookup": {
+        "title": "六月は雨上がりの街を書く",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_08": {
+      "id": "y_19_08",
+      "display": {
+        "title": "五月は花緑青の窓辺から",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/08 - 五月は花緑青の窓辺から.flac",
+      "tags": {
+        "title": "五月は花緑青の窓辺から",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04579",
+        "durationMs": 185087
+      },
+      "lookup": {
+        "title": "五月は花緑青の窓辺から",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_09": {
+      "id": "y_19_09",
+      "display": {
+        "title": "夜紛い",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/09 - 夜紛い.flac",
+      "tags": {
+        "title": "夜紛い",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04580",
+        "durationMs": 223565
+      },
+      "lookup": {
+        "title": "夜紛い",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_10": {
+      "id": "y_19_10",
+      "display": {
+        "title": "5_6",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/10 - 5_6.flac",
+      "tags": {
+        "title": "5/6",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04581",
+        "durationMs": 147625
+      },
+      "lookup": {
+        "title": "5/6",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_11": {
+      "id": "y_19_11",
+      "display": {
+        "title": "パレード",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/11 - パレード.flac",
+      "tags": {
+        "title": "パレード",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "11",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04582",
+        "durationMs": 299747
+      },
+      "lookup": {
+        "title": "パレード",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_12": {
+      "id": "y_19_12",
+      "display": {
+        "title": "エルマ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/12 - エルマ.flac",
+      "tags": {
+        "title": "エルマ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "12",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04583",
+        "durationMs": 219850
+      },
+      "lookup": {
+        "title": "エルマ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_13": {
+      "id": "y_19_13",
+      "display": {
+        "title": "4_10",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/13 - 4_10.flac",
+      "tags": {
+        "title": "4/10",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "13",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04584",
+        "durationMs": 170483
+      },
+      "lookup": {
+        "title": "4/10",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19_14": {
+      "id": "y_19_14",
+      "display": {
+        "title": "僕は音楽を辞めた",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.04.10 [Album] 僕は音楽を辞めた/14 - だから僕は音楽を辞めた.flac",
+      "tags": {
+        "title": "だから僕は音楽を辞めた",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "だから僕は音楽を辞めた",
+        "trackNumber": "14",
+        "discNumber": "1",
+        "isrc": "JP-A65-19-04585",
+        "durationMs": 242919
+      },
+      "lookup": {
+        "title": "だから僕は音楽を辞めた",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "だから僕は音楽を辞めた"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_01": {
+      "id": "y_19e_01",
+      "display": {
+        "title": "車窓",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/01 - 車窓.flac",
+      "tags": {
+        "title": "車窓",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPPO01902971",
+        "durationMs": 115858
+      },
+      "lookup": {
+        "title": "車窓",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_02": {
+      "id": "y_19e_02",
+      "display": {
+        "title": "憂一乗",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/02 - 憂一乗.flac",
+      "tags": {
+        "title": "憂一乗",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPPO01902972",
+        "durationMs": 272048
+      },
+      "lookup": {
+        "title": "憂一乗",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_03": {
+      "id": "y_19e_03",
+      "display": {
+        "title": "夕凪、某、花惑い",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/03 - 夕凪、某、花惑い.flac",
+      "tags": {
+        "title": "夕凪、某、花惑い",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPPO01902973",
+        "durationMs": 198533
+      },
+      "lookup": {
+        "title": "夕凪、某、花惑い",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_04": {
+      "id": "y_19e_04",
+      "display": {
+        "title": "雨とカプチーノ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/04 - 雨とカプチーノ.flac",
+      "tags": {
+        "title": "雨とカプチーノ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPPO01902974",
+        "durationMs": 269602
+      },
+      "lookup": {
+        "title": "雨とカプチーノ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_05": {
+      "id": "y_19e_05",
+      "display": {
+        "title": "湖の街",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/05 - 湖の街.flac",
+      "tags": {
+        "title": "湖の街",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JPPO01902975",
+        "durationMs": 110079
+      },
+      "lookup": {
+        "title": "湖の街",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_06": {
+      "id": "y_19e_06",
+      "display": {
+        "title": "神様のダンス",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/06 - 神様のダンス.flac",
+      "tags": {
+        "title": "神様のダンス",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JPPO01902976",
+        "durationMs": 232480
+      },
+      "lookup": {
+        "title": "神様のダンス",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_07": {
+      "id": "y_19e_07",
+      "display": {
+        "title": "雨晴るる",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/07 - 雨晴るる.flac",
+      "tags": {
+        "title": "雨晴るる",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JPPO01902977",
+        "durationMs": 222757
+      },
+      "lookup": {
+        "title": "雨晴るる",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_08": {
+      "id": "y_19e_08",
+      "display": {
+        "title": "歩く",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/08 - 歩く.flac",
+      "tags": {
+        "title": "歩く",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JPPO01902978",
+        "durationMs": 206789
+      },
+      "lookup": {
+        "title": "歩く",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_09": {
+      "id": "y_19e_09",
+      "display": {
+        "title": "心に穴が空いた",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/09 - 心に穴が空いた.flac",
+      "tags": {
+        "title": "心に穴が空いた",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JPPO01902577",
+        "durationMs": 264497
+      },
+      "lookup": {
+        "title": "心に穴が空いた",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_10": {
+      "id": "y_19e_10",
+      "display": {
+        "title": "森の教会",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/10 - 森の教会.flac",
+      "tags": {
+        "title": "森の教会",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "isrc": "JPPO01902979",
+        "durationMs": 119651
+      },
+      "lookup": {
+        "title": "森の教会",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_11": {
+      "id": "y_19e_11",
+      "display": {
+        "title": "声",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/11 - 声.flac",
+      "tags": {
+        "title": "声",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "11",
+        "discNumber": "1",
+        "isrc": "JPPO01902980",
+        "durationMs": 288910
+      },
+      "lookup": {
+        "title": "声",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_12": {
+      "id": "y_19e_12",
+      "display": {
+        "title": "エイミー",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/12 - エイミー.flac",
+      "tags": {
+        "title": "エイミー",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "12",
+        "discNumber": "1",
+        "isrc": "JPPO01902981",
+        "durationMs": 212909
+      },
+      "lookup": {
+        "title": "エイミー",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_13": {
+      "id": "y_19e_13",
+      "display": {
+        "title": "海底、月明かり",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/13 - 海底、月明かり.flac",
+      "tags": {
+        "title": "海底、月明かり",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "13",
+        "discNumber": "1",
+        "isrc": "JPPO01902982",
+        "durationMs": 145154
+      },
+      "lookup": {
+        "title": "海底、月明かり",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_19e_14": {
+      "id": "y_19e_14",
+      "display": {
+        "title": "ノーチラス",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2019.08.28 [Album] エルマ/14 - ノーチラス.flac",
+      "tags": {
+        "title": "ノーチラス",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "エルマ",
+        "trackNumber": "14",
+        "discNumber": "1",
+        "isrc": "JPPO01902983",
+        "durationMs": 240789
+      },
+      "lookup": {
+        "title": "ノーチラス",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "エルマ"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_01": {
+      "id": "y_20_01",
+      "display": {
+        "title": "音楽泥棒の自白",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/01 - 音楽泥棒の自白.flac",
+      "tags": {
+        "title": "音楽泥棒の自白",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPPO02001729",
+        "durationMs": 72462
+      },
+      "lookup": {
+        "title": "音楽泥棒の自白",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_02": {
+      "id": "y_20_02",
+      "display": {
+        "title": "昼鳶",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/02 - 昼鳶.flac",
+      "tags": {
+        "title": "昼鳶",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPPO02001730",
+        "durationMs": 162835
+      },
+      "lookup": {
+        "title": "昼鳶",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_03": {
+      "id": "y_20_03",
+      "display": {
+        "title": "春ひさぎ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/03 - 春ひさぎ.flac",
+      "tags": {
+        "title": "春ひさぎ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPPO02001467",
+        "durationMs": 217731
+      },
+      "lookup": {
+        "title": "春ひさぎ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_04": {
+      "id": "y_20_04",
+      "display": {
+        "title": "爆弾魔 (Re-Recording)",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/04 - 爆弾魔 (Re-Recording).flac",
+      "tags": {
+        "title": "爆弾魔 (Re-Recording)",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPPO02001731",
+        "durationMs": 215729
+      },
+      "lookup": {
+        "title": "爆弾魔 (Re-Recording)",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "sameLyricsAs": "y_18_03",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_05": {
+      "id": "y_20_05",
+      "display": {
+        "title": "青年期、空き巣",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/05 - 青年期、空き巣.flac",
+      "tags": {
+        "title": "青年期、空き巣",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JPPO02001732",
+        "durationMs": 76275
+      },
+      "lookup": {
+        "title": "青年期、空き巣",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_06": {
+      "id": "y_20_06",
+      "display": {
+        "title": "レプリカント",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/06 - レプリカント.flac",
+      "tags": {
+        "title": "レプリカント",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JPPO02001733",
+        "durationMs": 217049
+      },
+      "lookup": {
+        "title": "レプリカント",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_07": {
+      "id": "y_20_07",
+      "display": {
+        "title": "花人局",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/07 - 花人局.flac",
+      "tags": {
+        "title": "花人局",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JPPO02001734",
+        "durationMs": 333704
+      },
+      "lookup": {
+        "title": "花人局",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_08": {
+      "id": "y_20_08",
+      "display": {
+        "title": "朱夏期、音楽泥棒",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/08 - 朱夏期、音楽泥棒.flac",
+      "tags": {
+        "title": "朱夏期、音楽泥棒",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JPPO02001735",
+        "durationMs": 108651
+      },
+      "lookup": {
+        "title": "朱夏期、音楽泥棒",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_09": {
+      "id": "y_20_09",
+      "display": {
+        "title": "盗作",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/09 - 盗作.flac",
+      "tags": {
+        "title": "盗作",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JPPO02001736",
+        "durationMs": 239115
+      },
+      "lookup": {
+        "title": "盗作",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_10": {
+      "id": "y_20_10",
+      "display": {
+        "title": "思想犯",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/10 - 思想犯.flac",
+      "tags": {
+        "title": "思想犯",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "isrc": "JPPO02001698",
+        "durationMs": 253596
+      },
+      "lookup": {
+        "title": "思想犯",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_11": {
+      "id": "y_20_11",
+      "display": {
+        "title": "逃亡",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/11 - 逃亡.flac",
+      "tags": {
+        "title": "逃亡",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "11",
+        "discNumber": "1",
+        "isrc": "JPPO02001737",
+        "durationMs": 288780
+      },
+      "lookup": {
+        "title": "逃亡",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_12": {
+      "id": "y_20_12",
+      "display": {
+        "title": "幼年期、思い出の中",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/12 - 幼年期、思い出の中.flac",
+      "tags": {
+        "title": "幼年期、思い出の中",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "12",
+        "discNumber": "1",
+        "isrc": "JPPO02001738",
+        "durationMs": 140853
+      },
+      "lookup": {
+        "title": "幼年期、思い出の中",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_13": {
+      "id": "y_20_13",
+      "display": {
+        "title": "夜行",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/13 - 夜行.flac",
+      "tags": {
+        "title": "夜行",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "13",
+        "discNumber": "1",
+        "isrc": "JPPO02000003",
+        "durationMs": 202726
+      },
+      "lookup": {
+        "title": "夜行",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_20_14": {
+      "id": "y_20_14",
+      "display": {
+        "title": "花に亡霊",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2020.07.29 [Album] 盗作/14 - 花に亡霊.flac",
+      "tags": {
+        "title": "花に亡霊",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "盗作",
+        "trackNumber": "14",
+        "discNumber": "1",
+        "isrc": "JPPO02001032",
+        "durationMs": 241207
+      },
+      "lookup": {
+        "title": "花に亡霊",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "盗作"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_01": {
+      "id": "y_23_01",
+      "display": {
+        "title": "都落ち",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/01 - 都落ち.flac",
+      "tags": {
+        "title": "都落ち",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPPO02300696",
+        "durationMs": 250169
+      },
+      "lookup": {
+        "title": "都落ち",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_02": {
+      "id": "y_23_02",
+      "display": {
+        "title": "ブレーメン",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/02 - ブレーメン.flac",
+      "tags": {
+        "title": "ブレーメン",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPPO02201830",
+        "durationMs": 272745
+      },
+      "lookup": {
+        "title": "ブレーメン",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_03": {
+      "id": "y_23_03",
+      "display": {
+        "title": "チノカテ",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/03 - チノカテ.flac",
+      "tags": {
+        "title": "チノカテ",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPPO02202608",
+        "durationMs": 247668
+      },
+      "lookup": {
+        "title": "チノカテ",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_04": {
+      "id": "y_23_04",
+      "display": {
+        "title": "月に吠える",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/04 - 月に吠える.flac",
+      "tags": {
+        "title": "月に吠える",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPPO02103314",
+        "durationMs": 266151
+      },
+      "lookup": {
+        "title": "月に吠える",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_05": {
+      "id": "y_23_05",
+      "display": {
+        "title": "451",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/05 - 451.flac",
+      "tags": {
+        "title": "451",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JPPO02300501",
+        "durationMs": 209564
+      },
+      "lookup": {
+        "title": "451",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_06": {
+      "id": "y_23_06",
+      "display": {
+        "title": "又三郎",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/06 - 又三郎.flac",
+      "tags": {
+        "title": "又三郎",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JPPO02101475",
+        "durationMs": 229360
+      },
+      "lookup": {
+        "title": "又三郎",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_07": {
+      "id": "y_23_07",
+      "display": {
+        "title": "老人と海",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/07 - 老人と海.flac",
+      "tags": {
+        "title": "老人と海",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JPPO02102558",
+        "durationMs": 255312
+      },
+      "lookup": {
+        "title": "老人と海",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_08": {
+      "id": "y_23_08",
+      "display": {
+        "title": "左右盲",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/08 - 左右盲.flac",
+      "tags": {
+        "title": "左右盲",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JPPO02202188",
+        "durationMs": 267489
+      },
+      "lookup": {
+        "title": "左右盲",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_09": {
+      "id": "y_23_09",
+      "display": {
+        "title": "アルジャーノン",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/09 - アルジャーノン.flac",
+      "tags": {
+        "title": "アルジャーノン",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JPPO02205087",
+        "durationMs": 252790
+      },
+      "lookup": {
+        "title": "アルジャーノン",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "y_23_10": {
+      "id": "y_23_10",
+      "display": {
+        "title": "第一夜",
+        "artist": "Yorushika"
+      },
+      "category": "Yorushika",
+      "url": "/audio/2023.04.05 [Album] 幻燈/10 - 第一夜.flac",
+      "tags": {
+        "title": "第一夜",
+        "artist": "ヨルシカ",
+        "albumArtist": "ヨルシカ",
+        "album": "幻燈",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "isrc": "JPPO02300702",
+        "durationMs": 262073
+      },
+      "lookup": {
+        "title": "第一夜",
+        "artists": [
+          "ヨルシカ",
+          "Yorushika"
+        ],
+        "album": "幻燈"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_01": {
+      "id": "a_01",
+      "display": {
+        "title": "10月無口な君を忘れる",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/01. 10月無口な君を忘れる.flac",
+      "tags": {
+        "title": "10月無口な君を忘れる",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPB602101186",
+        "durationMs": 332286
+      },
+      "lookup": {
+        "title": "10月無口な君を忘れる",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_02": {
+      "id": "a_02",
+      "display": {
+        "title": "夏霞",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/02. 夏霞.flac",
+      "tags": {
+        "title": "夏霞",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPB602102576",
+        "durationMs": 228793
+      },
+      "lookup": {
+        "title": "夏霞",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_03": {
+      "id": "a_03",
+      "display": {
+        "title": "晴るる",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/03. 晴るる.flac",
+      "tags": {
+        "title": "晴るる",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPB602101601",
+        "durationMs": 290241
+      },
+      "lookup": {
+        "title": "晴るる",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_04": {
+      "id": "a_04",
+      "display": {
+        "title": "祥月",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/04. 祥月.flac",
+      "tags": {
+        "title": "祥月",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPB602103031",
+        "durationMs": 257107
+      },
+      "lookup": {
+        "title": "祥月",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_05": {
+      "id": "a_05",
+      "display": {
+        "title": "8.8",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/05. 8.8.flac",
+      "tags": {
+        "title": "8.8",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JPB602101824",
+        "durationMs": 353719
+      },
+      "lookup": {
+        "title": "8.8",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_06": {
+      "id": "a_06",
+      "display": {
+        "title": "ピアス",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/06. ピアス.flac",
+      "tags": {
+        "title": "ピアス",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JPB602103033",
+        "durationMs": 273808
+      },
+      "lookup": {
+        "title": "ピアス",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_07": {
+      "id": "a_07",
+      "display": {
+        "title": "嘘つき",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 夜明け前/07. 嘘つき.flac",
+      "tags": {
+        "title": "嘘つき",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "夜明け前",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JPB602103032",
+        "durationMs": 296768
+      },
+      "lookup": {
+        "title": "嘘つき",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "夜明け前"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_08": {
+      "id": "a_08",
+      "display": {
+        "title": "ただ好きと言えたら",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 季億の箱/01. ただ好きと言えたら.flac",
+      "tags": {
+        "title": "ただ好きと言えたら",
+        "artist": "あたらよ;KERENMI",
+        "albumArtist": "あたらよ",
+        "album": "季億の箱",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPB602302628",
+        "durationMs": 205877
+      },
+      "lookup": {
+        "title": "ただ好きと言えたら",
+        "artists": [
+          "あたらよ;KERENMI",
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "季億の箱"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_09": {
+      "id": "a_09",
+      "display": {
+        "title": "今夜2人だけのダンスを",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 季億の箱/02. 今夜2人だけのダンスを.flac",
+      "tags": {
+        "title": "今夜2人だけのダンスを",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "季億の箱",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPB602303087",
+        "durationMs": 251143
+      },
+      "lookup": {
+        "title": "今夜2人だけのダンスを",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "季億の箱"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_10": {
+      "id": "a_10",
+      "display": {
+        "title": "夏が来るたび",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 季億の箱/03. 夏が来るたび.flac",
+      "tags": {
+        "title": "夏が来るたび",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "季億の箱",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPB602303088",
+        "durationMs": 239068
+      },
+      "lookup": {
+        "title": "夏が来るたび",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "季億の箱"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "a_11": {
+      "id": "a_11",
+      "display": {
+        "title": "僕らはそれを愛と呼んだ",
+        "artist": "Atarayo"
+      },
+      "category": "Atarayo",
+      "url": "/audio/Atarayo (あたらよ) - 季億の箱/04. 僕らはそれを愛と呼んだ.flac",
+      "tags": {
+        "title": "僕らはそれを愛と呼んだ",
+        "artist": "あたらよ",
+        "albumArtist": "あたらよ",
+        "album": "季億の箱",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPB602302394",
+        "durationMs": 322954
+      },
+      "lookup": {
+        "title": "僕らはそれを愛と呼んだ",
+        "artists": [
+          "あたらよ",
+          "Atarayo"
+        ],
+        "album": "季億の箱"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_01": {
+      "id": "m_01",
+      "display": {
+        "title": "Last Night, Good Night (Re-Dialed)",
+        "artist": "Hatsune Miku"
+      },
+      "category": "Miku",
+      "url": "/audio/Miku/08 - livetune feat. 初音ミク - Last Night,Good Night(Re-Dialed).flac",
+      "tags": {
+        "title": "Last Night,Good Night(Re:Dialed)",
+        "artist": "livetune feat. 初音ミク",
+        "albumArtist": "Various",
+        "album": "「マジカルミライ 2014」OFFICIAL ALBUM",
+        "trackNumber": "08",
+        "discNumber": "2",
+        "durationMs": 384253
+      },
+      "lookup": {
+        "title": "Last Night,Good Night(Re:Dialed)",
+        "artists": [
+          "livetune feat. 初音ミク",
+          "Various",
+          "Hatsune Miku"
+        ],
+        "album": "「マジカルミライ 2014」OFFICIAL ALBUM"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_02": {
+      "id": "m_02",
+      "display": {
+        "title": "Last Night, Good Night",
+        "artist": "Hatsune Miku"
+      },
+      "category": "Miku",
+      "url": "/audio/Miku/08.Last Night,Good Night.mp3",
+      "tags": {
+        "title": "Last Night,Good Night",
+        "artist": "livetune feat.初音ミク",
+        "albumArtist": "Hatsune Miku",
+        "album": "初音ミクベスト ～impacts～",
+        "trackNumber": "08",
+        "durationMs": 381951
+      },
+      "lookup": {
+        "title": "Last Night,Good Night",
+        "artists": [
+          "livetune feat.初音ミク",
+          "Hatsune Miku"
+        ],
+        "album": "初音ミクベスト ～impacts～"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_03": {
+      "id": "m_03",
+      "display": {
+        "title": "One Way (Original Mix)",
+        "artist": "Hatsune Miku"
+      },
+      "category": "Miku",
+      "url": "/audio/Miku/Aura Qualic feat. 初音ミク Append (Sweet), 初音ミク Append (Dark) - ELATE - 02 - One Way (Original Mix).flac",
+      "tags": {
+        "title": "One Way (Original Mix)",
+        "artist": "Aura Qualic feat. 初音ミク Append (Sweet), 初音ミク Append (Dark)",
+        "albumArtist": "Aura Qualic, Trinity Note feat. 初音ミク",
+        "album": "ELATE",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "durationMs": 516857
+      },
+      "lookup": {
+        "title": "One Way (Original Mix)",
+        "artists": [
+          "Aura Qualic feat. 初音ミク Append (Sweet), 初音ミク Append (Dark)",
+          "Aura Qualic, Trinity Note feat. 初音ミク",
+          "Hatsune Miku"
+        ],
+        "album": "ELATE"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_04": {
+      "id": "m_04",
+      "display": {
+        "title": "intro ~memories~",
+        "artist": "ケフィアP"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/01.intro ~memories~.flac",
+      "tags": {
+        "title": "intro ~memories~",
+        "artist": "ケフィアP",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "01",
+        "discNumber": "1",
+        "durationMs": 41067
+      },
+      "lookup": {
+        "title": "intro ~memories~",
+        "artists": [
+          "ケフィアP",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_05": {
+      "id": "m_05",
+      "display": {
+        "title": "ハジメテノオト",
+        "artist": "malo"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/02.ハジメテノオト.flac",
+      "tags": {
+        "title": "ハジメテノオト",
+        "artist": "malo",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "02",
+        "discNumber": "1",
+        "durationMs": 303560
+      },
+      "lookup": {
+        "title": "ハジメテノオト",
+        "artists": [
+          "malo",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_06": {
+      "id": "m_06",
+      "display": {
+        "title": "メルト",
+        "artist": "supercell"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/03.メルト.flac",
+      "tags": {
+        "title": "メルト",
+        "artist": "supercell",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "03",
+        "discNumber": "1",
+        "durationMs": 259867
+      },
+      "lookup": {
+        "title": "メルト",
+        "artists": [
+          "supercell",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_07": {
+      "id": "m_07",
+      "display": {
+        "title": "ワールドイズマイン",
+        "artist": "supercell"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/04.ワールドイズマイン.flac",
+      "tags": {
+        "title": "ワールドイズマイン",
+        "artist": "supercell",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "04",
+        "discNumber": "1",
+        "durationMs": 255240
+      },
+      "lookup": {
+        "title": "ワールドイズマイン",
+        "artists": [
+          "supercell",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_08": {
+      "id": "m_08",
+      "display": {
+        "title": "ミラクルペイント",
+        "artist": "OSTER project"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/05.ミラクルペイント.flac",
+      "tags": {
+        "title": "ミラクルペイント",
+        "artist": "OSTER project",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "05",
+        "discNumber": "1",
+        "durationMs": 263760
+      },
+      "lookup": {
+        "title": "ミラクルペイント",
+        "artists": [
+          "OSTER project",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_09": {
+      "id": "m_09",
+      "display": {
+        "title": "白の季節",
+        "artist": "ゆうゆ"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/06.白の季節.flac",
+      "tags": {
+        "title": "白の季節",
+        "artist": "ゆうゆ",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "06",
+        "discNumber": "1",
+        "durationMs": 236800
+      },
+      "lookup": {
+        "title": "白の季節",
+        "artists": [
+          "ゆうゆ",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_10": {
+      "id": "m_10",
+      "display": {
+        "title": "サイハテ",
+        "artist": "小林オニキス"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/07.サイハテ.flac",
+      "tags": {
+        "title": "サイハテ",
+        "artist": "小林オニキス",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "07",
+        "discNumber": "1",
+        "durationMs": 165133
+      },
+      "lookup": {
+        "title": "サイハテ",
+        "artists": [
+          "小林オニキス",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_11": {
+      "id": "m_11",
+      "display": {
+        "title": "あなたの歌姫 Complete ver.",
+        "artist": "azuma"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/08.あなたの歌姫 Complete ver..flac",
+      "tags": {
+        "title": "あなたの歌姫 Complete ver.",
+        "artist": "azuma",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "08",
+        "discNumber": "1",
+        "durationMs": 213867
+      },
+      "lookup": {
+        "title": "あなたの歌姫 Complete ver.",
+        "artists": [
+          "azuma",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_12": {
+      "id": "m_12",
+      "display": {
+        "title": "えれくとりっく・えんじぇぅ",
+        "artist": "ヤスオ"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/09.えれくとりっく・えんじぇぅ.flac",
+      "tags": {
+        "title": "えれくとりっく・えんじぇぅ",
+        "artist": "ヤスオ",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "09",
+        "discNumber": "1",
+        "durationMs": 199107
+      },
+      "lookup": {
+        "title": "えれくとりっく・えんじぇぅ",
+        "artists": [
+          "ヤスオ",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_13": {
+      "id": "m_13",
+      "display": {
+        "title": "White Letter",
+        "artist": "GonGoss"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/10.White Letter.flac",
+      "tags": {
+        "title": "White Letter",
+        "artist": "GonGoss",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "durationMs": 167333
+      },
+      "lookup": {
+        "title": "White Letter",
+        "artists": [
+          "GonGoss",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_14": {
+      "id": "m_14",
+      "display": {
+        "title": "melody...",
+        "artist": "mikuru396"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/11.melody....flac",
+      "tags": {
+        "title": "melody...",
+        "artist": "mikuru396",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "11",
+        "discNumber": "1",
+        "durationMs": 273067
+      },
+      "lookup": {
+        "title": "melody...",
+        "artists": [
+          "mikuru396",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_15": {
+      "id": "m_15",
+      "display": {
+        "title": "そばかす",
+        "artist": "ぢょんP"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/12.そばかす.flac",
+      "tags": {
+        "title": "そばかす",
+        "artist": "ぢょんP",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "12",
+        "discNumber": "1",
+        "durationMs": 255733
+      },
+      "lookup": {
+        "title": "そばかす",
+        "artists": [
+          "ぢょんP",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_16": {
+      "id": "m_16",
+      "display": {
+        "title": "celluloid",
+        "artist": "baker"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/13.celluloid.flac",
+      "tags": {
+        "title": "celluloid",
+        "artist": "baker",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "13",
+        "discNumber": "1",
+        "durationMs": 240293
+      },
+      "lookup": {
+        "title": "celluloid",
+        "artists": [
+          "baker",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_17": {
+      "id": "m_17",
+      "display": {
+        "title": "Packaged",
+        "artist": "livetune"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/14.Packaged.flac",
+      "tags": {
+        "title": "Packaged",
+        "artist": "livetune",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "14",
+        "discNumber": "1",
+        "durationMs": 298707
+      },
+      "lookup": {
+        "title": "Packaged",
+        "artists": [
+          "livetune",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_18": {
+      "id": "m_18",
+      "display": {
+        "title": "from Y to Y",
+        "artist": "OneRoom"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/15.from Y to Y.flac",
+      "tags": {
+        "title": "from Y to Y",
+        "artist": "OneRoom",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "15",
+        "discNumber": "1",
+        "durationMs": 334067
+      },
+      "lookup": {
+        "title": "from Y to Y",
+        "artists": [
+          "OneRoom",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_19": {
+      "id": "m_19",
+      "display": {
+        "title": "歌に形はないけれど",
+        "artist": "doriko"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/16.歌に形はないけれど.flac",
+      "tags": {
+        "title": "歌に形はないけれど",
+        "artist": "doriko",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "16",
+        "discNumber": "1",
+        "durationMs": 332960
+      },
+      "lookup": {
+        "title": "歌に形はないけれど",
+        "artists": [
+          "doriko",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_20": {
+      "id": "m_20",
+      "display": {
+        "title": "outro ~タイムリミット -Endless-~",
+        "artist": "North-T"
+      },
+      "category": "Miku",
+      "url": "/audio/Hatsune Miku Best ~memories~/17.outro ~タイムリミット -Endless-~.flac",
+      "tags": {
+        "title": "outro ~タイムリミット -Endless-~",
+        "artist": "North-T",
+        "albumArtist": "Sony Music",
+        "album": "初音ミクベスト ~memories~",
+        "trackNumber": "17",
+        "discNumber": "1",
+        "durationMs": 113547
+      },
+      "lookup": {
+        "title": "outro ~タイムリミット -Endless-~",
+        "artists": [
+          "North-T",
+          "Sony Music"
+        ],
+        "album": "初音ミクベスト ~memories~"
+      },
+      "kind": "instrumental",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_21": {
+      "id": "m_21",
+      "display": {
+        "title": "愛言葉",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-01 DECO_27 feat. 初音ミク - 愛言葉.flac",
+      "tags": {
+        "title": "愛言葉",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "1",
+        "discNumber": "1",
+        "isrc": "JPJ931000158;JPJ931300241",
+        "durationMs": 264933
+      },
+      "lookup": {
+        "title": "愛言葉",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_22": {
+      "id": "m_22",
+      "display": {
+        "title": "僕みたいな君、君みたいな僕。",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-02 DECO_27 feat. 初音ミク - 僕みたいな君、君みたいな僕。.flac",
+      "tags": {
+        "title": "僕みたいな君、君みたいな僕。",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "2",
+        "discNumber": "1",
+        "isrc": "JPJ931300242",
+        "durationMs": 268600
+      },
+      "lookup": {
+        "title": "僕みたいな君、君みたいな僕。",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_23": {
+      "id": "m_23",
+      "display": {
+        "title": "相愛性理論",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-03 DECO_27 feat. 初音ミク - 相愛性理論.flac",
+      "tags": {
+        "title": "相愛性理論",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "3",
+        "discNumber": "1",
+        "isrc": "JPJ931000154;JPJ931300243",
+        "durationMs": 268653
+      },
+      "lookup": {
+        "title": "相愛性理論",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_24": {
+      "id": "m_24",
+      "display": {
+        "title": "心懐サミット",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-04 DECO_27 feat. 初音ミク - 心懐サミット.flac",
+      "tags": {
+        "title": "心懐サミット",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "4",
+        "discNumber": "1",
+        "isrc": "JPJ931000157;JPJ931300244",
+        "durationMs": 169400
+      },
+      "lookup": {
+        "title": "心懐サミット",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_25": {
+      "id": "m_25",
+      "display": {
+        "title": "罪と罰",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-05 DECO_27 feat. 初音ミク - 罪と罰.flac",
+      "tags": {
+        "title": "罪と罰",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "5",
+        "discNumber": "1",
+        "isrc": "JPJ931000163;JPJ931300245",
+        "durationMs": 182133
+      },
+      "lookup": {
+        "title": "罪と罰",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_26": {
+      "id": "m_26",
+      "display": {
+        "title": "ゆめゆめ",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-06 DECO_27 feat. 初音ミク - ゆめゆめ.flac",
+      "tags": {
+        "title": "ゆめゆめ",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "6",
+        "discNumber": "1",
+        "isrc": "JPJ931300246",
+        "durationMs": 216773
+      },
+      "lookup": {
+        "title": "ゆめゆめ",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_27": {
+      "id": "m_27",
+      "display": {
+        "title": "むかしむかしのきょうのぼく",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-07 DECO_27 feat. 初音ミク - むかしむかしのきょうのぼく.flac",
+      "tags": {
+        "title": "むかしむかしのきょうのぼく",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "7",
+        "discNumber": "1",
+        "isrc": "JPJ931300247",
+        "durationMs": 288187
+      },
+      "lookup": {
+        "title": "むかしむかしのきょうのぼく",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_28": {
+      "id": "m_28",
+      "display": {
+        "title": "二息歩行",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-08 DECO_27 feat. 初音ミク - 二息歩行.flac",
+      "tags": {
+        "title": "二息歩行",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "8",
+        "discNumber": "1",
+        "isrc": "JPJ931000166;JPJ931300248",
+        "durationMs": 183387
+      },
+      "lookup": {
+        "title": "二息歩行",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_29": {
+      "id": "m_29",
+      "display": {
+        "title": "キミ以上、ボク未満。",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-09 DECO_27 feat. 初音ミク - キミ以上、ボク未満。.flac",
+      "tags": {
+        "title": "キミ以上、ボク未満。",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "9",
+        "discNumber": "1",
+        "isrc": "JPJ931000161;JPJ931300249",
+        "durationMs": 223933
+      },
+      "lookup": {
+        "title": "キミ以上、ボク未満。",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_30": {
+      "id": "m_30",
+      "display": {
+        "title": "愛迷エレジー",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-10 DECO_27 feat. 初音ミク - 愛迷エレジー.flac",
+      "tags": {
+        "title": "愛迷エレジー",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "10",
+        "discNumber": "1",
+        "isrc": "JPJ931300250",
+        "durationMs": 177840
+      },
+      "lookup": {
+        "title": "愛迷エレジー",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    },
+    "m_31": {
+      "id": "m_31",
+      "display": {
+        "title": "愛言葉II",
+        "artist": "DECO*27 feat. 初音ミク"
+      },
+      "category": "Miku",
+      "url": "/audio/DECO_27 VOCALOID COLLECTION 2008~2012/1-14 DECO_27 feat. 初音ミク - 愛言葉II.flac",
+      "tags": {
+        "title": "愛言葉II",
+        "artist": "DECO*27 feat. 初音ミク",
+        "albumArtist": "DECO*27",
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012",
+        "trackNumber": "14",
+        "discNumber": "1",
+        "isrc": "JPJ931300254",
+        "durationMs": 265893
+      },
+      "lookup": {
+        "title": "愛言葉II",
+        "artists": [
+          "DECO*27 feat. 初音ミク",
+          "DECO*27"
+        ],
+        "album": "DECO*27 VOCALOID COLLECTION 2008~2012"
+      },
+      "kind": "vocal",
+      "audit": {
+        "audioPresent": true
+      }
+    }
+  }
+}

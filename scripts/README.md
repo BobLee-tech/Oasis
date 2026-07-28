@@ -9,6 +9,9 @@
 | `npm run art -- <图>` | 画作 → thumb/full 两档 webp → R2 → 「+ 装裱」表单字段 | `r2:oasis-picture/art/` → `img.boblee.dev/art` |
 | `npm run song -- <音频\|文件夹>` | 音频 → 归档 + AAC 转码 → R2 → PLAYLIST 代码行 | `oasis-r2:oasis-audio` → `audio.boblee.dev` |
 | `npm run lyric -- --track <id>` | 本地/网络同步歌词 → 校验 → 双语合并 → R2 | `oasis-r2:oasis-audio/lyrics` |
+| `npm run lyric:identity` | ffprobe 音频标签 → 可审计曲目身份清单 | `lyrics-config/tracks.identity.json` |
+| `npm run lyric:translate` | 整首机器初译 → 定点自检 → 同轴中文 LRC | `lyrics-src/<id>/` |
+| `npm run lyric:review` | 生成逐行试听与编辑的本地校对页 | `public/__lyrics-review/` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
 | `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
 
@@ -23,6 +26,8 @@ npm run song -- ~/Downloads/千本桜.flac --dry        # 演练：只解析、�
 npm run lyric -- --track m_06 --lrc ~/Downloads/メルト.lrc
 npm run lyric -- --category Miku --fetch             # 缺失歌词从 LRCLIB 匹配
 npm run lyric -- --category Miku --fetch --publish   # 确认后发布并校验
+npm run lyric:identity                               # 更新标签身份清单
+npm run lyric:review -- --track m_06                # 生成校对页
 ```
 
 嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名（`art` 就是这么来的）：
@@ -53,7 +58,8 @@ head -20 scripts/post-song.mjs
 3. **上传后必须校验。** `post-song.mjs` 传完会 `curl -I` 一次公开 URL 确认 200；空格与日文的转义不一致是这套流程唯一会静默失败的地方。
 4. **歌词网络匹配只在本地导入时发生。** 访客浏览器只请求自己的 R2，避免把第三方服务、
    查询关键词和故障面暴露给线上用户。中文译词放在
-   `lyrics-src/<trackId>/translation.zh.lrc`，校对完成前用 `--machine` 标记。
+   `lyrics-src/<trackId>/translation.zh.lrc`。导入默认标为 `machine`；
+   校对完成后用 `--reviewed` 或 `--import-reviewed` 升级。
 5. **新增脚本记得回来更新上面那张表**，这份 README 是唯一的索引。
 
 ## 外部依赖

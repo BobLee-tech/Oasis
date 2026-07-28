@@ -9,6 +9,7 @@ import '@fontsource/eb-garamond/600.css'
 import '@fontsource/eb-garamond/400-italic.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
+import '@fontsource/klee-one/600.css'
 import 'lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css'
 
 import './index.css'

@@ -4,11 +4,9 @@ import { getEnergy } from '../../hooks/useSoundscape';
 import { formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
 import { findActiveLine } from '../../lib/lyrics';
 import { useTicker } from '../../lib/ticker';
-import type { LyricsDocument, Track } from '../../types/music';
+import type { LyricLanguage, LyricsDocument, Track } from '../../types/music';
 import { Interlude } from './Interlude';
 import { LyricRow } from './LyricRow';
-
-type LyricLanguage = 'bilingual' | 'ja';
 
 interface LyricFieldProps {
   lyrics: LyricsDocument;
@@ -587,7 +585,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
               line={line}
               index={index}
               isCurrent={index === playbackIndex}
-              showTranslation={language === 'bilingual' && !!line.zh}
+              language={language}
               compact={compact}
               color={color}
               onChoose={chooseLine}
@@ -615,5 +613,3 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     </div>
   );
 };
-
-export type { LyricLanguage };
