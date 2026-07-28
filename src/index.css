@@ -117,88 +117,163 @@ body {
     }
 }
 
-/* 🎼 水纹词场：不再把歌词关进卡片，以距离、余韵与柔边墨迹表达时间。 */
+/* 🎼 水纹词场：不再把歌词关进卡片，以距离、余韵与逐字墨迹表达时间。 */
+
+/* 上缘收得快（已唱的干脆退场），下缘化得开（将唱的若隐若现） */
+.lyric-field {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 74%, transparent 99%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 74%, transparent 99%);
+}
+
 .lyric-row {
-    --delay: min(calc(var(--d) * 28ms), 160ms);
+    /* 兜底值：真正的数值由 LyricField 每帧直接写进 DOM */
+    --d: 6;
+    --past: 0;
+    --p: 0;
+    --delay: min(calc(var(--d) * 26ms), 150ms);
+    /* 未唱的墨色 → 已唱的情绪色。
+       曲库里的情绪色大多明度很高（樱粉在纸白上只有 1.5:1，根本读不了），
+       所以按明度重铸而不是简单调暗：锁定 L、保留 H 与 C，颜色身份才不会糊成灰。 */
+    --lyric-ink: rgb(100 116 139);
+    --accent-ink: color-mix(in oklab, var(--accent) 45%, #1e293b);
     opacity: max(0.12, calc(1 - var(--d) * 0.26));
+    /* 焦点行放大 5.5%：层次不再只靠远近，而是真正的轻重。scale 不触发布局，
+       测量缓存因此始终有效。 */
     transform:
-        translate3d(0, calc(var(--past) * -8px), 0)
-        scale(calc(1 - min(var(--d), 3) * 0.006));
+        translate3d(0, calc(var(--past) * -6px), 0)
+        scale(calc(1 + max(0, 1 - var(--d)) * 0.055));
     transform-origin: left center;
+    line-break: strict; /* 日文禁则：促音/长音符/闭括号不跑到行首 */
     transition:
-        opacity 500ms cubic-bezier(.22, .61, .36, 1) var(--delay),
-        transform 500ms cubic-bezier(.22, .61, .36, 1) var(--delay),
-        filter 500ms ease-out var(--delay),
-        color 500ms ease-out;
+        opacity 480ms cubic-bezier(.22, .61, .36, 1) var(--delay),
+        transform 480ms cubic-bezier(.22, .61, .36, 1) var(--delay),
+        filter 480ms ease-out var(--delay);
+}
+
+.dark .lyric-row {
+    --lyric-ink: rgb(148 163 184);
+    --accent-ink: color-mix(in oklab, var(--accent) 92%, #f8fafc);
+}
+
+/* 自定义属性没法靠层叠回退（不支持的函数依然是「合法的 token 流」），
+   所以相对颜色语法必须包在 @supports 里。上面的 color-mix 版本本身也过 AA。 */
+@supports (color: oklch(from red 0.5 c h)) {
+    .lyric-row { --accent-ink: oklch(from var(--accent) 0.48 calc(c * 1.15) h); }
+    .dark .lyric-row { --accent-ink: oklch(from var(--accent) 0.86 c h); }
 }
 
 .lyric-row[data-role="backing"] {
     opacity: max(0.1, calc(.78 - var(--d) * 0.24));
 }
 
-.lyric-row[data-active="true"] .lyric-ink-base {
-    color: rgb(51 65 85);
+/* 呼吸：停顿越久留白越大，视觉节奏照抄音乐的乐句划分 */
+.lyric-row[data-breath="1"] { margin-bottom: 1rem; }
+.lyric-row[data-breath="2"] { margin-bottom: 2.4rem; }
+
+/*
+ * 逐字点亮。曲库没有逐词时间戳，所以每个发音单元的窗口 [--a,--b] 是按 mora
+ * 权重估的；--p 是本行已唱比例。这样既比横向渐变准，也顺手解决了两件事：
+ * 长句换行时不会两行一起亮，行尾也不会再留下没被覆盖的墨。
+ */
+.lyric-beat {
+    --t: clamp(0, calc((var(--p) - var(--a)) / (var(--b) - var(--a))), 1);
+    color: var(--lyric-ink);
+    color: color-mix(
+        in oklab,
+        var(--accent-ink) calc(var(--t) * 100%),
+        var(--lyric-ink) calc((1 - var(--t)) * 100%)
+    );
 }
 
-.dark .lyric-row[data-active="true"] .lyric-ink-base {
-    color: rgb(241 245 249);
-}
-
-.lyric-ink-wet {
-    color: var(--accent);
-    -webkit-mask-image: linear-gradient(
-        to right,
-        #000 calc(var(--p) * 100% - 2.5ch),
-        rgb(0 0 0 / .35) calc(var(--p) * 100%),
-        transparent calc(var(--p) * 100% + 1.5ch)
-    );
-    mask-image: linear-gradient(
-        to right,
-        #000 calc(var(--p) * 100% - 2.5ch),
-        rgb(0 0 0 / .35) calc(var(--p) * 100%),
-        transparent calc(var(--p) * 100% + 1.5ch)
-    );
+/* 行进辉光：t·(1−t) 在正在点亮的那个字上取极大，光点跟着唱走 */
+.lyric-row[data-active="true"] .lyric-beat {
+    text-shadow: 0 0 calc(var(--t) * (1 - var(--t)) * 26px) var(--accent);
 }
 
 .lyric-translation {
-    opacity: max(.28, calc(1 - var(--d) * .3));
-    transition: opacity 500ms ease-out var(--delay);
+    opacity: max(.24, calc(1 - var(--d) * .32));
+    transition: opacity 480ms ease-out var(--delay);
 }
 
-.lyric-drop {
-    border-color: color-mix(in srgb, var(--accent) 78%, transparent);
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
-    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 42%, transparent);
+/* 焦点位的柔光：取代旧的逐帧 textShadow，只动 opacity/transform */
+.lyric-focus-glow {
+    height: 5.5rem;
+    opacity: 0;
+    transform: translate3d(0, -50%, 0);
+    background: radial-gradient(
+        58% 50% at 20% 50%,
+        color-mix(in srgb, var(--accent) 40%, transparent),
+        transparent 72%
+    );
+    filter: blur(18px);
 }
 
-.lyric-drop:nth-child(1) {
-    transform: scale(clamp(0, calc(var(--g) * 3), 1));
-    opacity: clamp(0, calc(var(--g) * 3), 1);
+.lyric-focus-ripple {
+    position: absolute;
+    left: 4%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+    opacity: 0;
+    animation: lyric-ripple 1400ms cubic-bezier(.22, .61, .36, 1);
 }
 
-.lyric-drop:nth-child(2) {
-    transform: scale(clamp(0, calc((var(--g) - .18) * 3), calc(1 + var(--e) * .12)));
-    opacity: clamp(0, calc((var(--g) - .18) * 3), 1);
+@keyframes lyric-ripple {
+    from { opacity: .45; transform: scale(.3); }
+    to   { opacity: 0;   transform: scale(11); }
 }
 
-.lyric-drop:nth-child(3) {
-    transform: scale(clamp(0, calc((var(--g) - .36) * 3), calc(1 + var(--e) * .12)));
-    opacity: clamp(0, calc((var(--g) - .36) * 3), 1);
+/* 水面线：只在浏览时浮现，给滑动一个可锚定的「此处」 */
+.lyric-waterline {
+    opacity: 0;
+    transform: translate3d(0, -50%, 0);
+    transition: opacity 340ms ease-out;
+}
+
+.lyric-field[data-browsing="true"] .lyric-waterline { opacity: 1; }
+
+.lyric-waterline-rule {
+    background: linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--accent) 45%, transparent) 22%,
+        color-mix(in srgb, var(--accent) 45%, transparent) 70%,
+        transparent
+    );
+}
+
+/* 间奏进度弧：pathLength=1 把周长归一化，dashoffset 直接吃 --g */
+.lyric-interlude-arc {
+    stroke: var(--accent);
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - var(--g));
+}
+
+.lyric-interlude-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    border-radius: 9999px;
+    background: var(--accent);
+    transform: scale(calc(.7 + var(--e) * .5));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
     .lyric-row {
-        filter: blur(min(calc(var(--d) * .6px), 3px));
+        filter: blur(min(calc(var(--d) * .45px), 1.6px));
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .lyric-ink-wet {
-        display: none;
-    }
-    .lyric-row[data-active="true"] .lyric-ink-base {
-        color: var(--accent);
-    }
+    .lyric-row[data-active="true"] .lyric-beat { text-shadow: none; }
+    .lyric-focus-ripple { display: none; }
 }
 
 /* ✍️ Markdown 排版细节：代码块 / 行内代码 / 表格的明暗双态外观 */

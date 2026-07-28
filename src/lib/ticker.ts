@@ -29,7 +29,7 @@ const loop = (now: number) => {
 
   const dt = previousTime === 0 ? 0 : Math.min(0.05, (now - previousTime) / 1_000);
   previousTime = now;
-  sampleEnergy();
+  sampleEnergy(dt);
   subscribers.forEach(callback => callback(now, dt));
 };
 
