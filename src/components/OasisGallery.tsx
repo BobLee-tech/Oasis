@@ -950,7 +950,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       </AnimatePresence>
 
       {/* 🖼️ 右侧基础内容画廊区 */}
-      <div className="w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
+      <div className="oasis-bottom-scroll-safe w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
         <div className="w-full h-full flex flex-col">
               {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案 */}
               <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-8 mx-auto group">

@@ -16,6 +16,7 @@ import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
 import { extractWikiLinks, buildTitleIndex } from '../lib/wikilinks';
 import { tagKey, buildTagCanonicalMap } from '../lib/tags';
+import { emitMikuSignal } from '../lib/mikuSignal';
 
 interface OasisOrchardProps { isAdmin: boolean; }
 
@@ -194,6 +195,10 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   const { categories, metaOf } = useCategories();
   const typeColor = (t?: string) => metaOf(t || 'thought').color;
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
+  React.useEffect(() => {
+    emitMikuSignal({ type: activePost ? 'focus-open' : 'focus-close', source: 'orchard-reading' });
+    return () => emitMikuSignal({ type: 'focus-close', source: 'orchard-reading' });
+  }, [activePost]);
   const [hoverPostId, setHoverPostId] = useState<string | null>(null);
   const [hoverTag, setHoverTag] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null); // 点击主题锚定聚焦
@@ -526,7 +531,7 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
 
       {/* 🔭 缩放控制：放大 / 缩小 / 复位 */}
       {posts.length > 0 && (
-        <div className="absolute bottom-28 right-4 md:right-8 z-30 flex flex-col items-center gap-1.5 font-mono text-slate-400 dark:text-slate-500">
+        <div data-miku-avoid className="absolute top-24 left-4 md:top-auto md:bottom-28 md:left-auto md:right-8 z-30 flex flex-col items-center gap-1.5 font-mono text-slate-400 dark:text-slate-500">
           <button onClick={() => setView(v => ({ ...v, scale: Math.min(3.5, v.scale * 1.2) }))} className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">＋</button>
           <button onClick={() => setView(v => ({ ...v, scale: Math.max(0.6, v.scale / 1.2) }))} className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">－</button>
           <AnimatePresence>

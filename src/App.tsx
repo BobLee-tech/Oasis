@@ -15,11 +15,10 @@ import { NIGHT_REMINDERS, MIKU_WHISPERS } from './data/quotes';
 import { useCoarsePointer } from './hooks/useCoarsePointer';
 import { getVisitorAlias } from './lib/visitor';
 
-import { OasisMiku } from './components/OasisMiku';
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
-import { OasisDock } from './components/OasisDock';
+import { OasisBottomChrome } from './components/OasisBottomChrome';
 import { OasisPalette, openPalette, type PaletteView } from './components/OasisPalette';
 
 // 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
@@ -375,6 +374,7 @@ function App() {
       <AnimatePresence>
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
           <motion.div 
+            data-miku-avoid
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
             className="absolute top-5 left-5 md:top-8 md:left-8 z-[100] flex flex-wrap items-center gap-2 md:gap-3 max-w-[calc(100vw-7rem)]"
           >
@@ -419,8 +419,6 @@ function App() {
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
       {terminalStatus === 'granted' && <NightWhisper isAdmin={effectiveIsAdmin} onOpenArtwork={(id) => navigate('atelier', id)} />}
-      {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && <OasisMiku view={appView} />}
-
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
@@ -448,7 +446,7 @@ function App() {
                 );
               })()}
               {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
-              <OasisDock currentView={appView} onViewChange={handleViewChange} isAdmin={effectiveIsAdmin} isDark={isDarkMode} />
+              <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} />
             </motion.div>
           )}
         </AnimatePresence>
