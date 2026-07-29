@@ -15,6 +15,7 @@
     "lyric": "node scripts/post-lyrics.mjs",
     "lyric:identity": "node scripts/build-track-identity.mjs",
     "lyric:translate": "node scripts/translate-lyrics.mjs",
+    "lyric:netease": "node scripts/pull-netease-translation.mjs",
     "lyric:review": "node scripts/review-lyrics.mjs",
     "test": "vitest run",
     "init-tailwind": "tailwindcss init -p"

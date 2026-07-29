@@ -8,10 +8,11 @@
 | `npm run img` | 截图 → webp → R2 → Markdown 图片语法 | `r2:oasis-picture` → `img.boblee.dev` |
 | `npm run art -- <图>` | 画作 → thumb/full 两档 webp → R2 → 「+ 装裱」表单字段 | `r2:oasis-picture/art/` → `img.boblee.dev/art` |
 | `npm run song -- <音频\|文件夹>` | 音频 → 归档 + AAC 转码 → R2 → PLAYLIST 代码行 | `oasis-r2:oasis-audio` → `audio.boblee.dev` |
-| `npm run lyric -- --track <id>` | 本地/网络同步歌词 → 校验 → 双语合并 → R2 | `oasis-r2:oasis-audio/lyrics` |
+| `npm run lyric -- --track <id>` | 本地/LRCLIB/网易云同步歌词 → 校验 → 双语合并 → R2 | `oasis-r2:oasis-audio/lyrics` |
 | `npm run lyric:identity` | ffprobe 音频标签 → 可审计曲目身份清单 | `lyrics-config/tracks.identity.json` |
 | `npm run lyric:translate` | 整首机器初译 → 定点自检 → 同轴中文 LRC | `lyrics-src/<id>/` |
-| `npm run lyric:review` | 生成逐行试听与编辑的本地校对页 | `public/__lyrics-review/` |
+| `npm run lyric:netease -- --track <id>` | 已有原文的曲目导入网易云译文，对齐到本地轴并以 machine 状态直接发布 | `lyrics-src/<id>/translation.zh.lrc` → `dist-lyrics/` |
+| `npm run lyric:review` | 生成逐行试听 + 编辑的本地校对页 | `public/__lyrics-review/` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
 | `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
 
@@ -24,10 +25,12 @@ npm run song -- ~/Downloads/千本桜.flac              # 单曲，归入 Miku/
 npm run song -- ~/Downloads/某专辑/ --album "2024.03.09 [Album] 某专辑"
 npm run song -- ~/Downloads/千本桜.flac --dry        # 演练：只解析、只打印，不落盘不上传
 npm run lyric -- --track m_06 --lrc ~/Downloads/メルト.lrc
-npm run lyric -- --category Miku --fetch             # 缺失歌词从 LRCLIB 匹配
+npm run lyric -- --category Miku --fetch --netease   # 缺失歌词先试 LRCLIB，再试网易云
 npm run lyric -- --category Miku --fetch --publish   # 确认后发布并校验
 npm run lyric:identity                               # 更新标签身份清单
-npm run lyric:review -- --track m_06                # 生成校对页
+npm run lyric:netease -- --category Miku             # 已有原文的曲目，导入网易云译文并以 machine 发布
+npm run lyric:netease -- --category Yorushika --force # 用网易云译文替换从未真正审校过的旧译文
+npm run lyric:review -- --track m_06                # 生成逐行校对页
 npm run lyric:translate -- --track y_18_03 \
   --reuse-reviewed-from y_20_04                      # 同词版本复用审校译文
 ```
@@ -62,6 +65,8 @@ head -20 scripts/post-song.mjs
    查询关键词和故障面暴露给线上用户。中文译词放在
    `lyrics-src/<trackId>/translation.zh.lrc`。导入默认标为 `machine`；
    校对完成后用 `--reviewed` 或 `--import-reviewed` 升级。
+   网易云译文（`--netease` 或 `lyric:netease`）无论如何都不会自动升级为
+   `reviewed`——这条门槛写死在 `post-lyrics.mjs` 里，见 `docs/lyrics-pipeline.md`。
 5. **新增脚本记得回来更新上面那张表**，这份 README 是唯一的索引。
 
 ## 外部依赖

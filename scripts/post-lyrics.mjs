@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //
-// 🌙 歌词入库：本地 LRC 优先，缺失时可从 LRCLIB 获取同步歌词
+// 🌙 歌词入库：本地 LRC 优先，缺失时可从 LRCLIB 或网易云获取同步歌词
 //    → 清洗 / 校验 / 合并中文译词 → 生成版本化 JSON + manifest
 //    → 可选上传到 oasis-audio/lyrics 并逐一校验。
 //
@@ -8,9 +8,13 @@
 //   npm run lyric -- --track m_06 --lrc ~/Downloads/メルト.lrc
 //   npm run lyric -- --track m_06 --fetch
 //   npm run lyric -- --category Miku --fetch
+//   npm run lyric -- --category Miku --fetch --netease
 //   npm run lyric -- --category Miku --fetch --publish
 //
 // 中文译词放在 lyrics-src/<trackId>/translation.zh.lrc，时间轴与日文允许 ±350ms。
+// --netease 拉到的官方译文只落在 translation.netease.lrc，且无论 --reviewed 与否
+// 都只标记 machine（待校）——reviewed 只能来自 translate-lyrics.mjs --import-reviewed
+// 这条人工闸门，见 docs/lyrics-pipeline.md。
 // 网络查询只发生在本地导入阶段；访客浏览器只读取自己的 R2 JSON。
 //
 import { access, copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -27,6 +31,14 @@ import {
   overlap,
   rankLrclibCandidates,
 } from './lib/lyrics-match.mjs';
+import { clean, mergeTranslation, parseLrc } from './lib/lrc-parse.mjs';
+import {
+  acceptableNeteaseCandidate,
+  fetchNeteaseLyric,
+  rankNeteaseCandidates,
+  resolveNeteaseOverrideId,
+  searchNetease,
+} from './lib/netease-lyrics.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(PROJECT_ROOT, 'src/hooks/useSoundscape.ts');
@@ -37,8 +49,6 @@ const DEV_DIR = path.join(PROJECT_ROOT, 'public/lyrics');
 const REMOTE = 'oasis-r2:oasis-audio/lyrics';
 const PUBLIC_BASE = 'https://audio.boblee.dev/lyrics';
 const MAX_LRC_BYTES = 2 * 1024 * 1024;
-const MAX_LINES = 2_000;
-const TIMESTAMP = /\[(\d{1,3}):([0-5]\d)(?:[.:](\d{1,3}))?\]/g;
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const run = (cmd, args) => new Promise((resolve, reject) => {
@@ -57,20 +67,15 @@ const capture = (cmd, args) => new Promise((resolve, reject) => {
   child.on('close', code => code === 0 ? resolve(out) : reject(new Error(err.trim() || `${cmd} 退出码 ${code}`)));
 });
 
-const clean = value => String(value ?? '')
-  .replace(/^\uFEFF/, '')
-  .replace(/\0/g, '')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .slice(0, 500);
-
 const parseArgs = argv => {
   const options = {
     trackIds: [],
     category: '',
     lrc: '',
     translation: '',
+    translator: '',
     fetch: false,
+    netease: false,
     publish: false,
     dry: false,
     force: false,
@@ -85,10 +90,12 @@ const parseArgs = argv => {
     else if (arg === '--category') options.category = argv[++i] ?? '';
     else if (arg === '--lrc') options.lrc = argv[++i] ?? '';
     else if (arg === '--translation') options.translation = argv[++i] ?? '';
+    else if (arg === '--translator') options.translator = argv[++i] ?? '';
     else if (arg === '--offset') options.offsetMs = Number(argv[++i] ?? 0);
     else if (arg === '--machine') options.translationStatus = 'machine';
     else if (arg === '--reviewed') options.translationStatus = 'reviewed';
     else if (arg === '--fetch') options.fetch = true;
+    else if (arg === '--netease') options.netease = true;
     else if (arg === '--publish') options.publish = true;
     else if (arg === '--dry') options.dry = true;
     else if (arg === '--force') options.force = true;
@@ -100,85 +107,6 @@ const parseArgs = argv => {
   if (options.translation && options.trackIds.length !== 1) throw new Error('--translation 必须与单个 --track 一起使用');
   if (!Number.isFinite(options.offsetMs) || Math.abs(options.offsetMs) > 60_000) throw new Error('--offset 必须在 ±60000ms 内');
   return options;
-};
-
-const fractionToMs = fraction => {
-  if (!fraction) return 0;
-  if (fraction.length === 1) return Number(fraction) * 100;
-  if (fraction.length === 2) return Number(fraction) * 10;
-  return Number(fraction.slice(0, 3));
-};
-
-const looksChinese = text => {
-  const simplified = text.match(/[这为发后里个们时会说开关从对过还进无与么]/g)?.length ?? 0;
-  const kana = text.match(/[\u3040-\u30ff]/g)?.length ?? 0;
-  return simplified > 0 && kana === 0;
-};
-
-const parseLrc = input => {
-  const raw = [];
-  const warnings = [];
-  let offsetMs = 0;
-  input.replace(/^\uFEFF/, '').split(/\r?\n/).forEach((sourceLine, order) => {
-    const line = sourceLine.trim();
-    if (!line) return;
-    const offset = line.match(/^\[offset:([+-]?\d+)]$/i);
-    if (offset) {
-      const value = Number(offset[1]);
-      if (Math.abs(value) <= 60_000) offsetMs = value;
-      return;
-    }
-    if (/^\[[a-z][a-z0-9_-]*:.*]$/i.test(line)) return;
-    const stamps = [...line.matchAll(TIMESTAMP)];
-    if (!stamps.length) {
-      warnings.push(`第 ${order + 1} 行没有时间戳`);
-      return;
-    }
-    const text = clean(line.replace(TIMESTAMP, ''));
-    if (!text) return;
-    for (const stamp of stamps) {
-      const startMs = Number(stamp[1]) * 60_000 + Number(stamp[2]) * 1_000 + fractionToMs(stamp[3]);
-      if (startMs <= 86_400_000) raw.push({ startMs, text, order });
-    }
-  });
-  raw.sort((a, b) => a.startMs - b.startMs || a.order - b.order);
-  const grouped = new Map();
-  for (const line of raw) {
-    const texts = grouped.get(line.startMs) ?? [];
-    if (!texts.includes(line.text)) texts.push(line.text);
-    grouped.set(line.startMs, texts);
-  }
-  const starts = [...grouped.keys()].slice(0, MAX_LINES);
-  const lines = starts.map((startMs, index) => {
-    const texts = grouped.get(startMs);
-    const chineseIndex = texts.findIndex(looksChinese);
-    const ja = chineseIndex > 0 ? texts.slice(0, chineseIndex).join(' / ') : texts[0];
-    const zh = chineseIndex >= 0
-      ? texts.slice(chineseIndex).join(' / ')
-      : texts.length > 1 ? texts.slice(1).join(' / ') : '';
-    return {
-      startMs,
-      endMs: Math.max(startMs + 250, starts[index + 1] ?? startMs + 8_000),
-      ja,
-      ...(zh ? { zh } : {}),
-    };
-  });
-  if (raw.length > MAX_LINES) warnings.push(`超过 ${MAX_LINES} 行，已截断`);
-  return { lines, offsetMs, warnings };
-};
-
-const mergeTranslation = (lines, translated, toleranceMs = 350) => {
-  let cursor = 0;
-  return lines.map(line => {
-    while (
-      cursor + 1 < translated.length &&
-      Math.abs(translated[cursor + 1].startMs - line.startMs) <=
-        Math.abs(translated[cursor].startMs - line.startMs)
-    ) cursor += 1;
-    const candidate = translated[cursor];
-    if (!candidate || Math.abs(candidate.startMs - line.startMs) > toleranceMs) return line;
-    return { ...line, zh: candidate.ja };
-  });
 };
 
 const safeReadLrc = async filename => {
@@ -258,6 +186,52 @@ const fetchLrclib = async (track, identity, identityConfig) => {
   };
 };
 
+/**
+ * 网易云原文与官方译文；identityConfig.tracks[id].neteaseId 存在时跳过搜索，直接拉取。
+ * 搜索候选比 LRCLIB 噪音大得多（翻唱/伴奏/live 同名曲极多），门槛也更严——见
+ * lib/netease-lyrics.mjs 的 acceptableNeteaseCandidate。
+ */
+const fetchNetease = async (track, identity, identityConfig, { debug = false } = {}) => {
+  const overrideId = resolveNeteaseOverrideId(track.id, identityConfig);
+  let songId = overrideId;
+  let matchInfo = null;
+  if (!songId) {
+    const candidates = await searchNetease(identity);
+    const ranked = rankNeteaseCandidates(candidates, identity, identityConfig);
+    const best = ranked[0];
+    if (!acceptableNeteaseCandidate(best)) {
+      if ((process.env.LYRICS_DEBUG || debug) && best) {
+        console.log('网易候选未通过：', {
+          id: track.id,
+          candidate: best.candidate.name,
+          artists: best.candidate.artistNames.join('/'),
+          album: best.candidate.albumName,
+          score: best.score,
+          titleScore: best.titleScore,
+          artistScore: best.artistScore,
+          durationDelta: best.durationDelta,
+        });
+      }
+      return null;
+    }
+    songId = best.candidate.id;
+    matchInfo = best;
+  }
+  const { lrc, tlyric } = await fetchNeteaseLyric(songId);
+  return {
+    lrc,
+    tlyricRaw: tlyric,
+    songId,
+    matchInfo,
+    source: {
+      kind: 'netease',
+      label: '网易云音乐',
+      url: `https://music.163.com/#/song?id=${songId}`,
+      fetchedAt: new Date().toISOString(),
+    },
+  };
+};
+
 const firstExisting = async candidates => {
   for (const candidate of candidates.filter(Boolean)) {
     try {
@@ -328,8 +302,8 @@ const publishAndVerify = async generatedKeys => {
 const main = async () => {
   const options = parseArgs(process.argv.slice(2));
   if (!options.trackIds.length && !options.category) {
-    console.log('用法：npm run lyric -- --track <id> [--lrc <file> | --fetch] [--translation <file>] [--publish]');
-    console.log('   或：npm run lyric -- --category Miku --fetch [--publish]');
+    console.log('用法：npm run lyric -- --track <id> [--lrc <file> | --fetch | --netease] [--translation <file>] [--publish]');
+    console.log('   或：npm run lyric -- --category Miku --fetch --netease [--publish]');
     process.exit(1);
   }
 
@@ -382,6 +356,7 @@ const main = async () => {
 
       let originalText = '';
       let source = null;
+      let neteaseTlyricRaw = '';
       if (localLrc) {
         originalText = await safeReadLrc(localLrc);
         source = { kind: 'local', label: '本地 LRC' };
@@ -394,16 +369,30 @@ const main = async () => {
           }
         }
         console.log(`${label} · 本地歌词`);
-      } else if (options.fetch) {
-        const found = await fetchLrclib(track, identity, identityConfig);
-        if (found) {
-          originalText = found.lrc;
-          source = found.source;
-          console.log(
-            `${label} · LRCLIB 匹配 ${(found.score * 100).toFixed(0)}%` +
-            ` · ${found.match.artistName || '未知艺人'}` +
-            `${found.match.durationDelta === null ? '' : ` · Δ${found.match.durationDelta.toFixed(1)}s`}`,
-          );
+      } else {
+        if (options.fetch) {
+          const found = await fetchLrclib(track, identity, identityConfig);
+          if (found) {
+            originalText = found.lrc;
+            source = found.source;
+            console.log(
+              `${label} · LRCLIB 匹配 ${(found.score * 100).toFixed(0)}%` +
+              ` · ${found.match.artistName || '未知艺人'}` +
+              `${found.match.durationDelta === null ? '' : ` · Δ${found.match.durationDelta.toFixed(1)}s`}`,
+            );
+          }
+        }
+        if (!originalText && options.netease) {
+          const found = await fetchNetease(track, identity, identityConfig, { debug: options.debug });
+          if (found) {
+            originalText = found.lrc;
+            source = found.source;
+            neteaseTlyricRaw = found.tlyricRaw;
+            const matchLabel = found.matchInfo
+              ? `匹配 ${(found.matchInfo.score * 100).toFixed(0)}%`
+              : '人工指定 neteaseId';
+            console.log(`${label} · 网易云原文 ${matchLabel}${found.tlyricRaw ? '（含官方译文）' : ''}`);
+          }
         }
       }
 
@@ -421,15 +410,54 @@ const main = async () => {
         options.translation ? path.resolve(options.translation.replace(/^~/, process.env.HOME ?? '~')) : '',
         path.join(sourceFolder, 'translation.zh.lrc'),
       ]);
+      const neteaseCache = path.join(sourceFolder, 'translation.netease.lrc');
+      let translatedText = '';
+      let usedNeteaseTranslation = false;
+      if (translationPath) {
+        translatedText = await safeReadLrc(translationPath);
+      } else if (neteaseTlyricRaw) {
+        translatedText = neteaseTlyricRaw;
+        usedNeteaseTranslation = true;
+      } else if (!options.refresh && existsSync(neteaseCache)) {
+        translatedText = await safeReadLrc(neteaseCache);
+        usedNeteaseTranslation = true;
+      }
+
       let lines = parsed.lines;
       let translationStatus = lines.some(line => line.zh) ? 'reviewed' : 'none';
-      if (translationPath) {
-        const translated = parseLrc(await safeReadLrc(translationPath));
-        lines = mergeTranslation(lines, translated.lines);
-        const matched = lines.filter(line => line.zh).length;
-        const coverage = matched / lines.length;
-        if (coverage < 0.7) throw new Error(`中文译词时间轴覆盖率仅 ${(coverage * 100).toFixed(0)}%`);
-        translationStatus = options.translationStatus;
+      let translator = options.translator.trim().slice(0, 80);
+      if (translatedText) {
+        const translated = parseLrc(translatedText);
+        const merged = mergeTranslation(lines, translated.lines);
+        const matched = merged.filter(line => line.zh).length;
+        const coverage = parsed.lines.length ? matched / parsed.lines.length : 0;
+        if (usedNeteaseTranslation) {
+          // 网易云译文未经站主逐行复核，无论传不传 --reviewed 都只能是「待校」，
+          // 真正的 reviewed 只能来自 translate-lyrics.mjs --import-reviewed 这条人工闸门。
+          if (coverage >= 0.7) {
+            lines = merged;
+            translationStatus = 'machine';
+            if (!translator) translator = '网易云';
+          } else {
+            console.log(`${label} · 网易云译文覆盖率仅 ${(coverage * 100).toFixed(0)}%，暂不采用`);
+          }
+        } else {
+          if (coverage < 0.7) throw new Error(`中文译词时间轴覆盖率仅 ${(coverage * 100).toFixed(0)}%`);
+          lines = merged;
+          translationStatus = options.translationStatus;
+          if (translationStatus === 'reviewed' && !translator) {
+            try {
+              const reviewedMeta = JSON.parse(
+                await readFile(path.join(sourceFolder, 'translation.reviewed.json'), 'utf8'),
+              );
+              if (typeof reviewedMeta.translator === 'string' && reviewedMeta.translator.trim()) {
+                translator = reviewedMeta.translator.trim().slice(0, 80);
+              }
+            } catch {
+              // 没有审校元信息（比如手动传 --translation）时不附署名。
+            }
+          }
+        }
       }
 
       const document = {
@@ -441,6 +469,7 @@ const main = async () => {
         offsetMs: parsed.offsetMs + options.offsetMs,
         translationStatus,
         source,
+        ...(translator ? { translator } : {}),
         lines,
       };
       await assertNoSuspiciousDuplicate(document, track, manifest, identities);
@@ -450,15 +479,20 @@ const main = async () => {
         if (!existsSync(path.join(sourceFolder, 'original.lrc'))) {
           await writeFile(path.join(sourceFolder, 'original.lrc'), originalText, 'utf8');
         }
+        if (neteaseTlyricRaw && (options.refresh || !existsSync(neteaseCache))) {
+          await writeFile(neteaseCache, neteaseTlyricRaw, 'utf8');
+        }
         await writeJson(path.join(sourceFolder, 'meta.json'), {
           trackId: track.id,
           source,
           warnings: parsed.warnings.slice(0, 100),
           translationStatus,
+          ...(translator ? { translator } : {}),
         });
         await writeJson(path.join(OUT_DIR, key), document);
         await writeJson(path.join(DEV_DIR, key), document);
       }
+
 
       manifest.tracks[track.id] = { kind: 'lyrics', key, translationStatus };
       generatedKeys.push(key);

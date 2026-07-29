@@ -119,8 +119,9 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
             transition={{ duration: 0.28, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="absolute right-2 top-2 z-40 flex items-center gap-2">
-              <span className="hidden max-w-24 truncate font-mono text-[7px] tracking-[0.2em] uppercase text-slate-400/55 dark:text-slate-600 sm:block">
+              <span className="hidden max-w-32 truncate font-mono text-[7px] tracking-[0.2em] uppercase text-slate-400/55 dark:text-slate-600 sm:block">
                 {lyrics.document.source.label}
+                {lyrics.document.translator ? ` · 译：${lyrics.document.translator}` : ''}
                 {lyrics.document.translationStatus === 'machine' ? ' · 待校' : ''}
               </span>
               {lyrics.hasTranslation && (
