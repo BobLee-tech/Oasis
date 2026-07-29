@@ -215,8 +215,10 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
   });
 
   const source = isRecord(value.source) ? value.source : {};
-  const kind = source.kind === 'lrclib' ? 'lrclib' : 'local';
+  const kind = source.kind === 'lrclib' ? 'lrclib' : source.kind === 'netease' ? 'netease' : 'local';
+  const defaultLabel = kind === 'lrclib' ? 'LRCLIB' : kind === 'netease' ? '网易云音乐' : '本地歌词';
   const offset = Math.round(Number(value.offsetMs ?? 0));
+  const translator = cleanText(String(value.translator ?? '')).slice(0, 80);
 
   return {
     version: value.version,
@@ -228,12 +230,13 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
     translationStatus: translationStatus(value.translationStatus),
     source: {
       kind,
-      label: cleanText(String(source.label ?? (kind === 'lrclib' ? 'LRCLIB' : '本地歌词'))),
+      label: cleanText(String(source.label ?? defaultLabel)),
       ...(typeof source.url === 'string' && /^https:\/\//.test(source.url)
         ? { url: source.url.slice(0, 1_000) }
         : {}),
       ...(typeof source.fetchedAt === 'string' ? { fetchedAt: source.fetchedAt.slice(0, 40) } : {}),
     },
+    ...(translator ? { translator } : {}),
     lines,
   };
 };

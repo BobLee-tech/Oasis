@@ -40,7 +40,7 @@ export interface LyricLine {
 }
 
 export interface LyricsSource {
-  kind: 'local' | 'lrclib';
+  kind: 'local' | 'lrclib' | 'netease';
   label: string;
   url?: string;
   fetchedAt?: string;
@@ -55,6 +55,8 @@ export interface LyricsDocument {
   offsetMs: number;
   translationStatus: LyricTranslationStatus;
   source: LyricsSource;
+  /** 译文署名，如「网易云」「Codex」或站主本名；缺省时不展示来源。 */
+  translator?: string;
   lines: LyricLine[];
 }
 

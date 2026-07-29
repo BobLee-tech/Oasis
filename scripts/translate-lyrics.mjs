@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,6 +8,8 @@ import {
   parsePlaylist,
   readIdentityConfig,
 } from './lib/track-identity.mjs';
+import { sourceHashOf, stampLrc } from './lib/lrc-parse.mjs';
+import { anthropicMessage, extractJson } from './lib/anthropic.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(PROJECT_ROOT, 'src/hooks/useSoundscape.ts');
@@ -16,7 +17,6 @@ const IDENTITY_CONFIG_FILE = path.join(PROJECT_ROOT, 'lyrics-config/overrides.js
 const GLOSSARY_FILE = path.join(PROJECT_ROOT, 'lyrics-config/glossary.json');
 const OUT_DIR = path.join(PROJECT_ROOT, 'dist-lyrics');
 const SOURCE_DIR = path.join(PROJECT_ROOT, 'lyrics-src');
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 const parseArgs = argv => {
   const options = {
@@ -59,21 +59,9 @@ const writeJson = async (filename, value) => {
   await writeFile(filename, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 };
 
-const sourceHashOf = lines => createHash('sha256')
-  .update(JSON.stringify(lines.map(({ startMs, ja }) => ({ startMs, ja }))))
-  .digest('hex');
-
-const stamp = startMs => {
-  const total = Math.max(0, Math.round(startMs));
-  const minutes = Math.floor(total / 60_000);
-  const seconds = Math.floor((total % 60_000) / 1_000);
-  const milliseconds = total % 1_000;
-  return `[${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}]`;
-};
-
 const writeTranslationLrc = async (trackId, sourceLines, translatedLines) => {
   const text = sourceLines
-    .map((line, index) => `${stamp(line.startMs)}${translatedLines[index].zh.trim()}`)
+    .map((line, index) => `${stampLrc(line.startMs)}${translatedLines[index].zh.trim()}`)
     .join('\n');
   await writeFile(path.join(SOURCE_DIR, trackId, 'translation.zh.lrc'), `${text}\n`, 'utf8');
 };
@@ -93,47 +81,6 @@ const assertTranslation = (sourceLines, translatedLines) => {
       ...(line?.ambiguity ? { ambiguity: String(line.ambiguity).slice(0, 500) } : {}),
     };
   });
-};
-
-const extractJson = text => {
-  const cleaned = String(text ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  if (cleaned.length > MAX_RESPONSE_BYTES) throw new Error('模型响应过大');
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start < 0 || end <= start) throw new Error('模型没有返回 JSON');
-    return JSON.parse(cleaned.slice(start, end + 1));
-  }
-};
-
-const anthropicMessage = async ({ system, user }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.LYRICS_TRANSLATION_API_KEY;
-  const model = process.env.LYRICS_TRANSLATION_MODEL;
-  if (!apiKey) throw new Error('缺少 ANTHROPIC_API_KEY 或 LYRICS_TRANSLATION_API_KEY');
-  if (!model) throw new Error('缺少 LYRICS_TRANSLATION_MODEL；模型名必须显式配置，避免静默漂移');
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 12_000,
-      temperature: 0.2,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-    signal: AbortSignal.timeout(180_000),
-  });
-  const body = await response.text();
-  if (!response.ok) throw new Error(`翻译 API HTTP ${response.status}：${body.slice(0, 300)}`);
-  if (body.length > MAX_RESPONSE_BYTES) throw new Error('翻译 API 响应过大');
-  const value = JSON.parse(body);
-  return value.content?.filter(item => item?.type === 'text').map(item => item.text).join('\n') ?? '';
 };
 
 const translatorSystem = `
