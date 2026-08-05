@@ -3,7 +3,7 @@
 //   · 数据源与 useGarden 同一套哲学：Supabase garden_categories 为权威源，localStorage 兜底，
 //     云端失败静默回落，绝不影响可用性。
 //   · Gallery（博客）与 Orchard（知识星图）共用，分类的颜色 / 中文名 / 图标只有一处定义。
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface Category {
@@ -110,9 +110,14 @@ export const useCategories = () => {
     if (cloudOk.current) supabase.from(TABLE).delete().eq('id', id).then(({ error }) => { if (error) cloudOk.current = false; });
   }, [commit]);
 
-  const categories = [...BUILTIN_CATEGORIES, ...custom];
-  const catMap: Record<string, Category> = Object.fromEntries(categories.map(c => [c.id, c]));
-  const metaOf = (type: string): Category => catMap[type] ?? fallbackMeta(type);
+  // ⚡ 稳定引用：categories/catMap/metaOf 每次渲染都新建的话，下游 useMemo（如星图 buildGraph）
+  //   永远拿到「不同」的 categories，memo 形同虚设——见 OasisOrchard.tsx 的性能修复。
+  const categories = useMemo(() => [...BUILTIN_CATEGORIES, ...custom], [custom]);
+  const catMap: Record<string, Category> = useMemo(
+    () => Object.fromEntries(categories.map(c => [c.id, c])),
+    [categories]
+  );
+  const metaOf = useCallback((type: string): Category => catMap[type] ?? fallbackMeta(type), [catMap]);
 
   return { categories, catMap, metaOf, addCategory, removeCategory };
 };

@@ -14,6 +14,7 @@ import { termTint } from './lib/solarTerms';
 import { NIGHT_REMINDERS, MIKU_WHISPERS } from './data/quotes';
 import { useCoarsePointer } from './hooks/useCoarsePointer';
 import { getVisitorAlias } from './lib/visitor';
+import { onRipple } from './lib/rippleSignal';
 
 import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
@@ -42,7 +43,9 @@ const NoiseOverlay = () => (
   </div>
 );
 
-// 🫧 全局点击涟漪：每次点击在落点晕开一圈舒缓的水波，与绿洲的呼吸美学呼应。
+// 🫧 涟漪：只为「留下痕迹」的动作晕开一圈水波——发布文章、留下一片落叶、⌘K 执行命令，
+//   由 emitRipple() 精确触发（见 lib/rippleSignal.ts），而不是每次点击都响一次。
+//   到处响的信号等于没有信号；切换场所另有专属的 RippleBloom，不重复。
 type Ripple = { id: number; x: number; y: number; color: string };
 const ClickRipples = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
@@ -54,22 +57,14 @@ const ClickRipples = () => {
     // 与界面主色调呼应的柔和色板：初音绿 / 樱粉 / 月白
     const palette = ['rgba(57,197,187,0.55)', 'rgba(255,183,197,0.5)', 'rgba(226,232,240,0.55)'];
     let i = 0;
-    let last = 0;
-    const handler = (e: PointerEvent) => {
+    const unsubscribe = onRipple(({ x, y }) => {
       if (reduceMotion) return;
-      // Dock 有自己的短促按压反馈；跳过全屏长涟漪，避免一次点击叠出两套动效。
-      if (e.target instanceof Element && e.target.closest('[data-no-global-ripple]')) return;
-      // 舒缓的节奏：太密集的点击不再叠成一团，让每圈水波都从容荡开
-      const now = performance.now();
-      if (now - last < 140) return;
-      last = now;
-      const id = now + Math.random();
+      const id = performance.now() + Math.random();
       const color = palette[i++ % palette.length];
-      setRipples(prev => [...prev.slice(-4), { id, x: e.clientX, y: e.clientY, color }]);
+      setRipples(prev => [...prev.slice(-4), { id, x, y, color }]);
       window.setTimeout(() => setRipples(prev => prev.filter(r => r.id !== id)), 3200);
-    };
-    window.addEventListener('pointerdown', handler);
-    return () => window.removeEventListener('pointerdown', handler);
+    });
+    return unsubscribe;
   }, [reduceMotion]);
 
   return (
@@ -210,6 +205,30 @@ const ViewLayer = ({ reduce, children }: { reduce: boolean; children: ReactNode 
     {children}
   </motion.div>
 );
+
+// 🪷 场所骨架：懒加载的场所（含各自的 markdown/highlight.js 等重依赖）拉取期间的占位。
+//   关键在于它挂在 ViewLayer 内部——涟漪转场终于有了一个「已经在场」的东西可以落地，
+//   而不是荡在 Suspense fallback={null} 留下的空白上。只用 opacity 呼吸，合成器友好。
+const PlaceSkeleton = () => {
+  const reduce = !!useReducedMotion();
+  return (
+    <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-5" aria-hidden>
+      <motion.div
+        className="h-2 w-28 rounded-full bg-oasis-teal/25"
+        animate={reduce ? undefined : { opacity: [0.35, 0.6, 0.35] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="h-24 w-full rounded-3xl bg-slate-400/[0.08] dark:bg-white/[0.05]"
+          animate={reduce ? undefined : { opacity: [0.35, 0.55, 0.35] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }}
+        />
+      ))}
+    </div>
+  );
+};
 
 // 🫫 水波涟漪：落点处一圈圈细环渐次荡开，如雨滴落水般轻盈舒缓；中心仅一抹弥散柔光衬底。
 // 仅 transform scale + opacity（合成器友好），细环带微模糊柔边，airy 不厚重、无廉价硬环。
@@ -430,19 +449,22 @@ function App() {
               {/* 🌫️ 交叉溶解：新旧界面同时在场、同步淡入淡出，无空档不闪白 */}
               {(() => {
                 const reduce = !!prefersReducedMotion || coarse;
+                // Suspense 挂在每个 ViewLayer 内部（而非包在 AnimatePresence 外层）：
+                // 新场所层先完成入场动画、露出骨架，chunk 到位后骨架原地换成真内容——
+                // 涟漪转场落在这层「已经在场」的骨架上，而不是 fallback={null} 留下的空白。
                 const wrap = (key: string, node: ReactNode) => (
-                  <ViewLayer key={key} reduce={reduce}>{node}</ViewLayer>
+                  <ViewLayer key={key} reduce={reduce}>
+                    <Suspense fallback={<PlaceSkeleton />}>{node}</Suspense>
+                  </ViewLayer>
                 );
                 return (
-                  <Suspense fallback={null}>
-                    <AnimatePresence mode="wait">
-                      {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
-                      {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
-                      {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
-                      {appView === 'lights' && wrap('lights-space', <OasisLights />)}
-                      {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}
-                    </AnimatePresence>
-                  </Suspense>
+                  <AnimatePresence mode="wait">
+                    {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
+                    {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'lights' && wrap('lights-space', <OasisLights />)}
+                    {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}
+                  </AnimatePresence>
                 );
               })()}
               {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}

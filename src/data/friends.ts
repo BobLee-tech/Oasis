@@ -17,7 +17,7 @@ export const FRIENDS: FriendLink[] = [
     //   color: "#39C5BB",
     // },
   {
-    name: "Waiting fo you",
+    name: "Waiting for you",
     url: "https://example.org",
     desc: "等一阵风，也在等你",
     color: "#FFB7C5",

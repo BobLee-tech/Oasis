@@ -16,9 +16,9 @@ import { DAILY_QUOTES } from '../data/quotes';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
 import { emitMikuSignal } from '../lib/mikuSignal';
+import { emitRipple } from '../lib/rippleSignal';
 import { tagKey, buildTagCanonicalMap } from '../lib/tags';
-
-const AURA_COLORS = ['#FFB7C5', '#FDBA74', '#FDE047', '#A7F3D0', '#39C5BB', '#60A5FA', '#A78BFA'];
+import { AURA_COLORS } from '../lib/aura';
 
 // 📝 默认写作模板：内置类型的温柔骨架，可被自定义模板覆盖；自定义分类默认无骨架
 const DEFAULT_TEMPLATES: Record<string, string> = {
@@ -683,6 +683,21 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     return counts;
   }, [listedPosts]);
 
+  // 🧭 分类横滚条：首次进入若溢出可滚，轻轻晃一下露出「这里能滑」，只做一次
+  const catScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = catScrollRef.current;
+    if (!el || localStorage.getItem('oasis_cat_scroll_hint')) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = setTimeout(() => {
+      if (el.scrollWidth <= el.clientWidth + 8) return;
+      localStorage.setItem('oasis_cat_scroll_hint', '1');
+      el.scrollTo({ left: 14, behavior: 'smooth' });
+      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 320);
+    }, 600);
+    return () => clearTimeout(t);
+  }, []);
+
   const filteredPosts = useMemo(() => listedPosts.filter(post => {
     const matchType = selectedType ? post.type === selectedType : true;
     const matchTag = selectedTag ? post.tags.some(t => tagKey(t) === tagKey(selectedTag)) : true;
@@ -731,13 +746,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     window.addEventListener('keydown', handleEsc); return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleResSubmit = async () => {
+  const handleResSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!resAuthor.trim() || !resContent.trim() || isResSubmitting) return;
     setIsResSubmitting(true);
+    const rect = e.currentTarget.getBoundingClientRect();
     try {
       await leaveResonance(resAuthor, resContent, resColor);
       setVisitorAlias(resAuthor);
       setResContent(''); setIsResFocused(false);
+      // 🫧 留下一片叶：有后果的动作，值得一圈涟漪
+      emitRipple({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     } finally {
       setIsResSubmitting(false);
     }
@@ -866,7 +884,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setUndoNotice(null);
   };
 
-  const handlePublish = () => {
+  // origin 留空：⌘⏎ 键盘发布（正文区 / 标题栏两处快捷键）没有一个有意义的落点，
+  // 涟漪就近落在发布按钮惯常所在的右下角；鼠标点击发布按钮时用按钮真实位置更精确。
+  const handlePublish = (origin?: { x: number; y: number }) => {
     if (!editContent.trim()) return;
     const tagArray = [...editTagList, ...(tagInput.trim() ? [tagInput.trim()] : [])];
     const input = { title: editTitle, tags: tagArray, color: editColor, content: editContent, type: editType, series: editSeries, growth: editGrowth, status: editStatus, slug: editSlug, excerpt: editExcerpt };
@@ -874,7 +894,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     clearDraft();
     setIsEditing(false);
     // 存草稿不值得庆祝，只有真正公开出去的才道贺
-    if (editStatus !== 'draft') emitMikuSignal({ type: 'published' });
+    if (editStatus !== 'draft') {
+      emitMikuSignal({ type: 'published' });
+      emitRipple(origin ?? { x: window.innerWidth - 96, y: window.innerHeight - 64 });
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -950,10 +973,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       </AnimatePresence>
 
       {/* 🖼️ 右侧基础内容画廊区 */}
-      <div className="oasis-bottom-scroll-safe w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-20 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
+      <div className="oasis-bottom-scroll-safe w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-14 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
         <div className="w-full h-full flex flex-col">
-              {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案 */}
-              <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-8 mx-auto group">
+              {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案。
+                  已经报过一次「我是谁」，下方报头在移动端不必再报「这是什么」——只留一行坐标即可，
+                  让第一张卡片尽快出现在折叠线之上。 */}
+              <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-4 mx-auto group">
                 <span className="w-9 h-9 rounded-full overflow-hidden border border-white/60 dark:border-white/10 shadow-sm shrink-0 bg-white/20 dark:bg-white/5">
                   <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 </span>
@@ -962,27 +987,29 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               </button>
 
               {/* 📰 栏目报头：与左栏头像同高起步、居中，让两侧基线与对齐方式一致 */}
-              <div className="mb-9 text-center">
+              <div className="mb-5 md:mb-9 text-center">
                 <div className="font-mono text-[9px] tracking-[0.5em] uppercase text-[#39C5BB]/70 mb-3">The Garden · 数字花园</div>
-                <h1 className="font-serif text-4xl text-slate-700 dark:text-slate-100 tracking-wide transition-colors duration-[1500ms] ease-in-out">Curated Thoughts</h1>
-                <p className="font-serif italic text-slate-400 dark:text-slate-500 text-sm mt-2.5 transition-colors duration-[1500ms] ease-in-out">A quiet record of learning, growth &amp; small wonders.</p>
+                <h1 className="hidden md:block font-serif text-4xl text-slate-700 dark:text-slate-100 tracking-wide transition-colors duration-[1500ms] ease-in-out">Curated Thoughts</h1>
+                <p className="hidden md:block font-serif italic text-slate-400 dark:text-slate-500 text-sm mt-2.5 transition-colors duration-[1500ms] ease-in-out">A quiet record of learning, growth &amp; small wonders.</p>
               </div>
 
               <div className="mb-10">
                 {/* 🧭 目录线：居中类型筛选为主轴，两端安静收纳搜索 / 标签 / 管理动作，一条线承载全部控件 */}
                 <div className="relative border-y border-slate-200/70 dark:border-white/[0.07] py-3 px-2 xl:px-56 flex flex-col md:flex-row items-center justify-center gap-x-4 md:gap-x-6 gap-y-3 md:gap-y-2.5 md:flex-wrap transition-colors duration-[1500ms]">
-                  {/* 分类：移动端单行横滚，避免换行拥挤；md+ 恢复居中换行原样 */}
-                  <div className="flex items-center gap-x-4 md:gap-x-6 w-full overflow-x-auto no-scrollbar md:w-auto md:contents">
+                  {/* 分类：移动端单行横滚，避免换行拥挤；md+ 恢复居中换行原样。
+                      oasis-hscroll-fade 补回 no-scrollbar 吃掉的「这里能滑」视觉线索 */}
+                  <div ref={catScrollRef} className="oasis-hscroll-fade flex items-center gap-x-4 md:gap-x-6 w-full overflow-x-auto no-scrollbar md:w-auto md:contents">
                   <button onClick={() => setSelectedType(null)} className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${!selectedType ? 'text-slate-700 dark:text-slate-100 border-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     All <span className="opacity-50 tracking-normal">{listedPosts.length}</span>
                   </button>
-                  {categories.filter(t => t.builtin || (typeCounts[t.id] || 0) > 0).map(t => {
+                  {/* 空分类（0 篇）不占这条稀缺的横向空间——除非它正被选中，否则筛出 0 篇后会把用户困在无出口的状态里 */}
+                  {categories.filter(t => (typeCounts[t.id] || 0) > 0 || selectedType === t.id).map(t => {
                     const active = selectedType === t.id;
                     const count = typeCounts[t.id] || 0;
                     return (
                       <button key={t.id} onClick={() => setSelectedType(active ? null : t.id)} title={t.zh}
-                        className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${active ? '' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
-                        style={active ? { color: t.color, borderColor: t.color } : undefined}>
+                        className={`shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase pb-0.5 border-b transition-all duration-500 ${active ? 'oasis-accent-ink' : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                        style={active ? { '--accent': t.color, borderColor: t.color } as React.CSSProperties : undefined}>
                         {t.label} <span className="opacity-50 tracking-normal">{count}</span>
                       </button>
                     );
@@ -1088,7 +1115,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                       className="font-serif italic text-sm text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300 transition-colors"
                     >
                       {new Date(termEchoPost.createdAt).getFullYear()} 年{currentSolarTerm().name}，你写下了《
-                      <span style={{ color: termEchoPost.color }} className="not-italic">{termEchoPost.title}</span>
+                      <span style={{ '--accent': termEchoPost.color } as React.CSSProperties} className="not-italic oasis-accent-ink">{termEchoPost.title}</span>
                       》—— 要回去看看吗
                     </button>
                     <button onClick={dismissTermEcho} aria-label="不再提示" className="text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors text-xs px-1">✕</button>
@@ -1131,14 +1158,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
-                            <motion.div key={post.id} className={`relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-white/40 dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/60 dark:bg-white/[0.06]' : 'bg-white/40 dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} onClick={() => setActivePost(post)} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            // 🌗 明暗两态走不同的建立层次的手法：暗色靠提高白度制造深浅（背景本就近黑，
+                            //    提亮即分层）；浅色靠投影 + 更饱和的底色——白边在暖纸白背景上几乎隐形，
+                            //    只提高透明度不够，边框改极淡墨色、配一层克制的静态阴影，卡片才立得起来。
+                            <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/[0.82] dark:bg-white/[0.06]' : 'bg-white/[0.72] dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
                                 {/* 大类型图标水印：淡化的情绪色，去占位感 */}
                                 <div className="absolute -right-3 -bottom-6 w-28 h-28 opacity-[0.13] dark:opacity-[0.16] pointer-events-none transition-opacity duration-[1500ms]" style={{ color: post.color }}><CategoryIcon name={meta.icon} /></div>
                                 {/* 类型徽章：左上角，图标 + 名称，染类型微光色 */}
-                                <div className="absolute top-4 left-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-white/60 dark:border-white/10" style={{ color: meta.color }}>
+                                <div className="absolute top-4 left-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-white/60 dark:border-white/10 oasis-accent-ink" style={{ '--accent': meta.color } as React.CSSProperties}>
                                   <span className="w-3 h-3"><CategoryIcon name={meta.icon} /></span>
                                   <span className="font-mono text-[8px] tracking-[0.2em] uppercase">{meta.label}</span>
                                 </div>
@@ -1156,8 +1186,22 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                                 <div className="absolute bottom-4 left-6 flex space-x-2">{post.tags.slice(0, 3).map(tag => <span key={tag} className="font-mono text-[9px] tracking-widest text-slate-500 dark:text-slate-300 uppercase bg-white/60 dark:bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/50 dark:border-white/10 transition-colors duration-[1500ms] ease-in-out">{tag}</span>)}</div>
                               </div>
                               <div className="p-6 md:p-8">
-                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><GrowthGlyph growth={post.growth} color={post.color} /><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal" style={{ color: post.color }}>续读 {Math.round(progress * 100)}%</span></>}</div>
-                                <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">{post.title}</h2>
+                                <div className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mb-4 flex items-center gap-2 transition-colors duration-[1500ms]"><GrowthGlyph growth={post.growth} color={post.color} /><span>{post.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(post.content)}</span>{post.series && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="text-[#39C5BB]/80 normal-case tracking-normal font-serif">📚 {post.series} · {chapterOf(post)}</span></>}{isOngoing && <><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="normal-case tracking-normal oasis-accent-ink" style={{ '--accent': post.color } as React.CSSProperties}>续读 {Math.round(progress * 100)}%</span></>}</div>
+                                <h2 className="font-serif text-xl md:text-2xl text-slate-700 dark:text-slate-100 leading-snug mb-4 transition-colors duration-[1500ms] ease-in-out">
+                                  {/* 🔗 卡片整体可点：标题挂真链接，::after 铺满最近的 relative 祖先（卡片本身），
+                                      键盘可达、⌘-click 新开、右键可复制——而不是纯 div onClick 假装是链接 */}
+                                  <a
+                                    href={`#/garden/${post.id}`}
+                                    onClick={(e) => {
+                                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                                      e.preventDefault();
+                                      setActivePost(post);
+                                    }}
+                                    className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                                  >
+                                    {post.title}
+                                  </a>
+                                </h2>
                                 <p className="font-serif text-slate-600 dark:text-slate-300 text-sm leading-relaxed line-clamp-3 whitespace-pre-line transition-colors duration-[1500ms] ease-in-out">{post.excerpt}</p>
                               </div>
                               {isOngoing && <div className="absolute bottom-0 left-0 h-[2px] transition-all duration-700" style={{ width: `${progress * 100}%`, backgroundColor: post.color }} />}
@@ -1168,7 +1212,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                     </motion.section>
                   ))}
                 </AnimatePresence>
-                {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">No thoughts found here yet — perhaps plant the first seed.</div>}
+                {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">这里还没有落下的种子，去种下第一颗吧。</div>}
               </div>
             </div>
       </div>
@@ -1416,7 +1460,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      {editStatus === 'unlisted' && <span className="text-[#60A5FA] normal-case">🔗 unlisted</span>}
                      <span className={`transition-transform duration-300 ${showMetaPanel ? 'rotate-180' : ''}`}>⌄</span>
                    </button>
-                   <button onClick={handlePublish} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editStatus === 'unlisted' ? '#60A5FA' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editStatus === 'unlisted' ? (editingId ? 'Update · Unlisted' : 'Publish · Unlisted') : editingId ? 'Update' : 'Publish'}</button>
+                   <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); handlePublish({ x: r.left + r.width / 2, y: r.top + r.height / 2 }); }} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editStatus === 'unlisted' ? '#60A5FA' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editStatus === 'unlisted' ? (editingId ? 'Update · Unlisted' : 'Publish · Unlisted') : editingId ? 'Update' : 'Publish'}</button>
                  </div>
                </div>
           </motion.div>
@@ -1458,7 +1502,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </div>
 
                 <div className="font-mono text-xs tracking-[0.3em] text-slate-400 dark:text-slate-500 uppercase mb-8 flex items-center gap-3 flex-wrap transition-colors duration-[1500ms]">
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border" style={{ color: metaOf(activePost.type).color, borderColor: `${metaOf(activePost.type).color}40`, backgroundColor: `${metaOf(activePost.type).color}10` }}>
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border oasis-accent-ink" style={{ '--accent': metaOf(activePost.type).color, borderColor: `${metaOf(activePost.type).color}40`, backgroundColor: `${metaOf(activePost.type).color}10` } as React.CSSProperties}>
                     <span className="w-3 h-3"><CategoryIcon name={metaOf(activePost.type).icon} /></span>{metaOf(activePost.type).label}
                   </span>
                   <span>{activePost.date}</span><span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span><span className="opacity-70">{readingTimeLabel(activePost.content)}</span>
@@ -1524,7 +1568,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                 {/* 🍂 Fallen Leaves 评论交互区 */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]">
-                  <h3 className="font-serif text-2xl text-slate-400 dark:text-slate-500 mb-8 italic transition-colors">Fallen Leaves</h3>
+                  <h3 className="font-serif text-2xl text-slate-400 dark:text-slate-500 mb-8 italic transition-colors">落叶</h3>
                   
                   <div className="flex flex-col gap-6 mb-16">
                     {resonances.map(res => (
@@ -1579,7 +1623,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                       </div>
                     ))}
-                    {resonances.length === 0 && <span className="font-serif italic text-slate-400 dark:text-slate-600 text-sm pl-2 transition-colors">Quietly waiting for a breeze...</span>}
+                    {resonances.length === 0 && <span className="font-serif italic text-slate-400 dark:text-slate-600 text-sm pl-2 transition-colors">静待一阵风…</span>}
                   </div>
                 </motion.div>
               </div>
@@ -1596,18 +1640,18 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 style={{ borderRadius: isResFocused ? '2rem' : '3rem', borderColor: isResFocused ? `${resColor}40` : '' }}
               >
                 {!isResFocused ? (
-                  <input type="text" placeholder="Leave a falling leaf..." onClick={() => setIsResFocused(true)} readOnly className="w-full bg-transparent font-serif text-slate-500 dark:text-slate-400 outline-none cursor-pointer italic text-center transition-colors duration-[1500ms]" />
+                  <input type="text" placeholder="留下一片落叶…" onClick={() => setIsResFocused(true)} readOnly className="w-full bg-transparent font-serif text-slate-500 dark:text-slate-400 outline-none cursor-pointer italic text-center transition-colors duration-[1500ms]" />
                 ) : (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col px-2">
-                    <input type="text" placeholder="Your Alias, remembered next time..." value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-mono text-xs text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
-                    <textarea placeholder="The leaf falls..." value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-700 dark:text-slate-200 h-20 outline-none resize-none mb-4 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors" />
+                    <input type="text" placeholder="你的名字，下次还记得…" value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-mono text-xs text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
+                    <textarea placeholder="写下这片叶子的心事…" value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-700 dark:text-slate-200 h-20 outline-none resize-none mb-4 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors" />
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex space-x-2">
                         {AURA_COLORS.map(c => <div key={c} onClick={() => setResColor(c)} className={`w-3.5 h-3.5 rounded-full cursor-pointer transition-transform ${resColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: resColor === c ? `0 0 0 2px transparent, 0 0 0 3px ${c}` : 'none' }} />)}
                       </div>
                       <div className="flex space-x-4">
-                        <button onClick={() => setIsResFocused(false)} className="font-mono text-[10px] tracking-widest uppercase text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">Cancel</button>
-                        <button onClick={handleResSubmit} disabled={!resAuthor.trim() || !resContent.trim() || isResSubmitting} className="font-mono text-[10px] tracking-widest uppercase px-6 py-2 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: resColor, boxShadow: `0 4px 15px ${resColor}40` }}>{isResSubmitting ? '...' : 'Release'}</button>
+                        <button onClick={() => setIsResFocused(false)} className="font-mono text-[10px] tracking-widest uppercase text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">取消</button>
+                        <button onClick={handleResSubmit} disabled={!resAuthor.trim() || !resContent.trim() || isResSubmitting} className="font-mono text-[10px] tracking-widest uppercase px-6 py-2 rounded-full text-white transition-all disabled:opacity-30" style={{ backgroundColor: resColor, boxShadow: `0 4px 15px ${resColor}40` }}>{isResSubmitting ? '…' : '放下'}</button>
                       </div>
                     </div>
                   </motion.div>

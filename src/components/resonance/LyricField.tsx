@@ -550,6 +550,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         <div ref={titleRef} className="mb-14 px-3 text-left">
           <motion.h2
             layoutId={compact ? undefined : 'track-title'}
+            layout="position"
             transition={{ type: 'spring', stiffness: 260, damping: 30 }}
             className={`font-serif font-medium leading-[1.08] tracking-wide text-slate-800 dark:text-slate-50 ${
               compact ? 'text-[2rem]' : 'text-[2.45rem] xl:text-[3.15rem]'
@@ -563,6 +564,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
           {track.excerpt && (
             <motion.p
               layoutId={compact ? undefined : 'track-excerpt'}
+              layout="position"
               transition={{ type: 'spring', stiffness: 260, damping: 30 }}
               className={`mt-6 max-w-[92%] font-serif italic leading-loose tracking-wider text-slate-500 dark:text-slate-400 ${
                 compact ? 'text-sm' : 'text-base'

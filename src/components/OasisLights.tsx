@@ -87,7 +87,7 @@ export const OasisLights: React.FC = () => (
                   <span className="font-serif italic text-xs leading-[1.7] text-slate-400 dark:text-slate-500 mb-4 transition-colors duration-700">{f.desc}</span>
                   <span className="font-mono text-[8px] tracking-[0.25em] uppercase text-slate-400/60 dark:text-slate-600 group-hover:opacity-100 transition-all duration-700" style={{ color: undefined }}>
                     <span className="group-hover:hidden">{hostOf(f.url)}</span>
-                    <span className="hidden group-hover:inline" style={{ color: f.color }}>Visit →</span>
+                    <span className="hidden group-hover:inline oasis-accent-ink" style={{ '--accent': f.color } as React.CSSProperties}>Visit →</span>
                   </span>
                 </div>
               </motion.div>

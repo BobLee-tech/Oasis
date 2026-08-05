@@ -67,6 +67,13 @@ body {
     }
 }
 
+/* 🧭 横滚容器两端渐隐：no-scrollbar 藏起了滚动条本身，这里补回「此处可滑」的视觉线索。
+   md+ 切换回 display:contents 时元素自身不再生成盒子，mask 自然失效，无需另写媒体查询关闭。 */
+@utility oasis-hscroll-fade {
+    mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+
 /* 底部 Chrome 覆盖内容时，滚动容器仍能把最后一个可聚焦元素完整送到它上方。 */
 .oasis-bottom-scroll-safe {
     scroll-padding-bottom: var(--oasis-bottom-safe-space);
@@ -84,6 +91,16 @@ body {
     textarea:focus-visible {
         outline: none;
     }
+}
+
+/* 🔗 文章卡片：整卡由标题里的 <a>::after 铺满可点，键盘聚焦时把焦点环画在整张卡片上，
+   而不是画在视觉上只有几个字宽的 <a> 本身——那样看起来像焦点丢了。 */
+.oasis-post-card:has(a:focus-visible) {
+    outline: 2px solid rgba(57, 197, 187, 0.6);
+    outline-offset: 3px;
+}
+.oasis-post-card a:focus-visible {
+    outline: none;
 }
 
 /* 💿 黑胶旋转：CSS 驱动 + play-state 控制，暂停时原地停驻而非回卷 */
@@ -186,6 +203,22 @@ body {
 @supports (color: oklch(from red 0.5 c h)) {
     .lyric-row { --accent-ink: oklch(from var(--accent) 0.48 calc(c * 1.15) h); }
     .dark .lyric-row { --accent-ink: oklch(from var(--accent) 0.86 c h); }
+}
+
+/* 🎨 情绪色 → 可读墨色，从上面 .lyric-row 专用的算法提升为全站语法：
+   任何元素在行内设一个 --accent（多是 post.color / track.color 这类曲库自由取色，
+   明度大多很高，直接当文字色在纸白background上读不清），配上这个类即可拿到
+   锁定明度、保留色相、过 AA 对比度的文字色，而不用逐处手调。
+   用法：style={{ '--accent': color }} className="oasis-accent-ink" */
+.oasis-accent-ink {
+    color: color-mix(in oklab, var(--accent) 45%, #1e293b);
+}
+.dark .oasis-accent-ink {
+    color: color-mix(in oklab, var(--accent) 92%, #f8fafc);
+}
+@supports (color: oklch(from red 0.5 c h)) {
+    .oasis-accent-ink { color: oklch(from var(--accent) 0.48 calc(c * 1.15) h); }
+    .dark .oasis-accent-ink { color: oklch(from var(--accent) 0.86 c h); }
 }
 
 .lyric-row[data-role="backing"] {
@@ -308,6 +341,20 @@ body {
     100% { opacity: 0; transform: scale(1.52); }
 }
 
+/* ✦ 知识星图星核的呼吸微光：与 instrumental-breathe 同一思路——CSS 关键帧交给合成器，
+   不占主线程，几百颗星同时呼吸也不会掉帧（见 OasisOrchard.tsx 的性能修复）。
+   animation-delay / duration 由行内 style 逐颗错开，只有 name/timing/iteration 定死在这里。 */
+.oasis-star-breathe {
+    animation-name: oasis-star-breathe;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes oasis-star-breathe {
+    0%, 100% { transform: scale(.96); }
+    50% { transform: scale(1.06); }
+}
+
 /* 焦点位的柔光：取代旧的逐帧 textShadow，只动 opacity/transform */
 .lyric-focus-glow {
     height: 5.5rem;
@@ -394,6 +441,9 @@ body {
     .instrumental-orbit,
     .instrumental-orbit::before,
     .instrumental-orbit::after {
+        animation: none;
+    }
+    .oasis-star-breathe {
         animation: none;
     }
 }

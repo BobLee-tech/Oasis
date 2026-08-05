@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { BlogPost } from '../hooks/useGarden';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { emitMikuSignal } from '../lib/mikuSignal';
+import { emitRipple } from '../lib/rippleSignal';
 
 // 🔔 跨组件唤起：与 Markdown.tsx 的 LIGHTBOX_EVENT 同一种约定——
 //   任何深处的组件（如 Gallery 的搜索图标）都能 dispatch 这个事件唤起面板，
@@ -49,6 +50,7 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const coarse = useCoarsePointer();
 
   // ⌨️ ⌘K / Ctrl+K 唤起；输入框/文本域/可编辑区内不响应（写作书房里按 ⌘K 不该弹面板）
@@ -136,6 +138,11 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
     else if (hit.kind === 'go') onGo(hit.view);
     else onToggleTheme();
     setOpen(false);
+    // 🫧 ⌘K 执行一条命令：有后果的动作，值得一圈涟漪；面板即将合上，落点用面板自己的中心
+    const rect = panelRef.current?.getBoundingClientRect();
+    emitRipple(rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : { x: window.innerWidth / 2, y: window.innerHeight / 2 });
   };
 
   useEffect(() => {
@@ -173,6 +180,7 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           <motion.div
+            ref={panelRef}
             className={coarse
               ? 'fixed bottom-0 left-0 right-0 max-h-[75vh] rounded-t-3xl bg-[#FAF8F3] dark:bg-[#0A0F1D] border-t border-slate-200/60 dark:border-white/10 flex flex-col'
               : 'w-[92vw] max-w-xl rounded-2xl bg-white/85 dark:bg-[#0A0F1D]/90 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden'}

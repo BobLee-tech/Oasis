@@ -77,6 +77,18 @@ const DOCK_ITEMS: DockItem[] = [
   { view: 'lights', label: 'Lanterns', shortLabel: '灯火', icon: <LanternIcon /> },
 ];
 
+// 🪄 场所预取：手指/光标刚落到某个目的地图标上就提前拉取对应 chunk（与 App.tsx 的
+//   lazy() 指向同一模块，构建时会被识别为同一 chunk，不会重复打包），抢在真正点击、
+//   AnimatePresence 退场动画播完之前，把网络等待时间藏起来。import() 自带 promise 缓存，
+//   重复 hover 不会重复发请求，无需额外去重。
+const VIEW_PREFETCH: Partial<Record<AppView, () => Promise<unknown>>> = {
+  soundscape: () => import('./OasisResonance'),
+  orchard: () => import('./OasisOrchard'),
+  garden: () => import('./OasisGallery'),
+  atelier: () => import('./OasisAtelier'),
+  lights: () => import('./OasisLights'),
+};
+
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
   const reduceMotion = !!useReducedMotion();
 
@@ -90,6 +102,8 @@ export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange 
             <motion.button
               key={item.view}
               data-no-global-ripple
+              onPointerEnter={() => VIEW_PREFETCH[item.view]?.()}
+              onTouchStart={() => VIEW_PREFETCH[item.view]?.()}
               onClick={(event) => {
                 if (isActive) return;
                 const rect = event.currentTarget.getBoundingClientRect();

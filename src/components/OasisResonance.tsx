@@ -68,6 +68,22 @@ const AmbientGlow: React.FC<{ color: string; isPlaying: boolean; active?: boolea
 const alphaHex = (a: number) => Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0');
 
 // 🎶 歌名本身：随音乐能量轻轻呼吸晕光，让标题成为律动的主角而非静态文字。
+// 📏 长标题分档：曲库里日文标题混着半角符号（如 outro ~タイムリミット -Endless-~），
+//   固定字号一律用 md:text-6xl 时三行起步，把选碟台挤扁。按「视觉宽度」而非字符数分档——
+//   假名/汉字按 1.7 倍宽度估，比单纯数字符数更准，纯 CSS clamp 对中日文混排调不准。
+const CJK_WIDE_RE = /[\u3000-\u9FFF\uFF00-\uFFEF]/; // CJK 表意文字/假名 + 全角符号（波浪号～、破折号－等曲名里常见），用 \u 转义避开字面全角字符被 lint 当不可见字符误用
+const titleVisualWidth = (s: string) => {
+  let w = 0;
+  for (const ch of s) w += CJK_WIDE_RE.test(ch) ? 1.7 : 1;
+  return w;
+};
+const titleSizeClass = (w: number) => {
+  if (w <= 14) return 'text-[2rem] sm:text-[2.6rem] md:text-6xl';
+  if (w <= 24) return 'text-[1.75rem] sm:text-[2.25rem] md:text-5xl';
+  if (w <= 38) return 'text-[1.5rem] sm:text-[1.9rem] md:text-4xl';
+  return 'text-[1.3rem] sm:text-[1.6rem] md:text-3xl';
+};
+
 const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean; active?: boolean }> = ({ title, color, isPlaying, active = true }) => {
   const ref = React.useRef<HTMLHeadingElement>(null);
 
@@ -86,7 +102,8 @@ const ReactiveTitle: React.FC<{ title: string; color: string; isPlaying: boolean
   return (
     <h2
       ref={ref}
-      className="text-[2rem] sm:text-[2.6rem] md:text-6xl font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance transition-colors duration-[1500ms]"
+      title={title}
+      className={`${titleSizeClass(titleVisualWidth(title))} font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance line-clamp-2 transition-colors duration-[1500ms]`}
     >
       {title}
     </h2>
@@ -373,7 +390,7 @@ export const OasisResonance: React.FC = () => {
                             <span className={`font-serif text-[15px] leading-snug tracking-wide truncate ${isActive ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-300'}`}>{track.title}</span>
                             <span className="font-mono text-[9px] tracking-[0.22em] uppercase mt-1 truncate text-slate-400/80 dark:text-slate-500">{track.artist}</span>
                           </span>
-                          {isActive && <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap" style={{ color: track.color }}>On Deck</span>}
+                          {isActive && <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap oasis-accent-ink" style={{ '--accent': track.color } as React.CSSProperties}>On Deck</span>}
                         </button>
                       );
                     })}
@@ -508,6 +525,7 @@ export const OasisResonance: React.FC = () => {
             {desktopPanel === 'lyrics' && (
               <motion.div
                 layoutId="stage-meter"
+                layout="position"
                 transition={{ type: 'spring', stiffness: 260, damping: 30 }}
               >
                 <StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={44} active={active} compact />
@@ -619,6 +637,7 @@ export const OasisResonance: React.FC = () => {
             >
               <motion.div
                 layoutId="stage-meter"
+                layout="position"
                 className="w-full"
                 transition={{ type: 'spring', stiffness: 260, damping: 30 }}
               >
@@ -628,7 +647,10 @@ export const OasisResonance: React.FC = () => {
             <AnimatePresence mode="wait">
               <motion.div key={currentTrack.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center w-full mt-4">
 
-                <motion.div layoutId="track-title" className="w-full" transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
+                {/* layout="position"：选碟台（居中大字号）↔ 歌词页（靠左小字号）尺寸差很大，
+                    默认 layout=true 会把尺寸也一起插值，文字中途肉眼可见地被拉伸/挤压——
+                    只动位置、尺寸瞬时切换，标题才不会看起来「飞」过半个屏幕。 */}
+                <motion.div layoutId="track-title" layout="position" className="w-full" transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
                   <ReactiveTitle title={currentTrack.title} color={currentTrack.color} isPlaying={isPlaying} active={active} />
                 </motion.div>
 
@@ -647,6 +669,7 @@ export const OasisResonance: React.FC = () => {
                 {currentTrack.excerpt && (
                   <motion.p
                     layoutId="track-excerpt"
+                    layout="position"
                     animate={{ opacity: isPlaying ? 1 : 0.55 }} transition={{ duration: 1.5, ease: 'easeOut' }}
                     className="mt-7 max-w-[420px] font-serif italic text-slate-600 dark:text-slate-300 tracking-wider text-base md:text-lg leading-loose transition-colors duration-[1500ms]"
                   >
@@ -674,6 +697,7 @@ export const OasisResonance: React.FC = () => {
                 {desktopPanel === panel && (
                   <motion.span
                     layoutId="resonancePanelPill"
+                    layout="position"
                     className="absolute inset-0 rounded-full"
                     style={{ backgroundColor: currentTrack.color, boxShadow: `0 4px 16px ${currentTrack.color}40` }}
                     transition={{ type: 'spring', stiffness: 340, damping: 30 }}
@@ -807,7 +831,7 @@ export const OasisResonance: React.FC = () => {
 
                           {/* 右栏：在播标识 */}
                           {isActive && (
-                            <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap" style={{ color: track.color }}>On Deck</span>
+                            <span className="shrink-0 self-start mt-1.5 font-mono text-[8px] tracking-[0.28em] uppercase whitespace-nowrap oasis-accent-ink" style={{ '--accent': track.color } as React.CSSProperties}>On Deck</span>
                           )}
                         </button>
                       );
