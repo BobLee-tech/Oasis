@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useLyrics } from '../../hooks/useLyrics';
 import type { LyricLanguage, Track } from '../../types/music';
 import { LyricField } from './LyricField';
+// 🅰️ Klee One：--font-ja 专用，只有 LyricRow 的 .lyric-ja 用到。124 条 @font-face 声明
+//    随本 chunk（懒加载）一起到达，不占全站首屏关键 CSS——见 main.tsx 顶部注释。
+import '@fontsource/klee-one/600.css';
 
 interface LyricPanelProps {
   track: Track;

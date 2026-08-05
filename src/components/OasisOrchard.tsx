@@ -12,183 +12,24 @@ import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useGarden, filterVisible, type BlogPost } from '../hooks/useGarden';
 import { useCategories } from '../hooks/useCategories';
+import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { Markdown } from './Markdown';
 import { readingMinutes } from '../lib/reading';
-import { extractWikiLinks, buildTitleIndex } from '../lib/wikilinks';
-import { tagKey, buildTagCanonicalMap } from '../lib/tags';
+import { tagKey } from '../lib/tags';
 import { emitMikuSignal } from '../lib/mikuSignal';
+import { buildGraph, seeded, VW, VH, type PositionCache } from '../lib/constellation';
 
 interface OasisOrchardProps { isAdmin: boolean; }
-
-const VW = 1000;
-const VH = 760;
-const CENTER = { x: 500, y: 372 };
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-
-// 确定性哈希：保证布局与浮动相位每次一致，不会每帧乱跳
-const seeded = (str: string) => {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  const x = Math.sin(h) * 10000;
-  return x - Math.floor(x);
-};
 
 const calcReadingTime = (text: string) => `${readingMinutes(text)} min`;
 
 // 🌱 条目类型 → 颜色 / 中文名：与 Garden 博客共用 useCategories 的同一套数据（含自定义分类），
 //    在组件内通过 metaOf 取用，星点据此染类型微光环。
-
-type NodeKind = 'core' | 'tag' | 'post';
-interface GNode {
-  key: string;
-  kind: NodeKind;
-  x: number; y: number;
-  r: number;
-  post?: BlogPost;
-  tag?: string;
-  count?: number;
-  color?: string;
-}
-interface GLink { a: GNode; b: GNode; color: string; core: boolean; wikilink?: boolean; }
-
-// 双链引用的两篇文章各自的情绪色取中，作为连线颜色——「这条连线属于两颗星」
-const blendColor = (a: string, b: string): string => {
-  const pa = parseInt(a.replace('#', ''), 16), pb = parseInt(b.replace('#', ''), 16);
-  const mix = (shift: number) => Math.round((((pa >> shift) & 255) + ((pb >> shift) & 255)) / 2);
-  return `#${[mix(16), mix(8), mix(0)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-};
-
-// 🌌 构建知识图谱并用轻量力导布局松弛开，得到舒朗、不重叠的星座坐标
-//   typeColorOf：星核/连线颜色统一取「文章类型色」，与情绪色 post.color 脱钩——
-//   颜色作为唯一编码通道只表达一件事（类型），不然一颗绿星拖着粉线、右上角图例却对不上。
-const buildGraph = (posts: BlogPost[], typeColorOf: (post: BlogPost) => string) => {
-  // 标签 → 文章：按归一化 key 分组（大小写/全半角/首尾空白差异不再各自长出一团星云），
-  //   展示名取该组里出现次数最多的原始写法（见 lib/tags.ts）。
-  const canonicalOf = buildTagCanonicalMap(posts.flatMap(p => p.tags));
-  const tagMap = new Map<string, BlogPost[]>(); // key: tagKey() 归一化后的标签
-  posts.forEach(p => p.tags.forEach(raw => {
-    const k = tagKey(raw);
-    const arr = tagMap.get(k) ?? tagMap.set(k, []).get(k)!;
-    if (!arr.some(x => x.id === p.id)) arr.push(p); // 同篇文章把同义标签写了两遍也只算一次
-  }));
-  const tagKeys = [...tagMap.keys()];
-
-  const nodes: GNode[] = [];
-  const core: GNode = { key: '__core', kind: 'core', x: CENTER.x, y: CENTER.y, r: 26 };
-  nodes.push(core);
-
-  // 标签核心：先用黄金角螺旋撒出初值，再交给力导松弛
-  const tagNodes = new Map<string, GNode>(); // key: tagKey()
-  tagKeys.forEach((k, i) => {
-    const ang = i * GOLDEN;
-    const rad = 150 + i * 6;
-    const n: GNode = {
-      key: 'tag:' + k, kind: 'tag', tag: canonicalOf.get(k) ?? k, count: tagMap.get(k)!.length,
-      x: CENTER.x + Math.cos(ang) * rad, y: CENTER.y + Math.sin(ang) * rad,
-      r: 5 + Math.sqrt(tagMap.get(k)!.length) * 3.4,
-    };
-    tagNodes.set(k, n); nodes.push(n);
-  });
-
-  // 文章星：初值撒在更外圈
-  const postNodes = new Map<string, GNode>();
-  posts.forEach((p, i) => {
-    const ang = i * GOLDEN + 0.6;
-    const rad = 230 + seeded(p.id) * 90;
-    const n: GNode = {
-      key: 'post:' + p.id, kind: 'post', post: p, color: typeColorOf(p),
-      x: CENTER.x + Math.cos(ang) * rad, y: CENTER.y + Math.sin(ang) * rad,
-      r: 6.5 + Math.min(4.5, p.content.length / 1100),
-    };
-    postNodes.set(p.id, n); nodes.push(n);
-  });
-
-  // 连边：核心 → 标签；标签 → 文章（无标签文章直接连核心，避免孤岛）
-  //   连线染「文章类型色」而非情绪色 post.color——与星核、图例保持同一套颜色语义。
-  const links: GLink[] = [];
-  tagKeys.forEach(k => links.push({ a: core, b: tagNodes.get(k)!, color: '#94a3b8', core: true }));
-  posts.forEach(p => {
-    const pn = postNodes.get(p.id)!;
-    const color = typeColorOf(p);
-    const ptKeys = [...new Set(p.tags.map(tagKey))].filter(k => tagNodes.has(k));
-    if (ptKeys.length === 0) links.push({ a: core, b: pn, color, core: true });
-    else ptKeys.forEach(k => links.push({ a: tagNodes.get(k)!, b: pn, color, core: false }));
-  });
-
-  // 🔗 双链 [[标题]]：正文里写下的直接引用，额外画一条引力线，把两颗星彼此拉近——
-  //   标签连线呈现「同一主题」，双链连线呈现「作者亲手写下的思想联结」，是两种不同的邻近关系。
-  const titleIndex = buildTitleIndex(posts);
-  const wikiSeen = new Set<string>();
-  posts.forEach(p => {
-    const pn = postNodes.get(p.id)!;
-    extractWikiLinks(p.content).forEach(title => {
-      const target = titleIndex.get(title.trim().toLowerCase());
-      if (!target || target.id === p.id) return; // 未命中的标题（虚线种子）不参与布局，只在正文里呈现
-      const pairKey = [p.id, target.id].sort().join('|');
-      if (wikiSeen.has(pairKey)) return;
-      wikiSeen.add(pairKey);
-      const tn = postNodes.get(target.id);
-      if (tn) links.push({ a: pn, b: tn, color: blendColor(typeColorOf(p), typeColorOf(target)), core: false, wikilink: true });
-    });
-  });
-
-  // —— 力导松弛：斥力分散 + 弹簧拉近相连节点 + 轻微向心 ——
-  //    斥力用空间哈希网格只比较邻近节点，复杂度从 O(n²) 降到近似 O(n)，
-  //    迭代次数随规模自适应，几百颗星也能瞬时算完、不阻塞首屏。
-  const ITER = nodes.length > 160 ? 140 : nodes.length > 70 ? 220 : 320;
-  const CELL = 70; // 网格边长 ≈ 最大节点间距阈值
-  for (let it = 0; it < ITER; it++) {
-    // 重建空间哈希：key = "col,row" → 该格内的节点
-    const grid = new Map<string, GNode[]>();
-    for (const n of nodes) {
-      const key = `${Math.floor(n.x / CELL)},${Math.floor(n.y / CELL)}`;
-      (grid.get(key) ?? grid.set(key, []).get(key)!).push(n);
-    }
-    for (const A of nodes) {
-      const col = Math.floor(A.x / CELL), row = Math.floor(A.y / CELL);
-      for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
-        const bucket = grid.get(`${col + dc},${row + dr}`);
-        if (!bucket) continue;
-        for (const B of bucket) {
-          if (A === B) continue;
-          let dx = B.x - A.x, dy = B.y - A.y;
-          const d = Math.hypot(dx, dy) || 0.01;
-          const min = A.r + B.r + (A.kind === 'post' && B.kind === 'post' ? 30 : 40);
-          if (d < min) {
-            const push = ((min - d) / d) * 0.25; // 0.25 因每对会被双向各处理一次
-            dx *= push; dy *= push;
-            if (A.kind !== 'core') { A.x -= dx; A.y -= dy; }
-            if (B.kind !== 'core') { B.x += dx; B.y += dy; }
-          }
-        }
-      }
-    }
-    for (const l of links) {
-      const L = l.core ? 170 : l.wikilink ? 66 : 84;
-      let dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
-      const d = Math.hypot(dx, dy) || 0.01;
-      const k = ((d - L) / d) * 0.06;
-      dx *= k; dy *= k;
-      if (l.a.kind !== 'core') { l.a.x += dx; l.a.y += dy; }
-      if (l.b.kind !== 'core') { l.b.x -= dx; l.b.y -= dy; }
-    }
-    for (const n of nodes) {
-      if (n.kind === 'core') continue;
-      n.x += (CENTER.x - n.x) * 0.004;
-      n.y += (CENTER.y - n.y) * 0.004;
-    }
-  }
-  const pad = 64;
-  nodes.forEach(n => {
-    n.x = Math.max(pad, Math.min(VW - pad, n.x));
-    n.y = Math.max(pad, Math.min(VH - pad, n.y));
-  });
-
-  return { nodes, links, tagNodes, postNodes, tagMap, core };
-};
+// 图谱构建 / 力导布局算法见 ../lib/constellation.ts（可独立测试、支持增量松弛）。
 
 export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   const reduceMotion = !!useReducedMotion();
+  const coarse = useCoarsePointer();
   const { posts: rawPosts, uprootSeed } = useGarden();
   // 🔒 「模拟访客」时把草稿从星图里滤掉，与博客列表一致（真实访客本就拿不到草稿行，见 RLS）
   const posts = useMemo(() => filterVisible(rawPosts, isAdmin), [rawPosts, isAdmin]);
@@ -235,7 +76,19 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
   }, []);
   const resetView = useCallback(() => setView({ scale: 1, x: 0, y: 0 }), []);
 
-  const graph = useMemo(() => buildGraph(posts, (p) => typeColor(p.type)), [posts, categories]);
+  // 🧊 位置缓存：跨渲染持有已收敛坐标（见 lib/constellation.ts）。加一篇新文章时，
+  //   已有星星从缓存坐标起步、几乎不动，只有新星自己找空位——「昨天记住的星座位置」不会被打乱。
+  //   用 useState 的惰性初值而非 useRef：两者都是「跨渲染稳定、mutate 不触发重渲染」的容器，
+  //   但 useState 不是 RefObject，不会被 react-hooks/refs 规则判定为「渲染期读取 ref」。
+  //   reflowTick：手动「重排星图」清空缓存后 +1，让下面的 useMemo 强制重新全量收敛。
+  const [posCache] = useState<PositionCache>(() => new Map());
+  const [reflowTick, setReflowTick] = useState(0);
+  const reflow = useCallback(() => { posCache.clear(); setReflowTick(t => t + 1); }, [posCache]);
+
+  const graph = useMemo(
+    () => buildGraph(posts, (p) => typeColor(p.type), posCache),
+    [posts, categories, posCache, reflowTick]
+  );
   // 原始标签写法 → 星图里的 canonical 展示名（同 tagKey 归一化组内出现最多的写法）
   const canonicalTagOf = (raw: string) => graph.tagNodes.get(tagKey(raw))?.tag ?? raw;
   const focusTag = activeTag ?? hoverTag;
@@ -396,12 +249,15 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                   className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center outline-none group transition-opacity duration-500"
                   style={{ left: pct(n.x, VW), top: pct(n.y, VH), opacity: dim ? 0.28 : 1, zIndex: 20 }}
                 >
-                  {/* 星云核 */}
+                  {/* 星云核：blur 光晕栅格化很贵，只在聚焦这一颗时才挂上——
+                      非聚焦态本就只有 opacity 0.4，多一层 blur 观感增量很小，性能代价却是恒定的 */}
                   <span className="relative flex items-center justify-center" style={{ width: n.r * 2, height: n.r * 2 }}>
-                    <span
-                      className="absolute inset-[-60%] rounded-full blur-md transition-opacity duration-500"
-                      style={{ background: 'radial-gradient(circle, rgba(148,163,184,0.5) 0%, transparent 70%)', opacity: focused ? 0.9 : 0.4 }}
-                    />
+                    {focused && !coarse && (
+                      <span
+                        className="absolute inset-[-60%] rounded-full blur-md transition-opacity duration-500"
+                        style={{ background: 'radial-gradient(circle, rgba(148,163,184,0.5) 0%, transparent 70%)', opacity: 0.9 }}
+                      />
+                    )}
                     <span
                       className="relative w-full h-full rounded-full border transition-all duration-300"
                       style={{
@@ -431,6 +287,9 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
               // 星核染「类型色」：随笔/周报/笔记/成长/项目各有其光，一眼可辨知识构成
               const color = typeColor(post.type);
               const delay = seeded(post.id + 'd') * 4;
+              // blur 光晕只给「正被看见」的那几颗——hover 的这颗，或当前聚焦星座里的姐妹星；
+              // 其余星靠星核自身的 boxShadow 就有足够的光感，不必再叠一层昂贵的 blur。
+              const showGlow = !coarse && (isHovered || (lit.hasFocus && lit.litNodes.has(n.key)));
               return (
                 <motion.button
                   key={n.key}
@@ -451,20 +310,26 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                   whileTap={{ scale: 0.9 }}
                   aria-label={post.title}
                 >
-                  {/* 星辉光晕 */}
+                  {/* 星辉光晕：见上方 showGlow——只在被看见时才存在 */}
+                  {showGlow && (
+                    <span
+                      className="absolute inset-[-70%] rounded-full blur-md pointer-events-none transition-opacity duration-500"
+                      style={{ backgroundColor: color, opacity: isHovered ? 0.7 : 0.4 }}
+                    />
+                  )}
+                  {/* 星核：呼吸动画用 CSS keyframes（见 index.css .oasis-star-breathe）而非
+                      framer-motion 的 repeat: Infinity——后者是 rAF 驱动的主线程 JS，几百颗星
+                      同时跑会把主线程吃满；CSS 动画交给合成器，跟数量无关。
+                      hover 时用 animationPlayState 暂停，视觉效果与原先「hover 时定格 scale:1」一致。 */}
                   <span
-                    className="absolute inset-[-70%] rounded-full blur-md pointer-events-none transition-opacity duration-500"
-                    style={{ backgroundColor: color, opacity: isHovered ? 0.7 : 0.3 }}
-                  />
-                  {/* 星核 */}
-                  <motion.span
-                    className="relative w-full h-full rounded-full"
+                    className={`relative w-full h-full rounded-full ${!reduceMotion && !coarse ? 'oasis-star-breathe' : ''}`}
                     style={{
                       background: `radial-gradient(circle at 35% 30%, #ffffff 0%, ${color} 55%, ${color} 100%)`,
                       boxShadow: `0 0 10px ${color}aa`,
+                      animationDelay: `${delay}s`,
+                      animationDuration: `${5 + delay}s`,
+                      animationPlayState: isHovered ? 'paused' : 'running',
                     }}
-                    animate={reduceMotion || isHovered ? { scale: 1 } : { scale: [0.96, 1.06, 0.96] }}
-                    transition={reduceMotion ? { duration: 0 } : { duration: 5 + delay, repeat: Infinity, ease: 'easeInOut', delay }}
                   />
                   {/* 悬停信息卡 */}
                   <AnimatePresence>
@@ -541,6 +406,9 @@ export const OasisOrchard: React.FC<OasisOrchardProps> = ({ isAdmin }) => {
                 className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 text-[10px] hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">↺</motion.button>
             )}
           </AnimatePresence>
+          {/* ✦ 重排星图：清空位置缓存、强制全量重新收敛——与「↺ 复位视图」不同，
+              那个只重置缩放/平移，这个是真的让星星们重新找位置（用于觉得布局挤在一起时） */}
+          <button onClick={reflow} title="重排星图" className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-slate-300/50 dark:border-white/10 text-[13px] hover:text-[#39C5BB] hover:border-[#39C5BB]/50 transition-colors">✦</button>
         </div>
       )}
 
