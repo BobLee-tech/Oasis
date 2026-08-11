@@ -60,7 +60,7 @@ export const extractToc = (markdown: string): TocItem[] => {
 //   只存百分比 + 时间戳，足够轻量；接近读完（≥92%）视为已读完，不再提示续读。
 const PROGRESS_KEY = 'oasis_read_progress';
 interface ProgressEntry { pct: number; updatedAt: number; }
-const readProgressStore = (): Record<string, ProgressEntry> => {
+export const readProgressStore = (): Record<string, ProgressEntry> => {
   try { return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}'); } catch { return {}; }
 };
 export const getReadProgress = (id: string): number => readProgressStore()[id]?.pct ?? 0;

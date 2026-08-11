@@ -5,6 +5,7 @@
 //   · Gallery（博客）与 Orchard（知识星图）共用，分类的颜色 / 中文名 / 图标只有一处定义。
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { AURA } from '../lib/aura';
 
 export interface Category {
   id: string;        // 存进文章 type 字段的稳定标识
@@ -45,18 +46,18 @@ export const CategoryIcon: React.FC<{ name?: string }> = ({ name }) => (
   </svg>
 );
 
-// —— 内置分类：与历史数据的 type 值一一对应，永远存在 ——
+// —— 内置分类：与历史数据的 type 值一一对应，永远存在。颜色取自 lib/aura.ts 的七色环 ——
 export const BUILTIN_CATEGORIES: Category[] = [
-  { id: 'thought', label: 'Thoughts', zh: '随笔', color: '#39C5BB', icon: 'pen', builtin: true },
-  { id: 'weekly', label: 'Weekly', zh: '周报', color: '#FFB7C5', icon: 'calendar', builtin: true },
-  { id: 'note', label: 'Notes', zh: '学习笔记', color: '#60A5FA', icon: 'book', builtin: true },
-  { id: 'growth', label: 'Growth', zh: '成长', color: '#A7F3D0', icon: 'sprout', builtin: true },
-  { id: 'project', label: 'Projects', zh: '项目复盘', color: '#A78BFA', icon: 'tool', builtin: true },
+  { id: 'thought', label: 'Thoughts', zh: '随笔', color: AURA.teal, icon: 'pen', builtin: true },
+  { id: 'weekly', label: 'Weekly', zh: '周报', color: AURA.sakura, icon: 'calendar', builtin: true },
+  { id: 'note', label: 'Notes', zh: '学习笔记', color: AURA.sky, icon: 'book', builtin: true },
+  { id: 'growth', label: 'Growth', zh: '成长', color: AURA.mint, icon: 'sprout', builtin: true },
+  { id: 'project', label: 'Projects', zh: '项目复盘', color: AURA.violet, icon: 'tool', builtin: true },
 ];
 
 // 未知 type（如分类被删后的遗留文章）的兜底元数据：仍能正常展示
 export const fallbackMeta = (type: string): Category =>
-  ({ id: type, label: type || 'Misc', zh: type || '未分类', color: '#39C5BB', icon: 'pen' });
+  ({ id: type, label: type || 'Misc', zh: type || '未分类', color: AURA.teal, icon: 'pen' });
 
 const TABLE = 'garden_categories';
 const CACHE_KEY = 'oasis_custom_categories';

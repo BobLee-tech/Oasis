@@ -1,6 +1,5 @@
 // 🏮 邻家灯火：友链配置。
-// 加一位邻居 = 加一条记录；color 建议从站内 aura 色板取：
-// #FFB7C5 樱粉 / #FDBA74 暖橙 / #FDE047 鹅黄 / #A7F3D0 薄荷 / #39C5BB 初音绿 / #60A5FA 天蓝 / #A78BFA 藤紫
+// 加一位邻居 = 加一条记录；color 建议从 lib/aura.ts 的 AURA 七色环取（樱粉/暖橙/鹅黄/薄荷/初音绿/天蓝/藤紫）。
 export interface FriendLink {
   name: string;
   url: string;
