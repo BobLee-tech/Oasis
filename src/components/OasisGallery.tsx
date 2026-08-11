@@ -7,13 +7,12 @@ import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories'
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
-import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, setReadProgress } from '../lib/reading';
-import { ReaderProgress, ReaderToc, Lightbox, Colophon, Echoes, Related } from './OasisReader';
+import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
+import { ReaderProgress, ReaderToc, Lightbox, Colophon, PostFooter } from './OasisReader';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
 import { DAILY_QUOTES } from '../data/quotes';
-import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
 import { emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
@@ -31,6 +30,21 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
 
 // 🎨 自定义模板：持久在 localStorage，按类型覆盖默认骨架
 const TEMPLATE_STORE_KEY = 'oasis_custom_templates';
+const EDITOR_MODE_KEY = 'oasis_editor_mode';
+const SPLIT_RATIO_KEY = 'oasis_split_ratio';
+type EditorMode = 'write' | 'split' | 'preview';
+const loadEditorMode = (): EditorMode => {
+  try {
+    const value = localStorage.getItem(EDITOR_MODE_KEY);
+    return value === 'write' || value === 'split' || value === 'preview' ? value : 'write';
+  } catch { return 'write'; }
+};
+const loadSplitRatio = () => {
+  try {
+    const value = Number(localStorage.getItem(SPLIT_RATIO_KEY));
+    return Number.isFinite(value) && value >= 0.3 && value <= 0.7 ? value : 0.5;
+  } catch { return 0.5; }
+};
 const loadCustomTemplates = (): Record<string, string> => {
   try { return JSON.parse(localStorage.getItem(TEMPLATE_STORE_KEY) || '{}'); } catch { return {}; }
 };
@@ -75,6 +89,27 @@ const GithubIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const MailIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[14px] h-[14px]"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>);
 const DiscIcon = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 animate-[spin_4s_linear_infinite]"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>);
 
+// 🫧 访客水波印记：名字决定三圈半径与透明度，同一个人每次出现都保留同一张“脸”。
+const WaveMark: React.FC<{ name: string; color: string }> = ({ name, color }) => {
+  const hash = Array.from(name).reduce((value, char) => ((value * 31) + (char.codePointAt(0) ?? 0)) >>> 0, 2166136261);
+  const radii = [5 + hash % 2, 8 + (hash >>> 3) % 2, 11 + (hash >>> 6) % 2];
+  return (
+    <svg viewBox="0 0 28 28" className="w-7 h-7 shrink-0" aria-hidden>
+      {radii.map((radius, index) => <circle key={radius} cx="14" cy="14" r={radius} fill="none" stroke={color} strokeWidth={index === 0 ? 1.3 : 0.9} opacity={0.75 - index * 0.2} />)}
+      <circle cx="14" cy="14" r="1.5" fill={color} opacity="0.8" />
+    </svg>
+  );
+};
+
+const resonanceDate = (iso: string) => {
+  const date = new Date(iso);
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days <= 0) return '今天';
+  if (days === 1) return '昨天';
+  if (days < 7) return `${days} 天前`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
 // 🌱🌿🌳 生长度小图形：给常客的暗号，不是给所有人的徽章——只用 12px 大小，一个点 / 双叶 / 小树
 const GrowthGlyph: React.FC<{ growth: Growth; color: string }> = ({ growth, color }) => {
   if (growth === 'evergreen') return (
@@ -94,9 +129,6 @@ const GrowthGlyph: React.FC<{ growth: Growth; color: string }> = ({ growth, colo
 };
 
 export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
-  // 📱 触屏：卡片列表去掉逐张 backdrop-filter 模糊——滚动时每张卡都是独立合成层，
-  // 数量一多手机 GPU 明显吃力；改实色半透明背景，观感不减，滚动更顺。
-  const coarse = useCoarsePointer();
   const { posts: rawPosts, plantSeed, updateSeed, uprootSeed, syncToCloud } = useGarden();
   // 🔒 admin 本人已登录会话会连草稿一并拉下来；「模拟访客」时在客户端滤掉，模拟才名副其实
   // ⚠️ posts 是「能被直接导航/引用到」的集合（深链、反向链接、合集目录都靠它），
@@ -151,8 +183,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   const [isEditing, setIsEditing] = useState(false);
   // ✍️ 编辑器三档视图：纯写 / 左写右读分屏 / 纯预览
-  const [editorMode, setEditorMode] = useState<'write' | 'split' | 'preview'>('write');
+  const [editorMode, setEditorMode] = useState<EditorMode>(loadEditorMode);
+  const [splitRatio, setSplitRatio] = useState(loadSplitRatio);
+  const [isZen, setIsZen] = useState(false);
   const isPreviewMode = editorMode === 'preview';
+  useEffect(() => {
+    try { localStorage.setItem(EDITOR_MODE_KEY, editorMode); } catch { /* private mode */ }
+  }, [editorMode]);
 
   // 🎐 给 Miku 递个信号：编辑器/阅读舱开关时她换一套语气——只在状态真正翻转时发一次，
   // 不用 useIsPresent 那条退场兜底也会跟着触发（isEditing/activePost 本身就会被它置空）
@@ -368,18 +405,175 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   // 🖼️ 预览渲染用延迟值：长文时不阻塞每次敲字的输入手感
   const previewContent = useDeferredValue(editContent);
-  // 🔄 Split 模式：写作区滚动时按比例同步预览区滚动位置
+  // 🔄 Split 模式：源码逻辑行 ↔ 预览块的双向锚定。代码块、图片和表格即使在两侧
+  // 高度悬殊，也只会在相邻锚点之间局部插值，不再把误差一路累积到文末。
   const previewRef = useRef<HTMLDivElement>(null);
-  const syncPreviewScroll = () => {
-    const ta = editorRef.current, pv = previewRef.current;
-    if (!ta || !pv) return;
-    const taMax = ta.scrollHeight - ta.clientHeight;
-    const ratio = taMax > 0 ? ta.scrollTop / taMax : 0;
-    pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight);
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const splitRef = useRef<HTMLDivElement>(null);
+  const lineTopsRef = useRef<number[]>([0]);
+  const scrollDriverRef = useRef<'src' | 'pv' | null>(null);
+  const driverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cursorLineRef = useRef(1);
+  const pendingCursorLineRef = useRef<number | null>(null);
+
+  const claimScrollDriver = (driver: 'src' | 'pv') => {
+    scrollDriverRef.current = driver;
+    if (driverTimerRef.current) clearTimeout(driverTimerRef.current);
+    driverTimerRef.current = setTimeout(() => { scrollDriverRef.current = null; }, 160);
+  };
+  useEffect(() => () => {
+    if (driverTimerRef.current) clearTimeout(driverTimerRef.current);
+  }, []);
+
+  const positionBetween = (points: { line: number; y: number }[], line: number) => {
+    if (points.length === 0) return 0;
+    if (line <= points[0].line) return points[0].y;
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const a = points[i], b = points[i + 1];
+      if (line <= b.line) {
+        const span = Math.max(1, b.line - a.line);
+        return a.y + ((line - a.line) / span) * (b.y - a.y);
+      }
+    }
+    return points[points.length - 1].y;
+  };
+  const lineBetween = (points: { line: number; y: number }[], y: number) => {
+    if (points.length === 0) return 1;
+    if (y <= points[0].y) return points[0].line;
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const a = points[i], b = points[i + 1];
+      if (y <= b.y) {
+        const span = Math.max(1, b.y - a.y);
+        return a.line + ((y - a.y) / span) * (b.line - a.line);
+      }
+    }
+    return points[points.length - 1].line;
+  };
+  const sourcePoints = () => {
+    const mirror = mirrorRef.current;
+    const tops = lineTopsRef.current;
+    const endLine = Math.max(2, editContent.split('\n').length + 1);
+    return [
+      ...tops.map((y, index) => ({ line: index + 1, y })),
+      { line: endLine, y: mirror?.scrollHeight ?? editorRef.current?.scrollHeight ?? tops[tops.length - 1] ?? 0 },
+    ];
+  };
+  const previewPoints = () => {
+    const preview = previewRef.current;
+    if (!preview) return [] as { line: number; y: number }[];
+    const rect = preview.getBoundingClientRect();
+    const points = Array.from(preview.querySelectorAll<HTMLElement>('[data-src-line]'))
+      .map((node) => ({
+        line: Number(node.dataset.srcLine),
+        y: node.getBoundingClientRect().top - rect.top + preview.scrollTop,
+      }))
+      .filter((point) => Number.isFinite(point.line))
+      .sort((a, b) => a.line - b.line);
+    const endLine = Math.max(2, editContent.split('\n').length + 1);
+    if (points.length === 0 || points[0].line > 1) points.unshift({ line: 1, y: 0 });
+    points.push({ line: endLine, y: preview.scrollHeight });
+    return points;
+  };
+  const syncFromSource = () => {
+    const source = editorRef.current, preview = previewRef.current;
+    if (!source || !preview) return;
+    const line = lineBetween(sourcePoints(), source.scrollTop);
+    preview.scrollTop = positionBetween(previewPoints(), line);
+  };
+  const syncFromPreview = () => {
+    const source = editorRef.current, preview = previewRef.current;
+    if (!source || !preview) return;
+    const line = lineBetween(previewPoints(), preview.scrollTop);
+    source.scrollTop = positionBetween(sourcePoints(), line);
+  };
+  const handleSourceScroll = () => {
+    if (scrollDriverRef.current === 'pv') return;
+    claimScrollDriver('src');
+    syncFromSource();
+  };
+  const handlePreviewScroll = () => {
+    if (scrollDriverRef.current === 'src') return;
+    claimScrollDriver('pv');
+    syncFromPreview();
+  };
+
+  // textarea 没有“第 N 行像素坐标”API：用同字体、同宽度的隐藏镜像逐行测量。
+  // 内容变更防抖，尺寸变更则由 ResizeObserver 立即重测。
+  useEffect(() => {
+    if (editorMode !== 'split') return;
+    const rebuild = () => {
+      const mirror = mirrorRef.current;
+      if (!mirror) return;
+      lineTopsRef.current = Array.from(mirror.children).map((node) => (node as HTMLElement).offsetTop);
+    };
+    const normalizeRatio = () => {
+      const width = splitRef.current?.clientWidth ?? 0;
+      if (width <= 0) return;
+      const minPane = Math.min(440, Math.max(0, (width - 30) / 2));
+      const minRatio = (minPane + 15) / width;
+      setSplitRatio((ratio) => {
+        const next = Math.min(1 - minRatio, Math.max(minRatio, ratio));
+        return Math.abs(next - ratio) > 0.001 ? next : ratio;
+      });
+    };
+    const resize = () => { rebuild(); normalizeRatio(); };
+    const timer = setTimeout(resize, 120);
+    const observer = new ResizeObserver(resize);
+    if (mirrorRef.current) observer.observe(mirrorRef.current);
+    if (editorRef.current) observer.observe(editorRef.current);
+    if (splitRef.current) observer.observe(splitRef.current);
+    return () => { clearTimeout(timer); observer.disconnect(); };
+  }, [editContent, editorMode]);
+
+  const followCursorLine = () => {
+    const source = editorRef.current;
+    if (!source) return;
+    const line = source.value.slice(0, source.selectionStart).split('\n').length;
+    if (line === cursorLineRef.current) return;
+    cursorLineRef.current = line;
+    pendingCursorLineRef.current = line;
+    requestAnimationFrame(() => {
+      if (editorMode !== 'split' || scrollDriverRef.current === 'pv' || !previewRef.current) return;
+      const pending = pendingCursorLineRef.current;
+      if (pending == null) return;
+      claimScrollDriver('src');
+      previewRef.current.scrollTop = Math.max(0, positionBetween(previewPoints(), pending) - 24);
+      pendingCursorLineRef.current = null;
+    });
   };
   useEffect(() => {
-    if (editorMode === 'split') syncPreviewScroll();
+    if (editorMode !== 'split' || pendingCursorLineRef.current == null || !previewRef.current) return;
+    previewRef.current.scrollTop = Math.max(0, positionBetween(previewPoints(), pendingCursorLineRef.current) - 24);
+    pendingCursorLineRef.current = null;
+  // previewPoints 只读取本次渲染的 DOM/ref；加入函数依赖会令本 effect 每次渲染都重跑。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewContent, editorMode]);
+
+  const beginSplitResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const host = splitRef.current;
+    if (!host) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      const rect = host.getBoundingClientRect();
+      const minPane = Math.min(440, Math.max(0, (rect.width - 30) / 2));
+      const minRatio = (minPane + 15) / Math.max(1, rect.width);
+      const ratio = Math.min(1 - minRatio, Math.max(minRatio, (moveEvent.clientX - rect.left) / rect.width));
+      setSplitRatio(ratio);
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      setSplitRatio((ratio) => {
+        try { localStorage.setItem(SPLIT_RATIO_KEY, String(ratio)); } catch { /* private mode */ }
+        return ratio;
+      });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop, { once: true });
+    window.addEventListener('pointercancel', stop, { once: true });
+  };
 
   const insertTemplate = () => {
     const tpl = getTemplate(editType);
@@ -406,6 +600,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [resColor, setResColor] = useState('#39C5BB');
   const [isResFocused, setIsResFocused] = useState(false);
   const [isResSubmitting, setIsResSubmitting] = useState(false);
+  const [commentPromptReached, setCommentPromptReached] = useState(false);
+  const [commentInView, setCommentInView] = useState(false);
+  const commentsRef = useRef<HTMLDivElement>(null);
 
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyInput, setReplyInput] = useState('');
@@ -429,6 +626,26 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   // 📖 阅读舱滚动容器：进度与目录都基于它（进度追踪已下沉到 ReaderProgress 内，确保容器已挂载）
   const readerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!activePost) return;
+    let observer: IntersectionObserver | null = null;
+    const frame = requestAnimationFrame(() => {
+      setCommentPromptReached(false);
+      setCommentInView(false);
+      const section = commentsRef.current;
+      const root = readerRef.current;
+      if (!section || !root) return;
+      observer = new IntersectionObserver(
+        ([entry]) => setCommentInView(entry.isIntersecting),
+        { root, rootMargin: '120px 0px', threshold: 0.01 },
+      );
+      observer.observe(section);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [activePost]);
 
   // 📑 文中目录、阅读时长、上一/下一篇：随当前文章推导
   const toc = useMemo(() => (activePost ? extractToc(activePost.content) : []), [activePost]);
@@ -737,6 +954,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     });
     return groups;
   }, [filteredPosts, sortMode]);
+  // 📍 列表一次读取整张进度表，避免每张卡都重复 localStorage.getItem + JSON.parse。
+  const readProgressByPost = readProgressStore();
 
   useEffect(() => {
     // Esc 等同点 ✕：编辑器开着时走 closeEditorRef（落定保存），不再是纯粹的静默丢弃
@@ -745,6 +964,28 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     };
     window.addEventListener('keydown', handleEsc); return () => window.removeEventListener('keydown', handleEsc);
   }, []);
+
+  // ⌨️ 写作台视图快捷键：⌘\ 切换分屏，⌘. 进入/退出 Zen（只留正文两栏）。
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleEditorViewKeys = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (e.key === '\\') {
+        e.preventDefault();
+        setIsZen(false);
+        setEditorMode((mode) => mode === 'split' ? 'write' : 'split');
+      } else if (e.key === '.') {
+        e.preventDefault();
+        if (!window.matchMedia('(min-width: 1024px)').matches) return;
+        setIsZen((zen) => {
+          if (!zen) setEditorMode('split');
+          return !zen;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleEditorViewKeys);
+    return () => window.removeEventListener('keydown', handleEditorViewKeys);
+  }, [isEditing]);
 
   const handleResSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!resAuthor.trim() || !resContent.trim() || isResSubmitting) return;
@@ -787,7 +1028,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       setEditSlug(post.slug ?? ''); setEditExcerpt(post.excerpt && post.excerpt !== makeExcerpt(post.content) ? post.excerpt : '');
       setDraftMsg('');
     }
-    setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
+    setTagInput(''); setIsZen(false); setShowMetaPanel(false); setActivePost(null); setIsEditing(true);
   };
 
   const startNewPost = () => {
@@ -801,7 +1042,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       setEditSlug(''); setEditExcerpt('');
       setDraftMsg('');
     }
-    setTagInput(''); setEditorMode('write'); setShowMetaPanel(false); setIsEditing(true);
+    setTagInput(''); setIsZen(false); setShowMetaPanel(false); setIsEditing(true);
   };
 
   // 丢弃当前草稿，回到空白新篇
@@ -1140,7 +1381,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               <div className="flex flex-col gap-12">
                 <AnimatePresence mode="popLayout">
                   {groupedPosts.map(group => (
-                    <motion.section key={group.key} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.section key={group.key} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={filteredPosts.length > 60 ? { contentVisibility: 'auto', containIntrinsicSize: 'auto 720px' } : undefined}>
                       <div className="flex items-center gap-4 mb-6">
                         <span className="font-mono text-[10px] tracking-[0.35em] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">{group.label}</span>
                         <span className="h-px flex-1 bg-gradient-to-r from-slate-300/50 dark:from-white/10 to-transparent" />
@@ -1154,14 +1396,14 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         {group.posts.map((post) => {
                           const meta = metaOf(post.type);
                           // 📍 续读进度：2%~92% 之间视为「读到一半」，读完或未读都不打扰
-                          const progress = getReadProgress(post.id);
+                          const progress = readProgressByPost[post.id]?.pct ?? 0;
                           const isOngoing = progress > 0.02 && progress < 0.92;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
                             // 🌗 明暗两态走不同的建立层次的手法：暗色靠提高白度制造深浅（背景本就近黑，
                             //    提亮即分层）；浅色靠投影 + 更饱和的底色——白边在暖纸白背景上几乎隐形，
                             //    只提高透明度不够，边框改极淡墨色、配一层克制的静态阴影，卡片才立得起来。
-                            <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'} ${coarse ? 'bg-white/[0.82] dark:bg-white/[0.06]' : 'bg-white/[0.72] dark:bg-white/[0.04]'}`} style={coarse ? undefined : { backdropFilter: `blur(12px)` }} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                            <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none bg-white/[0.82] dark:bg-white/[0.06] ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'}`} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
                               <div className="h-28 w-full relative overflow-hidden">
                                 {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                 <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
@@ -1222,7 +1464,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         {isEditing && (
           <motion.div key="editor-overlay" className="fixed inset-0 z-[210] flex flex-col bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30, filter: 'blur(8px)' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
-               <div className="shrink-0 w-full max-w-6xl mx-auto px-6 md:px-10 pt-5 md:pt-6 flex items-center justify-between">
+               {!isZen && <div className="shrink-0 w-full max-w-[1720px] mx-auto px-6 md:px-8 pt-4 flex items-center justify-between">
                  <div className="flex bg-slate-200/50 dark:bg-slate-800/50 rounded-lg p-1 backdrop-blur-sm shadow-inner transition-colors duration-[1500ms] ease-in-out">
                    {([['write', 'Write'], ['split', 'Split'], ['preview', 'Preview']] as const).map(([mode, label]) => (
                      <button key={mode} onClick={() => setEditorMode(mode)}
@@ -1238,15 +1480,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        </motion.span>
                      )}
                    </AnimatePresence>
+                   <button onClick={() => { setEditorMode('split'); setIsZen(true); }} title="Zen · ⌘." className="hidden lg:block font-mono text-[9px] tracking-widest uppercase text-slate-400 hover:text-[#39C5BB] transition-colors">Zen</button>
                    <button onClick={closeEditor} title="收起编辑器（修改会直接落定，8 秒内可撤销）" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                  </div>
-               </div>
+               </div>}
                
-               {/* 写作主区：居中限宽 ~72ch 阅读友好，标题即页面第一行 */}
-               <div className="flex-1 min-h-0 w-full max-w-6xl mx-auto px-6 md:px-10 flex flex-col">
-               <input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)}
+               {/* 写作主区：分屏放宽到 1720px，单栏仍保持舒适行长。 */}
+               <div className={`flex-1 min-h-0 w-full mx-auto flex flex-col ${editorMode === 'split' ? 'max-w-[1720px] px-4 md:px-8' : 'max-w-6xl px-6 md:px-10'}`}>
+               {!isZen && <input type="text" placeholder="Title..." value={editTitle} onChange={e => setEditTitle(e.target.value)}
                  onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); handlePublish(); } }}
-                 className="w-full shrink-0 bg-transparent text-3xl md:text-5xl font-serif text-slate-700 dark:text-slate-200 pt-6 md:pt-8 mb-6 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors duration-[1500ms] ease-in-out" disabled={isPreviewMode} />
+                 className={`w-full shrink-0 bg-transparent font-serif text-slate-700 dark:text-slate-200 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors duration-[1500ms] ease-in-out ${editorMode === 'split' ? 'text-2xl pt-3 mb-3' : 'text-3xl md:text-5xl pt-6 md:pt-8 mb-6'}`} disabled={isPreviewMode} />}
 
                {isPreviewMode ? (
                  <div className="flex-1 w-full overflow-y-auto no-scrollbar mb-8 notranslate" translate="no">
@@ -1255,38 +1498,48 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                ) : (
                  <>
                    {/* 🎨 模板工具条：插入 / 存为自定义 / 还原默认，互不破坏已写内容 */}
-                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 font-mono text-[9px] tracking-[0.18em] uppercase">
-                     <span className="text-slate-300 dark:text-slate-600 select-none">Template ·</span>
-                     {getTemplate(editType) && (
-                       <button onClick={insertTemplate} title={`把「${metaOf(editType).zh}」的写作骨架追加到正文`} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors">+ Insert 插入骨架</button>
-                     )}
-                     <button onClick={saveAsTemplate} disabled={!editContent.trim()} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors disabled:opacity-30 disabled:hover:text-slate-400">Save As 存为模板</button>
-                     {customTemplates[editType] != null && (
-                       <button onClick={resetTemplate} className="text-slate-400 dark:text-slate-500 hover:text-[#FFB7C5] transition-colors">Reset 还原默认</button>
-                     )}
-                     <AnimatePresence>
-                       {templateMsg && (
-                         <motion.span initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="text-[#39C5BB] normal-case tracking-normal">{templateMsg}</motion.span>
-                       )}
-                     </AnimatePresence>
-                   </div>
+                   {!isZen && <div className="relative flex items-center mb-2 min-h-6 font-mono text-[9px] tracking-[0.18em] uppercase">
+                     <details className="group/template relative">
+                       <summary className="list-none cursor-pointer text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors" title="模板操作">Template · · ·</summary>
+                       <div className="absolute top-6 left-0 z-20 w-52 flex flex-col items-start gap-3 p-4 rounded-xl border border-slate-200/70 dark:border-white/10 bg-white/95 dark:bg-[#111827]/95 shadow-xl backdrop-blur-md">
+                         {getTemplate(editType) && <button onClick={insertTemplate} className="hover:text-[#39C5BB] transition-colors">插入写作骨架</button>}
+                         <button onClick={saveAsTemplate} disabled={!editContent.trim()} className="hover:text-[#39C5BB] transition-colors disabled:opacity-30">存为当前分类模板</button>
+                         {customTemplates[editType] != null && <button onClick={resetTemplate} className="hover:text-[#FFB7C5] transition-colors">还原默认模板</button>}
+                       </div>
+                     </details>
+                     <AnimatePresence>{templateMsg && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="ml-4 text-[#39C5BB] normal-case tracking-normal">{templateMsg}</motion.span>}</AnimatePresence>
+                   </div>}
                    {/* ✍️ Markdown 格式工具栏：选中文字点按钮即插入对应语法 */}
-                   <div className="flex flex-wrap items-center gap-1 mb-3 pb-3 border-b border-slate-200/60 dark:border-white/5">
+                   {!isZen && <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-slate-200/60 dark:border-white/5">
                      {FORMAT_TOOLS.map(t => (
                        <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={t.run} title={t.title}
-                         className="min-w-[30px] h-7 px-2 flex items-center justify-center font-mono text-[12px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
+                         className="min-w-[28px] h-6 px-2 flex items-center justify-center font-mono text-[11px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
                          {t.label}
                        </button>
                      ))}
                      <span className="ml-auto font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 uppercase">Markdown · GFM · 表格/代码/任务</span>
-                   </div>
+                   </div>}
                    {/* ✍️ 写作区：write 单栏（宽屏侧挂大纲）/ split 左写右读 */}
-                   <div className="flex-1 flex gap-8 min-h-0 mb-3">
-                     <textarea ref={editorRef} value={editContent} onChange={e => setEditContent(e.target.value)} onKeyDown={handleEditorKeyDown} onScroll={editorMode === 'split' ? syncPreviewScroll : undefined} placeholder="Let your thoughts flow..." className="flex-1 min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
-                     {editorMode === 'split' && (
-                       <div ref={previewRef} className="hidden lg:block flex-1 min-w-0 overflow-y-auto no-scrollbar pl-8 border-l border-slate-200/60 dark:border-white/5 notranslate" translate="no">
-                         {previewContent.trim() ? <Markdown>{previewContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">Preview...</div>}
+                   <div ref={splitRef} className="flex-1 flex min-h-0 mb-3">
+                     <div className={`relative min-w-0 ${editorMode === 'split' ? 'oasis-split-source' : 'flex-1'}`} style={editorMode === 'split' ? { '--split-width': `${splitRatio * 100}%` } as React.CSSProperties : undefined}>
+                       <div ref={mirrorRef} aria-hidden className="absolute inset-0 invisible pointer-events-none overflow-hidden whitespace-pre-wrap break-words font-serif text-lg leading-loose" style={{ tabSize: 8 }}>
+                         {editContent.split('\n').map((line, index) => <div key={index} style={{ minHeight: '2em' }}>{line || '\u200b'}</div>)}
                        </div>
+                       <textarea ref={editorRef} value={editContent}
+                         onChange={e => { setEditContent(e.target.value); followCursorLine(); }}
+                         onSelect={followCursorLine} onKeyUp={followCursorLine} onKeyDown={handleEditorKeyDown}
+                         onPointerEnter={() => claimScrollDriver('src')} onScroll={editorMode === 'split' ? handleSourceScroll : undefined}
+                         placeholder="Let your thoughts flow..." style={{ tabSize: 8 }}
+                         className="w-full h-full min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
+                     </div>
+                     {editorMode === 'split' && (
+                       <>
+                         <button type="button" onPointerDown={beginSplitResize} className="hidden lg:block w-1.5 mx-3 shrink-0 cursor-col-resize rounded-full bg-slate-200/60 dark:bg-white/[0.06] hover:bg-[#39C5BB]/50 active:bg-[#39C5BB] transition-colors" aria-label="拖拽调整写作与预览宽度" />
+                         <div ref={previewRef} onPointerEnter={() => claimScrollDriver('pv')} onScroll={handlePreviewScroll}
+                           className="oasis-split-preview hidden lg:block min-w-0 overflow-y-auto no-scrollbar notranslate" style={{ '--split-width': `${(1 - splitRatio) * 100}%` } as React.CSSProperties} translate="no">
+                           {previewContent.trim() ? <Markdown sourceLine className={`${PROSE_CLASS} prose-base !leading-[1.9] !tracking-normal max-w-[46em] mx-auto px-5`}>{previewContent}</Markdown> : <div className="text-slate-300 dark:text-slate-600 italic text-center mt-20">Preview...</div>}
+                         </div>
+                       </>
                      )}
                      {/* 📑 写作大纲：单栏写作时提取 h2/h3，点击跳到对应段落 */}
                      {editorMode === 'write' && editorToc.length > 1 && (
@@ -1304,7 +1557,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                </div>
 
                {/* 🧾 底部元信息舱：分类 / 合集 / 标签 / 颜色收进抽屉，写作视野只留正文 */}
-               <div className="shrink-0 w-full border-t border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-md transition-colors duration-[1500ms]">
+               {!isZen && <div className="shrink-0 w-full border-t border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] backdrop-blur-md transition-colors duration-[1500ms]">
                  <AnimatePresence>
                    {showMetaPanel && (
                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
@@ -1449,7 +1702,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      <span>{readingMinutes(editContent)} min</span>
                      {draftSavedAt && <span className="text-[#39C5BB]/60 normal-case truncate">草稿已存 {new Date(draftSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
                    </div>
-                   <span className="hidden lg:inline font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 normal-case select-none">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · ⌘⏎ 发布</span>
+                   <span className="hidden lg:inline font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 normal-case select-none">⌘B 粗体 · ⌘I 斜体 · ⌘K 链接 · ⌘\ 分屏 · ⌘. Zen · ⌘⏎ 发布</span>
                    <button onClick={() => setShowMetaPanel(v => !v)}
                      className={`ml-auto flex items-center gap-2 font-mono text-[10px] tracking-[0.15em] uppercase px-4 py-2 rounded-full border transition-all duration-300 ${showMetaPanel ? 'text-[#39C5BB] border-[#39C5BB]/50 bg-[#39C5BB]/5' : 'text-slate-500 dark:text-slate-400 border-slate-300/50 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'}`}>
                      <span className="w-3.5 h-3.5" style={{ color: metaOf(editType).color }}><CategoryIcon name={metaOf(editType).icon} /></span>
@@ -1462,7 +1715,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    </button>
                    <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); handlePublish({ x: r.left + r.width / 2, y: r.top + r.height / 2 }); }} disabled={!editContent.trim()} className="font-mono text-xs tracking-widest uppercase px-7 py-2.5 rounded-full text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30" style={{ backgroundColor: editStatus === 'draft' ? '#94a3b8' : editStatus === 'unlisted' ? '#60A5FA' : editColor }}>{editStatus === 'draft' ? 'Save Draft' : editStatus === 'unlisted' ? (editingId ? 'Update · Unlisted' : 'Publish · Unlisted') : editingId ? 'Update' : 'Publish'}</button>
                  </div>
-               </div>
+               </div>}
           </motion.div>
         )}
       </AnimatePresence>, document.body)}
@@ -1483,16 +1736,16 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
           >
             {/* 📖 顶部情绪丝线 + 🪷 右下墨环进度（剩余分钟 / 回顶）：共用滚动弹簧 */}
             {/* key 按文章重挂：切到上一/下一篇时进度环与读完落锁一并归零 */}
-            <ReaderProgress key={activePost.id} containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes} />
+            <ReaderProgress key={activePost.id} containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes}
+              onProgressChange={(progress) => { if (progress > 0.55) setCommentPromptReached(true); }} />
             {/* 📑 左侧文中目录（枯山水耙痕） */}
             <ReaderToc items={toc} color={activePost.color} containerRef={readerRef} />
             <div className="min-h-screen w-full flex flex-col items-center">
               
-              <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px] dark:opacity-10 transition-opacity duration-[1500ms] ease-in-out" style={{ backgroundColor: activePost.color }} transition={{ duration: 1 }} />
-              </div>
+              <div className="absolute top-0 left-0 w-full h-96 overflow-hidden pointer-events-none opacity-80 dark:opacity-50"
+                style={{ background: `radial-gradient(circle at 15% 0%, ${activePost.color}33, transparent 60%)` }} />
 
-              <div className="relative w-full max-w-3xl px-6 md:px-12 pt-20 md:pt-24 pb-64">
+              <div className="relative w-full max-w-3xl px-6 md:px-12 pt-20 md:pt-24 pb-32 md:pb-36">
                 
                 <div className="flex justify-end items-center space-x-6 mb-12 font-mono text-[10px] tracking-widest uppercase">
                   <button onClick={() => activePost && sharePost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-oasis-teal transition-colors">{shareCopied ? '链接已摘下 ✓' : 'Share'}</button>
@@ -1521,66 +1774,36 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
                 <Colophon date={activePost.date} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
 
-                {/* 📚 本合集目录：连载全览，当前篇高亮，读者能顺着读下去。用 readerSeriesInfo——
-                    公开文章的合集目录不该把系列里未公开（unlisted）的姊妹篇也列给所有访客看到。 */}
-                {activePost.series && (readerSeriesInfo[activePost.series]?.length ?? 0) > 1 && (
-                  <div className="mt-20 px-7 py-6 md:px-9 md:py-7 rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm transition-colors duration-[1500ms]">
-                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-[#39C5BB]/80 mb-5">📚 Series · {activePost.series} <span className="text-slate-400/70 dark:text-slate-500 tracking-normal normal-case ml-1">共 {readerSeriesInfo[activePost.series].length} 篇</span></div>
-                    <ol className="flex flex-col gap-3">
-                      {readerSeriesInfo[activePost.series].map((p, i) => {
-                        const current = p.id === activePost.id;
-                        return (
-                          <li key={p.id} className="flex items-baseline gap-3 min-w-0">
-                            <span className={`font-mono text-[10px] shrink-0 ${current ? 'text-[#39C5BB]' : 'text-slate-300 dark:text-slate-600'}`}>{String(i + 1).padStart(2, '0')}</span>
-                            {current ? (
-                              <span className="font-serif text-sm text-slate-700 dark:text-slate-100 leading-snug truncate">{p.title}<span className="ml-2 font-mono text-[9px] tracking-widest uppercase text-[#39C5BB]/70">· 本篇</span></span>
-                            ) : (
-                              <button onClick={() => openPost(p)} className="font-serif text-sm text-slate-500 dark:text-slate-400 leading-snug truncate text-left hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors">{p.title}</button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </div>
-                )}
-
-                {/* ⟲ 回响 + 🍃 继续漫游：反向链接与相关推荐，读完之后的漫游入口 */}
-                <Echoes backlinks={activeBacklinks} currentColor={activePost.color} onOpen={openPost} />
-                <Related posts={relatedPosts} onOpen={openPost} />
-
-                {/* 🪶 上一篇 / 下一篇：一条枯山水式分隔线，读完不必退回列表 */}
-                {(prevPost || nextPost) && (
-                  <div className="mt-24 pt-10 border-t border-slate-200/50 dark:border-white/10 grid grid-cols-2 gap-8 transition-colors duration-[1500ms]">
-                    {prevPost ? (
-                      <button onClick={() => openPost(prevPost)} className="group text-left min-w-0">
-                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-2.5 flex items-center gap-2"><span className="transition-transform group-hover:-translate-x-1">←</span> 更早</div>
-                        <div className="font-serif text-slate-600 dark:text-slate-300 leading-snug line-clamp-2 group-hover:text-oasis-teal dark:group-hover:text-oasis-teal transition-colors">{prevPost.title}</div>
-                      </button>
-                    ) : <span />}
-                    {nextPost ? (
-                      <button onClick={() => openPost(nextPost)} className="group text-right min-w-0">
-                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-2.5 flex items-center justify-end gap-2">更新 <span className="transition-transform group-hover:translate-x-1">→</span></div>
-                        <div className="font-serif text-slate-600 dark:text-slate-300 leading-snug line-clamp-2 group-hover:text-oasis-teal dark:group-hover:text-oasis-teal transition-colors">{nextPost.title}</div>
-                      </button>
-                    ) : <span />}
-                  </div>
-                )}
+                <PostFooter
+                  key={activePost.id}
+                  current={activePost}
+                  seriesPosts={activePost.series ? readerSeriesInfo[activePost.series] ?? [] : []}
+                  backlinks={activeBacklinks}
+                  related={relatedPosts}
+                  prev={prevPost}
+                  next={nextPost}
+                  color={activePost.color}
+                  onOpen={openPost}
+                />
 
                 {/* 🍂 Fallen Leaves 评论交互区 */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 1 }} className="mt-24 pt-16 border-t border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]">
-                  <h3 className="font-serif text-2xl text-slate-400 dark:text-slate-500 mb-8 italic transition-colors">落叶</h3>
+                <div ref={commentsRef} className="mt-24 pt-12 border-t border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]">
+                  <div className="flex items-center gap-3 mb-8">
+                    <span className="h-4 w-px rounded-full" style={{ backgroundColor: activePost.color }} aria-hidden />
+                    <h3 className="font-serif text-xl text-slate-600 dark:text-slate-300 transition-colors">落叶 · {resonances.length} 片</h3>
+                  </div>
                   
                   <div className="flex flex-col gap-6 mb-16">
                     {resonances.map(res => (
                       // ✨ 优化评论底色：夜间改用微透明白色玻璃，防止糊黑
-                      <div key={res.id} className="relative group px-6 py-5 bg-white/60 dark:bg-white/5 backdrop-blur-md border border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]"
-                            style={{ borderTopRightRadius: '1.5rem', borderBottomLeftRadius: '1.5rem', borderTopLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem', boxShadow: `0 4px 20px -5px ${res.aura_color}10` }}>
+                      <div key={res.id} className="relative group px-6 py-5 rounded-2xl bg-white/70 dark:bg-white/[0.055] border border-slate-200/50 dark:border-white/10 transition-colors duration-[1500ms]"
+                            style={{ boxShadow: `0 4px 20px -5px ${res.aura_color}10` }}>
                         
-                        <div className="flex items-center space-x-3 mb-3">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: res.aura_color }} />
-                          <span className="font-mono text-[10px] tracking-widest uppercase text-slate-500 dark:text-slate-300">{res.author_name}</span>
+                        <div className="flex items-center gap-3 mb-3">
+                          <WaveMark name={res.author_name} color={res.aura_color} />
+                          <span className="font-serif text-sm text-slate-600 dark:text-slate-200">{res.author_name}</span>
                           <span className="font-mono text-[9px] text-slate-400/60 dark:text-slate-500/80 ml-auto">
-                            {new Date(res.created_at).toLocaleDateString()}
+                            {resonanceDate(res.created_at)}
                           </span>
                         </div>
                         <p className="font-serif text-slate-700 dark:text-slate-200 text-sm leading-relaxed transition-colors duration-[1500ms]">{res.content}</p>
@@ -1588,12 +1811,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         {/* 回复呈现 */}
                         {res.reply && (
                           <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-white/10 border-dashed transition-colors duration-[1500ms]">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 pl-5">
                               <div className="w-4 h-4 rounded-full overflow-hidden border border-[#39C5BB]/30"><img src="/avatar.jpg" alt="Bob" className="w-full h-full object-cover"/></div>
-                              <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#39C5BB]">Bob Lee</span>
+                              <span className="font-serif text-xs text-[#39C5BB]">站主回复</span>
                             </div>
-                            <p className="font-serif text-slate-500 dark:text-slate-400 text-sm leading-[1.8] italic pl-5 border-l-2 border-[#39C5BB]/30 transition-colors duration-[1500ms]">
-                              "{res.reply}"
+                            <p className="font-serif text-slate-500 dark:text-slate-400 text-sm leading-[1.8] pl-5 border-l-2 border-[#39C5BB]/40 transition-colors duration-[1500ms]">
+                              {res.reply}
                             </p>
                           </div>
                         )}
@@ -1601,8 +1824,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         {/* Admin 动作面板 */}
                         {isAdmin && (
                           <div className="absolute top-5 right-5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-3 bg-white/80 dark:bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/50 dark:border-white/10">
-                            <button onClick={() => setReplyingToId(replyingToId === res.id ? null : res.id)} className="font-mono text-[9px] tracking-widest uppercase text-[#39C5BB] hover:text-[#2da098] transition-colors">Echo</button>
-                            <button onClick={() => purifyResonance(res.id)} className="font-mono text-[9px] tracking-widest uppercase text-red-400 hover:text-red-500 transition-colors">Purify</button>
+                            <button onClick={() => setReplyingToId(replyingToId === res.id ? null : res.id)} className="font-serif text-xs text-[#39C5BB] hover:text-[#2da098] transition-colors">回一句</button>
+                            <button onClick={() => purifyResonance(res.id)} className="font-serif text-xs text-red-400 hover:text-red-500 transition-colors">删除</button>
                           </div>
                         )}
 
@@ -1610,12 +1833,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           {isAdmin && replyingToId === res.id && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 overflow-hidden">
                               <textarea 
-                                autoFocus placeholder="Whisper back..." value={replyInput} onChange={e => setReplyInput(e.target.value)} 
+                                autoFocus placeholder="写下回复…" value={replyInput} onChange={e => setReplyInput(e.target.value)}
                                 className="w-full bg-white/80 dark:bg-white/5 font-serif text-slate-700 dark:text-slate-200 text-sm p-3 rounded-xl outline-none border border-slate-200/80 dark:border-white/10 resize-none h-20 placeholder:text-slate-400 mb-2 focus:border-[#39C5BB]/50 transition-colors shadow-inner"
                               />
                               <div className="flex justify-end gap-3">
-                                <button onClick={() => { setReplyingToId(null); setReplyInput(''); }} className="font-mono text-[9px] uppercase tracking-widest text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors">Cancel</button>
-                                <button onClick={() => handleReplySubmit(res.id)} className="font-mono text-[9px] uppercase tracking-widest text-white bg-[#39C5BB] px-4 py-1.5 rounded-full shadow-sm hover:bg-[#2da098] transition-colors">Send</button>
+                                <button onClick={() => { setReplyingToId(null); setReplyInput(''); }} className="font-serif text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors">取消</button>
+                                <button onClick={() => handleReplySubmit(res.id)} className="font-serif text-xs text-white bg-[#39C5BB] px-4 py-1.5 rounded-full shadow-sm hover:bg-[#2da098] transition-colors">回复</button>
                               </div>
                             </motion.div>
                           )}
@@ -1623,28 +1846,37 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                       </div>
                     ))}
-                    {resonances.length === 0 && <span className="font-serif italic text-slate-400 dark:text-slate-600 text-sm pl-2 transition-colors">静待一阵风…</span>}
+                    {resonances.length === 0 && (
+                      <button onClick={() => setIsResFocused(true)} className="text-left rounded-2xl border border-dashed border-slate-200 dark:border-white/10 px-6 py-5 font-serif text-sm leading-relaxed text-slate-500 dark:text-slate-400 hover:border-[#39C5BB]/40 hover:text-[#39C5BB] transition-colors">
+                        还没有人在这里停留。说点什么都好，我都会看到。<span className="block mt-2 text-xs opacity-75">留下一片落叶 →</span>
+                      </button>
+                    )}
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
 
             {/* 底部悬浮输入激活胶囊 */}
-            <motion.div 
+            <AnimatePresence>
+            {(commentPromptReached || commentInView || isResFocused) && <motion.div
               className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 w-[92vw] max-w-2xl z-[150]"
               initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
-              transition={{ delay: 0.8, duration: 0.6, type: "spring", stiffness: 200, damping: 25 }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 200, damping: 25 }}
             >
               <div 
                 className="bg-white/80 dark:bg-[#111827]/80 backdrop-blur-3xl border border-white dark:border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.4)] p-4 transition-all duration-[1500ms] overflow-hidden" 
                 style={{ borderRadius: isResFocused ? '2rem' : '3rem', borderColor: isResFocused ? `${resColor}40` : '' }}
               >
                 {!isResFocused ? (
-                  <input type="text" placeholder="留下一片落叶…" onClick={() => setIsResFocused(true)} readOnly className="w-full bg-transparent font-serif text-slate-500 dark:text-slate-400 outline-none cursor-pointer italic text-center transition-colors duration-[1500ms]" />
+                  <input type="text" placeholder="留下一片落叶 · 说点什么" onClick={() => setIsResFocused(true)} readOnly className="w-full bg-transparent font-serif text-slate-500 dark:text-slate-400 outline-none cursor-pointer text-center transition-colors duration-[1500ms]" />
                 ) : (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col px-2">
-                    <input type="text" placeholder="你的名字，下次还记得…" value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-mono text-xs text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
-                    <textarea placeholder="写下这片叶子的心事…" value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="bg-transparent font-serif text-slate-700 dark:text-slate-200 h-20 outline-none resize-none mb-4 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors" />
+                    <label className="font-serif text-xs text-slate-500 dark:text-slate-400 mb-1">怎么称呼你 <span className="text-[10px] text-slate-400/70">· 只存在你这台设备上</span></label>
+                    <input type="text" placeholder="名字" value={resAuthor} onChange={e => setResAuthor(e.target.value)} maxLength={20} className="bg-transparent border-b border-slate-200/80 dark:border-white/10 font-serif text-sm text-slate-700 dark:text-slate-200 pb-2 mb-4 outline-none focus:border-slate-400 dark:focus:border-[#39C5BB]/50 transition-colors placeholder:text-slate-400" />
+                    <div className="relative">
+                      <textarea placeholder="想说的话…" value={resContent} onChange={e => setResContent(e.target.value)} maxLength={150} className="w-full bg-transparent font-serif text-slate-700 dark:text-slate-200 h-20 outline-none resize-none mb-4 pr-10 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors" />
+                      <span className="absolute right-0 bottom-4 font-mono text-[9px] text-slate-400/70">{resContent.length}/150</span>
+                    </div>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex space-x-2">
                         {AURA_COLORS.map(c => <div key={c} onClick={() => setResColor(c)} className={`w-3.5 h-3.5 rounded-full cursor-pointer transition-transform ${resColor === c ? 'scale-125' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c, boxShadow: resColor === c ? `0 0 0 2px transparent, 0 0 0 3px ${c}` : 'none' }} />)}
@@ -1657,7 +1889,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   </motion.div>
                 )}
               </div>
-            </motion.div>
+            </motion.div>}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>, document.body)}

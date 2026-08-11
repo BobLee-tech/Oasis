@@ -266,7 +266,7 @@ const RippleBloom = ({ origin }: { origin: RippleOrigin }) => {
 };
 
 function App() {
-  const { isAdmin, isLoading, logout } = useAuth();
+  const { isAdmin, logout } = useAuth();
 
   const { route, navigate } = useHashRoute();
 
@@ -313,13 +313,16 @@ function App() {
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
-  // 🚪 默认即访客：会话检查结束后所有人直入禅境，登录不再是大门而是暗门
+  // 🚪 默认即访客：入场节奏自己掌控，不再挂在鉴权结果上——
+  //   受限/内嵌浏览器里 supabase 依赖的 navigator.locks 偶尔会卡死，鉴权慢一点只该让
+  //   「站主功能」（isAdmin 相关的编辑按钮/草稿）晚一拍到位，绝不该让访客永远卡在黑屏。
+  //   useAuth 内部的 getSession() 有独立的 3s 超时兜底，isAdmin 最终仍会正确落定。
   useEffect(() => {
-    if (!isLoading && terminalStatus === 'checking') {
+    const t = setTimeout(() => {
       setTerminalStatus('granted'); setBgPhase('zen');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+    }, 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // 🕳️ 终端暗门：反引号 ` 键召唤 / ESC 关闭；已是 creator 时无需再召
   const [showTerminal, setShowTerminal] = useState(false);

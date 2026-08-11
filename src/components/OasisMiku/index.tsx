@@ -519,7 +519,6 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
               />
 
               <button
-                data-no-global-ripple
                 type="button"
                 aria-label="移动 Miku"
                 title="拖动到附近后松手；方向键可切换边缘泊位"
@@ -543,7 +542,6 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
               </button>
 
               <button
-                data-no-global-ripple
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={collapse}
                 aria-label="收起 Miku"
@@ -565,7 +563,6 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
             {retreated && (
               <button
-                data-no-global-ripple
                 type="button"
                 aria-label="唤回 Miku"
                 onClick={restorePresence}
@@ -580,7 +577,6 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
         ) : (
           <motion.button
             key="pendant"
-            data-no-global-ripple
             initial={{ opacity: 0, scale: 0.86 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.88 }}

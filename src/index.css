@@ -524,3 +524,21 @@ body {
 .dark .hljs-number, .dark .hljs-symbol, .dark .hljs-bullet, .dark .hljs-link, .dark .hljs-meta, .dark .hljs-deletion { color: #fdba74; }
 .dark .hljs-function .hljs-title, .dark .hljs-title.function_ { color: #93c5fd; }
 .dark .hljs-variable, .dark .hljs-params, .dark .hljs-attr { color: #cbd5e1; }
+/* Markdown 图片在网络内容到达前保留稳定的淡色画布；`auto 16/10` 会在图片解码后
+   自动切回真实固有比例，既减少布局跳动，也不裁切横竖构图。 */
+.oasis-markdown-image {
+  background: color-mix(in srgb, #39c5bb 5%, transparent);
+  contain-intrinsic-size: auto 32rem;
+}
+
+.oasis-split-source {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .oasis-split-source,
+  .oasis-split-preview {
+    width: calc(var(--split-width) - 15px);
+    flex: none;
+  }
+}

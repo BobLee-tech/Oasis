@@ -101,7 +101,6 @@ export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange 
           return (
             <motion.button
               key={item.view}
-              data-no-global-ripple
               onPointerEnter={() => VIEW_PREFETCH[item.view]?.()}
               onTouchStart={() => VIEW_PREFETCH[item.view]?.()}
               onClick={(event) => {

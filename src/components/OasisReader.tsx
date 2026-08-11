@@ -17,8 +17,9 @@ interface ReaderProgressProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   color: string;
   totalMinutes: number;
+  onProgressChange?: (progress: number) => void;
 }
-export const ReaderProgress: React.FC<ReaderProgressProps> = ({ containerRef, color, totalMinutes }) => {
+export const ReaderProgress: React.FC<ReaderProgressProps> = ({ containerRef, color, totalMinutes, onProgressChange }) => {
   const { scrollYProgress } = useScroll({ container: containerRef });
   // ⚠️ useScroll 在容器刚挂载、尚未滚动时可能给出虚假的 1（0/0 兜底），
   //    会让墨环一进来就误判读完。这里借它的更新时机，进度改由真实 scrollTop 计算。
@@ -29,6 +30,7 @@ export const ReaderProgress: React.FC<ReaderProgressProps> = ({ containerRef, co
     return max > 1 ? Math.min(1, el.scrollTop / max) : 0;
   });
   const progress = useSpring(safeProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
+  useMotionValueEvent(progress, 'change', (value) => onProgressChange?.(value));
   const backToTop = () => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   return (
     <>
@@ -330,11 +332,7 @@ export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, updatedAt, 
     ? new Date(updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-16 mb-6 flex flex-col items-center gap-3 select-none"
-    >
+    <div className="mt-16 mb-6 flex flex-col items-center gap-3 select-none">
       <svg width="120" height="10" viewBox="0 0 120 10" aria-hidden>
         <path d="M0 5 Q15 0 30 5 T60 5 T90 5 T120 5" fill="none" stroke={color} strokeWidth="1" opacity="0.55" />
       </svg>
@@ -342,94 +340,139 @@ export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, updatedAt, 
         写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
         {tended && <><br />照料于 {tendedDate} · {currentSolarTerm(new Date(updatedAt)).name}</>}
       </span>
-    </motion.div>
+    </div>
   );
 };
 
 // ══════════════════════════════════════════════════════════════
-// ⟲ 回响：读完一篇，看见「谁曾提到过这里」——反向链接比正向双链更能
-//   勾住读者继续漫游，语境摘句让它不只是一份标题清单，而是「对方当时在说什么」。
-//   左侧竖线取来源文章自己的颜色（这是谁的声音），引用文字取当前文章的颜色（在说谁）。
+// 🧭 文末路径：把合集、回响、相关推荐和前后篇收成「一条主路 + 一个抽屉」。
+//   正文落款之后先给一个明确选择，其余信息默认收起，避免四组导航同时抢注意力。
 // ══════════════════════════════════════════════════════════════
-interface EchoPost { id: string; title: string; color: string }
-interface EchoesProps<T extends EchoPost> {
+interface FooterPost { id: string; title: string; color: string; date: string }
+interface PostFooterProps<T extends FooterPost> {
+  current: T;
+  seriesPosts: T[];
   backlinks: Backlink<T>[];
-  currentColor: string;
+  related: T[];
+  prev: T | null;
+  next: T | null;
+  color: string;
   onOpen: (post: T) => void;
 }
-export function Echoes<T extends EchoPost>({ backlinks, currentColor, onOpen }: EchoesProps<T>) {
-  if (backlinks.length === 0) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-6 mb-10 w-full"
-    >
-      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-5">
-        ⟲ Echoes · {backlinks.length} 篇文章提到这里
-      </div>
-      <div className="flex flex-col gap-5">
-        {backlinks.map(({ post, before, after, rawTitle }) => (
-          <button key={post.id} onClick={() => onOpen(post)} className="group flex gap-4 text-left w-full">
-            <span
-              className="w-[2px] shrink-0 rounded-full opacity-40 group-hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: post.color }}
-              aria-hidden
-            />
-            <span className="flex flex-col gap-1.5 min-w-0">
-              <span className="font-serif text-sm text-slate-700 dark:text-slate-200 group-hover:text-[#39C5BB] transition-colors truncate">
-                {post.title}
-              </span>
-              <span className="font-serif text-xs italic text-slate-400 dark:text-slate-500 leading-relaxed">
-                {before}
-                <span className="not-italic opacity-90" style={{ color: currentColor }}>{rawTitle}</span>
-                {after}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+export function PostFooter<T extends FooterPost>({ current, seriesPosts, backlinks, related, prev, next, color, onOpen }: PostFooterProps<T>) {
+  const [expanded, setExpanded] = useState(false);
+  const chapterIndex = seriesPosts.findIndex((post) => post.id === current.id);
+  const nextChapter = chapterIndex >= 0 ? seriesPosts[chapterIndex + 1] ?? null : null;
+  const mainPost = nextChapter ?? related[0] ?? next ?? prev;
+  const mainLabel = nextChapter
+    ? `下一章 · 第 ${chapterIndex + 2} 篇`
+    : related[0]
+      ? '沿着这条小径继续'
+      : next
+        ? '时间线上更新的一篇'
+        : '回到更早的一篇';
+  const remainingRelated = related.filter((post) => post.id !== mainPost?.id);
+  const drawerParts = [
+    seriesPosts.length > 1 ? `本合集共 ${seriesPosts.length} 篇` : '',
+    backlinks.length ? `${backlinks.length} 篇提到这里` : '',
+    remainingRelated.length ? `另有 ${remainingRelated.length} 篇可漫游` : '',
+  ].filter(Boolean);
+  const hasDrawer = drawerParts.length > 0;
 
-// ══════════════════════════════════════════════════════════════
-// 🍃 继续漫游：按「双链互引 > 标签重合 > 同类型」打分推荐的相关文章，
-//   是读完之后的一条路牌——刻意用幽灵卡（无底色）而非列表页的实心卡，
-//   视觉上区分「藏品陈列」与「继续走下去的小径」。
-// ══════════════════════════════════════════════════════════════
-interface RelatedPost { id: string; title: string; date: string; color: string }
-interface RelatedProps<T extends RelatedPost> {
-  posts: T[];
-  onOpen: (post: T) => void;
-}
-export function Related<T extends RelatedPost>({ posts, onOpen }: RelatedProps<T>) {
-  if (posts.length === 0) return null;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-      className="mb-10 w-full"
-    >
-      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 mb-5">
-        🍃 继续漫游 · Related
+    <section className="mt-12 border-t border-slate-200/60 dark:border-white/10 pt-12 w-full">
+      <div className="flex items-center gap-3 mb-6">
+        <span className="h-3 w-px rounded-full" style={{ backgroundColor: color }} aria-hidden />
+        <span className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-400 dark:text-slate-500">Afterword</span>
+        <span className="font-serif text-xs text-slate-400 dark:text-slate-500">读完之后</span>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {posts.map((p) => (
+
+      {mainPost && (
+        <button
+          onClick={() => onOpen(mainPost)}
+          className="group w-full text-left rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/45 dark:bg-white/[0.035] px-6 py-5 md:px-7 md:py-6 transition-[transform,border-color,background-color] duration-300 hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-white/20"
+        >
+          <span className="block font-serif text-xs text-slate-400 dark:text-slate-500 mb-2">{mainLabel}</span>
+          <span className="flex items-center justify-between gap-5">
+            <span className="font-serif text-lg text-slate-700 dark:text-slate-100 leading-snug group-hover:text-[#39C5BB] transition-colors">《{mainPost.title}》</span>
+            <span className="text-slate-300 dark:text-slate-600 group-hover:text-[#39C5BB] group-hover:translate-x-1 transition-all" aria-hidden>→</span>
+          </span>
+        </button>
+      )}
+
+      {hasDrawer && (
+        <div className="mt-6 border-y border-slate-200/50 dark:border-white/[0.08]">
           <button
-            key={p.id}
-            onClick={() => onOpen(p)}
-            className="group flex flex-col gap-2 text-left rounded-xl border border-slate-200/40 dark:border-white/5 px-4 py-3.5 hover:bg-white/40 dark:hover:bg-white/[0.03] hover:border-slate-200/70 dark:hover:border-white/10 transition-colors"
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="w-full py-4 flex items-center justify-between gap-4 text-left text-slate-500 dark:text-slate-400 hover:text-[#39C5BB] transition-colors"
+            aria-expanded={expanded}
           >
-            <span className="flex items-center gap-2 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} aria-hidden />
-              <span className="font-serif text-sm text-slate-700 dark:text-slate-200 group-hover:text-[#39C5BB] transition-colors truncate">{p.title}</span>
-            </span>
-            <span className="font-mono text-[9px] tracking-wide text-slate-400 dark:text-slate-500 pl-3.5">{p.date}</span>
+            <span className="font-serif text-sm leading-relaxed">{drawerParts.join(' · ')}</span>
+            <span className={`text-xs transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden>⌄</span>
           </button>
-        ))}
-      </div>
-    </motion.div>
+
+          {expanded && (
+            <div className="pb-7 flex flex-col gap-7">
+              {seriesPosts.length > 1 && (
+                <div>
+                  <div className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-400 dark:text-slate-500 mb-3">Series <span className="font-serif normal-case tracking-normal ml-2">合集目录</span></div>
+                  <ol className="flex flex-col gap-2.5">
+                    {seriesPosts.map((post, index) => (
+                      <li key={post.id} className="flex items-baseline gap-3 min-w-0">
+                        <span className="font-mono text-[9px] text-slate-300 dark:text-slate-600 shrink-0">{String(index + 1).padStart(2, '0')}</span>
+                        {post.id === current.id
+                          ? <span className="font-serif text-sm text-slate-500 dark:text-slate-400 truncate">{post.title} <span className="text-[#39C5BB]">· 本篇</span></span>
+                          : <button onClick={() => onOpen(post)} className="font-serif text-sm text-slate-600 dark:text-slate-300 truncate hover:text-[#39C5BB] transition-colors">{post.title}</button>}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {backlinks.length > 0 && (
+                <div>
+                  <div className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-400 dark:text-slate-500 mb-3">Echoes <span className="font-serif normal-case tracking-normal ml-2">谁曾提到这里</span></div>
+                  <div className="flex flex-col gap-4">
+                    {backlinks.map(({ post, before, after, rawTitle }) => (
+                      <button key={post.id} onClick={() => onOpen(post)} className="group flex gap-3 text-left w-full">
+                        <span className="w-px shrink-0 rounded-full opacity-50" style={{ backgroundColor: post.color }} aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block font-serif text-sm text-slate-600 dark:text-slate-300 group-hover:text-[#39C5BB] transition-colors truncate">{post.title}</span>
+                          <span className="block mt-1 font-serif text-xs text-slate-400 dark:text-slate-500 leading-relaxed">{before}<span style={{ color }}>{rawTitle}</span>{after}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {remainingRelated.length > 0 && (
+                <div>
+                  <div className="font-mono text-[9px] tracking-[0.28em] uppercase text-slate-400 dark:text-slate-500 mb-3">Related <span className="font-serif normal-case tracking-normal ml-2">继续漫游</span></div>
+                  <div className="flex flex-col gap-2.5">
+                    {remainingRelated.map((post) => (
+                      <button key={post.id} onClick={() => onOpen(post)} className="flex items-center gap-3 text-left group">
+                        <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: post.color }} />
+                        <span className="font-serif text-sm text-slate-600 dark:text-slate-300 group-hover:text-[#39C5BB] transition-colors">{post.title}</span>
+                        <span className="ml-auto font-mono text-[9px] text-slate-400 dark:text-slate-600">{post.date}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(prev || next) && (
+        <div className="mt-6 flex items-start justify-between gap-8 font-serif text-xs text-slate-400 dark:text-slate-500">
+          {prev ? <button onClick={() => onOpen(prev)} className="text-left hover:text-[#39C5BB] transition-colors">← 更早 · {prev.title}</button> : <span />}
+          {next ? <button onClick={() => onOpen(next)} className="text-right hover:text-[#39C5BB] transition-colors">{next.title} · 更新 →</button> : <span />}
+        </div>
+      )}
+    </section>
   );
 }
 

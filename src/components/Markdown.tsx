@@ -9,11 +9,14 @@ import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
+import type { Element, Root } from 'hast';
 import { slugify } from '../lib/reading';
 
 interface MarkdownProps {
   children: string;
   className?: string;
+  /** 编辑器预览专用：给顶层 Markdown 块写入源码行号，供双向滚动锚定。 */
+  sourceLine?: boolean;
 }
 
 // 🖼️ 图片点击 → 全屏灯箱。用自定义事件解耦：Markdown 只管派发，Reader 里的 Lightbox 负责呈现。
@@ -44,6 +47,18 @@ const rehypeHeadingIds = () => (tree: any) => {
   walk(tree);
 };
 
+// ✍️ 编辑器分屏的源码锚点。只标记顶层块，避免同一源码行上的嵌套节点互相争抢；
+// position 来自 Markdown 语法树，比“整篇高度百分比”更能抵抗图片、代码块和表格的高度差。
+const SOURCE_LINE_BLOCKS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'pre', 'blockquote', 'table', 'hr', 'img']);
+const rehypeSourceLine = () => (tree: Root) => {
+  for (const node of tree.children ?? []) {
+    const line = node.position?.start?.line;
+    if (node.type === 'element' && SOURCE_LINE_BLOCKS.has(node.tagName) && line) {
+      ((node as Element).properties ??= {}).dataSrcLine = line;
+    }
+  }
+};
+
 // 🛡️ 裸 HTML 白名单：rehype-raw 会把正文里的 HTML 原样进树，正文虽只有园丁能写，
 //    但任何一处写路径失守（RLS 配错、账号被盗、localStorage 缓存投毒）都会升级成持久 XSS——
 //    这里作为纵深防御剥掉 <script>/<iframe>/事件属性等执行向量。基于 GitHub 同款 defaultSchema
@@ -54,7 +69,7 @@ const SANITIZE_SCHEMA = {
   tagNames: [...(defaultSchema.tagNames ?? []), 'details', 'summary', 'mark', 'video', 'audio', 'source'],
   attributes: {
     ...defaultSchema.attributes,
-    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'style', 'className'],
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'style', 'className', 'dataSrcLine'],
     details: ['open'],
     video: ['src', 'poster', 'controls', 'loop', 'muted', 'playsInline', 'width', 'height'],
     audio: ['src', 'controls', 'loop', 'muted'],
@@ -110,8 +125,9 @@ const MD_COMPONENTS = {
   // 图片可点放大：光标提示 + 派发灯箱事件
   img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <img
-      src={src} alt={alt} {...props} loading="lazy"
-      className="cursor-zoom-in transition-opacity duration-300 hover:opacity-90"
+      src={src} alt={alt} {...props} loading="lazy" decoding="async"
+      style={{ width: '100%', aspectRatio: 'auto 16 / 10', ...props.style }}
+      className="oasis-markdown-image cursor-zoom-in transition-opacity duration-300 hover:opacity-90"
       onClick={() => typeof src === 'string' && openLightbox(src, alt)}
     />
   ),
@@ -131,11 +147,17 @@ export const PROSE_CLASS =
   'prose-img:rounded-2xl prose-img:shadow-xl prose-img:mx-auto ' +
   'prose-hr:border-slate-200/70 dark:prose-hr:border-white/10';
 
-export const Markdown: React.FC<MarkdownProps> = ({ children, className }) => (
+export const Markdown: React.FC<MarkdownProps> = ({ children, className, sourceLine = false }) => (
   <div className={className ?? PROSE_CLASS}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkBreaks]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHeadingIds, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+      rehypePlugins={[
+        ...(sourceLine ? [rehypeSourceLine] : []),
+        rehypeRaw,
+        [rehypeSanitize, SANITIZE_SCHEMA],
+        rehypeHeadingIds,
+        [rehypeHighlight, { detect: true, ignoreMissing: true }],
+      ]}
       components={MD_COMPONENTS}
     >
       {children}
