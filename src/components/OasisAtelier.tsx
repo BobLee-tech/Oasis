@@ -128,7 +128,7 @@ export const OasisAtelier: React.FC<OasisAtelierProps> = ({ isAdmin }) => {
   }, [unframeArtwork, closeArtwork]);
 
   return (
-    <motion.div className="oasis-bottom-scroll-safe absolute inset-0 w-full h-full overflow-y-auto no-scrollbar flex flex-col items-center pt-20 md:pt-28 pb-40 px-4 md:px-8 z-10">
+    <motion.div className="oasis-bottom-scroll-safe absolute inset-0 w-full h-full overflow-y-auto no-scrollbar flex flex-col items-center pt-20 md:pt-28 px-4 md:px-8 z-10">
       {/* 报头：与其他场所同款的安静排版 */}
       <div className="text-center mb-8 md:mb-10 shrink-0">
         <div className="font-mono text-[10px] tracking-[0.5em] uppercase text-slate-400/70 dark:text-slate-500 mb-3 transition-colors duration-[1500ms]">Atelier</div>
@@ -219,6 +219,8 @@ export const OasisAtelier: React.FC<OasisAtelierProps> = ({ isAdmin }) => {
         </AnimatePresence>,
         document.body
       )}
+
+      <div className="oasis-bottom-spacer" aria-hidden />
     </motion.div>
   );
 };

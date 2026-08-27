@@ -1,5 +1,6 @@
 // 🪷 全站底部漫游系统：导航是稳定的石基，Miku 是停靠在旁边的风铃。
 // 二者共享定位、安全区和入场节奏，但语义保持独立——Miku 不是第六个导航目的地。
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { AppView } from '../types/auth';
 import { OasisDock } from './OasisDock';
@@ -12,9 +13,26 @@ interface OasisBottomChromeProps {
 
 export const OasisBottomChrome = ({ currentView, onViewChange }: OasisBottomChromeProps) => {
   const reduceMotion = !!useReducedMotion();
+  const dockRef = useRef<HTMLDivElement>(null);
+
+  // 🧭 Dock 的真实高度必须与底部安全区 token 保持一致，否则五个场所都会被同一个误差遮住。
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const el = dockRef.current;
+    if (!el) return;
+    const root = getComputedStyle(document.documentElement);
+    const declaredRem = Number.parseFloat(root.getPropertyValue('--oasis-bottom-chrome-height'));
+    const rootFontPx = Number.parseFloat(root.fontSize) || 16;
+    const declared = declaredRem * rootFontPx || 0;
+    const actual = el.getBoundingClientRect().height;
+    if (Math.abs(actual - declared) > 2) {
+      console.warn(`[oasis] Dock 实测 ${actual}px，--oasis-bottom-chrome-height 声明 ${declared}px，请同步。`);
+    }
+  }, []);
 
   return (
     <motion.div
+      ref={dockRef}
       className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] md:bottom-8 left-1/2 -translate-x-1/2 z-[90]"
       initial={reduceMotion ? { opacity: 0 } : { y: 56, opacity: 0, scale: 0.96 }}
       animate={{ y: 0, opacity: 1, scale: 1 }}

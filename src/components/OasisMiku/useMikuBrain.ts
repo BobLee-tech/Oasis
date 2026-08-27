@@ -11,6 +11,11 @@ import { termNoteOfDay } from '../../lib/solarTerms';
 import { onMikuSignal } from '../../lib/mikuSignal';
 import { MotionDirector } from './brain/motionDirector';
 import { RhythmEngine, profileForCategory } from './brain/rhythmEngine';
+import { BreathEngine } from './brain/breath';
+import { BlinkEngine } from './brain/blink';
+import { LipSync } from './brain/lipSync';
+import { getActiveLyric } from '../../hooks/useSoundscape';
+import { useTicker } from '../../lib/ticker';
 import {
   MIKU_GREETINGS, MIKU_GREETINGS_FAMILIAR, MIKU_GREETINGS_CLOSE, MIKU_GREETINGS_DEEP,
   MIKU_TOUCH_HEAD_LINES, MIKU_TOUCH_HEAD_LINES_CLOSE, MIKU_TOUCH_HEAD_LINES_DEEP, MIKU_LONGPRESS_HEAD_LINES,
@@ -132,14 +137,18 @@ interface UseMikuBrainOptions {
   trackId: string | undefined;
   trackCategory: MusicCategory | undefined;
   getSpectrum: (bars: number) => number[];
+  getEnergy: () => { low: number; mid: number; high: number; beat: number };
   coarsePointer: boolean;
   /** 尊重 prefers-reduced-motion：画布本身已冻结渲染，这里同步停掉自主动作调度，
    *  不然会出现「人物纹丝不动却突然弹出一句话」的割裂感 */
   reduceMotion: boolean;
+  /** 收起时停止调度，和 Live2D ticker 一起归零功耗。 */
+  paused: boolean;
 }
 
 export const useMikuBrain = ({
-  stageRef, particlesRef, ready, view, isPlaying, trackId, trackCategory, getSpectrum, coarsePointer, reduceMotion,
+  stageRef, particlesRef, ready, view, isPlaying, trackId, trackCategory, getSpectrum, getEnergy,
+  coarsePointer, reduceMotion, paused,
 }: UseMikuBrainOptions) => {
   const [bubble, setBubble] = useState<string | null>(null);
   // 气泡边框的情绪染色只认「说这句话时她是什么心情」，不逐帧跟随 moodRef——
@@ -150,6 +159,9 @@ export const useMikuBrain = ({
   const moodRef = useRef<{ mood: Mood; intensity: number }>({ mood: 'neutral', intensity: 0 });
   const valsRef = useRef({ eyeSmile: 0, cheek: 0, mouthForm: 0, mouth: 0, browY: 0, browAngle: 0, browForm: 0 });
   const rhythmRef = useRef(new RhythmEngine());
+  const breathRef = useRef(new BreathEngine());
+  const blinkRef = useRef(new BlinkEngine());
+  const lipRef = useRef(new LipSync());
   // 手臂呼吸态微动的独立相位——恒速推进，不随音乐能量变化，安静时也要有这一点点存在感，
   // 不然又变回和 Idle 切换瞬间一样的「一动不动」；刻意不共用 rhythmRef 的内部相位，
   // 手臂本就该是比头身摇摆更轻、更不精确锁拍的一层装饰性涟漪
@@ -334,18 +346,16 @@ export const useMikuBrain = ({
   // 逐帧：视线回落、心情浓度衰减、口型同步、音乐律动、打瞌睡/闲聊调度；
   // Tap/Flick/Doze 等专业动作片段播放时，motionDirector 把 Live2DStage 的让位系数淡到 0，
   // 下面这些 override/add 调用会自然失效——不需要每帧手动判断 reacting 再决定写不写
-  useEffect(() => {
-    if (!ready || reduceMotion) return;
-    let raf = 0;
-    let last = performance.now();
-    const loop = (now: number) => {
-      raf = requestAnimationFrame(loop);
-      const dt = Math.min(now - last, 64);
-      last = now;
-      const dtSec = dt / 1000;
+  const animateMiku = useCallback((now: number, dtSec: number) => {
+      const dt = dtSec * 1000;
       const stage = stageRef.current;
       if (!stage) return;
       const { reacting } = directorRef.current.update(stage, dtSec);
+      // 呼吸是永不让位的生命底噪；眨眼以较低 floor 让专门的闭眼演出仍可接管。
+      breathRef.current.update(stage, dtSec);
+      const eye = blinkRef.current.update(dtSec);
+      stage.overrideParam('ParamEyeLOpen', eye, 0.25);
+      stage.overrideParam('ParamEyeROpen', eye, 0.25);
       const rate = 1 - Math.pow(0.001, dtSec); // 与 dt 无关的指数平滑，帧率波动也不抖
 
       // 视线：真实指针最近 3s 内动过就跟随；否则（或触屏）交给自主张望，别死盯着一个点
@@ -371,11 +381,15 @@ export const useMikuBrain = ({
       const blend = moodRef.current.intensity;
 
       const spectrum = isPlaying ? getSpectrum(4) : [];
-      const targetMouth = spectrum.length ? Math.min(1, (spectrum[0] + spectrum[1]) * 0.7) : 0;
+      const energy = getEnergy();
+      const lip = lipRef.current.update(
+        dtSec,
+        isPlaying ? getActiveLyric() : null,
+        isPlaying ? energy.mid : 0,
+        trackCategory === 'Miku',
+      );
       const v = valsRef.current;
-      v.mouth += (targetMouth - v.mouth) * rate;
-
-      stage.overrideParam('ParamMouthOpenY', v.mouth);
+      stage.overrideParam('ParamMouthOpenY', lip.open);
 
       v.eyeSmile += (resting.eyeSmile + (active.eyeSmile - resting.eyeSmile) * blend - v.eyeSmile) * rate;
       v.cheek += (resting.cheek + (active.cheek - resting.cheek) * blend - v.cheek) * rate;
@@ -395,7 +409,7 @@ export const useMikuBrain = ({
       stage.overrideParam('ParamBrowRForm', v.browForm, EMOTION_YIELD_FLOOR);
 
       const mouthFormBase = resting.mouthForm + (active.mouthForm - resting.mouthForm) * blend;
-      const mouthFormTarget = isPlaying ? Math.min(0.6, mouthFormBase + (spectrum[2] ?? 0) * 0.4) : mouthFormBase;
+      const mouthFormTarget = Math.max(-1, Math.min(1, mouthFormBase + lip.form));
       v.mouthForm += (mouthFormTarget - v.mouthForm) * rate;
       stage.overrideParam('ParamMouthForm', v.mouthForm, EMOTION_YIELD_FLOOR);
 
@@ -413,12 +427,12 @@ export const useMikuBrain = ({
       // 相位恒速推进、不随音乐能量变化——安静时也该有这一点点存在感，而不是又变回一动不动。
       // 唱歌且能量过了软阈值时，再叠一层装饰性的音乐涟漪上去（energy < 0.08 时这层贡献为 0）；
       // 刻意用手臂自己的相位而非节拍引擎的相位——手臂只是轻轻跟着晃，不需要真的卡拍
-      armPhaseRef.current += dtSec * ((Math.PI * 2) / 5);
-      const armIdle = Math.sin(armPhaseRef.current) * 0.06;
+      armPhaseRef.current += dtSec;
+      const armL = Math.sin(armPhaseRef.current * ((Math.PI * 2) / 4.7)) * 0.06;
+      const armR = Math.sin(armPhaseRef.current * ((Math.PI * 2) / 5.3) + 0.9) * 0.055;
       const armEnvelope = smoothstep(0.08, 0.35, rhythm.energy);
-      const armMusic = Math.sin(armPhaseRef.current * 2 + Math.PI / 4) * armEnvelope * 0.15;
-      stage.overrideParam('ParamArmL', armIdle + armMusic);
-      stage.overrideParam('ParamArmR', -(armIdle + armMusic));
+      stage.overrideParam('ParamArmL', armL + Math.sin(armPhaseRef.current * 2.1) * armEnvelope * 0.15);
+      stage.overrideParam('ParamArmR', -(armR + Math.sin(armPhaseRef.current * 1.9 + 0.4) * armEnvelope * 0.15));
 
       // 唱自己的歌时偶尔冒个音符泡泡：能量越高、冒得越勤，最短不低于 1.2s 别糊成一片；
       // 换到别的分类或暂停时只重置倒计时，不在这一帧补发——不然切歌瞬间容易连着弹好几颗
@@ -467,10 +481,10 @@ export const useMikuBrain = ({
           if (!reacting) { triggerMood('happy', 0.6); sayFresh(MIKU_SEDENTARY_LINES, 5500); }
         }
       }
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [ready, reduceMotion, isPlaying, trackCategory, getSpectrum, stageRef, particlesRef, coarsePointer, sayFresh, triggerMood]);
+  }, [isPlaying, trackCategory, getSpectrum, getEnergy, stageRef, particlesRef, coarsePointer, sayFresh, triggerMood]);
+
+  // 并入全站唯一 ticker：隐藏页暂停、触屏 30fps、能量采样顺序都由同一处保证。
+  useTicker(animateMiku, ready && !reduceMotion && !paused);
 
   const handlePointerDown = useCallback((clientX: number, clientY: number, rect: DOMRect) => {
     // 优先走 drawable 精确命中（真实还原头/辫子/身体/裙摆的实际网格形状，含 X 轴）；

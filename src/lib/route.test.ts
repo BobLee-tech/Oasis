@@ -15,9 +15,10 @@ describe('parseHash', () => {
     expect(parseHash('#/atelier')).toEqual({ view: 'atelier' });
   });
 
-  it('garden and atelier carry an itemId, decoded', () => {
+  it('garden, constellation and atelier carry an itemId, decoded', () => {
     expect(parseHash('#/garden/abc-123')).toEqual({ view: 'garden', itemId: 'abc-123' });
     expect(parseHash('#/garden/hello%20world')).toEqual({ view: 'garden', itemId: 'hello world' });
+    expect(parseHash('#/constellation/star-1')).toEqual({ view: 'orchard', itemId: 'star-1' });
     expect(parseHash('#/atelier/art-1')).toEqual({ view: 'atelier', itemId: 'art-1' });
   });
 
@@ -43,8 +44,9 @@ describe('formatHash', () => {
     expect(formatHash('echoes')).toBe('#/');
   });
 
-  it('encodes an itemId for garden and atelier', () => {
+  it('encodes an itemId for garden, constellation and atelier', () => {
     expect(formatHash('garden', 'hello world')).toBe('#/garden/hello%20world');
+    expect(formatHash('orchard', 'star 1')).toBe('#/constellation/star%201');
     expect(formatHash('atelier', 'art 1')).toBe('#/atelier/art%201');
   });
 });

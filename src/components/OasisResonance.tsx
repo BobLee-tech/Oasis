@@ -32,8 +32,12 @@ const DiscHalo: React.FC<{ color: string; isPlaying: boolean; active?: boolean }
   return (
     <div
       ref={ref}
-      className="absolute -inset-[12%] rounded-full blur-3xl pointer-events-none z-0"
-      style={{ backgroundColor: color, opacity: 0, transition: 'background-color 1500ms ease' }}
+      className="oasis-ambient absolute -inset-[12%] rounded-full pointer-events-none z-0"
+      style={{
+        backgroundImage: `radial-gradient(closest-side, ${color}B3 0%, ${color}59 38%, ${color}1F 66%, transparent 84%)`,
+        opacity: 0,
+        transition: 'background-image 1500ms ease',
+      }}
     />
   );
 };
@@ -58,8 +62,14 @@ const AmbientGlow: React.FC<{ color: string; isPlaying: boolean; active?: boolea
   return (
     <div
       ref={ref}
-      className="absolute top-1/2 left-1/2 rounded-full blur-[100px] dark:blur-[130px] mix-blend-multiply dark:mix-blend-screen pointer-events-none"
-      style={{ width: '115%', height: '115%', backgroundColor: color, transform: 'translate(-50%, -50%)', opacity: 0.06, transition: 'background-color 2000ms ease' }}
+      className="oasis-ambient absolute top-1/2 left-1/2 rounded-full pointer-events-none"
+      style={{
+        width: '115%', height: '115%',
+        backgroundImage: `radial-gradient(closest-side, ${color}D9 0%, ${color}8C 26%, ${color}40 52%, ${color}14 72%, transparent 84%)`,
+        transform: 'translate(-50%, -50%)',
+        opacity: 0.06,
+        transition: 'background-image 2000ms ease',
+      }}
     />
   );
 };
@@ -232,7 +242,7 @@ export const OasisResonance: React.FC = () => {
   // ================= 📱 移动端：分段版式（唱片 ↔ 歌单），只呈现当前段，减负增美 =================
   if (!isDesktop) {
     return (
-      <div className="oasis-bottom-scroll-safe relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] px-5">
+      <div className="oasis-bottom-scroll-safe relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[var(--oasis-bottom-safe-space)] px-5">
 
         {/* 分段切换：一枚水滴形药丸，选中段染当前情绪色 */}
         <div className="shrink-0 flex items-center justify-center mb-5">
@@ -407,7 +417,7 @@ export const OasisResonance: React.FC = () => {
 
   return (
     <motion.div
-      className="oasis-bottom-scroll-safe relative w-full max-w-[1680px] mx-auto h-full max-h-full overflow-y-auto no-scrollbar lg:overflow-visible lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 pb-28 lg:pb-28 px-6 md:px-14 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
+      className="oasis-bottom-scroll-safe relative w-full max-w-[1680px] mx-auto h-full max-h-full overflow-y-auto no-scrollbar lg:overflow-visible lg:h-screen lg:max-h-screen flex flex-col z-10 pt-12 px-6 md:px-14 lg:pl-16 lg:pr-32 xl:pl-20 xl:pr-44"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 text-slate-400/30 font-mono text-[10px] tracking-[0.5em] uppercase whitespace-nowrap">
         Resonance Chamber
@@ -793,7 +803,7 @@ export const OasisResonance: React.FC = () => {
                       return (
                         <button
                           key={track.id} onClick={() => switchTrack(track)}
-                          className="group relative w-full flex items-center gap-4 pl-5 pr-5 py-[11px] text-left outline-none hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-300"
+                          className="oasis-crate-row group relative w-full flex items-center gap-4 pl-5 pr-5 py-[11px] text-left outline-none hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.025] transition-colors duration-300"
                           style={isActive ? { background: `linear-gradient(90deg, ${track.color}1f, ${track.color}08 35%, transparent 75%)` } : undefined}
                         >
                           {/* 左缘情绪色细标 */}
@@ -852,6 +862,7 @@ export const OasisResonance: React.FC = () => {
         </div>
       </div>
       </LayoutGroup>
+      <div className="oasis-bottom-spacer" aria-hidden />
     </motion.div>
   );
 };

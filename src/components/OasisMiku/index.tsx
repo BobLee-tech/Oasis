@@ -1,11 +1,11 @@
 // 🎐 OasisMiku：折叠入口固定停靠在 Dock 旁；只有展开后的她能在安全区域内移动并吸边。
 // 模型与 Pixi 运行时仍然只在展开时懒加载，折叠态保持零 WebGL 开销。
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { animate, AnimatePresence, motion, useDragControls, useMotionValue, useReducedMotion } from 'framer-motion';
+import { animate, AnimatePresence, motion, useDragControls, useMotionValue, useReducedMotion, type MotionValue } from 'framer-motion';
 import { Live2DStage, type MikuStageHandle } from './Live2DStage';
 import { MikuParticles, type MikuParticlesHandle } from './MikuParticles';
 import { useMikuBrain, type Mood } from './useMikuBrain';
-import { useSoundscape, getSpectrum } from '../../hooks/useSoundscape';
+import { useSoundscape, getEnergy, getSpectrum } from '../../hooks/useSoundscape';
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
 import { onMikuSignal } from '../../lib/mikuSignal';
 import type { AppView } from '../../types/auth';
@@ -25,7 +25,15 @@ type DockLevel = 'middle' | 'lower';
 type DockBerth = `${DockSide}-${DockLevel}`;
 type DragBounds = { left: number; right: number; top: number; bottom: number };
 type BerthTarget = { x: number; y: number; left: number; top: number };
-type StageProfile = { width: number; height: number; modelHeightRatio: number; mobileBerths: boolean };
+type StageProfile = {
+  width: number;
+  height: number;
+  modelHeightRatio: number;
+  mobileBerths: boolean;
+  margin: number;
+  safeTop: number;
+  safeBottomInset: number;
+};
 
 const sideOf = (berth: DockBerth): DockSide => berth.startsWith('left') ? 'left' : 'right';
 const levelOf = (berth: DockBerth): DockLevel => berth.endsWith('middle') ? 'middle' : 'lower';
@@ -33,10 +41,10 @@ const isBerth = (value: string | null): value is DockBerth =>
   value === 'left-middle' || value === 'right-middle' || value === 'left-lower' || value === 'right-lower';
 
 const profileFor = (viewportWidth: number): StageProfile => {
-  if (viewportWidth < 360) return { width: 100, height: 152, modelHeightRatio: 1.48, mobileBerths: true };
-  if (viewportWidth < 480) return { width: 112, height: 168, modelHeightRatio: 1.46, mobileBerths: true };
-  if (viewportWidth < 768) return { width: 132, height: 208, modelHeightRatio: 1.14, mobileBerths: true };
-  return { width: 152, height: 236, modelHeightRatio: 1, mobileBerths: false };
+  if (viewportWidth < 360) return { width: 100, height: 152, modelHeightRatio: 1.48, mobileBerths: true, margin: 12, safeTop: 18, safeBottomInset: 96 };
+  if (viewportWidth < 480) return { width: 112, height: 168, modelHeightRatio: 1.46, mobileBerths: true, margin: 12, safeTop: 18, safeBottomInset: 96 };
+  if (viewportWidth < 768) return { width: 132, height: 208, modelHeightRatio: 1.14, mobileBerths: true, margin: 18, safeTop: 18, safeBottomInset: 88 };
+  return { width: 152, height: 236, modelHeightRatio: 1, mobileBerths: false, margin: 26, safeTop: 72, safeBottomInset: 88 };
 };
 
 const initialBerth = (): DockBerth => {
@@ -121,16 +129,20 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   const coarsePointer = useCoarsePointer();
   const prefersReducedMotion = !!useReducedMotion();
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
-  const profile = profileFor(viewportWidth);
+  // profile 是离散档位；同档位 resize 返回旧引用，不让整棵 Miku 子树逐像素重渲染。
+  const [profile, setProfile] = useState(() => profileFor(window.innerWidth));
   const expandedW = profile.width;
   const expandedH = profile.height;
 
   const [expanded, setExpanded] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
+  // 舞台首次出现后常驻；收起只停摆，五分钟不用才真正释放。
+  const [mounted, setMounted] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [berth, setBerth] = useState<DockBerth>(initialBerth);
+  const berthRef = useRef(berth);
   const [positioned, setPositioned] = useState(false);
+  const positionedRef = useRef(false);
   const [retreated, setRetreated] = useState(false);
   const [focusActive, setFocusActive] = useState(false);
   const [dragBounds, setDragBounds] = useState<DragBounds>({ left: 0, right: 0, top: 0, bottom: 0 });
@@ -148,8 +160,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     trackId: currentTrack?.id,
     trackCategory: currentTrack?.category,
     getSpectrum,
+    getEnergy,
     coarsePointer,
     reduceMotion: prefersReducedMotion,
+    paused: !expanded,
   });
   const bubbleBorder = MOOD_BUBBLE_BORDER[bubbleMood] ?? DEFAULT_BUBBLE_BORDER;
   const bubbleSide = sideOf(berth);
@@ -159,9 +173,26 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     sessionStorage.setItem('oasis_miku_expanded', expanded ? '1' : '0');
   }, [expanded]);
 
+  useEffect(() => { berthRef.current = berth; }, [berth]);
+
+  // ⏳ 反复收放保持秒级恢复；连续收起五分钟才交还 WebGL 上下文与贴图。
   useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
+    if (expanded || !mounted) return;
+    const timer = window.setTimeout(() => {
+      positionedRef.current = false;
+      setPositioned(false);
+      setReady(false);
+      setMounted(false);
+    }, 5 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [expanded, mounted]);
+
+  useEffect(() => {
+    const onResize = () => setProfile((previous) => {
+      const next = profileFor(window.innerWidth);
+      return next.width === previous.width ? previous : next;
+    });
+    window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
@@ -198,9 +229,9 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     // 不读取尚未合成完的 transform，连续测量也不会把位移重复叠加。
     const baseLeft = hostRect.right - expandedW;
     const baseTop = hostRect.bottom - computedBottom - expandedH;
-    const horizontalMargin = viewportWidth < 480 ? 12 : viewportWidth < 768 ? 18 : 26;
-    const safeTop = viewportWidth < 768 ? 18 : 72;
-    const safeBottom = window.innerHeight - (viewportWidth < 480 ? 96 : 88);
+    const horizontalMargin = profile.margin;
+    const safeTop = profile.safeTop;
+    const safeBottom = window.innerHeight - profile.safeBottomInset;
     const lowerTop = Math.max(safeTop, safeBottom - expandedH);
     const middleTop = Math.max(safeTop, Math.min((window.innerHeight - expandedH) / 2, lowerTop));
     const left = horizontalMargin;
@@ -231,9 +262,9 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
       ? ['left-lower', 'right-lower']
       : ['left-middle', 'right-middle', 'left-lower', 'right-lower'];
     const normalizedPreferred: DockBerth = profile.mobileBerths
-      ? `${sideOf(berth)}-lower`
-      : berth;
-    const avoidRects = Array.from(document.querySelectorAll<HTMLElement>('[data-miku-avoid]'))
+      ? `${sideOf(berthRef.current)}-lower`
+      : berthRef.current;
+    const avoidRects = Array.from(document.querySelectorAll<HTMLElement>('[data-oasis-avoid]'))
       .filter((element) => element !== shell && !shell.contains(element))
       .map((element) => element.getBoundingClientRect())
       .filter((avoid) => avoid.width > 0 && avoid.height > 0);
@@ -254,15 +285,23 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     })[0];
     const target = targets.get(selected);
     if (target) {
-      x.set(target.x);
-      y.set(target.y);
-      if (selected !== berth) {
+      const settle = (value: MotionValue<number>, next: number) => {
+        if (!positionedRef.current) { value.set(next); return; }
+        animate(value, next, prefersReducedMotion
+          ? { type: 'tween' as const, duration: 0.01 }
+          : { type: 'spring' as const, stiffness: 300, damping: 32, mass: 0.9 });
+      };
+      settle(x, target.x);
+      settle(y, target.y);
+      if (selected !== berthRef.current) {
+        berthRef.current = selected;
         setBerth(selected);
         sessionStorage.setItem(BERTH_KEY, selected);
       }
     }
     setPositioned(true);
-  }, [berth, expandedH, expandedW, profile.mobileBerths, viewportWidth, x, y]);
+    positionedRef.current = true;
+  }, [expandedH, expandedW, prefersReducedMotion, profile, x, y]);
 
   // AnimatePresence(mode="wait") 会先让挂坠退场、再挂载舞台；仅监听 expanded 的 effect
   // 可能早于真实 DOM 一帧。用 ref 回调在舞台实际出现后补测，杜绝“透明地停在原点”。
@@ -325,8 +364,12 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   }, [bubble, clearIdleTimer, expanded, focusActive, mikuTrackPlaying]);
 
   const expand = () => {
-    setReady(false);
-    setFailed(false);
+    if (!mounted) {
+      setReady(false);
+      setFailed(false);
+      setMounted(true);
+    }
+    positionedRef.current = false;
     setPositioned(false);
     setRetreated(false);
     setExpanded(true);
@@ -334,6 +377,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   const collapse = () => {
     clearIdleTimer();
+    positionedRef.current = false;
     setPositioned(false);
     setRetreated(false);
     setExpanded(false);
@@ -347,7 +391,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
       ? ['left-lower', 'right-lower']
       : ['left-middle', 'right-middle', 'left-lower', 'right-lower'];
     const preferredTarget = berthTargetsRef.current.get(normalized);
-    const avoidRects = Array.from(document.querySelectorAll<HTMLElement>('[data-miku-avoid]'))
+    const avoidRects = Array.from(document.querySelectorAll<HTMLElement>('[data-oasis-avoid]'))
       .filter((element) => element !== stageShellRef.current && !stageShellRef.current?.contains(element))
       .map((element) => element.getBoundingClientRect())
       .filter((avoid) => avoid.width > 0 && avoid.height > 0);
@@ -400,8 +444,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     else return false;
     return true;
   };
-  const berthMargin = viewportWidth < 480 ? 12 : viewportWidth < 768 ? 18 : 26;
-  const retreatOffset = (sideOf(berth) === 'right' ? 1 : -1) * (expandedW * 0.32 + berthMargin);
+  const retreatOffset = (sideOf(berth) === 'right' ? 1 : -1) * (expandedW * 0.32 + profile.margin);
 
   return (
     <div ref={hostRef} className="relative w-12 h-16 flex items-center justify-center select-none">
@@ -417,8 +460,41 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence mode="wait">
-        {expanded ? (
+      {/* 挂坠与舞台交叉溶解，不再用 mode=wait 留出空白帧。 */}
+      <AnimatePresence>
+        {!expanded && (
+          <motion.button
+            key="pendant"
+            initial={{ opacity: 0, scale: 0.86 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.88 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            onClick={expand}
+            title="唤醒 Miku"
+            aria-label="唤醒 Miku"
+            className={`miku-pendant group relative w-12 h-12 rounded-full flex items-center justify-center overflow-visible outline-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#39C5BB] backdrop-blur-2xl bg-white/60 dark:bg-[#0A0F1D]/72 border border-t-white/80 dark:border-t-white/20 text-slate-600 dark:text-slate-300 hover:text-[#0E8C85] dark:hover:text-[#66DED5] hover:border-[#39C5BB]/45 shadow-[0_14px_34px_-18px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.44)] dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-300 ${
+              isPlaying ? 'border-[#39C5BB]/45 text-[#0E8C85] dark:text-[#66DED5]' : 'border-white/55 dark:border-white/10'
+            }`}
+          >
+            {isPlaying && (
+              <>
+                <span aria-hidden className="miku-playing-halo absolute inset-[-1px] rounded-full border border-[#39C5BB]/35" />
+                <span aria-hidden className="absolute right-0.5 bottom-0.5 w-2 h-2 rounded-full bg-[#39C5BB] border-2 border-white/80 dark:border-[#0A0F1D] shadow-[0_0_8px_rgba(57,197,187,0.75)]" />
+              </>
+            )}
+            <PendantIcon />
+
+            <span className="hidden md:block absolute bottom-full mb-3 right-0 pointer-events-none opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 translate-y-1 group-hover:translate-y-0 group-focus-visible:translate-y-0 transition-all duration-200">
+              <span className="block px-3 py-1.5 text-[10px] font-mono tracking-[0.14em] text-slate-600 dark:text-slate-300 bg-white/82 dark:bg-[#0E1424]/88 border border-white/60 dark:border-white/10 rounded-lg shadow-sm whitespace-nowrap backdrop-blur-md">
+                唤醒 Miku
+              </span>
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* 舞台一旦挂载便常驻；收起时透明、不可交互，并暂停两条动画驱动。 */}
+      {mounted && (
           <motion.div
             ref={bindStageShell}
             key="stage"
@@ -437,14 +513,13 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
               restorePresence();
             }}
             onDragEnd={settleAfterDrag}
-            initial={{ opacity: 0, scale: 0.88 }}
-            animate={{ opacity: positioned ? 1 : 0, scale: positioned ? 1 : 0.96 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: expanded && positioned ? 1 : 0, scale: expanded ? 1 : 0.9 }}
             transition={prefersReducedMotion
               ? { duration: 0.01 }
               : { type: 'spring', stiffness: 340, damping: 30 }}
             className="absolute bottom-[calc(100%+0.7rem)] right-0 z-10 cursor-grab active:cursor-grabbing touch-none"
-            style={{ width: expandedW, height: expandedH, x, y, pointerEvents: positioned ? 'auto' : 'none' }}
+            style={{ width: expandedW, height: expandedH, x, y, pointerEvents: expanded && positioned ? 'auto' : 'none' }}
+            inert={!expanded}
             onPointerEnter={restorePresence}
             title={profile.mobileBerths ? '左右拖动，让她换一边待着' : '拖动 Miku，松手后会停入最近的边缘泊位'}
           >
@@ -489,6 +564,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                     height={expandedH}
                     modelHeightRatio={profile.modelHeightRatio}
                     reduceMotion={prefersReducedMotion}
+                    paused={!expanded}
                     onReady={() => {
                       measureBerths();
                       setReady(true);
@@ -500,7 +576,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                   />
                 )}
 
-                {!ready && !failed && (
+                {expanded && !ready && !failed && (
                   <div className="absolute inset-0 flex items-end justify-center pb-8 opacity-45">
                     <span className="font-mono text-[10px] tracking-[0.18em] text-slate-400">LOADING…</span>
                   </div>
@@ -574,36 +650,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
               </button>
             )}
           </motion.div>
-        ) : (
-          <motion.button
-            key="pendant"
-            initial={{ opacity: 0, scale: 0.86 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.88 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            onClick={expand}
-            title="唤醒 Miku"
-            aria-label="唤醒 Miku"
-            className={`miku-pendant group relative w-12 h-12 rounded-full flex items-center justify-center overflow-visible outline-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#39C5BB] backdrop-blur-2xl bg-white/60 dark:bg-[#0A0F1D]/72 border border-t-white/80 dark:border-t-white/20 text-slate-600 dark:text-slate-300 hover:text-[#0E8C85] dark:hover:text-[#66DED5] hover:border-[#39C5BB]/45 shadow-[0_14px_34px_-18px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.44)] dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-300 ${
-              isPlaying ? 'border-[#39C5BB]/45 text-[#0E8C85] dark:text-[#66DED5]' : 'border-white/55 dark:border-white/10'
-            }`}
-          >
-            {isPlaying && (
-              <>
-                <span aria-hidden className="miku-playing-halo absolute inset-[-1px] rounded-full border border-[#39C5BB]/35" />
-                <span aria-hidden className="absolute right-0.5 bottom-0.5 w-2 h-2 rounded-full bg-[#39C5BB] border-2 border-white/80 dark:border-[#0A0F1D] shadow-[0_0_8px_rgba(57,197,187,0.75)]" />
-              </>
-            )}
-            <PendantIcon />
-
-            <span className="hidden md:block absolute bottom-full mb-3 right-0 pointer-events-none opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 translate-y-1 group-hover:translate-y-0 group-focus-visible:translate-y-0 transition-all duration-200">
-              <span className="block px-3 py-1.5 text-[10px] font-mono tracking-[0.14em] text-slate-600 dark:text-slate-300 bg-white/82 dark:bg-[#0E1424]/88 border border-white/60 dark:border-white/10 rounded-lg shadow-sm whitespace-nowrap backdrop-blur-md">
-                唤醒 Miku
-              </span>
-            </span>
-          </motion.button>
-        )}
-      </AnimatePresence>
+      )}
     </div>
   );
 };

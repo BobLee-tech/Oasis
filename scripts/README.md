@@ -14,6 +14,9 @@
 | `npm run lyric:netease -- --track <id>` | 已有原文的曲目导入网易云译文，对齐到本地轴并以 machine 状态直接发布 | `lyrics-src/<id>/translation.zh.lrc` → `dist-lyrics/` |
 | `npm run lyric:review` | 生成逐行试听 + 编辑的本地校对页 | `public/__lyrics-review/` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
+| `npm run live2d:texture` | Miku 母版贴图降到 1024² WebP | `public/live2d/miku/miku_sample_t04.1024/` |
+| `npm run live2d:patch` | 把六段手势动作修成一次性播放 | `public/live2d/miku/motion/` |
+| `npm run noise` | 烘焙全站静态可平铺噪点 | `public/textures/noise-128.png` |
 | `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
 
 ## 怎么用

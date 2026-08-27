@@ -17,6 +17,9 @@
     "lyric:translate": "node scripts/translate-lyrics.mjs",
     "lyric:netease": "node scripts/pull-netease-translation.mjs",
     "lyric:review": "node scripts/review-lyrics.mjs",
+    "live2d:texture": "node scripts/downscale-live2d-texture.mjs",
+    "live2d:patch": "node scripts/patch-live2d-motions.mjs",
+    "noise": "node scripts/bake-noise.mjs",
     "test": "vitest run",
     "init-tailwind": "tailwindcss init -p"
   },

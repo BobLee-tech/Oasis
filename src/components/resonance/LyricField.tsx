@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getEnergy } from '../../hooks/useSoundscape';
-import { formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
+import { getEnergy, setActiveLyric } from '../../hooks/useSoundscape';
+import { beatsOf, formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
 import { findActiveLine } from '../../lib/lyrics';
 import { useTicker } from '../../lib/ticker';
 import type { LyricLanguage, LyricsDocument, Track } from '../../types/music';
@@ -65,6 +65,15 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   const rippleRef = useRef<HTMLSpanElement>(null);
   const waterClockRef = useRef<HTMLSpanElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const publishedLyricRef = useRef('');
+
+  useEffect(() => {
+    if (!active) {
+      publishedLyricRef.current = '';
+      setActiveLyric(null);
+    }
+    return () => setActiveLyric(null);
+  }, [active, track.id]);
 
   const measurementsRef = useRef({
     tops: [] as number[],
@@ -363,6 +372,20 @@ export const LyricField: React.FC<LyricFieldProps> = ({
       }
 
       const interlude = interludeAt(timedLines, nextIndex, playbackMs);
+      const lyricKey = `${track.id}:${nextIndex}:${interlude.active ? '间奏' : '歌唱'}`;
+      if (lyricKey !== publishedLyricRef.current) {
+        publishedLyricRef.current = lyricKey;
+        const line = timedLines[nextIndex];
+        if (!line || interlude.active) {
+          // 空 beats 表示「歌词系统明确知道此刻无人声」；null 则表示没有歌词数据、允许频段兜底。
+          setActiveLyric({ beats: [], progress: () => 0 });
+        } else {
+          setActiveLyric({
+            beats: beatsOf(line),
+            progress: () => lineProgress(line, getPlaybackTime() * 1_000 - offsetMs),
+          });
+        }
+      }
       if (interlude.active !== interludeVisibleRef.current) {
         interludeVisibleRef.current = interlude.active;
         setInterludeVisible(interlude.active);

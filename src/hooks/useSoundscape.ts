@@ -412,6 +412,16 @@ export const getSpectrum = (bars: number): number[] => {
 /** 歌词/可视化专用的只读精确时钟；调用方不得持有或修改全局 audio。 */
 export const getPlaybackTime = () => globalAudio.currentTime || globalCurrentTime;
 
+// 🎤 当前歌词行供底部 Chrome 上的 Miku 命令式读取；写入方只在换行/进出间奏时更新。
+export interface ActiveLyric {
+  beats: { text: string; from: number; to: number }[];
+  /** 本行已唱比例 0–1，在读取时按精确音频时钟求值。 */
+  progress: () => number;
+}
+let activeLyric: ActiveLyric | null = null;
+export const setActiveLyric = (value: ActiveLyric | null) => { activeLyric = value; };
+export const getActiveLyric = (): ActiveLyric | null => activeLyric;
+
 const listeners = new Set<() => void>();
 const notifyListeners = () => listeners.forEach(fn => fn());
 

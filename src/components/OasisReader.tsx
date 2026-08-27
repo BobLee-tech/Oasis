@@ -1,4 +1,4 @@
-// 📖 阅读舱三件套：墨环进度（InkRing）· 文中目录（ReaderToc）· 图片灯箱（Lightbox）
+// 📖 阅读舱四件套：墨环进度（InkRing）· 文中目录（ReaderToc）· 常驻出口（ReaderExit）· 图片灯箱（Lightbox）
 //    共用 Gallery 的沉浸阅读层，气质统一：安静的线、克制的光、一物多用。
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -520,5 +520,53 @@ export const Lightbox: React.FC = () => {
       )}
     </AnimatePresence>,
     document.body
+  );
+};
+
+// ══════════════════════════════════════════════════════════════
+// 🚪 阅读舱出口：全屏模式始终保留可见退路。桌面右上，移动左上，把右上留给目录。
+// ══════════════════════════════════════════════════════════════
+const EXIT_HINT_KEY = 'oasis_reader_esc_hinted';
+
+export const ReaderExit: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [hint, setHint] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(EXIT_HINT_KEY)) return;
+    const show = window.setTimeout(() => {
+      sessionStorage.setItem(EXIT_HINT_KEY, '1');
+      setHint(true);
+    }, 900);
+    const hide = window.setTimeout(() => setHint(false), 4200);
+    return () => { window.clearTimeout(show); window.clearTimeout(hide); };
+  }, []);
+
+  return (
+    <div className="fixed z-[170] top-[max(1.25rem,calc(env(safe-area-inset-top)+0.75rem))] left-5 lg:left-auto lg:right-8">
+      <button
+        onClick={onClose}
+        aria-label="关闭阅读"
+        aria-keyshortcuts="Escape"
+        className="w-10 h-10 rounded-full grid place-items-center bg-white/60 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/10 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.4)] text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.12] transition-colors duration-300 outline-none focus-visible:outline-2 focus-visible:outline-[#39C5BB]"
+      >
+        <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+
+      <AnimatePresence>
+        {hint && (
+          <motion.span
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute top-full mt-2 left-0 lg:left-auto lg:right-0 whitespace-nowrap px-2.5 py-1 rounded-lg pointer-events-none font-mono text-[9px] tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400 bg-white/75 dark:bg-[#0E1424]/85 backdrop-blur-md border border-white/60 dark:border-white/10"
+          >
+            Esc 也可退出
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };

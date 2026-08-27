@@ -60,7 +60,7 @@ export interface MikuStageHandle {
    *  不是增量——不会跨帧累积。实际施加发生在 model3.json 动作曲线写完参数「之后」
    *  （挂在 pixi-live2d-display 的 afterMotionUpdate 事件上，见下方 effect），
    *  所以既不会被下一轮动作循环悄悄冲掉，也不存在「读回上一帧自己写的值再叠加」那种会失控的积分器。 */
-  addParam: (id: string, value: number) => void;
+  addParam: (id: string, value: number, floor?: number) => void;
   /** 绝对接管（setParameterValueById）：用于必须完全盖过动作曲线自身表现的参数，比如唱歌时的口型、心情表情。
    *  同样挂在 afterMotionUpdate 之后生效，因此稳赢当前 tick 的动作曲线写入。
    *  floor：让位系数下限（0..1）。默认 0 = 老行为，动作片段播放时整体让位到 0。给情绪类参数（脸红/
@@ -72,6 +72,8 @@ export interface MikuStageHandle {
   /** 让位系数：0 = 参数偏移完全不生效（动作曲线独占），1 = 完全生效。由 motionDirector 每帧平滑推进，
    *  取代过去「进出 reacting 窗口瞬时 clearParam」的硬切——见 applyOffsets 里的插值用法。 */
   setYield: (alpha: number) => void;
+  /** 一次性手势是否已经播完，供动作导演在真实结束点接回待机。 */
+  isMotionFinished: () => boolean;
   /** 逐 drawable 精确命中：返回屏幕坐标真正落在哪些部件的三角网格内，且按渲染次序从「最靠前」到
    *  「最靠后」排序——所以 hits[0] 就是那个像素上视觉最顶层的部件，也就是用户觉得自己「摸到」的东西。
    *  这解决了包围盒兜底的老毛病：双马尾是细长发丝，但它的轴对齐包围盒是覆盖大半个身体的大矩形，会把
@@ -92,12 +94,14 @@ interface Live2DStageProps {
   /** > 1 时把模型按更高的虚拟舞台缩放，画布自然裁掉下半身；窄屏用来保住脸和上身的可读性。 */
   modelHeightRatio?: number;
   reduceMotion: boolean;
+  /** 收起时停 ticker，但保留 WebGL 上下文、模型与贴图。 */
+  paused?: boolean;
   onReady?: () => void;
   onError?: (error: unknown) => void;
 }
 
 export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(function Live2DStage(
-  { modelUrl, width, height, modelHeightRatio = 1, reduceMotion, onReady, onError },
+  { modelUrl, width, height, modelHeightRatio = 1, reduceMotion, paused = false, onReady, onError },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +117,12 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
   const pixiRef = useRef<typeof import('pixi.js') | null>(null);
   const sizeRef = useRef({ width, height });
   sizeRef.current = { width, height };
+  const modelHeightRatioRef = useRef(modelHeightRatio);
+  modelHeightRatioRef.current = modelHeightRatio;
+  const pausedRef = useRef(paused);
+  const reduceMotionRef = useRef(reduceMotion);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+  useEffect(() => { reduceMotionRef.current = reduceMotion; }, [reduceMotion]);
 
   useImperativeHandle(ref, () => ({
     focus: (clientX, clientY, instant) => {
@@ -128,10 +138,11 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
     playMotion: (group, index, priority) => {
       void modelRef.current?.motion(group, index, priority ?? 2);
     },
-    addParam: (id, value) => { offsetsRef.current.set(id, { value, mode: 'add', floor: 0 }); },
+    addParam: (id, value, floor = 0) => { offsetsRef.current.set(id, { value, mode: 'add', floor }); },
     overrideParam: (id, value, floor = 0) => { offsetsRef.current.set(id, { value, mode: 'override', floor }); },
     clearParam: (id) => { offsetsRef.current.delete(id); },
     setYield: (alpha) => { yieldRef.current = alpha; },
+    isMotionFinished: () => modelRef.current?.internalModel.motionManager.isFinished() ?? true,
     hitTestDrawables: (clientX, clientY) => {
       const model = modelRef.current;
       const canvas = appRef.current?.view as HTMLCanvasElement | undefined;
@@ -228,13 +239,16 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
         if (cancelled || !containerRef.current) return;
         pixiRef.current = PIXI;
 
+        const currentSize = sizeRef.current;
         app = new PIXI.Application({
-          width,
-          height,
+          width: currentSize.width,
+          height: currentSize.height,
           backgroundAlpha: 0,
-          antialias: true,
+          // resolution: 2 已经提供超采样，小挂件无需再为 MSAA 付一份 buffer。
+          antialias: false,
           autoDensity: true,
           resolution: Math.min(window.devicePixelRatio || 1, 2),
+          powerPreference: 'low-power',
         });
         containerRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
         appRef.current = app;
@@ -252,14 +266,16 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
         // 停在更泛化的基类，这里窄化一下类型才能拿到它——运行时就是同一个对象，不是真的转型
         (model.internalModel as Cubism4InternalModel).eyeBlink = undefined;
 
-        const virtualHeight = height * modelHeightRatio;
+        const virtualHeight = currentSize.height * modelHeightRatioRef.current;
         const scale = virtualHeight / model.internalModel.originalHeight;
         model.scale.set(scale);
         model.anchor.set(0.5, 1);
-        model.x = width / 2;
+        model.x = currentSize.width / 2;
         model.y = virtualHeight;
 
         app.stage.addChild(model);
+        // 动作资源本身以 30fps 录制；更高刷新只会重复采样同一段曲线。
+        app.ticker.maxFPS = 30;
         modelRef.current = model;
         model.internalModel.on('afterMotionUpdate', applyOffsets);
 
@@ -269,7 +285,7 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
           (window as unknown as { __miku?: unknown }).__miku = { model, app };
         }
 
-        if (reduceMotion) app.ticker.stop();
+        if (reduceMotionRef.current || pausedRef.current || document.hidden) app.ticker.stop();
 
         onReady?.();
       } catch (e) {
@@ -280,8 +296,8 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
     const handleVisibility = () => {
       const currentApp = appRef.current;
       if (!currentApp) return;
-      if (document.hidden) currentApp.ticker.stop();
-      else if (!reduceMotion) currentApp.ticker.start();
+      if (document.hidden || pausedRef.current || reduceMotionRef.current) currentApp.ticker.stop();
+      else currentApp.ticker.start();
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
@@ -295,16 +311,29 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       appRef.current = null;
       offsets.clear();
     };
+    // 尺寸与暂停状态走下方独立 effect；跨断点不再销毁并重传整套模型资源。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelUrl, width, height, modelHeightRatio]);
+  }, [modelUrl]);
 
-  // 尊重 prefers-reduced-motion：中途切换时同步暂停/恢复渲染循环
+  // 📐 尺寸变化只 resize，不做模型重建。
+  useEffect(() => {
+    const app = appRef.current;
+    const model = modelRef.current;
+    if (!app || !model) return;
+    app.renderer.resize(width, height);
+    const virtualHeight = height * modelHeightRatio;
+    model.scale.set(virtualHeight / model.internalModel.originalHeight);
+    model.x = width / 2;
+    model.y = virtualHeight;
+  }, [width, height, modelHeightRatio]);
+
+  // ⏸️ 收起只停摆；重新展开只需恢复 ticker，没有加载阶段。
   useEffect(() => {
     const app = appRef.current;
     if (!app) return;
-    if (reduceMotion) app.ticker.stop();
-    else if (!document.hidden) app.ticker.start();
-  }, [reduceMotion]);
+    if (paused || reduceMotion || document.hidden) app.ticker.stop();
+    else app.ticker.start();
+  }, [paused, reduceMotion]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 });

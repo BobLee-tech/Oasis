@@ -22,13 +22,25 @@
     --oasis-sakura: #FFB7C5;
     --oasis-paper: #FAF8F3;   /* 暖纸白：替代旧的冷调 #F8FAFC */
     --oasis-ink: #0A0F1D;     /* 夜墨：暗色底 */
+    /* 🧭 底部 Chrome 的唯一真值来源。五个场所都靠它让位，任何一处再写魔数都是 bug。
+       height: Dock 本体 p-2(8×2) + h-12(48) = 64px；md+ 是 p-2.5(10×2) + h-11(44)，同为 64px。
+       gap:    停靠位。移动端 bottom-[safe+0.75rem]，md+ 是 md:bottom-8 = 2rem（见下方媒体查询）。
+       clearance: 视觉余量。内容贴着 Dock 边缘停住依然读作「被挡住了」，留一口气。 */
     --oasis-bottom-chrome-height: 4rem;
     --oasis-bottom-chrome-gap: 0.75rem;
+    --oasis-bottom-chrome-clearance: 1.5rem;
     --oasis-bottom-safe-space: calc(
         var(--oasis-bottom-chrome-height) +
         var(--oasis-bottom-chrome-gap) +
+        var(--oasis-bottom-chrome-clearance) +
         env(safe-area-inset-bottom)
     );
+}
+
+/* ⚠️ md+ 的停靠位从 0.75rem 提到 2rem（OasisBottomChrome 的 md:bottom-8）。
+   星图把这个值当作硬边界，因此 token 必须与真实停靠位保持一致。 */
+@media (min-width: 768px) {
+    :root { --oasis-bottom-chrome-gap: 2rem; }
 }
 
 html, body {
@@ -77,6 +89,33 @@ body {
 /* 底部 Chrome 覆盖内容时，滚动容器仍能把最后一个可聚焦元素完整送到它上方。 */
 .oasis-bottom-scroll-safe {
     scroll-padding-bottom: var(--oasis-bottom-safe-space);
+}
+
+/* 🧭 底部让位间隔：作为滚动内容的最后一个 flex 兄弟节点存在。
+   不用 padding-bottom，是因为 h-full 中间层可能让真实内容越过 padding 而不扩展滚动高度。 */
+@utility oasis-bottom-spacer {
+    flex-shrink: 0;
+    height: var(--oasis-bottom-safe-space);
+}
+
+/* 🌫️ 转场期间让超大装饰层退场，避免交叉溶解同时重绘昂贵的氛围层。 */
+[data-oasis-transition="on"] .oasis-ambient {
+    opacity: 0 !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+}
+[data-oasis-transition="on"] .oasis-noise {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .oasis-ambient { display: none; }
+}
+
+/* 💿 视口外的曲库行不参与布局与绘制，占位高度确保滚动条从首帧起稳定。 */
+.oasis-crate-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 3.5rem;
 }
 
 /* ⌨️ 统一键盘焦点环：仅在键盘导航时出现，不打扰鼠标用户 */
@@ -341,18 +380,214 @@ body {
     100% { opacity: 0; transform: scale(1.52); }
 }
 
-/* ✦ 知识星图星核的呼吸微光：与 instrumental-breathe 同一思路——CSS 关键帧交给合成器，
-   不占主线程，几百颗星同时呼吸也不会掉帧（见 OasisOrchard.tsx 的性能修复）。
-   animation-delay / duration 由行内 style 逐颗错开，只有 name/timing/iteration 定死在这里。 */
-.oasis-star-breathe {
-    animation-name: oasis-star-breathe;
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: infinite;
+/* ══════════════════════════════════════════════════════════════════════════
+   ✦ 知识星图 —— 昼夜同一张天
+
+   这不是一件古董印刷品，是花园抬头看见的那片天。几何、构图、标注、字号、留白
+   两态完全共用，只换光：
+     日 · 晓 —— 天将亮未亮，星是墨青色的点，纸底与全站暖白同族，切场所不跳。
+     夜 · 湖 —— 站点入夜，星才真的发光（微晕 + 星云）。这与深夜低语、终端暗门
+                是同一种奖励夜访者的浪漫，是站点已有的性格，不是新发明的噱头。
+
+   刻度是硬规则，星图允许出现的数字只有下面这些：
+     字号 5 档 · 44 / 16 / 13 / 11 / 10
+     墨度 5 档 · .06 / .16 / .38 / .62 / 1
+     线宽 3 档 · .5 / 1 / 2
+     圆角 2 档 · 2px / 0
+     间距 4 档 · 8 / 16 / 32 / 64
+   新增数字之前先问能不能复用已有档位。上一版有 17 档字号、22 个 opacity、
+   9 档线宽，「没有刻度」正是它读起来像机器生成的首要原因。
+   ══════════════════════════════════════════════════════════════════════════ */
+.oasis-sky {
+    /* 天色。两个停点而不是一个纯色：天空本来就有梯度，一道极缓的渐变
+       就足以让画面有上下之分，代价是零（一个 background-image，不参与合成）。 */
+    --sky-hi: #EDF4F0;
+    --sky-lo: #FAF7F1;
+    --sky-ink: #243230;
+
+    /* 初音绿分两个：画线用亮的，写字必须用暗的。
+       #39C5BB 落在浅底上只有 1.9:1，小字根本读不了；#1B7A74 是 4.5:1。
+       这是 TRACK-C-UI §2.1 里 ACCENT / ACCENT_TEXT 的同一条规矩。 */
+    --sky-accent: #39C5BB;
+    --sky-accent-text: #1B7A74;
+    --sky-pending: #C2566B;   /* 樱粉的可读版：只给「待种下的星」，全图唯一的第二色 */
+
+    /* ✦ 星色 = 光谱型 × 星等，不再是 UI 强调色兑白。
+       曾经写的是「分类色（AURA 的 #60A5FA / #A78BFA，即 Tailwind sky-400 / violet-400）
+       兑白 90%」，实测落在 oklab C≈0.129——那是为「白底上 4.5:1 的按钮」调的色度，
+       拿来当星，屏幕上就是三颗不同口味的马卡龙。真实星图上的星是 L≈0.95 / C≈0.02–0.04：
+       够亮，几乎不显色，色相只在最亮的那几颗上看得见（参宿四的红、参宿七的蓝）。
+
+       五档光谱由内圈到外圈：暖 → 冷。分类带的次序本来就是「该分类第一篇的写作时间」，
+       于是这条映射白送一个天文学上正确的读法——蓝星年轻寿命短，新开的话题就是外圈的蓝星，
+       写了几年的老坑是内圈的暖星。整条 ramp 的色度 0.014–0.078。 */
+    --sky-sp1: #FFCBA4;   /* M · 最内圈：最早的兴趣 */
+    --sky-sp2: #FFE9C9;   /* K */
+    --sky-sp3: #FFF8EE;   /* G */
+    --sky-sp4: #EAF1FA;   /* A */
+    --sky-sp5: #B9CFFF;   /* B · 最外圈：新开的话题 */
+
+    /* 星等 → 往底色里兑多少光谱色。白天不分档：图版上的星是同一种墨，靠大小说话，
+       五档明度差会让淡墨的小星在纸上直接消失。夜里才越亮越显色。 */
+    --sky-m1: 34%;
+    --sky-m2: 34%;
+    --sky-m3: 34%;
+    --sky-m4: 34%;
+    --sky-m5: 34%;
+    --sky-star-base: var(--sky-ink);
+
+    /* 星晕的颜色是固定的冷白，不是星色——彩色光晕是游戏 HUD 的做法。
+       --sky-halo 是总开关（白天 0），每档星等再乘一个系数，暗星完全不发光：
+       全场一起发光就没有远近，那正是上一版「一片发光肉球」的由来。 */
+    --sky-bloom: #D8E6F2;
+    --sky-halo: 0;
+    --sky-nebula: 0;
+
+    --sky-rule: color-mix(in srgb, var(--sky-ink) 22%, transparent);
+    --sky-rule-faint: color-mix(in srgb, var(--sky-ink) 11%, transparent);
+
+    /* 航线的墨度。它必须比星轻——星是主角，线是它们之间的关系。
+       星色改成光谱型之后（往底色里只兑三成），日间的星比以前淡了不少，
+       原来那档 62% 的线立刻成了整屏最重的东西，所以两态一起退到 38%。
+       两态同档也不再需要为光渗（halation）另开一档：浅色线画在深底上会「发胀」，
+       那是 62% 才明显的事，38% 上两态看起来已经是同样的分量。 */
+    --sky-link: var(--sky-o2);
+    --sky-link-hot: var(--sky-o4);
+
+    --sky-o1: .06;   /* 年轮、分类带的底线 */
+    --sky-o2: .16;   /* 次刻度、被隐去的东西 */
+    --sky-o3: .38;   /* 淡墨标注：非当前节气 */
+    --sky-o4: .62;   /* 次要文字 */
+    --sky-o5: 1;     /* 墨 */
+
+    --sky-w1: .5;
+    --sky-w2: 1;
+    --sky-w3: 2;
+
+    background:
+        radial-gradient(120% 82% at 50% 4%, var(--sky-hi) 0%, var(--sky-lo) 68%);
 }
 
-@keyframes oasis-star-breathe {
-    0%, 100% { transform: scale(.96); }
-    50% { transform: scale(1.06); }
+/* 入夜。全站 auto 主题按时间切换，于是「晚上打开 Oasis，星空才是真的」自然成立。 */
+.dark .oasis-sky {
+    --sky-hi: #11242C;
+    --sky-lo: #081219;
+    --sky-ink: #E4EEE8;
+    --sky-accent-text: #6FD8CF;
+    --sky-pending: #F2A9BD;
+    --sky-star-base: #FFFFFF;
+    --sky-m1: 45%;
+    --sky-m2: 55%;
+    --sky-m3: 70%;
+    --sky-m4: 85%;
+    --sky-m5: 100%;
+    --sky-halo: 1;
+    /* 星云的雾要么给足要么别画：.12 配 r×6 在屏幕上根本看不见，却每帧都在画。 */
+    --sky-nebula: .2;
+    background:
+        radial-gradient(126% 88% at 50% 100%, var(--sky-hi) 0%, var(--sky-lo) 62%);
+}
+
+/* 缩放补偿：这四个令牌必须和 --sky-scale 声明在同一个元素上（画布），不能放到
+   .oasis-sky 里。
+   ⚠️ 自定义属性的 var() 替换发生在「声明它的那个元素」上，不是使用它的元素上：
+      若 --sky-name 写在 .oasis-sky 而 --sky-scale 由组件写在内层画布，
+      --sky-name 在 .oasis-sky 上就已经被固化成 calc(13px / 1) 再原样继承下去，
+      画布上那个新值永远读不到。上一版就是这么写的——所谓「标注保持恒定屏幕尺寸」
+      从未生效，标注一直跟着地图一起放大，这才是它看起来那么笨重的真正原因。
+   组件写进来的 --sky-scale 是「viewBox 单位 → 屏幕 px」的完整倍率（scale × baseK），
+   所以下面这些字号在屏幕上恒等于 13 / 11 / 10 px，与视口大小和缩放都无关。 */
+.oasis-sky-canvas {
+    --sky-scale: 1;
+    --sky-name: calc(13px / var(--sky-scale));
+    --sky-meta: calc(11px / var(--sky-scale));
+    --sky-micro: calc(10px / var(--sky-scale));
+    --sky-hair: calc(var(--sky-w1) / var(--sky-scale));
+
+    /* ⚠️ 星体半径也必须在这里补偿，而且这是补上的一处旧漏洞：
+       字号、线宽早就固定在屏幕尺寸上了（calc(13px/scale)、non-scaling-stroke），
+       只有星体的 r 是裸的 viewBox 单位，屏幕半径 = r × scale。
+       8 篇文章时自动取景落在 3.8 倍，最亮那颗 r=5.2 就变成屏幕上 19.8px 半径的圆盘
+       ——那不是星，那是行星，也就是「星球只是个纯色球」的全部成因。
+
+       五档半径 1.1 / 1.6 / 2.2 / 3 / 4.2 px，差 14 倍面积，才是图版上一等星与五等星的关系。
+       用 CSS 的 r 属性（SVG 2 geometry property）而不是 JS 算：--sky-scale 每帧都写，
+       浏览器自己算 calc()，一次 setState 都不必有。元素上仍保留 r 属性做兜底。 */
+    --sky-r1: calc(1.1px / var(--sky-scale));
+    --sky-r2: calc(1.6px / var(--sky-scale));
+    --sky-r3: calc(2.2px / var(--sky-scale));
+    --sky-r4: calc(3px / var(--sky-scale));
+    --sky-r5: calc(4.2px / var(--sky-scale));
+    --sky-r-core: calc(1.1px / var(--sky-scale));
+    --sky-r-pending: calc(3.2px / var(--sky-scale));
+    --sky-r-obs: calc(3.6px / var(--sky-scale));
+    --sky-r-ring: calc(9px / var(--sky-scale));
+}
+
+/* 标注的描边留白：让字压过刻度线时仍然可读。描的是天色，不是发光。
+   两态各描各的底色，所以只有一条规则。 */
+/* ⚠️ 描的是天色，但天色是 --sky-hi → --sky-lo 的渐变，只描 --sky-lo 的话
+   画面上半区的每个字都镶着一圈错色的边。取两端的中值，两态各自成立。 */
+.oasis-sky-label {
+    paint-order: stroke;
+    stroke: color-mix(in srgb, var(--sky-lo) 70%, var(--sky-hi));
+    stroke-width: calc(4px / var(--sky-scale));
+    stroke-linejoin: round;
+}
+
+/* 静止的星只是一个点。名字在指过去时才出现——星图不为每颗星都写字。 */
+.oasis-sky-star .oasis-sky-star-name { opacity: 0; transition: opacity .18s ease; }
+.oasis-sky-star:hover .oasis-sky-star-name,
+.oasis-sky-star:focus-visible .oasis-sky-star-name,
+.oasis-sky-star[data-named='1'] .oasis-sky-star-name,
+.oasis-sky-star[data-selected='1'] .oasis-sky-star-name { opacity: 1; }
+
+.oasis-sky-hover-name { opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+.oasis-sky-star:hover .oasis-sky-hover-name,
+.oasis-sky-star:focus-visible .oasis-sky-hover-name,
+.oasis-sky-star[data-selected='1'] .oasis-sky-hover-name { opacity: 1; }
+
+/* 悬停不再放大星体。半径修好之后星只有 2–8px，「胖 35%」根本看不出来；
+   在没修之前，那条规则做的事是把一个 40px 的球胀成 54px。
+   真正需要的是一枚出现的环——它在屏幕上恒定 9px，任何星等都读得到。 */
+.oasis-sky-star .oasis-sky-star-ring { opacity: 0; transition: opacity .18s ease; }
+.oasis-sky-star:hover .oasis-sky-star-ring { opacity: var(--sky-o3); }
+
+/* ⚠️ 点击蓝框：Safari 对带 tabindex 的 SVG 元素在「鼠标点击」时走的是 :focus 系统描边，
+   只重置 :focus-visible 是不够的（这正是旧版点一下就出现蓝框的原因）。
+   键盘焦点的可见性由下面那条选中环接管，可达性不倒退。 */
+.oasis-sky-star:focus,
+.oasis-sky-hit:focus { outline: none; }
+.oasis-sky-star:focus-visible .oasis-sky-star-ring,
+.oasis-sky-star[data-selected='1'] .oasis-sky-star-ring,
+.oasis-sky-hit:focus-visible .oasis-sky-star-ring { opacity: var(--sky-o5); }
+
+/* 夜里最亮的几颗极缓地明灭。只动 opacity、只给最亮的十几颗、相位各不相同——
+   一整片星同步呼吸是圣诞灯，不是星空。日间 --sky-halo 为 0，闪的是不存在的晕。 */
+/* ⚠️ 关键帧里必须写变量，不能写 1 / .45。
+   动画在层叠里胜过行内样式，若关键帧写死数值，星晕就会绕过「白天 --sky-halo 为 0」
+   这条规则，在日间的天上闪出两团灰晕——加了闪烁反而破坏了不发光的约定。
+   现在星晕的浓度按星等分档，组件把 calc(var(--sky-halo) * 系数) 写进 --bloom-o，
+   关键帧读它：白天 --sky-halo 为 0，两个关键帧都是 0，动画自然沉默。 */
+@keyframes oasis-sky-twinkle {
+    0%, 100% { opacity: var(--bloom-o, 0); }
+    50% { opacity: calc(var(--bloom-o, 0) * .45); }
+}
+.oasis-sky-twinkle { animation: oasis-sky-twinkle 9s ease-in-out infinite; }
+
+/* 触屏一律不闪：几十个独立相位的动画是移动端最划不来的一笔开销。 */
+@media (pointer: coarse) {
+    .oasis-sky-twinkle { animation: none; }
+}
+
+/* 流星：一次性划过，落在一颗随机星上。只动 transform/opacity。 */
+@keyframes oasis-sky-meteor {
+    0% { opacity: 0; transform: translate3d(var(--mx), var(--my), 0) scale(1); }
+    12% { opacity: .85; }
+    100% { opacity: 0; transform: translate3d(0, 0, 0) scale(1); }
+}
+.oasis-sky-meteor {
+    animation: oasis-sky-meteor 900ms cubic-bezier(.3, .7, .4, 1) forwards;
 }
 
 /* 焦点位的柔光：取代旧的逐帧 textShadow，只动 opacity/transform */
@@ -443,9 +678,11 @@ body {
     .instrumental-orbit::after {
         animation: none;
     }
-    .oasis-star-breathe {
-        animation: none;
-    }
+    /* 星图的动效预算：只有选中时的卡片滑入与相机移动，两者都在组件里读 useReducedMotion；
+       这里把剩下的 CSS 过渡与闪烁一并关掉。 */
+    .oasis-sky-star .oasis-sky-star-name,
+    .oasis-sky-star .oasis-sky-star-ring { transition: none; }
+    .oasis-sky-twinkle { animation: none !important; }
 }
 
 /* ✍️ Markdown 排版细节：代码块 / 行内代码 / 表格的明暗双态外观 */
