@@ -1,11 +1,8 @@
 // 🎬 动作调度的唯一出入口：谁想播一段专业动作片段（Tap/Flick/Doze/FlickUp），走这里，不要
 //   直接调 stage.playMotion。原因两个：
 //
-//   ① model3.json 里全部 8 段动作都标了 Loop:true，会一直循环、永远不会「播完」——pixi-live2d-display
-//     只在 motionManager.isFinished() 为 true 时才自动切回 Idle 组（见其 update() 源码），而循环动作
-//     的 motionQueueEntry 永远不会被标记为 finished。也就是说，一旦播放过一次 Tap，如果没有人显式
-//     再切一次动作，模型会卡在 Tap 的循环里再也回不去 Idle。这里的 reacting 窗口结束后主动补一次
-//     FORCE 优先级的 Idle，就是这个 bug 的唯一修复点。
+//   ① 六段手势已经修为 Loop:false；动作文件自己知道结束点，导演在 isFinished() 后接回 Idle，
+//     只保留六秒超时作为资源异常时的兜底。
 //   ② 表情/律动叠加层（Live2DStage 的 offsetsRef）在动作片段播放期间要整体让位，但让位不该是瞬时
 //     的——见 setYield 的注释。这里统一管理让位系数从 0→1 / 1→0 的平滑过渡，调用方不用关心细节。
 import type { MikuStageHandle } from '../Live2DStage';
@@ -27,20 +24,21 @@ export class MotionDirector {
 
   play(stage: MikuStageHandle, group: string, index?: number, opts?: PlayOptions) {
     stage.playMotion(group, index, opts?.priority ?? 2);
-    if (opts?.reactMs) {
-      this.reactingUntil = performance.now() + opts.reactMs;
-      this.needsIdleReturn = group !== 'Idle';
-    }
+    if (group === 'Idle') return;
+    this.reactingUntil = performance.now() + (opts?.reactMs ?? 6000);
+    this.needsIdleReturn = true;
   }
 
   /** 供 RAF 循环之外的触发点（信号监听、可见性回调等）查询「现在方不方便插嘴/接管」 */
   isReacting(): boolean {
-    return performance.now() < this.reactingUntil;
+    return this.needsIdleReturn && performance.now() < this.reactingUntil;
   }
 
-  /** 每帧调用一次：推进让位系数、到点了就把动作组交还给 Idle。返回值供本帧其余逻辑分支用 */
+  /** 每帧调用一次：推进让位系数、动作真实播完后交还 Idle。 */
   update(stage: MikuStageHandle, dtSec: number): { reacting: boolean; yieldAlpha: number } {
-    const reacting = this.isReacting();
+    const reacting = this.needsIdleReturn
+      && !stage.isMotionFinished()
+      && performance.now() < this.reactingUntil;
     if (!reacting && this.needsIdleReturn) {
       this.needsIdleReturn = false;
       stage.playMotion('Idle', Math.floor(Math.random() * IDLE_MOTION_COUNT), 3);

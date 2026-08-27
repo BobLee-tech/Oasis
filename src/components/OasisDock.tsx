@@ -93,7 +93,7 @@ export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange 
   const reduceMotion = !!useReducedMotion();
 
   return (
-    <nav aria-label="主要场所" className="pointer-events-auto relative z-10">
+    <nav aria-label="主要场所" data-oasis-avoid className="pointer-events-auto relative z-10">
       <div className="relative isolate flex items-center gap-0.5 md:gap-2.5 p-2 md:p-2.5 rounded-[24px] md:rounded-[26px] bg-white/55 dark:bg-[#0A0F1D]/70 border border-white/55 dark:border-white/10 border-t-white/80 dark:border-t-white/20 backdrop-blur-2xl shadow-[0_18px_44px_-20px_rgba(15,23,42,0.34),inset_0_1px_0_rgba(255,255,255,0.42)] dark:shadow-[0_20px_48px_-20px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-700">
         {DOCK_ITEMS.map((item) => {
           const isActive = currentView === item.view;

@@ -22,7 +22,10 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ### 大组件
 - [OasisGallery.tsx](src/components/OasisGallery.tsx)(~1160 行) — 博客主界面:列表(分类/合集/标签筛选 + 按月归档)、全屏写作编辑器(admin;createPortal 到 body 的 z-[210] 覆盖层,元信息收在底部抽屉,⌘⏎ 发布)、阅读舱(含合集目录导航)。Markdown.tsx: react-markdown + gfm + highlight + rehype-raw。
-- [OasisResonance.tsx](src/components/OasisResonance.tsx)(684 行) — 播放器 UI;[OasisOrchard.tsx](src/components/OasisOrchard.tsx)(543 行) — 星图(与博客同源 useGarden)。
+- [OasisResonance.tsx](src/components/OasisResonance.tsx)(684 行) — 播放器 UI。
+- [OasisOrchard.tsx](src/components/OasisOrchard.tsx)(~1400 行) — 知识年轮盘,与博客同源 useGarden。定位是「花园的夜间俯瞰」:三层动线 L0 年轮概览(节气 + 写作密度 + 分类带星群) → L1 星卡 → L2 跳博客阅读舱 `#/garden/<id>`,**星图内不提供长文阅读**。五条硬规矩写在文件头,改之前必读:字号/墨度/线宽只有固定档位(令牌在 index.css 的 `.oasis-sky`);昼夜是同一张天只换光;相机与星卡跟随全程不进 React(`viewRef` + 直接写 transform);命中走最近邻拾取;年轮盘是唯一底图,关系线是默认关闭的可选查询图层。
+  - ⚠️ 缩放补偿令牌(`--sky-name` 等)必须声明在 `.oasis-sky-canvas`(即写 `--sky-scale` 的那个元素)上——自定义属性的 `var()` 在**声明它的元素**上就完成替换,放到 `.oasis-sky` 会被固化成 `calc(13px / 1)`。
+  - [lib/constellation.ts](src/lib/constellation.ts) — 纯数据层。**角度 = 日期**(与外圈 24 节气严格对应,不许为构图去动)、**半径 = 分类带**、拥挤处按写作先后贪心落座(`layoutStars`)。由此得两条有测试守着的不变量:新增文章不移动任何旧星;任意两星间距 ≥ `MIN_SEP`,命中区因而永不相交。年轮盘几何统一复用 `densityByTerm` / `annularSector` / `arcPath` / `relaxColumn`。
 
 ### 其他
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。

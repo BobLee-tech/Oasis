@@ -8,7 +8,7 @@ import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { useSoundscape } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
-import { ReaderProgress, ReaderToc, Lightbox, Colophon, PostFooter } from './OasisReader';
+import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter } from './OasisReader';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
@@ -669,7 +669,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       prevPost: idx >= 0 && idx < listedPosts.length - 1 ? listedPosts[idx + 1] : null, // 更早的一篇
     };
   }, [activePost, listedPosts]);
-  const openPost = (p: BlogPost) => { setActivePost(p); readerRef.current?.scrollTo({ top: 0 }); };
+  const [readerAtTop, setReaderAtTop] = useState(true);
+  const openPost = (p: BlogPost) => {
+    setActivePost(p);
+    readerRef.current?.scrollTo({ top: 0 });
+    setReaderAtTop(true);
+  };
 
   // 🧭 直链 ⇄ 阅读舱双向同步：
   //   · 地址含 #/garden/:id（分享 / 刷新 / 后退到某篇）→ 打开对应文章
@@ -745,6 +750,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     // 退出进度覆盖回 0。
     if (activePost) {
       readerRef.current?.scrollTo({ top: 0 });
+      requestAnimationFrame(() => setReaderAtTop(true));
       const pct = getReadProgress(activePost.id);
       if (pct > 0.02 && pct < 0.92) {
         const postId = activePost.id;
@@ -777,6 +783,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   // 📍 阅读进度持久化：滚动时防抖记录百分比，供列表「续读」标记与下次自动跳转使用
   const handleReaderScroll = () => {
+    setReaderAtTop((readerRef.current?.scrollTop ?? 0) < 4);
     const post = activePost;
     const el = readerRef.current;
     if (!post || !el || restoringRef.current) return;
@@ -1045,6 +1052,28 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setTagInput(''); setIsZen(false); setShowMetaPanel(false); setIsEditing(true);
   };
 
+  // 🔭 从星图的虚线星位进入时，直接展开一张预填标题的新稿。
+  // 这是一次性 handoff：消费后删除，刷新页面不会反复打开编辑器。
+  useEffect(() => {
+    if (!isAdmin) return;
+    let title = '';
+    try {
+      title = sessionStorage.getItem('oasis_orchard_seed_title') ?? '';
+      if (title) sessionStorage.removeItem('oasis_orchard_seed_title');
+    } catch { /* private mode */ }
+    if (!title) return;
+    // 延后一帧，让懒加载的 Garden 先完成挂载，再展开 portal 写作器。
+    const timer = window.setTimeout(() => {
+      setEditingId(null); setEditTitle(title); setEditTagList([]); setTagInput('');
+      setEditContent(getTemplate('thought')); setEditColor('#39C5BB'); setEditType('thought'); setEditSeries('');
+      setEditGrowth('seedling'); setEditStatus('published'); setEditSlug(''); setEditExcerpt('');
+      setDraftMsg('从星图的未种星位启程'); setIsZen(false); setShowMetaPanel(false); setIsEditing(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  // 只消费组件挂载时的一次性 handoff；getTemplate 的分类变化不应重复打开写作器。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
   // 丢弃当前草稿，回到空白新篇
   const discardDraft = () => {
     clearDraft();
@@ -1214,8 +1243,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       </AnimatePresence>
 
       {/* 🖼️ 右侧基础内容画廊区 */}
-      <div className="oasis-bottom-scroll-safe w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-14 md:pt-24 pb-32 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
-        <div className="w-full h-full flex flex-col">
+      <div className="oasis-bottom-scroll-safe w-full lg:w-2/3 h-full overflow-y-auto no-scrollbar pt-14 md:pt-24 px-5 md:px-8 lg:px-16 relative z-10 flex flex-col">
+        {/* min-h-full 兼顾短内容撑满与长内容自然扩展，避免 h-full 把底部 padding 架空。 */}
+        <div className="w-full min-h-full flex flex-col">
               {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案。
                   已经报过一次「我是谁」，下方报头在移动端不必再报「这是什么」——只留一行坐标即可，
                   让第一张卡片尽快出现在折叠线之上。 */}
@@ -1456,6 +1486,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 </AnimatePresence>
                 {filteredPosts.length === 0 && <div className="pt-20 text-center font-serif text-slate-400 dark:text-slate-600 italic">这里还没有落下的种子，去种下第一颗吧。</div>}
               </div>
+            <div className="oasis-bottom-spacer" aria-hidden />
             </div>
       </div>
 
@@ -1729,6 +1760,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             key="reader-overlay"
             ref={readerRef}
             onScroll={handleReaderScroll}
+            drag={readerAtTop ? 'y' : false}
+            dragDirectionLock
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.35 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 96 || info.velocity.y > 700) setActivePost(null);
+            }}
             // ✨ 核心修复一：强制将背景色在日夜间与最外层壳体同步，拒绝卡顿断层
             className="fixed inset-0 z-[105] overflow-y-auto no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
@@ -1736,6 +1774,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
           >
             {/* 📖 顶部情绪丝线 + 🪷 右下墨环进度（剩余分钟 / 回顶）：共用滚动弹簧 */}
             {/* key 按文章重挂：切到上一/下一篇时进度环与读完落锁一并归零 */}
+            <ReaderExit onClose={() => setActivePost(null)} />
             <ReaderProgress key={activePost.id} containerRef={readerRef} color={activePost.color} totalMinutes={readerMinutes}
               onProgressChange={(progress) => { if (progress > 0.55) setCommentPromptReached(true); }} />
             {/* 📑 左侧文中目录（枯山水耙痕） */}
@@ -1751,7 +1790,6 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <button onClick={() => activePost && sharePost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-oasis-teal transition-colors">{shareCopied ? '链接已摘下 ✓' : 'Share'}</button>
                   {isAdmin && <button onClick={() => activePost && startEditingPost(activePost)} className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] transition-colors">Edit</button>}
                   {isAdmin && <button onClick={() => activePost && handleDelete(activePost.id)} className="text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors">Destroy</button>}
-                  <button onClick={() => setActivePost(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ml-4 p-2 -mr-2 bg-white/50 dark:bg-white/5 rounded-full border border-slate-200/50 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-white/10"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                 </div>
 
                 <div className="font-mono text-xs tracking-[0.3em] text-slate-400 dark:text-slate-500 uppercase mb-8 flex items-center gap-3 flex-wrap transition-colors duration-[1500ms]">

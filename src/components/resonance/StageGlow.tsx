@@ -41,7 +41,7 @@ export const StageGlow: React.FC<{ color: string; isPlaying: boolean; active?: b
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none absolute -inset-x-[8%] -inset-y-[14%] z-0"
+      className="oasis-ambient pointer-events-none absolute -inset-x-[8%] -inset-y-[14%] z-0"
       style={{
         opacity: 0.045,
         background: `radial-gradient(46% 56% at 30% 46%, ${color}, transparent 72%)`,

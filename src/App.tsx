@@ -32,15 +32,13 @@ const OasisAtelier = lazy(() => import('./components/OasisAtelier').then(m => ({
 
 import type { BgPhase, AppView } from './types/auth';
 
-// 移动端隐藏：满屏 mix-blend 噪点层要求每帧对整屏做混合合成，手机 GPU 吃不消，
-// 而 0.03 透明度在小屏上本就几乎不可见。
+// 🌾 噪点是静态纹理，预烘焙后只需平铺一次；移动端仍隐藏以节省合成层。
 const NoiseOverlay = () => (
-  <div className="pointer-events-none absolute inset-0 z-50 opacity-[0.03] mix-blend-overlay hidden md:block">
-    <svg className="absolute inset-0 w-full h-full">
-      <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch" /></filter>
-      <rect width="100%" height="100%" filter="url(#noise)" />
-    </svg>
-  </div>
+  <div
+    aria-hidden
+    className="oasis-noise pointer-events-none absolute inset-0 z-50 opacity-[0.035] hidden md:block"
+    style={{ backgroundImage: 'url(/textures/noise-128.png)', backgroundRepeat: 'repeat' }}
+  />
 );
 
 // 🫧 涟漪：只为「留下痕迹」的动作晕开一圈水波——发布文章、留下一片落叶、⌘K 执行命令，
@@ -292,11 +290,30 @@ function App() {
   });
   const [waveKey, setWaveKey] = useState(0);
 
+  // 🌫️ 转场闸门：场所交接期间给根节点打标记，让超大模糊层与混合层暂时退场。
+  const [transitioning, setTransitioning] = useState(false);
+  const transitionTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+  }, []);
+
   const handleViewChange = (view: AppView, origin?: RippleOrigin) => {
     if (origin) setRevealOrigin(origin);
     setWaveKey(k => k + 1);
+    setTransitioning(true);
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    // 0.5s 退场 + 0.6s 入场，再留一点懒加载余量。
+    transitionTimer.current = window.setTimeout(() => setTransitioning(false), 1250);
     setAppView(view);
     navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
+  };
+
+  // 🔭 星图里点「未种下的星位」：把题目交给 Garden 写作器，再切换场所。
+  // sessionStorage 只承担这一次跨懒加载组件的轻量交接，Garden 取走后立即删除。
+  const openGardenComposer = (title: string) => {
+    try { sessionStorage.setItem('oasis_orchard_seed_title', title); } catch { /* private mode */ }
+    setAppView('garden');
+    navigate('garden');
   };
 
   // ⬅️ 浏览器后退 / 前进：hash 变化时把场所切回对应视图（欢迎页除外，避免误触重播入场）
@@ -378,7 +395,10 @@ function App() {
   const themeLabel = themeMode === 'auto' ? `AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? 'LIGHT' : 'DARK';
 
   return (
-    <div className={`relative w-screen h-dvh overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}>
+    <div
+      data-oasis-transition={transitioning ? 'on' : undefined}
+      className={`relative w-screen h-dvh overflow-hidden flex items-center justify-center transition-colors duration-[1500ms] ease-in-out ${bgClass} ${isDarkMode ? 'dark' : ''}`}
+    >
       {/* 🌾 暖纸底光：仅亮色可见。左上一抹暖白、右下极淡青，替代纯平「实验室白」，让庭园有和纸的温度。
           夜色下 dark:opacity-0 隐去，交还给星河底色。 */}
       <div
@@ -396,7 +416,7 @@ function App() {
       <AnimatePresence>
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
           <motion.div 
-            data-miku-avoid
+            data-oasis-avoid
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
             className="absolute top-5 left-5 md:top-8 md:left-8 z-[100] flex flex-wrap items-center gap-2 md:gap-3 max-w-[calc(100vw-7rem)]"
           >
@@ -464,7 +484,12 @@ function App() {
                   <AnimatePresence mode="wait">
                     {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
                     {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
-                    {appView === 'orchard' && wrap('orchard-space', <OasisOrchard isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'orchard' && wrap('orchard-space', <OasisOrchard
+                      isAdmin={effectiveIsAdmin}
+                      itemId={route.view === 'orchard' ? route.itemId : undefined}
+                      onNavigate={(id) => navigate('orchard', id)}
+                      onCreatePost={openGardenComposer}
+                    />)}
                     {appView === 'lights' && wrap('lights-space', <OasisLights />)}
                     {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}
                   </AnimatePresence>
