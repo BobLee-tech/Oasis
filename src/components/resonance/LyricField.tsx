@@ -62,6 +62,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   const headerRef = useRef<HTMLDivElement>(null);
   const interludeRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  const glowLevelRef = useRef(0);
   const rippleRef = useRef<HTMLSpanElement>(null);
   const waterClockRef = useRef<HTMLSpanElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -280,6 +281,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
       const spring = springRef.current;
       const gesture = gestureRef.current;
       const measurements = measurementsRef.current;
+      const still = reducedMotion();
 
       const playbackMs = (isPlaying ? getPlaybackTime() : currentTime) * 1_000 - offsetMs;
       const nextIndex = findActiveLine(timedLines, playbackMs);
@@ -300,13 +302,13 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         }
         if (followingRef.current) {
           spring.target = targetFor(focusRef.current);
-          if (jumped || reducedMotion()) {
+          if (jumped || still) {
             spring.y = spring.target;
             spring.velocity = 0;
           }
           // 换行涟漪：从行首荡开一圈，呼应站点的水波语汇
           const ripple = rippleRef.current;
-          if (ripple && !reducedMotion()) {
+          if (ripple && !still) {
             ripple.style.animation = 'none';
             void ripple.offsetWidth;
             ripple.style.animation = '';
@@ -342,7 +344,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         if (Math.abs(gesture.velocity) < FLING_STOP || over > 140) settle();
         else focusRef.current = nearestIndex(spring.y);
         spring.target = spring.y;
-      } else if (reducedMotion()) {
+      } else if (still) {
         spring.y = spring.target;
         spring.velocity = 0;
       } else {
@@ -364,14 +366,26 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         currentRow.style.setProperty('--p', String(lineProgress(currentLine, playbackMs)));
       }
 
-      // 焦点柔光取代了旧的逐帧 textShadow：同样的呼吸感，但只动 opacity/transform
+      const interlude = interludeAt(timedLines, nextIndex, playbackMs);
+
+      // 词场的光由「当前句是否正在这里」决定；频谱只提供很弱的明暗余韵。
+      // 手动翻词时退到底色，避免光照着一条与真实播放位置无关的句子。
       if (glowRef.current) {
-        const mid = isPlaying ? getEnergy().mid : 0;
-        glowRef.current.style.opacity = String(0.06 + mid * 0.42);
-        glowRef.current.style.transform = `translate3d(0,-50%,0) scaleY(${1 + mid * 0.3})`;
+        const atCurrentLine = followingRef.current && !!currentLine && !interlude.active;
+        const target = atCurrentLine ? (isPlaying ? 1 : 0.42) : 0.12;
+        const tau = target > glowLevelRef.current ? 0.18 : 0.48;
+        glowLevelRef.current = still
+          ? target
+          : glowLevelRef.current +
+            (target - glowLevelRef.current) * (1 - Math.exp(-dt / tau));
+        const musicLift = atCurrentLine && isPlaying && !still
+          ? getEnergy().mid * 0.022
+          : 0;
+        const base = compact ? 0.028 : 0.035;
+        const range = compact ? 0.07 : 0.085;
+        glowRef.current.style.opacity = String(base + glowLevelRef.current * range + musicLift);
       }
 
-      const interlude = interludeAt(timedLines, nextIndex, playbackMs);
       const lyricKey = `${track.id}:${nextIndex}:${interlude.active ? '间奏' : '歌唱'}`;
       if (lyricKey !== publishedLyricRef.current) {
         publishedLyricRef.current = lyricKey;

@@ -1,0 +1,35 @@
+<!doctype html><meta charset=utf-8><title>negi</title>
+<style>
+body{margin:0;background:#FAF7F1;display:flex;gap:40px;align-items:flex-end;padding:24px 32px;font:11px system-ui;color:#889}
+figure{margin:0;text-align:center}
+svg{display:block}
+.big{width:150px;height:300px}.mid{width:52px;height:104px}.sm{width:24px;height:48px}
+@keyframes sway{from{transform:rotate(-2.4deg)}to{transform:rotate(2.4deg)}}
+.blade{transform-box:fill-box;transform-origin:50% 100%;animation:sway 2.1s cubic-bezier(.45,0,.55,1) infinite alternate}
+.blade-b{animation-duration:2.6s;animation-delay:-.7s}
+.blade-c{animation-duration:3.1s;animation-delay:-1.4s}
+</style>
+<div id=host></div>
+<script>
+const STALK="M9.4 23 C10.6 21.2 13.4 21.2 14.6 23 L14.9 41.4 C14.9 44.6 9.1 44.6 9.1 41.4 Z";
+const BL="M9.6 25.4 C9.0 18 6.9 11 4.3 4.0 C8.1 11.4 11.4 18.6 12.6 25.4 Z";
+const BC="M10.7 23.6 C10.9 15.4 11.4 8.2 12.4 1.6 C13.9 8.4 14.3 15.6 14.1 23.6 Z";
+const BR="M12.4 24.8 C14.1 17.8 16.8 11.2 19.7 5.8 C18.0 12.6 16.2 18.8 15.2 24.8 Z";
+const ROOT="M12 43.6 L8.8 47.2 M12 43.6 L10.6 47.8 M12 43.6 L13.5 47.8 M12 43.6 L15.3 47.2";
+const negi=(cls,p,i)=>`
+<svg viewBox="0 0 24 48" class="${cls}" style="--p:${p};color:#39C5BB">
+ <defs><clipPath id="k${i}"><rect x="0" width="24" style="y:calc(48px*(1 - var(--p)));height:calc(48px*var(--p))"/></clipPath></defs>
+ <g fill="none" stroke="currentColor" stroke-width=".9" opacity=".2" stroke-linejoin="round" stroke-linecap="round">
+   <path d="${BL}"/><path d="${BC}"/><path d="${BR}"/><path d="${STALK}"/><path d="${ROOT}"/>
+ </g>
+ <g clip-path="url(#k${i})">
+   <path class="blade blade-c" d="${BL}" fill="currentColor" opacity=".82"/>
+   <path class="blade" d="${BC}" fill="currentColor"/>
+   <path class="blade blade-b" d="${BR}" fill="currentColor" opacity=".9"/>
+   <path d="${STALK}" fill="#F3F6EF" stroke="currentColor" stroke-width=".7" stroke-opacity=".4"/>
+   <path d="${ROOT}" fill="none" stroke="currentColor" stroke-width=".7" stroke-opacity=".5" stroke-linecap="round"/>
+ </g>
+</svg>`;
+host.innerHTML=[['sm',1],['sm',.4],['sm',0],['mid',.75],['mid',1],['big',1],['big',.5]]
+ .map(([c,p],i)=>`<figure>${negi(c,p,i)}<figcaption>${c} p=${p}</figcaption></figure>`).join('');
+</script>

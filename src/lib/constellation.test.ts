@@ -1,11 +1,13 @@
 // src/lib/constellation.test.ts
-// 覆盖三类回归：① 标签分档 / 合集 / 双链结构；② createdAt 的确定性坐标不变量；
-// ③ 大规模耗时上界。星图不再用「几乎不动」描述稳定性，而是要求旧星严格不动。
+// 覆盖三类回归：① 标签分档 / 合集 / 双链结构；② 落座的确定性与不重叠；③ 大规模耗时上界。
+//
+// 落座换成「出生时择邻，此后终生不迁」之后，稳定性有了比「旧星不动」更强的表述：
+// layoutStars(前 k 篇) 必须是 layoutStars(全部) 的前缀。这一条守住了另外两条的根。
 import { describe, it, expect } from 'vitest';
 import {
-  angleForDate, annularSector, arcPath, bandsFor, buildGraph, CENTER, densityByTerm,
-  layoutStars, MIN_SEP, MIN_WINDOW, relaxColumn, seeded, skyBounds, skyWindow,
-  SKY_INNER, SKY_OUTER,
+  angleForDate, annularSector, arcPath, bandsFor, buildGraph, densityByTerm,
+  layoutStars, magnitudeOf, MIN_SEP, plateBounds, PLATE_MIN_W, PLATE_MIN_H,
+  relaxColumn, seeded, SKY_INNER, SKY_OUTER,
 } from './constellation';
 import type { BlogPost } from '../hooks/useGarden';
 
@@ -26,7 +28,6 @@ const mkPost = (i: number, overrides: Partial<BlogPost> = {}): BlogPost => ({
 });
 const typeColor = () => '#39C5BB';
 const DAY_MS = 86_400_000;
-const TAU = Math.PI * 2;
 
 describe('seeded', () => {
   it('同一 key 恒定返回同一个 [0,1) 值', () => {
@@ -73,15 +74,21 @@ describe('buildGraph — 基础结构', () => {
     expect(g.links).toHaveLength(0);
   });
 
-  it('每篇文章都长成一颗落在画布内的 post 星', () => {
+  it('每篇文章都长成一颗坐标有限、落在版心内的 post 星', () => {
     const posts = Array.from({ length: 12 }, (_, i) => mkPost(i));
     const g = buildGraph(posts, typeColor);
     expect(g.postNodes.size).toBe(12);
+    // 版心是算出来的，不再是写死的 1000×760——星可以长到画布外，版心跟着长
+    const plate = plateBounds([...g.postNodes.values()]);
     g.nodes.forEach(n => {
-      expect(n.x).toBeGreaterThanOrEqual(0);
-      expect(n.x).toBeLessThanOrEqual(1000);
-      expect(n.y).toBeGreaterThanOrEqual(0);
-      expect(n.y).toBeLessThanOrEqual(760);
+      expect(Number.isFinite(n.x)).toBe(true);
+      expect(Number.isFinite(n.y)).toBe(true);
+    });
+    [...g.postNodes.values()].forEach(n => {
+      expect(n.x).toBeGreaterThanOrEqual(plate.x);
+      expect(n.x).toBeLessThanOrEqual(plate.x + plate.width);
+      expect(n.y).toBeGreaterThanOrEqual(plate.y);
+      expect(n.y).toBeLessThanOrEqual(plate.y + plate.height);
     });
   });
 
@@ -153,13 +160,16 @@ describe('buildGraph — 基础结构', () => {
     expect(g.links.some(l => l.wikilink)).toBe(true);
   });
 
-  it('未命中的 [[双链]] 成为可观察的虚线星位', () => {
+  // 「未种下的星」这个概念已经去掉：欠着的稿子不在天上占位置，只进园丁的观测手记。
+  it('未命中的 [[双链]] 只进观测手记，不落星也不画线', () => {
     const posts = [mkPost(0, { content: '提到 [[还没写的标题]]' })];
     const g = buildGraph(posts, typeColor);
     expect(g.links.some(l => l.wikilink)).toBe(false);
-    expect(g.pendingNodes.size).toBe(1);
-    expect(g.links.some(l => l.kind === 'pending')).toBe(true);
-    expect(g.signals.some(s => s.kind === 'pending')).toBe(true);
+    expect(g.nodes.every(n => n.kind !== 'post' || n.post)).toBe(true);
+    expect(g.nodes).toHaveLength(2);                 // core + 那一篇
+    const pending = g.signals.filter(x => x.kind === 'pending');
+    expect(pending).toHaveLength(1);
+    expect(pending[0].pendingTitle).toBe('还没写的标题');
   });
 });
 
@@ -168,11 +178,6 @@ describe('buildGraph — 落座的确定性与不重叠', () => {
   const dayNow = Date.UTC(2026, 7, 11);
   const sameDay = (i: number, hour: number, over: Partial<BlogPost> = {}) =>
     mkPost(i, { createdAt: day + hour * 3600_000, ...over });
-  const radiusOf = (g: ReturnType<typeof buildGraph>, id: string) => {
-    const n = g.postNodes.get(id)!;
-    return Math.hypot(n.x - CENTER.x, n.y - CENTER.y);
-  };
-
   it('新增文章后，所有旧星的坐标逐像素不变', () => {
     const base = Array.from({ length: 40 }, (_, i) => mkPost(i));
     const now = Date.UTC(2026, 7, 11);
@@ -196,7 +201,7 @@ describe('buildGraph — 落座的确定性与不重叠', () => {
   });
 
   // 这条是整张图能不能读的底线：星挤在一起时，标注、命中、连线会同时失效。
-  it('任意两颗星（含星云与待种星位）都不小于最小间距', () => {
+  it('任意两颗星（含星云）都不小于最小间距', () => {
     const posts = Array.from({ length: 80 }, (_, i) => mkPost(i, {
       // 一半集中在同一天、同一分类：最坏情况的爆发式写作
       createdAt: day + (i % 2 === 0 ? 0 : i * DAY_MS),
@@ -204,7 +209,7 @@ describe('buildGraph — 落座的确定性与不重叠', () => {
       content: 'x'.repeat(500 + i * 50),
     }));
     const g = buildGraph(posts, typeColor, dayNow);
-    const all = [...g.postNodes.values(), ...g.tagNodes.values(), ...g.pendingNodes.values()];
+    const all = [...g.postNodes.values(), ...g.tagNodes.values()];
     let worst = Infinity;
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
@@ -225,34 +230,43 @@ describe('buildGraph — 落座的确定性与不重叠', () => {
     }
   });
 
-  it('半径 = 分类：同分类的星聚在同一条带上，不同分类各占一带', () => {
+  // 星座 = 合集。链是一步一步长出来的，所以相邻两颗必然彼此够得着——
+  // 这条守住「连线读起来是一串，不是横跨半张天的一根钢丝」。
+  it('同合集的星连成一串：相邻两颗的间距有上界', () => {
+    const posts = Array.from({ length: 9 }, (_, i) => sameDay(i, i, { series: 'S' }));
+    const g = buildGraph(posts, typeColor, dayNow);
+    const chain = g.series[0].posts.map(p => g.postNodes.get(p.id)!);
+    for (let i = 1; i < chain.length; i++) {
+      const d = Math.hypot(chain[i].x - chain[i - 1].x, chain[i].y - chain[i - 1].y);
+      expect(d).toBeGreaterThanOrEqual(MIN_SEP - 1e-9);
+      expect(d).toBeLessThan(220);           // 一步的上限（含冲突外推的余量）
+    }
+  });
+
+  // 不同合集各占一块领地：黄金角螺线保证它们不会长在一起。
+  it('不同合集分居不同领地，重心明显分开', () => {
     const posts = [
-      ...Array.from({ length: 5 }, (_, i) => sameDay(i, i, { type: 'note' })),
-      ...Array.from({ length: 5 }, (_, i) => sameDay(i + 10, i, { type: 'project' })),
+      ...Array.from({ length: 5 }, (_, i) => sameDay(i, i, { series: 'A' })),
+      ...Array.from({ length: 5 }, (_, i) => sameDay(i + 10, i, { series: 'B' })),
     ];
     const g = buildGraph(posts, typeColor, dayNow);
-    const notes = [0, 1, 2, 3, 4].map(i => radiusOf(g, `p${i}`));
-    const projects = [10, 11, 12, 13, 14].map(i => radiusOf(g, `p${i}`));
-    // 两条带互不交叠：笔记那一组整体在复盘那一组之内（note 的首篇更早，占内圈）
-    expect(Math.max(...notes)).toBeLessThan(Math.min(...projects));
-    // 带内的离散度有限——它是一条带，不是一片扇面
-    expect(Math.max(...notes) - Math.min(...notes)).toBeLessThan((SKY_OUTER - SKY_INNER) / 2);
+    const mid = (ids: number[]) => {
+      const ns = ids.map(i => g.postNodes.get(`p${i}`)!);
+      return { x: ns.reduce((a, n) => a + n.x, 0) / ns.length, y: ns.reduce((a, n) => a + n.y, 0) / ns.length };
+    };
+    const a = mid([0, 1, 2, 3, 4]), b = mid([10, 11, 12, 13, 14]);
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(MIN_SEP * 2);
   });
 
-  it('角度 = 日期：不拥挤时严格落在该日期的方位上', () => {
-    const at = Date.UTC(2026, 4, 20);
-    const g = buildGraph([mkPost(0, { createdAt: at })], typeColor, dayNow);
-    expect(g.postNodes.get('p0')!.angle).toBeCloseTo(angleForDate(at), 10);
-  });
-
-  it('落座允许的角向让位是有界的——不会把一篇文章甩到别的季节去', () => {
-    const posts = Array.from({ length: 12 }, (_, i) => sameDay(i, i));
-    const g = buildGraph(posts, typeColor, dayNow);
-    const target = angleForDate(day);
-    posts.forEach(p => {
-      const drift = Math.abs(g.postNodes.get(p.id)!.angle! - target);
-      expect(drift).toBeLessThan(TAU / 24);   // 半个月以内
-    });
+  // 星等 = 篇幅，绝对门限。同一篇文章的亮度不因为别人写了什么而变。
+  it('星等只由自己的篇幅决定，与语料无关', () => {
+    const short = mkPost(0, { content: '短' });
+    const long = mkPost(1, { content: '字'.repeat(12000) });
+    expect(magnitudeOf(short)).toBe(1);
+    expect(magnitudeOf(long)).toBe(5);
+    const alone = buildGraph([long], typeColor, dayNow);
+    const crowd = buildGraph([long, ...Array.from({ length: 30 }, (_, i) => mkPost(i + 10))], typeColor, dayNow);
+    expect(crowd.postNodes.get('p1')!.magnitude).toBe(alone.postNodes.get('p1')!.magnitude);
   });
 
   it('分类带按「首篇写作时间」排序，越早开垦的越靠内', () => {
@@ -266,44 +280,49 @@ describe('buildGraph — 落座的确定性与不重叠', () => {
     expect(bands.center.get('project')!).toBeLessThanOrEqual(SKY_OUTER);
   });
 
-  it('落座是纯函数：同样的输入两次得到同样的天空', () => {
+  it('落座是纯函数：输入的顺序不影响结果', () => {
     const posts = Array.from({ length: 30 }, (_, i) => mkPost(i, { createdAt: day + (i % 4) * DAY_MS }));
-    const a = layoutStars(posts, dayNow).seats;
-    const b = layoutStars([...posts].reverse(), dayNow).seats;
+    const a = layoutStars(posts).seats;
+    const b = layoutStars([...posts].reverse()).seats;
     posts.forEach(p => {
       expect(b.get(p.id)!.x).toBe(a.get(p.id)!.x);
       expect(b.get(p.id)!.y).toBe(a.get(p.id)!.y);
     });
   });
 
+  // ✦ 这一条是整套落座的根：layoutStars(前 k 篇) 必须是 layoutStars(全部) 的前缀。
+  //   它一旦成立，「新增文章不移动旧星」就是它的推论——不管新来的是几篇、
+  //   属于老合集还是开了新合集、有没有和谁共标签。
+  it('前缀不变量：先写的 k 篇，在写到第 n 篇时坐标一格不动', () => {
+    const posts = Array.from({ length: 45 }, (_, i) => mkPost(i, {
+      createdAt: day + i * 3600_000,
+      series: i % 5 === 0 ? undefined : `S${i % 7}`,
+      tags: [`tag${i % 9}`],
+    }));
+    const full = layoutStars(posts).seats;
+    for (const k of [1, 2, 7, 20, 44]) {
+      const partial = layoutStars(posts.slice(0, k)).seats;
+      expect(partial.size).toBe(k);
+      posts.slice(0, k).forEach(p => {
+        expect(partial.get(p.id)!.x).toBe(full.get(p.id)!.x);
+        expect(partial.get(p.id)!.y).toBe(full.get(p.id)!.y);
+      });
+    }
+  });
+
+  it('版心随星群长大，八颗星时仍有下限', () => {
+    const few = plateBounds([{ x: 500, y: 376 }, { x: 510, y: 380 }]);
+    expect(few.width).toBeGreaterThanOrEqual(PLATE_MIN_W);
+    expect(few.height).toBeGreaterThanOrEqual(PLATE_MIN_H);
+    const many = plateBounds([{ x: 0, y: 0 }, { x: 2000, y: 1200 }]);
+    expect(many.width).toBeGreaterThan(2000);
+    // 长宽比锁死：版心永远是同一张纸的形状
+    expect(many.width / many.height).toBeCloseTo(PLATE_MIN_W / PLATE_MIN_H, 6);
+    expect(plateBounds([]).width).toBe(PLATE_MIN_W);
+  });
+
   it('立春为时间环正上方零点', () => {
     expect(angleForDate(Date.UTC(2026, 1, 4))).toBeCloseTo(-Math.PI / 2, 8);
-  });
-});
-
-describe('skyWindow — 相机永远看一片可读的天区', () => {
-  const at = (m: number, d: number) => mkPost(0, { createdAt: Date.UTC(2026, m, d) });
-
-  it('只有几天的文章时，视野仍然撑到一个季度', () => {
-    const win = skyWindow([at(6, 18), at(7, 11)], Date.UTC(2026, 7, 11));
-    expect(win.span).toBeCloseTo(MIN_WINDOW, 6);
-  });
-
-  it('文章铺满一年时，视野展开成整圈', () => {
-    const posts = Array.from({ length: 12 }, (_, m) => at(m, 15));
-    expect(skyWindow(posts, Date.UTC(2026, 7, 11)).span).toBeCloseTo(Math.PI * 2, 6);
-  });
-
-  it('跨年末年初的文章不会被算成「几乎绕满一圈」', () => {
-    // 12/20 与 1/10 在环上相邻；朴素的 max-min 会得到近 350°，正确答案是一小段弧。
-    const win = skyWindow([at(11, 20), at(0, 10)], Date.UTC(2026, 7, 11));
-    expect(win.span).toBeLessThan(Math.PI);
-  });
-
-  it('天区包围盒总是有正的宽高，可以直接喂给相机', () => {
-    const b = skyBounds(skyWindow([at(6, 18), at(7, 11)], Date.UTC(2026, 7, 11)));
-    expect(b.width).toBeGreaterThan(0);
-    expect(b.height).toBeGreaterThan(0);
   });
 });
 
