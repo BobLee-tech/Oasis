@@ -1,7 +1,7 @@
 // 🧭 五个顶层场所的稳定入口。
 // 24 网格 / 20×20 live area / 统一 1.6px 描边；色彩只表达「当前所在」，
 // 各场所的情绪色留给页面与涟漪，不让导航同时说五种语言。
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { AppView } from '../types/auth';
 
@@ -89,13 +89,27 @@ const VIEW_PREFETCH: Partial<Record<AppView, () => Promise<unknown>>> = {
   lights: () => import('./OasisLights'),
 };
 
+// 窄屏不做星野：竖屏上那张横版版心只会缩成一条带，字反而压过图。
+// 与其做一块永远不够好的手机版，不如不给入口。详见 docs/redesign-2026-08/04-sky-ye.md §8。
+const subscribeNarrow = (notify: () => void) => {
+  const q = window.matchMedia('(max-width: 767px)');
+  q.addEventListener('change', notify);
+  return () => q.removeEventListener('change', notify);
+};
+const isNarrow = () => window.matchMedia('(max-width: 767px)').matches;
+
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
   const reduceMotion = !!useReducedMotion();
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
+  // 已经在星图上（比如直接开了 #/constellation）就仍然显示，否则用户会看不到自己在哪
+  const items = narrow && currentView !== 'orchard'
+    ? DOCK_ITEMS.filter(i => i.view !== 'orchard')
+    : DOCK_ITEMS;
 
   return (
     <nav aria-label="主要场所" data-oasis-avoid className="pointer-events-auto relative z-10">
       <div className="relative isolate flex items-center gap-0.5 md:gap-2.5 p-2 md:p-2.5 rounded-[24px] md:rounded-[26px] bg-white/55 dark:bg-[#0A0F1D]/70 border border-white/55 dark:border-white/10 border-t-white/80 dark:border-t-white/20 backdrop-blur-2xl shadow-[0_18px_44px_-20px_rgba(15,23,42,0.34),inset_0_1px_0_rgba(255,255,255,0.42)] dark:shadow-[0_20px_48px_-20px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-700">
-        {DOCK_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = currentView === item.view;
 
           return (

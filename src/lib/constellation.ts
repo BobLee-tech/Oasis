@@ -1,17 +1,19 @@
-// ✦ Oasis 天文星图的纯数据层。
+// ✦ Oasis 星野的纯数据层。
 //
-// 两条轴，各表达一件事，谁也不许兼职：
-//   · 角度 = 日期。只由 createdAt 决定，与外圈 24 节气严格对应——
-//     一颗立秋写的星，就在节气环「立秋」那个方向上。这条对应关系是这张图的信誉，
-//     它也是「知识星图」和「随便一张力导向关系图」的全部区别，不要为了构图去动它。
-//   · 半径 = 分类。每个分类占一条同心带，于是天空有了可读的地形：
-//     「学习笔记在内圈，随笔在中间」。合集连线横穿带与带，星座才有形状。
+// 一条规矩管住整张天：**出生时择邻，此后终生不迁**。
+// 按 createdAt 顺序依次落座，每一步只看「已经落好的星」，从不回头改——
+// 所有的布局智力都花在「这颗星生在哪」，落下之后再不动它。
+// 于是「新增文章不移动任何旧星」是算法自带的，不是碰巧成立的。
 //
-// 拥挤不靠公式硬凑，靠 seatStars() 的贪心落座：按写作先后依次给每颗星找位置，
-// 先试径向（角度最诚实）、再试角向，直到与已落的星拉开 MIN_SEP。因为只往后排、
-// 从不回头改，所以「新增文章不移动任何旧星」这条不变量是算法自带的，不是碰巧成立的。
+// 星座 = 合集，连线 = 合集次序。图形是数据长出来的，不是画上去的。
+// 上一版把角度编成日期、半径编成分类——那是把最贵的两个通道花在了博客列表
+// 已经用一行日期和一枚 chip 说清楚的事上，星图因此没有职位。日期改由可开关的
+// 时间尺兑现（每颗星垂一根线到它真实的节气），分类只留一点色相。
+//
+// 详见 docs/redesign-2026-08/04-sky-ye.md。
 import type { BlogPost } from '../hooks/useGarden';
 import { extractWikiLinks, buildTitleIndex } from './wikilinks';
+import { readingMinutes } from './reading';
 import { tagKey, buildTagCanonicalMap } from './tags';
 
 export const VW = 1000;
@@ -37,8 +39,8 @@ export const seeded = (str: string) => {
   return x - Math.floor(x);
 };
 
-export type NodeKind = 'core' | 'tag' | 'post' | 'pending';
-export type LinkKind = 'series' | 'wikilink' | 'shared-tag' | 'nebula' | 'pending';
+export type NodeKind = 'core' | 'tag' | 'post';
+export type LinkKind = 'series' | 'wikilink' | 'shared-tag' | 'nebula';
 
 export interface GNode {
   key: string;
@@ -59,7 +61,6 @@ export interface GNode {
   color?: string;
   aliases?: string[];
   singletonTags?: string[];
-  pendingTitle?: string;
   sourcePostId?: string;
 }
 
@@ -101,7 +102,6 @@ export interface GraphResult {
   links: GLink[];
   tagNodes: Map<string, GNode>;
   postNodes: Map<string, GNode>;
-  pendingNodes: Map<string, GNode>;
   tagMap: Map<string, BlogPost[]>;
   series: ConstellationSeries[];
   neighbors: Map<string, Set<string>>;
@@ -244,21 +244,12 @@ export const bandsFor = (posts: Pick<BlogPost, 'type' | 'createdAt' | 'id'>[]): 
 };
 
 // —— 落座 ——————————————————————————————————————————————————————
-// 候选位移按「离目标多远」排序，同距离时偏爱径向：角向的每一步都是对日期的一点点谎，
-// 径向不是，所以径向先走完。1.4 的权重就是这条偏好的全部实现。
-const SEAT_R = 9;      // 一格径向位移
-const SEAT_ARC = 11;   // 一格角向位移（弧长，落座时再除以半径换成弧度）
-const SEAT_SPAN = 13;  // 每个方向最多找 13 格
-
-const SEAT_OFFSETS: [number, number][] = (() => {
-  const out: [number, number][] = [];
-  for (let i = -SEAT_SPAN; i <= SEAT_SPAN; i++) {
-    for (let j = -SEAT_SPAN; j <= SEAT_SPAN; j++) out.push([i * SEAT_R, j * SEAT_ARC]);
-  }
-  return out.sort((a, b) =>
-    Math.hypot(a[0], a[1] * 1.4) - Math.hypot(b[0], b[1] * 1.4)
-    || Math.abs(a[1]) - Math.abs(b[1]) || a[0] - b[0] || a[1] - b[1]);
-})();
+// 四种情形，见文件头。所有随机都走 seeded()，所以这是一个纯函数。
+const TERR = 168;        // 领地间距：星座之间要有黑，图案才立得住
+const GOLD = 2.39996;    // 137.5°，黄金角。保证领地不重叠又不成行列
+const SQUASH = 0.72;     // 版心是横的，天也跟着压扁一点
+const CHAIN_STEP = 58;   // 链往前长一步的基准长度
+const KIN_MIN = 74, KIN_SPAN = 52;   // 散星落在亲戚旁边的半径区间
 
 // 落座用的稀疏网格。格边长 = MIN_SEP，于是「有没有人挨得太近」只需查 3×3 个格子，
 // 600 篇文章也不会退化成两两比对。
@@ -266,16 +257,21 @@ class Seats {
   private grid = new Map<number, { x: number; y: number }[]>();
   private key = (cx: number, cy: number) => (cx + 4096) * 8192 + (cy + 4096);
 
-  free(x: number, y: number, sep: number) {
+  /** 挡路的那颗（3×3 邻域内最近的越界者）。外推需要知道从谁身边让开。 */
+  hit(x: number, y: number, sep: number) {
     const cx = Math.floor(x / MIN_SEP), cy = Math.floor(y / MIN_SEP);
+    let best: { x: number; y: number } | null = null, bd = Infinity;
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
         const bucket = this.grid.get(this.key(cx + i, cy + j));
         if (!bucket) continue;
-        for (const p of bucket) if (Math.hypot(p.x - x, p.y - y) < sep) return false;
+        for (const p of bucket) {
+          const d = Math.hypot(p.x - x, p.y - y);
+          if (d < sep && d < bd) { bd = d; best = p; }
+        }
       }
     }
-    return true;
+    return best;
   }
 
   add(x: number, y: number) {
@@ -304,116 +300,155 @@ class Seats {
 
 export interface Seat { x: number; y: number; angle: number; radius: number }
 
-// 先在带内找，找不到再放开带的约束。两段式而不是一次搜完，是为了让「同分类聚成一条带」
-// 这件事在绝大多数情况下成立，只有真挤不下时才牺牲。
-const seatOne = (
-  seats: Seats, targetAngle: number, targetRadius: number, half: number, sep = MIN_SEP,
-): Seat => {
-  for (const inBand of [true, false]) {
-    for (const [dr, darc] of SEAT_OFFSETS) {
-      if (inBand && Math.abs(dr) > half) continue;
-      const radius = Math.min(SKY_OUTER, Math.max(SKY_INNER, targetRadius + dr));
-      const angle = targetAngle + darc / radius;
-      const x = CENTER.x + Math.cos(angle) * radius;
-      const y = CENTER.y + Math.sin(angle) * radius;
-      if (seats.free(x, y, sep)) { seats.add(x, y); return { x, y, angle, radius }; }
-    }
+const asSeat = (x: number, y: number): Seat => ({
+  x, y,
+  angle: Math.atan2(y - CENTER.y, x - CENTER.x),
+  radius: Math.hypot(x - CENTER.x, y - CENTER.y),
+});
+
+// 冲突只往外推，永不换位。每一轮把推开的距离加大一点点（i * 0.01），
+// 于是它单调向外、必然收敛——否则两颗星之间可以来回弹到天荒地老。
+const pushOut = (grid: Seats, sx: number, sy: number): Seat => {
+  let x = sx, y = sy, spin = 0;
+  for (let i = 0; i < 256; i++) {
+    const hit = grid.hit(x, y, MIN_SEP);
+    if (!hit) break;
+    const dx = x - hit.x, dy = y - hit.y;
+    const far = Math.hypot(dx, dy) > 1e-6;
+    // 完全重合时没有「外」的方向可言，绕着走一圈找
+    if (!far) spin += 0.61803;
+    const a = far ? Math.atan2(dy, dx) : spin * Math.PI * 2;
+    const push = MIN_SEP * (1.06 + i * 0.01);
+    x = hit.x + Math.cos(a) * push;
+    y = hit.y + Math.sin(a) * push;
   }
-  // 兜底：候选全满（需要上千颗星挤在一条带里）时原地叠放，宁可重叠也不能返回 NaN。
-  const x = CENTER.x + Math.cos(targetAngle) * targetRadius;
-  const y = CENTER.y + Math.sin(targetAngle) * targetRadius;
-  seats.add(x, y);
-  return { x, y, angle: targetAngle, radius: targetRadius };
+  grid.add(x, y);
+  return asSeat(x, y);
 };
 
-// 同一年内分类带里的细分：越新越靠带的外沿。四档，跨度小，只够读出「这批更旧」。
-const yearNudge = (yearsAgo: number) => -Math.min(3, Math.max(0, yearsAgo)) * 6;
+/** 给非文章的实体（星云 hub 等）在已有网格里找一个不压星的位置。 */
+export const seatNear = (grid: Seats, x: number, y: number): Seat => pushOut(grid, x, y);
+
+interface Territory { name: string; stars: Seat[]; tags: Set<string>; head: number }
 
 export interface Layout {
   seats: Map<string, Seat>;
   bands: Bands;
-  /** 同一张网格继续给星云 hub 和待种星位落座，它们也不许压在星上 */
+  /** 同一张网格继续给星云 hub 落座，它们也不许压在星上 */
   grid: Seats;
 }
 
-// 全图落座。返回 post id → 座位，顺序严格按 createdAt 升序（同刻按 id），
-// 因此「后来的星只能往空处坐，坐不动已经在那儿的星」。
-export const layoutStars = (posts: BlogPost[], now = Date.now()): Layout => {
+// 全图落座。顺序严格按 createdAt 升序（同刻按 id），因此后来的星只能往空处坐。
+export const layoutStars = (posts: BlogPost[]): Layout => {
   const bands = bandsFor(posts);
   const grid = new Seats();
   const seats = new Map<string, Seat>();
-  const nowYear = solarYearPosition(now).year;
+  const groups = new Map<string, Territory>();
+  let claimed = 0;
+
+  // 新领地：黄金角螺线，半径 ∝ √k，再乘一个种子疏密系数。
+  // 完全均匀的分布看着最不像天，所以要有丛有空。
+  const spiral = (key: string) => {
+    const k = claimed++;
+    const a = k * GOLD + (seeded(`terr:${key}`) - 0.5) * 0.8;
+    const r = TERR * Math.sqrt(k + 0.55) * (0.74 + seeded(`dens:${key}`) * 0.82);
+    return { x: CENTER.x + Math.cos(a) * r, y: CENTER.y + Math.sin(a) * r * SQUASH };
+  };
 
   [...posts]
     .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
     .forEach(post => {
-      const band = bands.center.get(categoryOf(post)) ?? (SKY_INNER + SKY_OUTER) / 2;
-      const yearsAgo = Math.max(0, nowYear - solarYearPosition(post.createdAt).year);
-      seats.set(post.id, seatOne(
-        grid, angleForDate(post.createdAt), band + yearNudge(yearsAgo), bands.half,
-      ));
+      const name = post.series?.trim() || '';
+      const keys = post.tags.map(tagKey);
+      let base: { x: number; y: number };
+
+      if (name && groups.has(name)) {
+        // 老合集：从最后一颗星沿它的走向续一步。
+        // 真实星座是折线不是弧——转角放到 ±58°，偶尔来一个更硬的肘，步长也跳，
+        // 等步长等转角画出来是一条蚯蚓，不是仙后座。
+        const g = groups.get(name)!;
+        const last = g.stars[g.stars.length - 1];
+        const prev = g.stars.length > 1 ? g.stars[g.stars.length - 2] : null;
+        const head = prev ? Math.atan2(last.y - prev.y, last.x - prev.x) : g.head;
+        const t0 = seeded(`turn:${post.id}`), t1 = seeded(`step:${post.id}`);
+        const turn = (t0 - 0.5) * 2.02 * (t1 > 0.78 ? 1.5 : 1);
+        const step = CHAIN_STEP * (0.55 + t1 * 1.15);
+        base = { x: last.x + Math.cos(head + turn) * step, y: last.y + Math.sin(head + turn) * step };
+      } else if (name) {
+        base = spiral(name);
+      } else {
+        // 散星：先找亲戚。共标签就落在它旁边，天上才有「这一带都是这个话题」。
+        let kin: Territory | null = null;
+        for (const g of groups.values()) if (keys.some(t => g.tags.has(t))) { kin = g; break; }
+        if (kin) {
+          const c = kin.stars[kin.stars.length - 1];
+          const a = seeded(`kin:${post.id}`) * Math.PI * 2;
+          const r = KIN_MIN + seeded(`kinr:${post.id}`) * KIN_SPAN;
+          base = { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r * SQUASH };
+        } else base = spiral(`loose:${post.id}`);
+      }
+
+      const seat = pushOut(grid, base.x, base.y);
+      seats.set(post.id, seat);
+
+      if (name) {
+        let g = groups.get(name);
+        if (!g) {
+          g = { name, stars: [], tags: new Set(), head: seat.angle + (seeded(`head:${name}`) - 0.5) };
+          groups.set(name, g);
+        }
+        g.stars.push(seat);
+        keys.forEach(t => g!.tags.add(t));
+      }
     });
 
   return { seats, bands, grid };
 };
 
-// —— 相机：星图从不「适配到内容」那么紧，它适配到一个可读的天区 ——
-// 严格 fit 到内容会把画面放大到弧线拉直、一个节气名都看不见，那就不再是一张星图了。
-// 所以给一个最小视野，保证永远读得出弧的弯度和左右两个节气。
-//
-// 60° 而不是 90°：半径现在也承载信息（分类带占满 128–306），fit 的高度方向已经被
-// 填满了，角度方向再强撑一个季度只会换来三分之二的空白——一个 25 天大的花园撑不满
-// 90°，硬撑的结果就是「这个板块看起来没东西」。
-export const MIN_WINDOW = Math.PI / 3;
-export interface SkyWindow { center: number; span: number; rInner: number; rOuter: number; }
+// —— 相机：fit 到版心，不再 fit 到「一个可读的天区」——————————————
+// 底图不是量尺了，没有「必须读得出弧的弯度」这回事；版心自己就是取景框。
+// 版心 = 所有星的包围盒 + 留白，下限保证八颗星的时候也是一张版而不是一撮点。
+export const PLATE_PAD = 88;
+export const PLATE_MIN_W = 780;
+export const PLATE_MIN_H = 526;
 
-// 圆周上包含全部角度的最短弧：排序后找最大空隙，取其补弧。
-export const skyWindow = (posts: Pick<BlogPost, 'createdAt'>[], now = Date.now()): SkyWindow => {
-  // rOuter 一定要盖住节气环：那一圈标注是这张图的坐标说明，不该在「全图」时被裁掉。
-  const fallback: SkyWindow = {
-    center: angleForDate(now), span: TAU, rInner: SKY_INNER - 30, rOuter: SKY_RADIUS + 30,
-  };
-  if (!posts.length) return fallback;
-  const angles = [...new Set(posts.map(p => angleForDate(p.createdAt)))].sort((a, b) => a - b);
-  if (angles.length === 1) return { ...fallback, center: angles[0], span: MIN_WINDOW };
+export interface Plate { x: number; y: number; width: number; height: number }
 
-  let gapStart = 0, gap = 0;
-  for (let i = 0; i < angles.length; i++) {
-    const next = angles[(i + 1) % angles.length] + (i === angles.length - 1 ? TAU : 0);
-    if (next - angles[i] > gap) { gap = next - angles[i]; gapStart = i; }
+export const plateBounds = (points: { x: number; y: number }[]): Plate => {
+  if (!points.length) {
+    return { x: CENTER.x - PLATE_MIN_W / 2, y: CENTER.y - PLATE_MIN_H / 2, width: PLATE_MIN_W, height: PLATE_MIN_H };
   }
-  const arc = TAU - gap;
-  const start = angles[(gapStart + 1) % angles.length];
-  const span = Math.min(TAU, Math.max(MIN_WINDOW, arc * 1.35));
-  return { ...fallback, center: start + arc / 2, span };
-};
-
-// 天区 → 视口包围盒。沿两条弧取样即可，扇形的极值一定落在弧上或径向边上。
-export const skyBounds = (win: SkyWindow) => {
-  const xs: number[] = [], ys: number[] = [];
-  for (let i = 0; i <= 64; i++) {
-    const a = win.center - win.span / 2 + (win.span * i) / 64;
-    for (const r of [win.rInner, win.rOuter]) {
-      xs.push(CENTER.x + Math.cos(a) * r);
-      ys.push(CENTER.y + Math.sin(a) * r);
-    }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of points) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
   }
-  const x = Math.min(...xs), y = Math.min(...ys);
-  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+  let w = Math.max(PLATE_MIN_W, x1 - x0 + PLATE_PAD * 2);
+  let h = Math.max(PLATE_MIN_H, y1 - y0 + PLATE_PAD * 2);
+  // 长宽比锁死，版心永远是同一张纸的形状
+  if (w / h < PLATE_MIN_W / PLATE_MIN_H) w = h * (PLATE_MIN_W / PLATE_MIN_H);
+  else h = w * (PLATE_MIN_H / PLATE_MIN_W);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return { x: cx - w / 2, y: cy - h / 2, width: w, height: h };
 };
 
 const pairKey = (a: string, b: string) => [a, b].sort().join('|');
 
-// ✦ 星等：真实星图只有几档星等，这里也只有 5 档，和字号/墨度/线宽一样是刻度而不是连续值。
+// ✦ 星等 = 篇幅。一档，不可切。
 //
-// 排序用语料内的分位数，不用绝对对数。曾经写的是 4 + log2(字数+32)*0.72，问题是
-// log2 对任何真实文章都落在同一个量级（2000 字 ≈ 11，20000 字 ≈ 14.3），
-// 于是每颗星都顶到 16 的上限——屏幕上是一片 70px 的白肉球，互相粘成阿米巴。
-// 分位数保证无论语料多长多短，天上永远是「少数几颗亮星 + 一片小星」。
-// 跨度刻意收窄：真实图版上一等星和五等星的差别是含蓄的。
-// 2→6 的半径差意味着 9 倍面积，最亮那颗会像个洞。
-const MAGNITUDE_RADII = [2.2, 2.8, 3.4, 4.2, 5.2];
-const starWeight = (post: BlogPost, degree: number) => post.content.length + degree * 800;
+// 门限必须贴着真实数据定：现有最长的一篇 25 分钟，五等门限就得 ≤25，
+// 否则最亮那档和「芒」永远不会出现——整张图会是一片平的。原型里踩过这个坑。
+// 曾经用过语料内分位数，问题是它让同一篇文章的亮度随着别人写了什么而变；
+// 绝对门限则是「这篇有多长」的老实回答，也不会因为新文章而改动旧星的亮度。
+const MAG_MINUTES = [7, 12, 18, 25];
+export const magnitudeOf = (post: Pick<BlogPost, 'content'>): number => {
+  const minutes = readingMinutes(post.content);
+  let m = 1;
+  for (const gate of MAG_MINUTES) if (minutes >= gate) m++;
+  return Math.min(5, m);
+};
+// 星的屏幕半径由 CSS 的 --sky-r1..5 给（缩放补偿在那里做），这份只作兜底。
+const MAGNITUDE_RADII = [2.4, 2.9, 3.6, 4.6, 6.4];
 
 const makeLink = (
   kind: LinkKind,
@@ -446,8 +481,8 @@ export const buildGraph = (
 
   const core: GNode = { key: '__core', kind: 'core', x: CENTER.x, y: CENTER.y, r: 23, hitR: 23 };
 
-  // 角度=日期、半径=分类带、拥挤处贪心让位。详见文件头与 layoutStars()。
-  const layout = layoutStars(posts, now);
+  // 出生时择邻，此后终生不迁。详见文件头与 layoutStars()。
+  const layout = layoutStars(posts);
 
   // 带的序位归一到 0–1，交给界面换算光谱型：最早开垦的分类在内圈（暖），新话题在外圈（冷）。
   // 只有一条带时给 0.5（中间那档的近白），不然一整片天会是单调的暖或单调的冷。
@@ -527,11 +562,7 @@ export const buildGraph = (
         const positions = group.map(p => postNodes.get(p.id)!);
         const avgX = positions.reduce((sum, n) => sum + n.x, 0) / positions.length;
         const avgY = positions.reduce((sum, n) => sum + n.y, 0) / positions.length;
-        const dx = avgX - CENTER.x, dy = avgY - CENTER.y;
-        const seat = seatOne(
-          layout.grid, Math.atan2(dy, dx), Math.max(SKY_INNER, Math.hypot(dx, dy) - 30),
-          SKY_OUTER, MIN_SEP * 1.25,
-        );
+        const seat = seatNear(layout.grid, avgX, avgY);
         const node: GNode = {
           key: `tag:${key}`, kind: 'tag', tag: name, count: group.length,
           x: seat.x, y: seat.y, angle: seat.angle, radius: seat.radius,
@@ -562,7 +593,8 @@ export const buildGraph = (
   // 作者亲手写下的双链最可信；去重但保留来源，用于抽屉解释。
   const titleIndex = buildTitleIndex(posts);
   const wikiSeen = new Set<string>();
-  const pendingNodes = new Map<string, GNode>();
+  // 欠着的稿子只进观测手记，不落星：它是园丁的待办，不是读者的地标。
+  const pendingTitles = new Map<string, { title: string; sourceId: string }>();
   posts.forEach(source => {
     const sourceNode = postNodes.get(source.id)!;
     extractWikiLinks(source.content).forEach(title => {
@@ -580,21 +612,10 @@ export const buildGraph = (
         return;
       }
       if (target?.id === source.id) return;
-      const pendingKey = `pending:${source.id}:${title.toLowerCase()}`;
-      if (pendingNodes.has(pendingKey)) return;
-      // 待种的星位挨着引用它的那篇，落在稍外侧——「这篇文章伸手够向的地方」。
-      const offset = (seeded(pendingKey) > 0.5 ? 1 : -1) * 0.05;
-      const seat = seatOne(
-        layout.grid, (sourceNode.angle ?? 0) + offset,
-        (sourceNode.radius ?? SKY_INNER) + 34, SKY_OUTER,
-      );
-      const pending: GNode = {
-        key: pendingKey, kind: 'pending', pendingTitle: title, sourcePostId: source.id,
-        x: seat.x, y: seat.y, angle: seat.angle, radius: seat.radius,
-        r: 5, hitR: MIN_SEP / 2,
-      };
-      pendingNodes.set(pendingKey, pending);
-      links.push(makeLink('pending', sourceNode, pending, '#94a3b8', `等待种下 [[${title}]]`, { sourcePostId: source.id }));
+      // 「未种下的星」这个概念已经去掉：欠着的稿子不该在天上占一个位置，
+      // 它是园丁的待办不是读者的地标。仍然记进 signals，只是不再画成星。
+      const key = `pending:${source.id}:${title.toLowerCase()}`;
+      if (!pendingTitles.has(key)) pendingTitles.set(key, { title, sourceId: source.id });
     });
   });
 
@@ -609,26 +630,17 @@ export const buildGraph = (
     if (l.kind === 'shared-tag' && strongPairs.has(pairKey(l.a.post!.id, l.b.post!.id))) links.splice(i, 1);
   }
 
-  const degree = new Map<string, number>();
-  links.forEach(link => {
-    if (link.kind === 'pending') return;
-    if (link.a.kind === 'post') degree.set(link.a.post!.id, (degree.get(link.a.post!.id) ?? 0) + 1);
-    if (link.b.kind === 'post') degree.set(link.b.post!.id, (degree.get(link.b.post!.id) ?? 0) + 1);
-  });
   // magnitude 这里是「亮度序位」，1 最暗、5 最亮——与天文学的星等方向相反，
   // 但全站（标注 LOD、Tab 顺序、最亮的星）都按「大 = 亮」读，别改方向。
-  const ordered = [...posts].sort((a, b) =>
-    starWeight(a, degree.get(a.id) ?? 0) - starWeight(b, degree.get(b.id) ?? 0) || a.id.localeCompare(b.id));
-  ordered.forEach((post, index) => {
-    const tier = ordered.length <= 1 ? 4 : Math.min(4, Math.floor((index / ordered.length) * 5));
+  posts.forEach(post => {
     const node = postNodes.get(post.id)!;
-    node.r = MAGNITUDE_RADII[tier];
-    node.magnitude = tier + 1;
+    node.magnitude = magnitudeOf(post);
+    node.r = MAGNITUDE_RADII[node.magnitude - 1];
   });
 
   // 命中区收到「到最近邻的一半」：相邻两个命中区最多相切，永不相交。
   // 上限 15 是拇指的舒适尺寸，下限保证再挤也还点得到（不够就靠缩放，命中区随之放大）。
-  [...postNodes.values(), ...tagNodes.values(), ...pendingNodes.values()].forEach(node => {
+  [...postNodes.values(), ...tagNodes.values()].forEach(node => {
     const gap = layout.grid.nearest(node.x, node.y);
     node.hitR = Math.min(15, Math.max(node.r + 2, (Number.isFinite(gap) ? gap : MIN_SEP) / 2));
   });
@@ -649,11 +661,11 @@ export const buildGraph = (
     detail: '它们没有合集、双链或可复用主题；也许值得补一条通往旧思想的路。',
     postIds: orphans.map(p => p.id),
   });
-  pendingNodes.forEach(node => signals.push({
-    id: node.key, kind: 'pending', severity: 3,
-    title: `未种下：${node.pendingTitle}`,
-    detail: `《${postNodes.get(node.sourcePostId!)?.post?.title ?? '一篇文章'}》正在等待这颗星。`,
-    postIds: [node.sourcePostId!], pendingTitle: node.pendingTitle,
+  pendingTitles.forEach(({ title, sourceId }, key) => signals.push({
+    id: key, kind: 'pending', severity: 3,
+    title: `未种下：${title}`,
+    detail: `《${postNodes.get(sourceId)?.post?.title ?? '一篇文章'}》正在等待这颗星。`,
+    postIds: [sourceId], pendingTitle: title,
   }));
   const oldSeedlings = posts.filter(p => p.growth === 'seedling' && now - p.updatedAt > 30 * DAY);
   if (oldSeedlings.length) signals.push({
@@ -675,9 +687,9 @@ export const buildGraph = (
   signals.sort((a, b) => b.severity - a.severity);
 
   const ranked = [...postNodes.values()].sort((a, b) => (b.magnitude ?? 0) - (a.magnitude ?? 0));
-  const nodes = [core, ...tagNodes.values(), ...postNodes.values(), ...pendingNodes.values()];
+  const nodes = [core, ...tagNodes.values(), ...postNodes.values()];
   return {
-    nodes, links, tagNodes, postNodes, pendingNodes, tagMap, series, neighbors, signals, core,
+    nodes, links, tagNodes, postNodes, tagMap, series, neighbors, signals, core,
     brightest: ranked[0]?.post,
     stalest: [...posts].sort((a, b) => a.updatedAt - b.updatedAt)[0],
   };

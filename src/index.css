@@ -201,6 +201,94 @@ body {
 
 /* 🎼 水纹词场：不再把歌词关进卡片，以距离、余韵与逐字墨迹表达时间。 */
 
+/* ════════════════════════════════════════════════════════════════════════
+   共鸣光场：唱片近光 + 空间远光。颜色层固定为两张，切歌只交叉 opacity；
+   音乐帧只触碰外层 opacity / transform，不逐帧改渐变、阴影或模糊。
+   ════════════════════════════════════════════════════════════════════════ */
+.resonance-light-root {
+    inset: -6% -4%;
+    z-index: 0;
+    overflow: visible;
+    transition: opacity 300ms ease-out;
+}
+
+.resonance-light-region {
+    position: absolute;
+    opacity: .04;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+    transform-origin: center;
+}
+
+.resonance-light-root[data-dynamic="true"] .resonance-light-region {
+    will-change: opacity, transform;
+}
+
+.resonance-light-color {
+    position: absolute;
+    inset: 0;
+    transition-property: opacity;
+    transition-timing-function: cubic-bezier(.22, .61, .36, 1);
+}
+
+.resonance-light-near {
+    left: 27%;
+    top: 43%;
+    width: min(47vw, 680px);
+    aspect-ratio: 1;
+}
+
+.resonance-light-near-color {
+    background: radial-gradient(
+        ellipse 50% 48% at 50% 44%,
+        color-mix(in srgb, var(--resonance-color) 92%, transparent) 0%,
+        color-mix(in srgb, var(--resonance-color) 58%, transparent) 34%,
+        color-mix(in srgb, var(--resonance-color) 20%, transparent) 62%,
+        transparent 79%
+    );
+}
+
+.resonance-light-far {
+    left: 39%;
+    top: 45%;
+    width: min(82vw, 1160px);
+    height: min(76vh, 760px);
+}
+
+.resonance-light-far-color {
+    background: radial-gradient(
+        ellipse 52% 58% at 31% 48%,
+        color-mix(in srgb, var(--resonance-color) 72%, transparent) 0%,
+        color-mix(in srgb, var(--resonance-color) 32%, transparent) 38%,
+        color-mix(in srgb, var(--resonance-color) 10%, transparent) 61%,
+        transparent 78%
+    );
+}
+
+.dark .resonance-light-near-color { filter: saturate(1.06) brightness(1.08); }
+.dark .resonance-light-far-color { filter: saturate(1.03) brightness(1.04); }
+
+/* 手机把根节点挂在唱片内部，只留一层主光；可见直径约为唱片的 1.5 倍。 */
+.resonance-light-root[data-compact="true"] {
+    inset: -28%;
+}
+
+.resonance-light-root[data-compact="true"] .resonance-light-near {
+    left: 50%;
+    top: 50%;
+    width: 100%;
+}
+
+[data-oasis-transition="on"] .resonance-light-root {
+    opacity: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .resonance-light-color,
+    .resonance-light-root {
+        transition: none;
+    }
+}
+
 /* 上缘收得快（已唱的干脆退场），下缘化得开（将唱的若隐若现） */
 .lyric-field {
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 74%, transparent 99%);
@@ -300,9 +388,9 @@ body {
     );
 }
 
-/* 行进辉光：t·(1−t) 在正在点亮的那个字上取极大，光点跟着唱走 */
+/* 当前字只用可读墨色推进；发光交给文字背后的独立衬光，避免每帧重绘字形阴影。 */
 .lyric-row[data-active="true"] .lyric-beat {
-    text-shadow: 0 0 calc(var(--t) * (1 - var(--t)) * 26px) var(--accent);
+    text-shadow: none;
 }
 
 .lyric-translation {
@@ -399,64 +487,84 @@ body {
    9 档线宽，「没有刻度」正是它读起来像机器生成的首要原因。
    ══════════════════════════════════════════════════════════════════════════ */
 .oasis-sky {
-    /* 天色。两个停点而不是一个纯色：天空本来就有梯度，一道极缓的渐变
-       就足以让画面有上下之分，代价是零（一个 background-image，不参与合成）。 */
-    --sky-hi: #EDF4F0;
-    --sky-lo: #FAF7F1;
-    --sky-ink: #243230;
+    /* ── 昼：宣纸。两个停点而不是一个纯色，纸本来就有明暗。 ── */
+    --sky-hi: #F4EEE0;
+    --sky-lo: #FCFAF4;
+    --sky-ink: #1F262B;
 
     /* 初音绿分两个：画线用亮的，写字必须用暗的。
-       #39C5BB 落在浅底上只有 1.9:1，小字根本读不了；#1B7A74 是 4.5:1。
-       这是 TRACK-C-UI §2.1 里 ACCENT / ACCENT_TEXT 的同一条规矩。 */
+       #39C5BB 落在浅底上只有 1.9:1，小字根本读不了；#1B7A74 是 4.5:1。 */
     --sky-accent: #39C5BB;
     --sky-accent-text: #1B7A74;
-    --sky-pending: #C2566B;   /* 樱粉的可读版：只给「待种下的星」，全图唯一的第二色 */
 
-    /* ✦ 星色 = 光谱型 × 星等，不再是 UI 强调色兑白。
-       曾经写的是「分类色（AURA 的 #60A5FA / #A78BFA，即 Tailwind sky-400 / violet-400）
-       兑白 90%」，实测落在 oklab C≈0.129——那是为「白底上 4.5:1 的按钮」调的色度，
-       拿来当星，屏幕上就是三颗不同口味的马卡龙。真实星图上的星是 L≈0.95 / C≈0.02–0.04：
-       够亮，几乎不显色，色相只在最亮的那几颗上看得见（参宿四的红、参宿七的蓝）。
+    /* 闲章：纸上是朱砂，夜里是樱粉。全图唯一的第二色。 */
+    --sky-seal: #B5443C;
 
-       五档光谱由内圈到外圈：暖 → 冷。分类带的次序本来就是「该分类第一篇的写作时间」，
-       于是这条映射白送一个天文学上正确的读法——蓝星年轻寿命短，新开的话题就是外圈的蓝星，
-       写了几年的老坑是内圈的暖星。整条 ramp 的色度 0.014–0.078。 */
-    --sky-sp1: #FFCBA4;   /* M · 最内圈：最早的兴趣 */
+    /* ✦ 分类的色相。三档，对齐 gallery 的分类 chip；数值仍取自原来的 O–M 光谱阶，
+       不新造颜色。色相只是一丝——真实星图上的星几乎不显色，
+       色相只在最亮的那几颗上看得见（参宿四的红、参宿七的蓝）。 */
+    --sky-sp1: #FFCBA4;   /* M · 暖 */
     --sky-sp2: #FFE9C9;   /* K */
     --sky-sp3: #FFF8EE;   /* G */
     --sky-sp4: #EAF1FA;   /* A */
-    --sky-sp5: #B9CFFF;   /* B · 最外圈：新开的话题 */
+    --sky-sp5: #B9CFFF;   /* B · 冷 */
+    --sky-cat-essay: var(--sky-sp1);   /* 随笔：最暖 */
+    --sky-cat-proj:  var(--sky-sp2);   /* 项目复盘 */
+    --sky-cat-note:  var(--sky-sp4);   /* 学习笔记：最冷 */
 
-    /* 星等 → 往底色里兑多少光谱色。白天不分档：图版上的星是同一种墨，靠大小说话，
-       五档明度差会让淡墨的小星在纸上直接消失。夜里才越亮越显色。 */
-    --sky-m1: 34%;
-    --sky-m2: 34%;
-    --sky-m3: 34%;
-    --sky-m4: 34%;
-    --sky-m5: 34%;
+    /* ✦ 星等阶（五档，两态共用同一批令牌，只换值）
+       核里兑多少分类色。白天全档同一个低值——图版上的星是同一种墨，
+       五档明度差会让淡墨的小星在纸上直接消失，彩墨还会糊成一片褐点。 */
+    --sky-mix1: 14%;
+    --sky-mix2: 14%;
+    --sky-mix3: 14%;
+    --sky-mix4: 14%;
+    --sky-mix5: 14%;
     --sky-star-base: var(--sky-ink);
 
-    /* 星晕的颜色是固定的冷白，不是星色——彩色光晕是游戏 HUD 的做法。
-       --sky-halo 是总开关（白天 0），每档星等再乘一个系数，暗星完全不发光：
+    /* 墨分五色：清 → 焦。白天的星等靠**墨色深浅 + 大小**一起说。 */
+    --sky-dk1: 56%;
+    --sky-dk2: 66%;
+    --sky-dk3: 78%;
+    --sky-dk4: 90%;
+    --sky-dk5: 100%;
+
+    /* 外晕。--sky-halo 是总开关（白天 0），每档星等再乘一个系数：
        全场一起发光就没有远近，那正是上一版「一片发光肉球」的由来。 */
-    --sky-bloom: #D8E6F2;
     --sky-halo: 0;
+    --sky-ho1: 0;
+    --sky-ho2: 0;
+    --sky-ho3: 0;
+    --sky-ho4: .2;
+    --sky-ho5: .46;
+
+    /* 墨晕：白天的那一层「洇」。夜里总开关是 0。 */
+    --sky-bleed: 1;
+    --sky-bo1: .30;
+    --sky-bo2: .36;
+    --sky-bo3: .44;
+    --sky-bo4: .54;
+    --sky-bo5: .66;
+
+    /* 星尘与银河是材质，不是数据——和纸纹同一个身份。
+       白天它们是纸上的细墨点与一道淡墨渲染。 */
+    --sky-dust: .2;
+    --sky-dust-fill: var(--sky-ink);
+    --sky-galaxy: .09;
     --sky-nebula: 0;
 
+    --sky-plate: .42;         /* 白天的乌丝栏比夜里实；内框线另行隐去 */
     --sky-rule: color-mix(in srgb, var(--sky-ink) 22%, transparent);
     --sky-rule-faint: color-mix(in srgb, var(--sky-ink) 11%, transparent);
 
     /* 航线的墨度。它必须比星轻——星是主角，线是它们之间的关系。
-       星色改成光谱型之后（往底色里只兑三成），日间的星比以前淡了不少，
-       原来那档 62% 的线立刻成了整屏最重的东西，所以两态一起退到 38%。
-       两态同档也不再需要为光渗（halation）另开一档：浅色线画在深底上会「发胀」，
-       那是 62% 才明显的事，38% 上两态看起来已经是同样的分量。 */
-    --sky-link: var(--sky-o2);
-    --sky-link-hot: var(--sky-o4);
+       三档：全图 o3 → 凑近 o4 → 点亮 o5。 */
+    --sky-link: var(--sky-o3);
+    --sky-link-hot: var(--sky-o5);
 
-    --sky-o1: .06;   /* 年轮、分类带的底线 */
+    --sky-o1: .06;   /* 底纹 */
     --sky-o2: .16;   /* 次刻度、被隐去的东西 */
-    --sky-o3: .38;   /* 淡墨标注：非当前节气 */
+    --sky-o3: .38;   /* 淡墨标注 */
     --sky-o4: .62;   /* 次要文字 */
     --sky-o5: 1;     /* 墨 */
 
@@ -468,22 +576,32 @@ body {
         radial-gradient(120% 82% at 50% 4%, var(--sky-hi) 0%, var(--sky-lo) 68%);
 }
 
-/* 入夜。全站 auto 主题按时间切换，于是「晚上打开 Oasis，星空才是真的」自然成立。 */
+/* ── 夜：星野。几何、构图、注记与白天完全共用，只换光。 ── */
 .dark .oasis-sky {
     --sky-hi: #11242C;
     --sky-lo: #081219;
     --sky-ink: #E4EEE8;
     --sky-accent-text: #6FD8CF;
-    --sky-pending: #F2A9BD;
+    --sky-seal: #F2A9BD;
     --sky-star-base: #FFFFFF;
-    --sky-m1: 45%;
-    --sky-m2: 55%;
-    --sky-m3: 70%;
-    --sky-m4: 85%;
-    --sky-m5: 100%;
+
+    /* 色相住在外晕上，核几乎不显色：亮星在真实照片里核已过曝成白。
+       所以兑比按星等**反着走**——五等只兑 26%，一等兑 78%。 */
+    --sky-mix1: 78%;
+    --sky-mix2: 78%;
+    --sky-mix3: 52%;
+    --sky-mix4: 26%;
+    --sky-mix5: 26%;
+
     --sky-halo: 1;
+    --sky-bleed: 0;
+    --sky-dust: 1;
+    --sky-dust-fill: ;        /* 空值 → 落回组件写的三色尘 */
+    --sky-galaxy: .26;
     /* 星云的雾要么给足要么别画：.12 配 r×6 在屏幕上根本看不见，却每帧都在画。 */
     --sky-nebula: .2;
+    --sky-plate: .22;
+
     background:
         radial-gradient(126% 88% at 50% 100%, var(--sky-hi) 0%, var(--sky-lo) 62%);
 }
@@ -510,97 +628,187 @@ body {
        8 篇文章时自动取景落在 3.8 倍，最亮那颗 r=5.2 就变成屏幕上 19.8px 半径的圆盘
        ——那不是星，那是行星，也就是「星球只是个纯色球」的全部成因。
 
-       五档半径 1.1 / 1.6 / 2.2 / 3 / 4.2 px，差 14 倍面积，才是图版上一等星与五等星的关系。
+       五档半径 2.4 / 2.9 / 3.6 / 4.6 / 6.4 px，差约 7 倍面积。
+       整体调小、调锐：暗底上「小而实」的点才像星，「大而软」的球是游戏 HUD。
        用 CSS 的 r 属性（SVG 2 geometry property）而不是 JS 算：--sky-scale 每帧都写，
        浏览器自己算 calc()，一次 setState 都不必有。元素上仍保留 r 属性做兜底。 */
-    --sky-r1: calc(1.1px / var(--sky-scale));
-    --sky-r2: calc(1.6px / var(--sky-scale));
-    --sky-r3: calc(2.2px / var(--sky-scale));
-    --sky-r4: calc(3px / var(--sky-scale));
-    --sky-r5: calc(4.2px / var(--sky-scale));
-    --sky-r-core: calc(1.1px / var(--sky-scale));
-    --sky-r-pending: calc(3.2px / var(--sky-scale));
+    --sky-r1: calc(2.4px / var(--sky-scale));
+    --sky-r2: calc(2.9px / var(--sky-scale));
+    --sky-r3: calc(3.6px / var(--sky-scale));
+    --sky-r4: calc(4.6px / var(--sky-scale));
+    --sky-r5: calc(6.4px / var(--sky-scale));
     --sky-r-obs: calc(3.6px / var(--sky-scale));
     --sky-r-ring: calc(9px / var(--sky-scale));
+    /* 星尘的上限 0.95px，恒小于最暗的数据星（2.4px）——层级不许倒挂 */
+    --sky-r-dust: calc(.95px / var(--sky-scale));
 }
 
-/* 标注的描边留白：让字压过刻度线时仍然可读。描的是天色，不是发光。
-   两态各描各的底色，所以只有一条规则。 */
-/* ⚠️ 描的是天色，但天色是 --sky-hi → --sky-lo 的渐变，只描 --sky-lo 的话
-   画面上半区的每个字都镶着一圈错色的边。取两端的中值，两态各自成立。 */
-.oasis-sky-label {
-    paint-order: stroke;
-    stroke: color-mix(in srgb, var(--sky-lo) 70%, var(--sky-hi));
-    stroke-width: calc(4px / var(--sky-scale));
+/* ══ 星野的画法 ════════════════════════════════════════════════════════
+   全部尺寸锁在屏幕像素上：字号除以 --sky-scale，线走 non-scaling-stroke，
+   星半径走 CSS 的 r 属性。相机每帧只写一个 --sky-scale，其余交给浏览器算 calc()。 */
+.oasis-sky-hair {
+    fill: none;
+    stroke: var(--sky-ink);
+    stroke-width: var(--sky-w2);
+    vector-effect: non-scaling-stroke;
+}
+
+/* 注记。描边留白让字压过刻度线时仍然可读——描的是天色，不是发光。
+   天色是渐变，只描 --sky-lo 的话画面上半区每个字都镶着一圈错色的边，所以取两端中值。 */
+.oasis-sky-name,
+.oasis-sky-figure,
+.oasis-sky-tick,
+.oasis-sky-cz,
+.oasis-sky-cm,
+.oasis-sky-ck {
+    fill: var(--sky-ink);
+    paint-order: stroke fill;
+    stroke: color-mix(in srgb, var(--sky-hi) 50%, var(--sky-lo));
+    stroke-width: calc(3px / var(--sky-scale));
     stroke-linejoin: round;
+    user-select: none;
+    pointer-events: none;
+}
+.oasis-sky-name   { font-size: calc(13px / var(--sky-scale)); letter-spacing: calc(1.6px / var(--sky-scale)); }
+.oasis-sky-figure { font-size: calc(15px / var(--sky-scale)); letter-spacing: calc(5px / var(--sky-scale)); }
+.oasis-sky-tick   { font-size: calc(9.5px / var(--sky-scale)); letter-spacing: calc(1.4px / var(--sky-scale));
+                    font-family: var(--font-mono); }
+.oasis-sky-name[data-on='0'] { opacity: 0; }
+.oasis-sky-name[data-on='1'] { opacity: 1; }
+.oasis-sky-name, .oasis-sky-figlabel { transition: opacity .3s ease; }
+.oasis-sky-figlabel[data-on='0'],
+.oasis-sky-figlabel[data-fit='0'] { opacity: 0; }
+
+/* ── 星是四层，不是一个圆 ──
+   核：亮星几乎白（--sky-mix 按星等反着走）；白天是墨分五色（--sky-dk）。
+   ⚠️ color-mix() 只能写在 CSS 里，写进 SVG 表现属性会静默失效、fill 变纯黑。 */
+.oasis-sky-star {
+    fill: color-mix(in oklab, var(--tint) var(--mixp, 60%), var(--sky-star-base));
+    transition: opacity .45s ease;
+}
+.oasis-sky:not(.dark .oasis-sky) .oasis-sky-star {
+    fill: color-mix(in oklab,
+        color-mix(in oklab, var(--tint) 14%, var(--sky-ink)) var(--dk, 80%), var(--sky-lo));
+}
+.dark .oasis-sky .oasis-sky-star {
+    fill: color-mix(in oklab, var(--tint) var(--mixp, 60%), var(--sky-star-base));
+}
+/* 外晕：色相住在这里，核几乎不显色。白天这一层变成洇开的墨晕。 */
+.oasis-sky-halo {
+    color: var(--tint);
+    opacity: calc(var(--sky-halo) * var(--ho, 0) + var(--sky-bleed) * var(--bo, 0));
+    transition: opacity .45s ease;
+    pointer-events: none;
+}
+.oasis-sky:not(.dark .oasis-sky) .oasis-sky-halo { r: calc(var(--br, 6px) / var(--sky-scale)); }
+.oasis-sky-glow {
+    opacity: calc(var(--sky-halo) * var(--ho, 0));
+    transition: opacity .45s ease;
+    pointer-events: none;
+}
+/* 芒：只有五等有。CSS transform 锁屏幕尺寸，不进每帧 JS。 */
+.oasis-sky-spark {
+    transform-box: view-box;
+    transform-origin: 0 0;
+    transform: scale(calc(var(--kk, 6) / var(--sky-scale)));
+    opacity: calc(var(--sky-halo) * .9);
+    pointer-events: none;
+}
+.oasis-sky-blade { fill: var(--tint); fill-opacity: .42; }
+.oasis-sky-wire {
+    fill: none; stroke: var(--tint); stroke-opacity: .34;
+    stroke-width: .55; vector-effect: non-scaling-stroke;
+}
+.oasis-sky-care {
+    fill: none; stroke: var(--sky-seal); stroke-opacity: .75;
+    stroke-width: var(--sky-w2); vector-effect: non-scaling-stroke;
 }
 
-/* 静止的星只是一个点。名字在指过去时才出现——星图不为每颗星都写字。 */
-.oasis-sky-star .oasis-sky-star-name { opacity: 0; transition: opacity .18s ease; }
-.oasis-sky-star:hover .oasis-sky-star-name,
-.oasis-sky-star:focus-visible .oasis-sky-star-name,
-.oasis-sky-star[data-named='1'] .oasis-sky-star-name,
-.oasis-sky-star[data-selected='1'] .oasis-sky-star-name { opacity: 1; }
+.oasis-sky-star-g { transition: opacity .4s ease; cursor: pointer; }
+.oasis-sky-star-g[data-dim='1'] { opacity: .26; }
+/* 极限星等：一屏站得下多少颗星有物理上限，暗星退成底纹，凑近了才浮出来 */
+.oasis-sky-star-g[data-far='1'] { opacity: .22; }
+.oasis-sky-star-g:focus { outline: none; }
+.oasis-sky-star-g:focus-visible .oasis-sky-star { stroke: var(--sky-accent-text); stroke-width: 1.5; }
 
-.oasis-sky-hover-name { opacity: 0; pointer-events: none; transition: opacity .18s ease; }
-.oasis-sky-star:hover .oasis-sky-hover-name,
-.oasis-sky-star:focus-visible .oasis-sky-hover-name,
-.oasis-sky-star[data-selected='1'] .oasis-sky-hover-name { opacity: 1; }
-
-/* 悬停不再放大星体。半径修好之后星只有 2–8px，「胖 35%」根本看不出来；
-   在没修之前，那条规则做的事是把一个 40px 的球胀成 54px。
-   真正需要的是一枚出现的环——它在屏幕上恒定 9px，任何星等都读得到。 */
-.oasis-sky-star .oasis-sky-star-ring { opacity: 0; transition: opacity .18s ease; }
-.oasis-sky-star:hover .oasis-sky-star-ring { opacity: var(--sky-o3); }
-
-/* ⚠️ 点击蓝框：Safari 对带 tabindex 的 SVG 元素在「鼠标点击」时走的是 :focus 系统描边，
-   只重置 :focus-visible 是不够的（这正是旧版点一下就出现蓝框的原因）。
-   键盘焦点的可见性由下面那条选中环接管，可达性不倒退。 */
-.oasis-sky-star:focus,
-.oasis-sky-hit:focus { outline: none; }
-.oasis-sky-star:focus-visible .oasis-sky-star-ring,
-.oasis-sky-star[data-selected='1'] .oasis-sky-star-ring,
-.oasis-sky-hit:focus-visible .oasis-sky-star-ring { opacity: var(--sky-o5); }
-
-/* 夜里最亮的几颗极缓地明灭。只动 opacity、只给最亮的十几颗、相位各不相同——
-   一整片星同步呼吸是圣诞灯，不是星空。日间 --sky-halo 为 0，闪的是不存在的晕。 */
-/* ⚠️ 关键帧里必须写变量，不能写 1 / .45。
-   动画在层叠里胜过行内样式，若关键帧写死数值，星晕就会绕过「白天 --sky-halo 为 0」
-   这条规则，在日间的天上闪出两团灰晕——加了闪烁反而破坏了不发光的约定。
-   现在星晕的浓度按星等分档，组件把 calc(var(--sky-halo) * 系数) 写进 --bloom-o，
-   关键帧读它：白天 --sky-halo 为 0，两个关键帧都是 0，动画自然沉默。 */
-@keyframes oasis-sky-twinkle {
-    0%, 100% { opacity: var(--bloom-o, 0); }
-    50% { opacity: calc(var(--bloom-o, 0) * .45); }
+/* 关系线：星是主角，线是它们之间的关系，所以它必须更轻。三档。 */
+.oasis-sky-chain {
+    fill: none; stroke: var(--sky-ink); stroke-opacity: var(--sky-o3);
+    stroke-width: var(--sky-w2); vector-effect: non-scaling-stroke;
+    transition: stroke-opacity .4s ease;
 }
-.oasis-sky-twinkle { animation: oasis-sky-twinkle 9s ease-in-out infinite; }
+.oasis-sky-chains[data-near='1'] .oasis-sky-chain { stroke-opacity: var(--sky-o4); }
+.oasis-sky-chain[data-lit='1'] { stroke-opacity: var(--sky-o5); }
 
-/* 触屏一律不闪：几十个独立相位的动画是移动端最划不来的一笔开销。 */
-@media (pointer: coarse) {
-    .oasis-sky-twinkle { animation: none; }
+/* 星尘与银河：材质，不是数据。恒不参与拾取。 */
+.oasis-sky-dust {
+    fill: var(--sky-dust-fill, var(--dt));
+    fill-opacity: calc(var(--do, .2) * var(--sky-dust));
+    pointer-events: none;
+}
+.oasis-sky-galaxy { opacity: var(--sky-galaxy); pointer-events: none; }
+
+/* 图层：时间尺 */
+.oasis-sky-ruler { opacity: 0; transition: opacity .5s ease; pointer-events: none; }
+.oasis-sky-ruler[data-on='1'] { opacity: 1; }
+.oasis-sky-drop {
+    fill: none; stroke: var(--sky-accent-text); stroke-opacity: .32;
+    stroke-width: var(--sky-w2); stroke-dasharray: 2 4; vector-effect: non-scaling-stroke;
 }
 
-/* 流星：一次性划过，落在一颗随机星上。只动 transform/opacity。 */
-@keyframes oasis-sky-meteor {
-    0% { opacity: 0; transform: translate3d(var(--mx), var(--my), 0) scale(1); }
-    12% { opacity: .85; }
-    100% { opacity: 0; transform: translate3d(0, 0, 0) scale(1); }
+/* 款识：整块放进一个 scale(1/--sky-scale) 的子组，内部一律按 px 排版。
+   ⚠️ 字号锁屏幕而行距写 viewBox 单位的话，相机缩小时行会挤成一坨。 */
+.oasis-sky-fixed {
+    transform-box: view-box;
+    transform-origin: 0 0;
+    transform: scale(calc(1 / var(--sky-scale)));
 }
-.oasis-sky-meteor {
-    animation: oasis-sky-meteor 900ms cubic-bezier(.3, .7, .4, 1) forwards;
+.oasis-sky-fixed .oasis-sky-cz,
+.oasis-sky-fixed .oasis-sky-cm,
+.oasis-sky-fixed .oasis-sky-ck,
+.oasis-sky-fixed .oasis-sky-tick { stroke-width: 0; }
+.oasis-sky-cz { font-size: 27px; letter-spacing: 10px; }
+.oasis-sky-cm { font-size: 11.5px; letter-spacing: 1.6px; }
+.oasis-sky-ck { font-size: 9.5px; letter-spacing: 1.7px; font-family: var(--font-mono); }
+.oasis-sky-cartouche-frame {
+    fill: var(--sky-lo); fill-opacity: .84;
+    stroke: var(--sky-ink); stroke-opacity: var(--sky-o1);
+    stroke-width: var(--sky-w2); vector-effect: non-scaling-stroke;
+}
+.oasis-sky-fixedchain { stroke-opacity: var(--sky-o3); }
+
+/* 闲章：纸上是朱砂，夜里是樱粉。全图唯一的第二色。 */
+.oasis-sky-sealbox { fill: none; stroke: var(--sky-seal); stroke-opacity: .55;
+    stroke-width: var(--sky-w2); vector-effect: non-scaling-stroke; }
+.oasis-sky-sealchar { fill: var(--sky-seal); fill-opacity: .72; }
+
+/* 白天是刻本：单道乌丝栏，内框线隐去——双细线是工程图的语气。 */
+.oasis-sky:not(.dark .oasis-sky) .oasis-sky-innerrule { display: none; }
+
+.oasis-sky-btn {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--sky-ink); background: transparent;
+    border: .5px solid color-mix(in srgb, var(--sky-ink) 22%, transparent);
+    border-radius: 2px; padding: 7px 11px; cursor: pointer; opacity: var(--sky-o4);
+    transition: opacity .2s ease, border-color .2s ease, color .2s ease;
+}
+.oasis-sky-btn:hover { opacity: 1; border-color: color-mix(in srgb, var(--sky-ink) 45%, transparent); }
+.oasis-sky-btn[aria-pressed='true'] {
+    color: var(--sky-accent-text); opacity: 1;
+    border-color: color-mix(in srgb, var(--sky-accent-text) 55%, transparent);
 }
 
-/* 焦点位的柔光：取代旧的逐帧 textShadow，只动 opacity/transform */
+/* 当前句背后的阅读衬光：宽而淡，整句与译文共享，不跟频谱上下拉伸。 */
 .lyric-focus-glow {
-    height: 5.5rem;
+    height: 7.25rem;
     opacity: 0;
     transform: translate3d(0, -50%, 0);
     background: radial-gradient(
-        58% 50% at 20% 50%,
-        color-mix(in srgb, var(--accent) 40%, transparent),
-        transparent 72%
+        ellipse 45% 48% at 27% 50%,
+        color-mix(in srgb, var(--accent) 32%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 13%, transparent) 48%,
+        transparent 78%
     );
-    filter: blur(18px);
 }
 
 .lyric-focus-ripple {

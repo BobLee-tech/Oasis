@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>星野 · 交互原型</title>
+<style>
+:root{
+  --dust:.2;  --galaxy:.09;  /* 白天这道是淡墨渲染，不是银河——一笔带过就够 */
+  --bleed:1;                 /* 墨晕：纸上的点会洇。夜里是 0，那边靠发光 */
+  --seal:#B5443C;            /* 朱砂。夜里换回樱粉 */
+  --font-serif:"EB Garamond","LXGW WenKai Screen","Songti SC",ui-serif,Georgia,serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* 宣纸 + 松烟墨。原来的浅底偏青（#EDF4F0），水墨的纸要暖，墨要冷。 */
+  --sky-hi:#F4EEE0; --sky-lo:#FCFAF4; --sky-ink:#1F262B;
+  --accent-text:#1B7A74; --pending:#C2566B;
+  --o1:.06; --o2:.16; --o3:.38; --o4:.62; --o5:1;
+  --sp-note:#7E8C96; --sp-proj:#9A8460; --sp-essay:#A8724C;
+  --star-base:var(--sky-ink);   /* 核的底色。缺了它 color-mix 整条失效，核会静默变纯黑 */
+  --halo:0; --plate:.42; --s:1;   /* 白天的乌丝栏比夜里实 */
+}
+html.dark{
+  --sky-hi:#11242C; --sky-lo:#081219; --sky-ink:#E4EEE8;
+  --accent-text:#6FD8CF; --pending:#F2A9BD;
+  --sp-note:#EAF1FA; --sp-proj:#FFE9C9; --sp-essay:#FFCBA4;
+  --star-base:#FFFFFF;
+  --halo:1; --plate:.22; --dust:1; --galaxy:.26; --bleed:0;
+  --seal:#F2A9BD;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;overflow:hidden;font-family:var(--font-serif);color:var(--sky-ink);
+  background:radial-gradient(126% 88% at 50% 100%,var(--sky-hi) 0%,var(--sky-lo) 62%);
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+#stage{position:fixed;inset:0;touch-action:none;cursor:grab}
+#stage.dragging{cursor:grabbing}
+svg{display:block;width:100%;height:100%;overflow:visible}
+
+/* 恒定屏幕尺寸的注记：字号除以相机倍率，浏览器自己算 calc() */
+.fixed{transform-box:view-box;transform-origin:0 0;transform:scale(calc(1 / var(--s)))}
+.cz{font-size:27px;letter-spacing:10px}
+.cm{font-size:11.5px;letter-spacing:1.6px}
+.ck{font-size:9.5px;letter-spacing:1.7px;font-family:var(--font-mono)}
+.name {font-size:calc(13px / var(--s));letter-spacing:calc(1.6px / var(--s))}
+.sub  {font-size:calc(10px / var(--s));letter-spacing:calc(1.8px / var(--s));font-family:var(--font-mono)}
+.figure{font-size:calc(15px / var(--s));letter-spacing:calc(5px / var(--s))}
+.figure,#labels .sub{transition:opacity .35s ease}
+.tick {font-size:calc(9.5px / var(--s));letter-spacing:calc(1.4px / var(--s));font-family:var(--font-mono)}
+text{fill:var(--sky-ink);user-select:none;pointer-events:none}
+.hair{vector-effect:non-scaling-stroke;fill:none;stroke:var(--sky-ink)}
+#grainlayer{opacity:.055;mix-blend-mode:overlay;pointer-events:none}
+@media (max-width:767px){#grainlayer{display:none}}
+
+/* ✦ 星尘与银河是「这张图印在什么上」，和纸纹同一个身份：材质，不是数据。
+   它们恒不参与拾取、没有名字、没有连线、尺寸只有数据星的四分之一，
+   所以不会被误读成文章。少了它，六十篇就是六十个点，永远不会像一片天。 */
+.dust{fill-opacity:calc(var(--do,.2) * var(--dust));pointer-events:none}
+
+/* ✦ 星体是四层，不是一个圆：
+     核  near-white 的实心盘，最小的一档只有这一层
+     内晕 紧贴核的一圈光，三等起
+     外晕 大而极淡的雾，四等起 —— 分类的色相主要落在这里，核几乎不显色
+          （真实照片就是这样：亮星的色在晕上，核已经过曝成白）
+     芒  只有五等有。四角尖芒（内半径 .15 的 sparkle）+ 一对十字细丝
+   尺寸全部锁在屏幕像素上；芒用 CSS transform 缩放，浏览器自己算。 */
+.spark{transform-box:view-box;transform-origin:0 0;
+  transform:scale(calc(var(--kk,10) / var(--s)));
+  opacity:calc(var(--halo) * .9);pointer-events:none}
+.spark .blade{fill:var(--tint);fill-opacity:.42}
+.spark .wire{stroke:var(--tint);stroke-opacity:.34;stroke-width:.55;vector-effect:non-scaling-stroke;fill:none}
+#galaxy{opacity:var(--galaxy);pointer-events:none;color:#9FC6E8}
+#laidlayer{display:none;opacity:.09;mix-blend-mode:multiply;pointer-events:none}
+html:not(.dark) #innerrule{display:none}
+/* ⚠️ color-mix() 放在 SVG 的表现属性里不解析（fill 会静默变成黑），只能走 CSS。
+   夜里：核几乎白，分类的色相按星等兑进去（亮星更白，暗星更显色）。
+   白天：图版上的星是同一种墨，五档全用同一个兑比，**只靠大小说话**——
+   五档明度差会让淡墨的小星在纸上直接消失，彩墨还会糊成一团褐点。 */
+.star{fill:color-mix(in oklab, var(--tint) var(--mixp,60%), var(--star-base));
+  transition:opacity .45s ease}
+/* 墨分五色：焦、浓、重、淡、清。白天的星等靠**墨色深浅 + 大小**一起说，
+   只靠大小的话小星在纸上就是一粒灰,分不出轻重;只靠深浅又会糊成一片。
+   兑的是纸色不是透明,所以叠在淡墨渲染上也干净。色相只留一丝（14%）。 */
+html:not(.dark) .star{
+  fill:color-mix(in oklab, color-mix(in oklab, var(--tint) 14%, var(--sky-ink)) var(--dk,80%), var(--sky-lo))}
+/* 墨晕在纸上要洇得比夜里的光晕更开、更实 */
+html:not(.dark) .glow{r:calc(var(--br,6px) / var(--s))}
+html:not(.dark) .dust{fill:var(--sky-ink)!important}
+.halo{opacity:calc(var(--halo) * var(--ho,0));transition:opacity .45s ease;color:var(--tint)}
+.glow{color:#FFF;opacity:calc(var(--halo) * var(--ho,0) + var(--bleed) * var(--bo,0))}
+/* ✦ 水墨态：同一张天、同一套几何，只换光。
+   夜里星发光（--halo=1），白天墨洇纸（--bleed=1）——用的是同一个 .glow 图层。 */
+html:not(.dark) .glow{color:var(--sky-ink)}
+html:not(.dark) #galaxy{color:var(--sky-ink)}
+html:not(.dark) #laidlayer{display:block}
+html:not(.dark) .chain{stroke-width:var(--bw,1);stroke-linecap:round;stroke-opacity:var(--o4)}
+.chain{stroke:var(--sky-ink);stroke-opacity:var(--o3);stroke-width:1;
+  vector-effect:non-scaling-stroke;fill:none;transition:stroke-opacity .4s ease}
+g.dim{opacity:.26}
+/* 极限星等：全天图只画到某一等，暗星退成底纹，凑近了才浮出来。
+   星是恒定屏幕尺寸的，所以一屏能站多少颗是有上限的——
+   一百六十颗全按原样画在同一屏上，必然糊成一团光。这条规矩是纸质全天图的老办法。 */
+g.far{opacity:.22}
+g.lit .chain{stroke-opacity:var(--o5)}
+#figures.near .chain{stroke-opacity:var(--o4)}
+.lbl{opacity:0;transition:opacity .3s ease}
+.lbl.on{opacity:1}
+#ruler{opacity:0;transition:opacity .5s ease;pointer-events:none}
+#ruler.on{opacity:1}
+.drop{stroke:var(--accent-text);stroke-opacity:.32;stroke-width:1;stroke-dasharray:2 4;
+  vector-effect:non-scaling-stroke;fill:none}
+.care{opacity:0;transition:opacity .45s ease;fill:none;stroke:var(--pending);
+  stroke-opacity:.75;stroke-width:1;vector-effect:non-scaling-stroke}
+body.care .care{opacity:1}
+#titleblock,#colophon{transition:opacity .45s ease}
+/* 闲章。白天朱砂，夜里樱粉——版面上唯一的一点色，两态各归各的。 */
+.sealbox{fill:none;stroke:var(--seal);stroke-opacity:.55}
+.sealchar{fill:var(--seal);fill-opacity:.72}
+
+.chrome{position:fixed;pointer-events:none;z-index:10}
+#drawer{right:max(28px,3vw);bottom:max(24px,3vh);pointer-events:auto;
+  display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.row{display:flex;gap:7px;align-items:center}
+button{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--sky-ink);background:transparent;border:.5px solid color-mix(in srgb,var(--sky-ink) 22%,transparent);
+  border-radius:2px;padding:7px 11px;cursor:pointer;opacity:var(--o4);
+  transition:opacity .2s ease,border-color .2s ease,color .2s ease}
+button:hover:not(:disabled){opacity:1;border-color:color-mix(in srgb,var(--sky-ink) 45%,transparent)}
+button[aria-pressed="true"]{color:var(--accent-text);opacity:1;
+  border-color:color-mix(in srgb,var(--accent-text) 55%,transparent)}
+button:disabled{opacity:var(--o2);cursor:not-allowed}
+
+#card{position:fixed;right:max(28px,3vw);top:50%;transform:translateY(-50%) translateX(14px);
+  width:336px;max-width:calc(100vw - 40px);z-index:20;pointer-events:none;opacity:0;
+  transition:opacity .32s ease,transform .32s cubic-bezier(.2,.7,.3,1);
+  background:color-mix(in srgb,var(--sky-lo) 88%,transparent);
+  border:.5px solid color-mix(in srgb,var(--sky-ink) 20%,transparent);border-radius:2px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:24px 24px 20px}
+#card.on{opacity:1;transform:translateY(-50%) translateX(0);pointer-events:auto}
+#card .chapter{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent-text);margin:0 0 10px}
+#card h2{font-size:21px;font-weight:400;line-height:1.5;margin:0 0 12px;letter-spacing:.04em}
+#card .m{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;opacity:var(--o4);margin:0 0 16px;line-height:1.9}
+#card .ex{font-size:13.5px;line-height:1.95;opacity:var(--o4);margin:0 0 18px;white-space:pre-line}
+#card .tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px}
+#card .tags span{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;padding:3px 7px;
+  border:.5px solid color-mix(in srgb,var(--sky-ink) 16%,transparent);border-radius:2px;opacity:var(--o4)}
+#card .go{width:100%;text-align:left;padding:10px 12px}
+#card .neigh{display:flex;justify-content:space-between;gap:8px;margin-top:12px;
+  font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;opacity:var(--o3)}
+#card .neigh a{color:inherit;text-decoration:none;cursor:pointer;border-bottom:.5px solid transparent}
+#card .neigh a:hover{opacity:1;border-bottom-color:currentColor}
+#hint{left:50%;bottom:max(24px,3vh);transform:translateX(-50%);font-family:var(--font-mono);
+  font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;opacity:var(--o3);
+  transition:opacity .8s ease;white-space:nowrap}
+#hint.gone{opacity:0}
+#toast{left:50%;top:max(44px,5vh);transform:translateX(-50%);font-family:var(--font-mono);font-size:10px;
+  letter-spacing:.18em;padding:8px 14px;border:.5px solid color-mix(in srgb,var(--accent-text) 45%,transparent);
+  border-radius:2px;color:var(--accent-text);opacity:0;transition:opacity .3s ease}
+#toast.on{opacity:1}
+/* 星野是宽屏的东西。竖屏上这张版心只会缩成一条带，字反而压过图——
+   与其做一块永远不够好的手机版，不如在窄屏上把整块撤掉。
+   真实实现里：OasisDock 在窄屏隐藏星图入口，#/constellation 直接回落到 #/garden。 */
+#toosmall{display:none}
+@media (max-width:767px){
+  #stage,#drawer,#card,#hint,#toast{display:none}
+  #toosmall{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;padding:40px;text-align:center}
+  #toosmall .k{font-size:24px;letter-spacing:.42em;text-indent:.42em;opacity:var(--o5)}
+  #toosmall p{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;line-height:2.2;
+    opacity:var(--o4);margin:0;max-width:24em}
+  #toosmall .edge{position:fixed;inset:20px;border:.5px solid currentColor;opacity:var(--o2);pointer-events:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="stage">
+<svg id="sky" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet" aria-label="星野">
+  <defs>
+    <!-- 宣纸的帘纹：一组极淡的竖向条纹 + 低频纤维。各向异性的 baseFrequency 是关键，
+         各向同性的噪点是砂纸，不是纸。 -->
+    <filter id="laid" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".016 .74" numOctaves="2" seed="11"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <!-- 外晕：色相在这里，中心不满，边缘拖得很长 -->
+    <radialGradient id="hw"><stop offset="0" stop-color="currentColor" stop-opacity=".46"/>
+      <stop offset="38%" stop-color="currentColor" stop-opacity=".14"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
+    <!-- 内晕：紧、白、亮 -->
+    <!-- 紧的一圈。夜里是白光，白天是墨洇进纸里的那一晕——同一层，只换光 -->
+    <radialGradient id="hc"><stop offset="0" stop-color="currentColor" stop-opacity=".62"/>
+      <stop offset="52%" stop-color="currentColor" stop-opacity=".2"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
+    <!-- 纸纹：原型里现算，正式实现必须离线烘成 PNG（运行时 SVG filter 是每帧 GPU 开销） -->
+    <radialGradient id="mw"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/>
+      <stop offset="55%" stop-color="currentColor" stop-opacity=".05"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".82" numOctaves="3" seed="7"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+  <g id="cam">
+    <g id="plate"></g>
+    <g id="galaxy"></g>
+    <g id="dust"></g>
+    <g id="ruler"></g>
+    <g id="figures"></g>
+    <g id="labels"></g>
+    <g id="titleblock"></g>
+    <g id="colophon"></g>
+  </g>
+</svg>
+</div>
+
+<div class="chrome" id="drawer">
+  <div class="row">
+    <button id="t-ruler" aria-pressed="false">◎ 时间尺</button>
+    <button id="t-care"  aria-pressed="false">◎ 待照料</button>
+  </div>
+  <div class="row">
+    <button id="t-theme">昼 / 夜</button>
+    <button id="t-fit">全图</button>
+  </div>
+</div>
+
+<aside id="card" aria-live="polite">
+  <p class="chapter" id="c-chapter"></p>
+  <h2 id="c-title"></h2>
+  <p class="m" id="c-meta"></p>
+  <p class="ex" id="c-ex"></p>
+  <div class="tags" id="c-tags"></div>
+  <button class="go" id="c-go">进阅读舱 →</button>
+  <div class="neigh" id="c-neigh"></div>
+</aside>
+
+<div class="chrome" id="hint">拖动平移 · 滚轮缩放 · 悬停认星 · 点击开卡</div>
+<div class="chrome" id="toast"></div>
+
+<div id="toosmall">
+  <div class="edge"></div>
+  <div class="k">星野</div>
+  <p>这张星图是给宽屏的。<br>请到电脑上展开,或回花园按时间读。</p>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const el = (n, a = {}) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const seeded = str => { let h = 0; for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  const x = Math.sin(h) * 10000; return x - Math.floor(x); };
+
+/* ══ 真实数据：localStorage 里那 8 篇，一个字段没改 ═══════════════════ */
+const REAL = [
+  {id:"p1",t:"给我一颗可以反悔的心",   s:"COMP3121", cat:"note", cr:"2026-07-20",up:"2026-08-13",min:9, g:"growing",  tags:["计算机","comp3121","网络流"], ex:"网络流的引入与初步介绍"},
+  {id:"e1",t:"天行健，君子以自强不息", s:null,       cat:"essay",cr:"2026-07-18",up:"2026-08-05",min:3, g:"seedling", tags:["易经","随笔"],            ex:"丙午年六月初三，十九最后一次轻吻我"},
+  {id:"h1",t:"来日方长",               s:"Hackathon",cat:"proj", cr:"2026-07-25",up:"2026-08-06",min:2, g:"growing",  tags:["hackathon","projects"],   ex:"我们team第一次的线下final pitch"},
+  {id:"p2",t:"貌虽不一，却有她三分骨气",s:"COMP3121",cat:"note", cr:"2026-07-25",up:"2026-08-12",min:16,g:"evergreen",tags:["计算机","comp3121"],      ex:"物不以貌别，终见于骨气——归约的介绍与引入"},
+  {id:"p3",t:"贪恋有你的未来",         s:"COMP3121", cat:"note", cr:"2026-08-10",up:"2026-08-12",min:21,g:"growing",  tags:["计算机","comp3121"],      ex:"我贪恋的何止是当下，是你最有可能出现的未来。\n——贪心策略的介绍与引入"},
+  {id:"p4",t:"以史为鉴，不泥于史",     s:"COMP3121", cat:"note", cr:"2026-08-11",up:"2026-08-11",min:25,g:"seedling", tags:["comp3121","计算机"],      ex:"动态规划的介绍与应用"},
+  {id:"p5",t:"树下的分开又重逢",       s:"COMP3121", cat:"note", cr:"2026-08-11",up:"2026-08-12",min:18,g:"growing",  tags:["comp3121","计算机"],      ex:"分开是为了更好的重逢——Divide and Conquer 的一些整理"},
+  {id:"p6",t:"见招拆招，逢水架桥",     s:"COMP3121", cat:"note", cr:"2026-08-12",up:"2026-08-12",min:25,g:"growing",  tags:["comp3121","计算机"],      ex:"COMP3121的总结与一些考点"},
+];
+const CATNAME = {note:"学习笔记", proj:"项目复盘", essay:"随笔"};
+const CATVAR  = {note:"var(--sp-note)", proj:"var(--sp-proj)", essay:"var(--sp-essay)"};
+const GROW    = {seedling:"种子", growing:"生长中", evergreen:"常青"};
+const CN      = "零一二三四五六七八九十".split("");
+const cnNum = n => n <= 10 ? CN[n] : n < 20 ? `十${n % 10 ? CN[n % 10] : ""}`
+  : n < 100 ? `${CN[Math.floor(n / 10)]}十${n % 10 ? CN[n % 10] : ""}`
+  : String(n);          // 一百以上就写数字，「一百六十」在款识里太长
+
+/* ══ 落座：出生时择邻，此后终生不动 ═══════════════════════════════════
+   1) 按 createdAt 顺序依次落座，每一步只看「已经落好的星」，从不回头改。
+      → 「新增文章不移动任何旧星」是算法自带的，不是碰巧成立的。
+   2) 已有合集：从该合集最后一颗星沿它的走向续一步（带种子扰动），链自己长。
+   3) 新合集：在 137.5° 黄金角螺线上取下一个领地，半径 ∝ √k。
+      → 面积 ∝ 篇数，星密度恒定：n=8 和 n=800 的天「一样满」。
+      → 白送一条读法：天心是最早的兴趣，天边是新开的坑。
+   4) 散星：与已有群共标签就落在它旁边，否则也上螺线。
+   5) 冲突只往外推，永不换位。任意两星间距 ≥ MIN_SEP，命中区因而永不相交。 */
+const MIN_SEP = 34, STEP = 58, GOLD = 2.39996;
+const TERR = () => 168;   // 领地拉开：星座之间要有黑，图案才立得住
+const SQUASH = () => .72;          // 版心是横的，天也压扁一点
+function layout(posts) {
+  const seated = [], byId = {}, groups = new Map();
+  let terr = 0;
+  const far = (x, y) => { let g = 0;
+    for (let i = 0; i < 200; i++) { let hit = null;
+      for (const q of seated) { const d = Math.hypot(q.x - x, q.y - y); if (d < MIN_SEP) { hit = q; break; } }
+      if (!hit) break;
+      const a = Math.atan2(y - hit.y, x - hit.x) || (g += .7);
+      x = hit.x + Math.cos(a + g) * MIN_SEP * 1.06;
+      y = hit.y + Math.sin(a + g) * MIN_SEP * 1.06; }
+    return {x, y}; };
+  const spiral = key => { const k = terr++;
+    // 黄金角保证不重叠，种子扰动制造疏密。完全均匀的分布看着最不像天。
+    const a = k * GOLD + (seeded(key) - .5) * .8;
+    const r = TERR() * Math.sqrt(k + .55) * (.74 + seeded("q" + key) * .82);
+    return {x: Math.cos(a) * r, y: Math.sin(a) * r * SQUASH()}; };
+
+  for (const p of posts) {
+    const key = p.s || null;
+    let base;
+    if (key && groups.has(key)) {                        // ② 老合集：续链
+      const g = groups.get(key), last = g.stars[g.stars.length - 1];
+      const prev = g.stars.length > 1 ? g.stars[g.stars.length - 2] : null;
+      const head = prev ? Math.atan2(last.y - prev.y, last.x - prev.x) : g.head;
+      // 真实星座是折线不是弧：转角放到 ±58°，偶尔来一个更硬的肘，
+      // 步长在 .55–1.7 倍之间跳。等步长等转角画出来是一条蚯蚓，不是仙后座。
+      const t0 = seeded("t" + p.id), t1 = seeded("u" + p.id);
+      const turn = (t0 - .5) * 2.02 * (t1 > .78 ? 1.5 : 1);
+      const step = STEP * (.55 + t1 * 1.15);
+      base = {x: last.x + Math.cos(head + turn) * step, y: last.y + Math.sin(head + turn) * step};
+    } else if (key) {                                    // ③ 新合集：新领地
+      base = spiral(key);
+    } else {                                             // ④ 散星：先找亲戚
+      let kin = null;
+      for (const g of groups.values())
+        if (g.tags.some(t => p.tags.includes(t))) { kin = g; break; }
+      if (kin) { const a = seeded("a" + p.id) * Math.PI * 2, r = 74 + seeded("r" + p.id) * 52;
+        const c = kin.stars[kin.stars.length - 1];
+        base = {x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r};
+      } else base = spiral("loose:" + p.id);
+    }
+    const pos = far(base.x, base.y);                     // ⑤ 冲突只往外推
+    const star = Object.assign({}, p, pos);
+    seated.push(star); byId[p.id] = star;
+    if (key) { if (!groups.has(key)) groups.set(key, {name:key, stars:[], tags:[], cat:p.cat,
+        head: Math.atan2(pos.y, pos.x) + (seeded("h" + key) - .5)});
+      const g = groups.get(key); g.stars.push(star);
+      for (const t of p.tags) if (!g.tags.includes(t)) g.tags.push(t); }
+  }
+  for (const g of groups.values()) g.stars.sort((a, b) => a.cr.localeCompare(b.cr));
+  return {stars: seated, byId, groups};
+}
+
+/* ══ 星等 = 篇幅。一档、不可切、不必想 ═══════════════════════════════ */
+// 屏幕半径。整体调小、调锐：暗底上「小而实」的点才像星，
+// 「大而软」的球是游戏 HUD。最亮与最暗差 17 倍面积。
+const RPX = [2.4, 2.9, 3.6, 4.6, 6.4];
+// 四角尖芒。内半径 .15 —— 再大就成了菱形，再小就成了十字线。
+const SPARK = "M0,-1C.06,-.34 .34,-.06 1,0C.34,.06 .06,.34 0,1C-.06,.34 -.34,.06 -1,0C-.34,-.06 -.06,-.34 0,-1Z";
+// 只有最亮的两档发光。全场一起发光就没有远近——上一版 60 颗里有 40 颗罩着雾，
+// 那正是「一片肉球、没有繁星感」的一半成因。
+const HALO_O = [0, 0, 0, .2, .46];
+const BLEED_O = [.30, .36, .44, .54, .66];   // 白天的墨晕；夜里这一档是 0
+const INK_DK  = ["56%", "66%", "78%", "90%", "100%"];   // 墨分五色：清 → 焦
+// 门限故意抬高：绝大多数文章落在 1–3 等，四等少，五等罕见。
+// 均匀的星等 = 六十个一样大的点 = 网络图，不是星空。
+// 门限贴着真实数据定：现有最长的一篇 25 分钟，五等的门限就必须落在它够得到的地方，
+// 否则最亮那档和「芒」永远不会出现——那正是整张图看起来一片平的原因。
+const magOf = p => { let m = 1; for (const s of [7, 12, 18, 25]) if (p.min >= s) m++; return Math.min(m, 5); };
+
+/* ══ 一颗星怎么画。图上和图例共用这支笔，图例才不会说谎。 ══════════ */
+function starGlyph(cx, cy, m, tint, fixed) {
+  const R = RPX[m - 1];
+  const px = r => fixed ? r.toFixed(2) : `calc(${r.toFixed(2)}px / var(--s))`;
+  const g = el("g"); g.style.setProperty("--tint", tint);
+  const halo = el("circle", {class:"halo", cx, cy, fill:"url(#hw)"});
+  halo.style.r = px(R * 4.6); halo.style.setProperty("--ho", HALO_O[m - 1]);
+  const glow = el("circle", {class:"halo glow", cx, cy, fill:"url(#hc)"});
+  glow.style.r = px(R * 2.1); glow.style.setProperty("--ho", m >= 3 ? .5 : 0);
+  glow.style.setProperty("--bo", BLEED_O[m - 1]);
+  glow.style.setProperty("--br", `${(R * 2.9).toFixed(2)}px`);
+  const star = el("circle", {class:"star", cx, cy});
+  star.style.setProperty("--mixp", `${m >= 4 ? 26 : m === 3 ? 52 : 78}%`);
+  star.style.setProperty("--dk", INK_DK[m - 1]);
+  star.style.r = px(R);
+  g.append(halo, glow, star);
+  if (m >= 5) {                          // 芒：全图最多三五颗有
+    // ⚠️ 定位和缩放必须分在两层：CSS 的 transform **属性**会整个覆盖掉
+    //    SVG 的 transform **特性**，写在同一个元素上，translate 会被 scale 吃掉，
+    //    芒就全画到坐标原点去了（看起来像天上多了一颗谁也不是的星）。
+    const holder = el("g", {transform:`translate(${cx} ${cy})`});
+    const sp = el("g", {class:"spark"});
+    sp.style.setProperty("--kk", (R * 1.32).toFixed(2));
+    if (fixed) sp.style.transform = `scale(${(R * 1.32).toFixed(2)})`;
+    sp.append(el("path", {class:"blade", d:SPARK}), el("path", {class:"wire", d:"M-2.3,0 H2.3 M0,-2.3 V2.3"}));
+    holder.appendChild(sp); g.appendChild(holder);
+  }
+  return {g, star, halo, glow};
+}
+
+/* ══ 绘制 ═══════════════════════════════════════════════════════════ */
+const svg = $("#sky"), cam = $("#cam"), stage = $("#stage");
+let M = null, starEls = new Map(), plateBox = null, keepNames = new Set(), cartoucheBox = null;
+let view = {k:1, x:0, y:0}, fitK = 1, hovered = null, selected = null;
+
+const VB = () => [1000, 700];
+function build() {
+  const [vw, vh] = VB();
+  svg.setAttribute("viewBox", `0 0 ${vw} ${vh}`);
+  M = layout(REAL.slice().sort((a, b) => a.cr.localeCompare(b.cr)));
+  const P = M.stars;
+  for (const g of ["plate","ruler","figures","labels","titleblock","colophon"]) $("#" + g).replaceChildren();
+  starEls = new Map();
+
+  // 版心 = 所有星的包围盒 + 天空的边。星在长，版心跟着长，老星一个都不动。
+  let bb = [1e9, 1e9, -1e9, -1e9];
+  for (const p of P) { bb = [Math.min(bb[0], p.x), Math.min(bb[1], p.y), Math.max(bb[2], p.x), Math.max(bb[3], p.y)]; }
+  const pad = 88;
+  const minW = 780, minH = 526;   // 版心的下限
+  let w = Math.max(minW, bb[2] - bb[0] + pad * 2), h = Math.max(minH, bb[3] - bb[1] + pad * 2);
+  if (w / h < minW / minH) w = h * minW / minH; else h = w * minH / minW;
+  const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+  plateBox = {x: cx - w / 2, y: cy - h / 2, w, h};
+  const B = plateBox, pl = $("#plate");
+  pl.append(
+    el("rect", {class:"hair", x:B.x, y:B.y, width:B.w, height:B.h, "stroke-opacity":"var(--plate)", "stroke-width":"1"}),
+    el("rect", {class:"hair", id:"innerrule", x:B.x + 8, y:B.y + 8, width:B.w - 16, height:B.h - 16, "stroke-opacity":"var(--o1)", "stroke-width":"1"}),
+    el("rect", {id:"grainlayer", x:B.x + 8, y:B.y + 8, width:B.w - 16, height:B.h - 16, filter:"url(#grain)"}),
+    el("rect", {id:"laidlayer", x:B.x + 8, y:B.y + 8, width:B.w - 16, height:B.h - 16, filter:"url(#laid)"}));
+  const A = 18;
+  for (const [x, y, sx, sy] of [[B.x+22,B.y+22,1,1],[B.x+B.w-22,B.y+22,-1,1],[B.x+22,B.y+B.h-22,1,-1],[B.x+B.w-22,B.y+B.h-22,-1,-1]])
+    pl.appendChild(el("path", {class:"hair", "stroke-opacity":"var(--o2)", "stroke-width":"1",
+      d:`M${x + sx*A} ${y} L${x} ${y} L${x} ${y + sy*A}`}));
+
+  // 合集链：连线就是合集次序本身，图形是数据长出来的，不是画上去的
+  const figs = $("#figures"), labs = $("#labels");
+  // 星名的落位先算出来（只跟星等和它在链上的奇偶有关），
+  // 这样星座名的避让能同时躲开「星」和「星的名字」——上一版只躲星，所以名字照样压名字。
+  for (const p of P) {
+    const g0 = p.s ? M.groups.get(p.s) : null;
+    const i0 = g0 ? g0.stars.indexOf(p) : 0;
+    p.above = g0 && g0.stars.length > 1 ? i0 % 2 === 0 : true;
+    const off0 = 13 + RPX[magOf(p) - 1] * 2.4;
+    p.labelY = p.above ? p.y - off0 : p.y + off0 + 10;
+  }
+  for (const g of M.groups.values()) {
+    if (g.stars.length < 2) continue;
+    const gg = el("g", {"data-fig": g.name});
+    // 一段一条路径，线宽沿链走一条正弦：起笔轻、行笔重、收笔提。
+    // 等宽的折线是尺规，不是笔——白天这条线要看得出是蘸墨画的。
+    const st = g.stars;
+    for (let i = 0; i < st.length - 1; i++) {
+      const t = st.length < 3 ? .5 : i / (st.length - 2);
+      const w = .72 + 1.55 * Math.sin(Math.PI * t) + (seeded("w" + g.name + i) - .5) * .4;
+      const seg = el("path", {class:"chain",
+        d:`M${st[i].x.toFixed(1)} ${st[i].y.toFixed(1)} L${st[i+1].x.toFixed(1)} ${st[i+1].y.toFixed(1)}`});
+      seg.style.setProperty("--bw", Math.max(.5, w).toFixed(2));
+      gg.appendChild(seg);
+    }
+    figs.appendChild(gg); g.node = gg;
+    const c = g.stars.reduce((a, s) => ({x: a.x + s.x / g.stars.length, y: a.y + s.y / g.stars.length}), {x:0, y:0});
+    let lo = -1e9; for (const s of g.stars) lo = Math.max(lo, s.y);
+    g.maxY = lo;      // 这一群最低的那颗星。名字落在它下面多远，要等相机倍率定了才算得准
+    const nm = el("text", {class:"figure", x:c.x.toFixed(1), y:(lo + 62).toFixed(1), "text-anchor":"middle", "fill-opacity":"var(--o4)"});
+    nm.textContent = g.name; labs.appendChild(nm); g.label = nm;
+    const sb = el("text", {class:"sub", x:c.x.toFixed(1), y:(lo + 82).toFixed(1), "text-anchor":"middle", "fill-opacity":"var(--o3)"});
+    sb.textContent = `${cnNum(g.stars.length)}星一串`; labs.appendChild(sb); g.sub = sb;
+    g.cx = c.x;
+  }
+
+  for (const p of P) {
+    const m = magOf(p), R = RPX[m - 1];
+    const { g } = starGlyph(p.x, p.y, m, CATVAR[p.cat]);
+    g.setAttribute("data-id", p.id);
+    const care = el("circle", {class:"care", cx:p.x, cy:p.y});
+    care.style.r = `calc(${(R + 5.5).toFixed(2)}px / var(--s))`;
+    care.style.display = (p.g === "seedling" || p.up <= "2026-08-06") ? "" : "none";
+    g.insertBefore(care, g.firstChild.nextSibling.nextSibling);
+    figs.appendChild(g);
+    const lb = el("text", {class:"name lbl", x:p.x, y:p.labelY.toFixed(1), "text-anchor":"middle"});
+    lb.textContent = p.t; labs.appendChild(lb);
+    starEls.set(p.id, {g, lb});
+  }
+
+  buildRuler(P);
+
+  // 款识与版记：属于这张图的一方款，不是页眉
+  const tb = $("#titleblock");
+  const solo = new Set(); const tally = {};
+  for (const p of P) (tally[p.cat] = tally[p.cat] || []).push(p);
+  for (const k2 in tally) if (tally[k2].length === 1) solo.add(tally[k2][0].id);
+  const figsN = [...M.groups.values()].filter(g => g.stars.length > 1);
+  const nFig = figsN.length;
+  const nLoose = P.length - figsN.reduce((a, g) => a + g.stars.length, 0);
+
+  // 款识落在左边两角里较空的那个。星是数据，字是版面：让位的永远是字。
+  const CW = 300, CH = 230;
+  const cands = [{x:B.x + 44, y:B.y + 54}, {x:B.x + 44, y:B.y + B.h - CH - 24}];
+  let seat = cands[0], best = Infinity;
+  for (const c of cands) {
+    const n2 = P.filter(q => q.x > c.x - 30 && q.x < c.x + CW && q.y > c.y - 40 && q.y < c.y + CH).length;
+    if (n2 < best) { best = n2; seat = c; }
+  }
+
+  // ⚠️ 款识里所有的字都是恒定屏幕尺寸的，所以行距、图例的间隔也必须是屏幕像素。
+  //    上一版把字号锁在屏幕上、行距却写成 viewBox 单位，于是相机一缩小行就挤在一起——
+  //    「款识那两行小字不精神」的真正原因是这个，不是墨度。
+  //    整块放进一个 scale(1/--s) 的子组，里面一律按 px 排版。
+  const fx = el("g", {class:"fixed"});
+  const tx = (x, y, cls, txt, op) => { const t = el("text", {x, y, class:cls, "fill-opacity":op});
+    t.textContent = txt; fx.appendChild(t); return t; };
+  tx(0, 0, "cz", "星野", "var(--o5)");
+  tx(2, 24, "cm", "丙午年 · 处暑 · 花园第四十四日", "var(--o4)");
+  tx(2, 42, "ck", `${cnNum(P.length) || P.length} 星 · ${cnNum(nFig)} 集 · ${cnNum(nLoose)} 散`, "var(--o3)");
+  fx.appendChild(el("path", {class:"hair", d:"M0 58 H208", "stroke-opacity":"var(--o1)", "stroke-width":"1"}));
+
+  // 图例。老星图上必有的一块，用的是和图上完全同一支笔，所以它不会说谎。
+  [1, 2, 3, 4, 5].forEach((m, i) => {
+    fx.appendChild(starGlyph(8 + i * 17, 78, m, "var(--sp-note)", true).g);
+  });
+  tx(104, 81, "ck", "星等 · 依篇幅", "var(--o3)");
+  fx.appendChild(el("path", {class:"hair", d:"M4 100 L20 94 L36 102 L52 96",
+    "stroke-opacity":"var(--o3)", "stroke-width":"1"}));
+  [4, 20, 36, 52].forEach((x, i) => fx.appendChild(
+    starGlyph(x, [100, 94, 102, 96][i], 2, "var(--sp-note)", true).g));
+  tx(104, 101, "ck", "连线 · 合集次序", "var(--o3)");
+  ["note", "proj", "essay"].forEach((c, i) => {
+    fx.appendChild(starGlyph(8, 120 + i * 15, 3, CATVAR[c], true).g);
+    tx(22, 123 + i * 15, "ck", CATNAME[c], "var(--o3)");
+  });
+
+  fx.setAttribute("transform-origin", "0 0");
+  const holder = el("g", {transform:`translate(${seat.x} ${seat.y})`});
+  holder.appendChild(fx); tb.appendChild(holder);
+
+  // 款框：刻本上款识占的是一块「留出来的空」，不是压在图上的字。
+  const KW = 224, KH = 190, KX = -18, KY = -30;
+  const kk = 1 / (Math.min(1000 / B.w, 700 / B.h) * .96);        // fit 时 1 屏幕 px 等于多少单位
+  fx.insertBefore(el("rect", {x:KX, y:KY, width:KW, height:KH, fill:"var(--sky-lo)",
+    "fill-opacity":".84", stroke:"var(--sky-ink)", "stroke-opacity":"var(--o1)",
+    "stroke-width":"1", "vector-effect":"non-scaling-stroke"}), fx.firstChild);
+  cartoucheBox = {x:seat.x + KX * kk, y:seat.y + KY * kk, width:KW * kk, height:KH * kk};
+
+  // 闲章落在款识的对角，也永远躲开右下角——那儿是抽屉的地盘
+  // 款在一角，印在对角；右下角永远留给抽屉
+  const top = seat.y < B.y + B.h / 2;
+  const sx = top ? B.x + 60 : B.x + B.w - 100, sy = top ? B.y + B.h - 104 : B.y + 60;
+  const seal = el("g", {transform:`translate(${sx},${sy})`});
+  seal.append(el("rect", {class:"sealbox", width:36, height:36, rx:1,
+    "stroke-width":"1", "vector-effect":"non-scaling-stroke"}));
+  const sc = el("text", {class:"sealchar", x:18, y:25, "text-anchor":"middle", "font-size":17});
+  sc.textContent = "洲"; seal.appendChild(sc); $("#colophon").appendChild(seal);
+
+  // 落名的资格：① 全图最亮 ② 某分类的独苗。星座名另画。
+  buildDust(B, P, {x:cartoucheBox.x, y:cartoucheBox.y, w:cartoucheBox.width, h:cartoucheBox.height});
+
+  keepNames = new Set(solo);
+  keepNames.add(P.slice().sort((a, b) => magOf(b) - magOf(a))[0].id);
+
+}
+
+/* ══ 星尘：密度跟着版心面积走，于是「一片天的样子」和篇数无关 ══════ */
+const DUST_TINT = ["#DCE8F5", "#F4F1EA", "#F6E3CE"];   // 冷白 / 中性 / 暖白，都极不饱和
+function buildDust(B, P, box) {
+  const G = $("#galaxy"), D = $("#dust");
+  G.replaceChildren(); D.replaceChildren();
+  const cx = B.x + B.w / 2, cy = B.y + B.h / 2, A = -.46;
+  G.appendChild(el("ellipse", {cx:0, cy:0, rx:B.w * .55, ry:B.h * .095, fill:"url(#mw)",
+    transform:`translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${(A * 180 / Math.PI).toFixed(1)})`}));
+  // 数量砍到三分之一。「脏」不是因为尘的存在，是因为一屏几千颗同等亮度的灰点——
+  // 那是噪点的定义。真正的星野是「极少数看得清 + 绝大多数几乎不存在」。
+  const n = Math.round(B.w * B.h / 1100), ca = Math.cos(A), sa = Math.sin(A);
+  for (let i = 0; i < n; i++) {
+    const x = B.x + seeded("dx" + i) * B.w, y = B.y + seeded("dy" + i) * B.h;
+    const d = Math.abs(-(x - cx) / B.w * sa + (y - cy) / B.h * ca);
+    const band = Math.exp(-(d * d) / .052);                 // 到银河中线的高斯衰减
+    if (seeded("dk" + i) > .06 + band * .8) continue;       // 带外抽稀 → 天有疏有密
+    // 让路：数据星与款框周围留出净空，重要的东西要站在干净的地方
+    if (box && x > box.x - 14 && x < box.x + box.w + 14 && y > box.y - 14 && y < box.y + box.h + 14) continue;
+    let near = false;
+    for (const q of P) if (Math.abs(q.x - x) < 26 && Math.abs(q.y - y) < 26) { near = true; break; }
+    if (near) continue;
+    const c = el("circle", {class:"dust", cx:x.toFixed(1), cy:y.toFixed(1)});
+    c.style.setProperty("--do", ((.035 + Math.pow(seeded("do" + i), 3.4) * .72) * (.34 + band * .95)).toFixed(3));
+    // 尘的上限 1.25px，恒小于最暗的数据星（2.0px）——层级不许倒挂
+    // 上限 .95px，恒小于最暗的数据星（2.4px）——层级不许倒挂
+    c.style.r = `calc(${(.34 + Math.pow(seeded("dr" + i), 3) * .61).toFixed(2)}px / var(--s))`;
+    c.setAttribute("fill", DUST_TINT[Math.floor(seeded("dt" + i) * 3)]);
+    D.appendChild(c);
+  }
+}
+
+/* ══ 时间尺：一年一条，多年就多摞几条。年轮没删，只是不当底图了 ══════ */
+function buildRuler(P) {
+  const R = $("#ruler"), B = plateBox;
+  const years = [...new Set(P.map(p => p.cr.slice(0, 4)))].sort();
+  const x0 = B.x + 48, x1 = B.x + B.w - 48, y1 = B.y + B.h - 44;
+  const dayOf = s => { const d = new Date(s + "T00:00:00");
+    return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5); };
+  const rx = d => x0 + (x1 - x0) * (((d - 35) + 365) % 365) / 365;
+  const ry = y => y1 - (years.length - 1 - years.indexOf(y)) * 17;
+  years.forEach(y => {
+    const yy = ry(y);
+    R.appendChild(el("path", {class:"hair", d:`M${x0} ${yy} L${x1} ${yy}`, "stroke-opacity":"var(--o2)", "stroke-width":"1"}));
+    for (let i = 0; i < 24; i++) { const x = x0 + i * (x1 - x0) / 24;
+      R.appendChild(el("path", {class:"hair", d:`M${x.toFixed(1)} ${yy} L${x.toFixed(1)} ${(yy - (i % 3 ? 3 : 6)).toFixed(1)}`,
+        "stroke-opacity":"var(--o2)", "stroke-width":"1"})); }
+    const t = el("text", {class:"tick", x:x0 - 12, y:yy + 3, "text-anchor":"end", "fill-opacity":"var(--o3)"});
+    t.textContent = y; R.appendChild(t);
+  });
+  ["立春","春分","立夏","夏至","立秋","秋分","立冬","冬至"].forEach((n, i) => {
+    const t = el("text", {class:"tick", x:x0 + i * (x1 - x0) / 8, y:y1 + 18, "text-anchor":"middle", "fill-opacity":"var(--o3)"});
+    t.textContent = n; R.appendChild(t);
+  });
+  // 垂线：星多了只给「有名字的」和当前聚焦的那颗画，否则一片毛
+  const dense = P.length > 40;
+  for (const p of P) {
+    if (dense && !keepNames.has(p.id)) continue;
+    R.appendChild(el("path", {class:"drop", "data-drop":p.id,
+      d:`M${p.x.toFixed(1)} ${(p.y + 8).toFixed(1)} L${rx(dayOf(p.cr)).toFixed(1)} ${(ry(p.cr.slice(0,4)) - 4).toFixed(1)}`}));
+  }
+  const tx = rx(dayOf("2026-08-31")), ty = ry("2026");
+  R.append(el("path", {class:"hair", d:`M${tx.toFixed(1)} ${ty + 4} l-4 7 l8 0 z`,
+    stroke:"var(--accent-text)", "stroke-opacity":".8", "stroke-width":"1"}));
+  const ct = el("text", {class:"tick", x:tx, y:ty - 12, "text-anchor":"middle", fill:"var(--accent-text)", "fill-opacity":".9"});
+  ct.textContent = "处暑"; R.appendChild(ct);
+}
+
+/* ══ 注记的落位 ══════════════════════════════════════════════════════
+   必须在 fit() 之后跑：注记是恒定屏幕尺寸的，只有相机倍率定下来，
+   量出来的宽度才是它在图上真实占的地方。
+
+   星名用制图学的八方位择位法，优先级照老规矩：右上 → 左上 → 右下 → 左下
+   → 上 → 下 → 右 → 左。第一个不撞任何东西的位置就是它的位置。
+   分两轮落：第一轮是「能同时出现在 L0 的那些」（常驻星名 + 星座名），
+   全局互不重叠；第二轮是各合集的成员，只需与第一轮和同集的兄弟不撞——
+   因为任何时刻只有一个合集是亮的。 */
+const hits = (a, b, pad = 6) => a.x < b.x + b.width + pad && b.x < a.x + a.width + pad
+  && a.y < b.y + b.height + pad && b.y < a.y + a.height + pad;
+
+// 量一次拿宽高，之后所有候选位都靠算——每个候选都 getBBox 会触发上千次强制重排
+function metrics(t, x, y) {
+  t.setAttribute("x", x); t.setAttribute("y", y); t.setAttribute("text-anchor", "middle");
+  const b = t.getBBox();
+  return {w: b.width, h: b.height, dy: b.y - y};
+}
+const boxAt = (m, x, y, anc) =>
+  ({x: anc === "start" ? x : anc === "end" ? x - m.w : x - m.w / 2, y: y + m.dy, width: m.w, height: m.h});
+
+function placeLabels() {
+  if (!M || !plateBox) return;
+  const k = 1 / (cam.getScreenCTM().a || 1);          // 屏幕 px → viewBox 单位
+  const B = plateBox, inner = {x:B.x + 26, y:B.y + 26, width:B.w - 52, height:B.h - 52};
+  const inside = b => b.x > inner.x && b.y > inner.y
+    && b.x + b.width < inner.x + inner.width && b.y + b.height < inner.y + inner.height;
+
+  // 障碍：星盘本身 + 款框
+  const discs = M.stars.map(q => { const r = (RPX[magOf(q) - 1] + 4) * k;
+    return {x:q.x - r, y:q.y - r, width:r * 2, height:r * 2}; });
+  const taken = cartoucheBox ? [cartoucheBox] : [];
+
+  const CAND = [[1,-.72,"start"], [-1,-.72,"end"], [1,1.05,"start"], [-1,1.05,"end"],
+                [0,-1.15,"middle"], [0,1.5,"middle"], [1,.28,"start"], [-1,.28,"end"]];
+  const seat = (p, avoid) => {
+    const e = starEls.get(p.id); if (!e) return;
+    const R = RPX[magOf(p) - 1], gap = (R + 7) * k, m = metrics(e.lb, p.x, p.y);
+    for (const [ux, uy, anc] of CAND) {
+      const x = p.x + ux * gap, y = p.y + uy * gap * 1.5 + (uy > 0 ? m.h * .55 : 0);
+      const b = boxAt(m, x, y, anc);
+      if (!inside(b)) continue;
+      if (discs.some(d => hits(d, b, 2)) || avoid.some(o => hits(o, b))) continue;
+      e.lb.setAttribute("x", x.toFixed(1)); e.lb.setAttribute("y", y.toFixed(1));
+      e.lb.setAttribute("text-anchor", anc);
+      avoid.push(b); return;
+    }
+    // 八个位置全被占：贴回星的右上，宁可挨着也不飞出去拉引线
+    const x = p.x + gap, y = p.y - gap * 1.08;
+    e.lb.setAttribute("x", x.toFixed(1)); e.lb.setAttribute("y", y.toFixed(1));
+    e.lb.setAttribute("text-anchor", "start");
+    avoid.push(boxAt(m, x, y, "start"));
+  };
+
+  // 第一轮：L0 上常驻的星名（最亮的先挑位置）
+  const tierA = [...keepNames].map(id => M.byId[id]).filter(Boolean)
+    .sort((a, b) => magOf(b) - magOf(a));
+  for (const p of tierA) seat(p, taken);
+
+  // 星座名：在自己那一群下方往下找空位
+  const groups = [...M.groups.values()].filter(g => g.label)
+    .sort((a, b) => b.stars.length - a.stars.length);
+  // ⚠️ 名字和副题都是恒定屏幕尺寸的，所以「离星多远」「副题在下面多少」「让一步多少」
+  //    全都得乘 k 换成屏幕像素。写成 viewBox 单位的话，相机缩到 0.42 倍时
+  //    这些间距就只剩四成——名字会挤成一坨，而且避让算出来是「不重叠」的。
+  const GAP = 26 * k, SUB = 17 * k, STEP2 = 19 * k;
+  for (const g of groups) {
+    const y0 = g.maxY + GAP;
+    const m1 = metrics(g.label, g.cx, y0), m2 = metrics(g.sub, g.cx, y0 + SUB);
+    let ly = y0, found = false;
+    for (let i = 0; i < 20; i++) {
+      const b1 = boxAt(m1, g.cx, ly, "middle"), b2 = boxAt(m2, g.cx, ly + SUB, "middle");
+      const bad = !inside(b1) || !inside(b2)
+        || discs.some(d => hits(d, b1, 2) || hits(d, b2, 2))
+        || taken.some(o => hits(o, b1) || hits(o, b2));
+      if (!bad) { taken.push(b1, b2); found = true; break; }
+      ly += STEP2;
+    }
+    // 二十步都没找到空位就把它收起来，宁可少写一个名字，也不叠字
+    g.hidden2 = !found;
+    g.label.setAttribute("x", g.cx.toFixed(1)); g.label.setAttribute("y", ly.toFixed(1));
+    g.sub.setAttribute("x", g.cx.toFixed(1)); g.sub.setAttribute("y", (ly + SUB).toFixed(1));
+  }
+
+  // 第二轮：各合集的成员。同一时刻只有一个合集亮，所以只跟第一轮和同集兄弟避让。
+  for (const g of M.groups.values()) {
+    const local = taken.slice();
+    for (const p of g.stars.slice().sort((a, b) => magOf(b) - magOf(a)))
+      if (!keepNames.has(p.id)) seat(p, local);
+  }
+  // 既不常驻也不属于任何合集的散星
+  for (const p of M.stars)
+    if (!keepNames.has(p.id) && !p.s) seat(p, taken);
+}
+
+/* ══ 相机：全程直写 transform，一次 setState 都没有 ═══════════════════ */
+function write() {
+  cam.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.k})`);
+  const m = cam.getScreenCTM();
+  document.documentElement.style.setProperty("--s", m ? m.a.toFixed(4) : 1);
+  const deep = view.k > fitK * 1.5;
+  $("#titleblock").style.opacity = deep ? 0 : 1;
+  $("#colophon").style.opacity = deep ? 0 : 1;
+}
+function fit() {
+  const B = plateBox, [vw, vh] = VB();
+  fitK = Math.min(vw / B.w, vh / B.h) * .96;
+  view.k = fitK;
+  view.x = (vw - B.w * fitK) / 2 - B.x * fitK;
+  view.y = (vh - B.h * fitK) / 2 - B.y * fitK;
+  write();
+}
+function toLocal(cx, cy) { const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+  return p.matrixTransform(cam.getScreenCTM().inverse()); }
+
+let drag = null, moved = 0;
+stage.addEventListener("pointerdown", e => { drag = {x:e.clientX, y:e.clientY, vx:view.x, vy:view.y}; moved = 0;
+  stage.setPointerCapture(e.pointerId); stage.classList.add("dragging"); });
+stage.addEventListener("pointermove", e => {
+  if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+    const k = cam.getScreenCTM().a / view.k;
+    view.x = drag.vx + dx / k; view.y = drag.vy + dy / k; write();
+  } else hover(e.clientX, e.clientY); });
+stage.addEventListener("pointerup", e => { stage.classList.remove("dragging");
+  if (drag && moved < 5) pick(e.clientX, e.clientY); drag = null; });
+stage.addEventListener("wheel", e => { e.preventDefault();
+  const p = toLocal(e.clientX, e.clientY);
+  const k2 = clamp(view.k * Math.exp(-e.deltaY * .0016), fitK * .8, fitK * 9);
+  view.x += p.x * (view.k - k2); view.y += p.y * (view.k - k2); view.k = k2; write(); applyState(); }, {passive:false});
+
+/* ══ 拾取：最近邻，命中区互不相交，不靠 z 序碰运气 ═══════════════════ */
+function nearest(cx, cy) { const p = toLocal(cx, cy);
+  let best = null, bd = Infinity;
+  for (const q of M.stars) { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; best = q; } }
+  return bd <= Math.max(MIN_SEP / 2, 26 / view.k) ? best : null; }
+
+/* ══ 层级：远看星座名，近看星名 ══════════════════════════════════════ */
+function applyState() {
+  const focus = selected || hovered;
+  const litName = focus && focus.s && M.groups.get(focus.s) && M.groups.get(focus.s).stars.length > 1 ? focus.s : null;
+  const zoom = view.k / fitK;
+  $("#figures").classList.toggle("near", zoom > 1.5);
+  // 一屏站得下多少颗星，决定这张图画到几等为止
+  const N = M.stars.length;
+  const limit = zoom > 2.4 ? 1 : zoom > 1.5 ? Math.max(1, (N > 100 ? 3 : N > 40 ? 2 : 1) - 1)
+    : N > 100 ? 3 : N > 40 ? 2 : 1;
+  const budget = 5 * (zoom > 1.5 ? 2 : 1) * (zoom > 2.6 ? 3 : 1);   // 全图只写最大的五个
+  const rank = [...M.groups.values()].filter(g => g.node)
+    .sort((a, b) => b.stars.length - a.stars.length);
+  rank.forEach((g, i) => {
+    const show = (i < budget && !g.hidden2) || g.name === litName;
+    g.node.classList.toggle("lit", g.name === litName);
+    if (g.label) { g.label.style.opacity = show ? 1 : 0;
+      g.label.style.fillOpacity = g.name === litName ? "var(--o5)" : "var(--o4)"; }
+    if (g.sub) g.sub.style.opacity = show ? 1 : 0;
+  });
+  for (const p of M.stars) {
+    const e = starEls.get(p.id);
+    const inFig = litName && p.s === litName;
+    const on = focus ? (p === focus || inFig)
+      : (keepNames.has(p.id) || (zoom > 1.7 && magOf(p) >= 5) || (zoom > 2.8 && magOf(p) >= 4));
+    e.lb.classList.toggle("on", !!on);
+    e.g.classList.toggle("dim", !!focus && p !== focus && !inFig);
+    e.g.classList.toggle("far", magOf(p) < limit && p !== focus && !inFig);
+  }
+  stage.style.cursor = drag ? "grabbing" : hovered ? "pointer" : "grab";
+}
+function hover(cx, cy) { const n = nearest(cx, cy); if (n !== hovered) { hovered = n; applyState(); } }
+function pick(cx, cy) { const n = nearest(cx, cy); selected = n; applyState(); n ? openCard(n) : closeCard(); }
+
+/* ══ 星卡 ═══════════════════════════════════════════════════════════ */
+const card = $("#card");
+function openCard(p) {
+  const g = p.s ? M.groups.get(p.s) : null;
+  const sib = g ? g.stars : [];
+  const i = sib.indexOf(p);
+  $("#c-chapter").textContent = g && sib.length > 1 ? `${p.s} · 第 ${cnNum(i + 1)} 章` : CATNAME[p.cat];
+  $("#c-title").textContent = p.t;
+  $("#c-meta").innerHTML = `${p.cr.replace(/-/g, ".")} · ${p.min} 分钟 · ${GROW[p.g]} · ${CATNAME[p.cat]}`;
+  $("#c-ex").textContent = p.ex;
+  $("#c-tags").innerHTML = p.tags.map(t => `<span>${t}</span>`).join("");
+  $("#c-neigh").innerHTML = sib.length > 1
+    ? `<a data-go="${i > 0 ? sib[i-1].id : ""}">${i > 0 ? "← " + sib[i-1].t : ""}</a>`
+      + `<a data-go="${i < sib.length-1 ? sib[i+1].id : ""}">${i < sib.length-1 ? sib[i+1].t + " →" : ""}</a>`
+    : "";
+  card.classList.add("on");
+}
+function closeCard() { card.classList.remove("on"); }
+$("#c-neigh").addEventListener("click", e => { const id = e.target.dataset && e.target.dataset.go;
+  if (id && M.byId[id]) { selected = M.byId[id]; applyState(); openCard(selected); } });
+$("#c-go").addEventListener("click", () => toast(`→ #/garden/${selected ? selected.id : ""}`));
+addEventListener("keydown", e => { if (e.key === "Escape") { selected = null; applyState(); closeCard(); } });
+
+/* ══ 抽屉 ═══════════════════════════════════════════════════════════ */
+const press = (b, v) => b.setAttribute("aria-pressed", String(v));
+$("#t-ruler").addEventListener("click", e => press(e.currentTarget, $("#ruler").classList.toggle("on")));
+$("#t-care").addEventListener("click", e => press(e.currentTarget, document.body.classList.toggle("care")));
+$("#t-theme").addEventListener("click", () => document.documentElement.classList.toggle("dark"));
+$("#t-fit").addEventListener("click", () => { selected = null; closeCard(); fit(); placeLabels(); applyState(); });
+
+/* ══ 起手 ═══════════════════════════════════════════════════════════ */
+if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("dark");
+build(); fit(); placeLabels(); applyState();
+addEventListener("resize", () => { fit(); placeLabels(); applyState(); });
+setTimeout(() => $("#hint").classList.add("gone"), 7000);
+let tt; function toast(s) { const t = $("#toast"); t.textContent = s; t.classList.add("on");
+  clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 1800); }
+</script>
+</body></html>
