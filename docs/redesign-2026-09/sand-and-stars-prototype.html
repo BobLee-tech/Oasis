@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>砂与星 · 星图原型</title>
+<link rel="icon" href="data:,">
+<!-- 字体与站点同源：仓库里 npm i 之后从 node_modules 取；直接双击打开又没装依赖时落回系统衬线体。
+     推荐用 `npx vite` 起在仓库根目录，然后打开 /docs/redesign-2026-09/sand-and-stars-prototype.html -->
+<link rel="stylesheet" href="../../node_modules/lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css">
+<link rel="stylesheet" href="../../node_modules/@fontsource/eb-garamond/400.css">
+<link rel="stylesheet" href="../../node_modules/@fontsource/eb-garamond/400-italic.css">
+<link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/400.css">
+<style>
+/* ══ 令牌：全部取自全站（index.css / OasisDock / OasisLights），不新造颜色 ══════════════ */
+:root{
+  --font-serif:"EB Garamond","LXGW WenKai Screen","Songti SC","Noto Serif SC",ui-serif,Georgia,serif;
+  --font-zh:"LXGW WenKai Screen","Songti SC","Noto Serif SC",ui-serif,serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --teal:#39C5BB; --sakura:#FFB7C5;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+/* 昼：站点纸色 #FAF8F3 + 季节光。星图不再自带天幕。 */
+[data-theme=day]{
+  --paper:#FAF8F3; --ink:#334155; --ink2:#64748B; --ink3:#94A3B8;
+  --accent:#39C5BB; --accent-ink:#1B7A74;
+  --glass:rgba(255,255,255,.55); --glass-edge:rgba(255,255,255,.72); --line:rgba(148,163,184,.26);
+  --shadow:0 18px 50px -30px rgba(15,23,42,.35);
+  --ring-base:#64748B; --ring-o:.2; --ring-in-o:.32; --rake:rgba(100,116,139,.085);
+  --pool:transparent;
+  --stone:#B8B0A3; --stone-rim:rgba(71,85,105,.28);
+  --step:#D4CCBF; --step-rim:#B3AA9C;
+  --bridge:rgba(100,116,139,.5);
+  --stone-o:1; --star-o:0; --dim:.24;
+  --halo-stroke:rgba(250,248,243,.92);
+}
+/* 夜：站点夜墨 #0A0F1D + 萤火。与 Dock 暗态的 #66DED5 同一支绿。 */
+[data-theme=night]{
+  --paper:#0A0F1D; --ink:#E2E8F0; --ink2:#94A3B8; --ink3:#64748B;
+  --accent:#66DED5; --accent-ink:#6FD8CF;
+  --glass:rgba(12,18,34,.68); --glass-edge:rgba(255,255,255,.09); --line:rgba(255,255,255,.09);
+  --shadow:0 20px 48px -20px rgba(0,0,0,.72);
+  --ring-base:#66DED5; --ring-o:.09; --ring-in-o:.17; --rake:rgba(102,222,213,.018);
+  --pool:rgba(102,222,213,.022);
+  --bridge:rgba(255,183,197,.62);
+  --stone-o:0; --star-o:1; --dim:.2;
+  --halo-stroke:rgba(10,15,29,.9);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-serif);
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  transition:background-color 1.2s ease,color 1.2s ease}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+/* 季节光：与 App.tsx 的暖纸底光同一配方（秋：琥珀 + 极淡青） */
+.wash{position:fixed;inset:0;pointer-events:none;transition:opacity 1.2s ease;
+  background:radial-gradient(120% 90% at 15% 12%,rgba(253,226,196,.55) 0%,rgba(250,248,243,.45) 42%,transparent 70%),
+             radial-gradient(90% 80% at 88% 92%,rgba(57,197,187,.07) 0%,transparent 60%)}
+[data-theme=night] .wash{opacity:0}
+.vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 150px rgba(0,0,0,.05)}
+[data-theme=night] .vignette{box-shadow:inset 0 0 150px rgba(0,0,0,.8)}
+#fx{position:fixed;inset:0;pointer-events:none;opacity:.6}
+
+/* HUD：四角的 + 与时钟，与 OasisHUD 一致 */
+.hud{position:fixed;inset:32px;pointer-events:none;opacity:.3;color:#94A3B8;font:12px var(--font-mono)}
+.hud i{position:absolute;font-style:normal;line-height:1}
+.hud .clock{position:absolute;right:0;top:24px;font-size:10px;letter-spacing:.3em}
+.pills{position:fixed;top:32px;left:32px;display:flex;gap:12px;z-index:30}
+.pill{display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;
+  font:9px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);
+  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 1px 2px rgba(15,23,42,.05);transition:color .5s,border-color .5s}
+.pill:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+.pill[aria-pressed=true]{color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.scale{position:fixed;top:78px;right:32px;z-index:30;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);font:9px var(--font-mono);letter-spacing:.16em;color:var(--ink3)}
+.scale span{padding:0 8px 0 10px}
+.scale button{padding:6px 10px;border-radius:999px;color:var(--ink2)}
+.scale button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-ink)}
+
+/* 场所页头：与 Lanterns / Atelier 同款——英文等宽小字 + 衬线斜体一句 */
+.place-head{position:fixed;top:92px;left:50%;transform:translateX(-50%);text-align:center;z-index:5;pointer-events:none;width:min(560px,80vw)}
+.eyebrow{font:10px var(--font-mono);letter-spacing:.5em;text-transform:uppercase;color:var(--ink3)}
+.place-head .eyebrow{color:color-mix(in srgb,var(--accent) 80%,transparent)}
+.place-head p{margin:10px 0 0;font-style:italic;font-size:14px;color:var(--ink3)}
+
+/* ══ 地图 ═════════════════════════════════════════════════════════════════ */
+#stage{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none}
+#stage.dragging{cursor:grabbing}
+.rk{fill:none;stroke:var(--rake);stroke-width:1;vector-effect:non-scaling-stroke}
+/* 砂纹按庭各算一套，带一丝分类色：庭与庭的边界就是目录的一级标题 */
+.rg{fill:none;stroke:color-mix(in oklab,var(--c,#64748B) 34%,var(--ring-base));stroke-opacity:var(--ring-o);stroke-width:1;vector-effect:non-scaling-stroke;transition:stroke .8s,stroke-opacity .8s}
+.rg.in{stroke-opacity:var(--ring-in-o)}
+.poolfill{fill:var(--pool);stroke:none}
+.topic{fill:color-mix(in srgb,var(--sakura) 12%,transparent);stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:4 5;
+  vector-effect:non-scaling-stroke;opacity:0;transition:opacity .35s}
+.topic.on{opacity:1}
+.kelp{fill:none;stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:1 5;stroke-linecap:round;vector-effect:non-scaling-stroke}
+/* 小径：昼是飞石（圆头短划 = 一块块踏石），夜是星座连线 */
+.step-a{fill:none;stroke:var(--step-rim);stroke-width:7.4;stroke-linecap:round;stroke-dasharray:.1 13;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
+.step-b{fill:none;stroke:var(--step);stroke-width:5.6;stroke-linecap:round;stroke-dasharray:.1 13;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
+.chain{fill:none;stroke:rgba(226,232,240,.5);stroke-width:1;vector-effect:non-scaling-stroke;opacity:var(--star-o)}
+.path.lit .chain{stroke:rgba(226,232,240,.9)}
+.path.lit .step-b{stroke:color-mix(in srgb,var(--accent) 45%,var(--step))}
+/* 桥：双链。昼是石桥（双线），夜是鹊桥（樱粉虚线） */
+.br-a{fill:none;stroke:var(--bridge);stroke-width:3.6;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
+.br-b{fill:none;stroke:var(--paper);stroke-width:1.8;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
+.br-n{fill:none;stroke:var(--bridge);stroke-width:1.1;stroke-dasharray:3 4;vector-effect:non-scaling-stroke;opacity:var(--star-o)}
+.hit{fill:none;stroke:transparent;stroke-width:12;vector-effect:non-scaling-stroke;pointer-events:stroke}
+.spoke{fill:none;stroke:color-mix(in srgb,var(--accent) 70%,transparent);stroke-width:1;stroke-dasharray:1 4;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.rel{transition:opacity .35s}
+.rel.dim{opacity:.18}
+
+/* 石 / 星：同一个节点两种光，靠令牌交叉淡入，不换几何 */
+.node{transition:opacity .4s ease}
+.node.dim{opacity:var(--dim)}
+.node.future{opacity:0;pointer-events:none}
+.stone{opacity:var(--stone-o);transition:opacity 1s ease}
+.star{opacity:var(--star-o);transition:opacity 1s ease}
+.st-shadow{fill:rgba(15,23,42,.10)}
+.st-body{fill:color-mix(in oklab,var(--c) 20%,var(--stone));stroke:var(--stone-rim);stroke-width:.8}
+.st-body.seed{fill:color-mix(in srgb,var(--paper) 70%,transparent);stroke:color-mix(in oklab,var(--c) 38%,#94A3B8);stroke-width:1}
+.st-hi{fill:rgba(255,255,255,.5)}
+.st-moss{fill:color-mix(in oklab,var(--c) 70%,#2F6B55)}
+.sr-core{fill:color-mix(in oklab,var(--c) 22%,#fff)}
+.sr-core.seed{opacity:.55}
+.sr-spark{fill:color-mix(in oklab,var(--c) 35%,#fff);opacity:.9}
+.sel-ring{fill:none;stroke:var(--accent);stroke-width:1.3;opacity:0;transition:opacity .3s}
+.node.sel .sel-ring{opacity:1}
+.care{fill:none;stroke:var(--sakura);stroke-width:1.1;stroke-dasharray:2 3;opacity:0;transition:opacity .3s}
+body.care-on .node.tend .care{opacity:.95}
+.fresh{fill:none;stroke:var(--sakura);stroke-width:1;transform-box:fill-box;transform-origin:center;animation:fresh 5s var(--ease) infinite}
+[data-theme=night] .fresh{stroke:var(--accent)}
+@keyframes fresh{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(3.4);opacity:0}}
+.bloom{fill:none;stroke:var(--accent);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:bloom 1.5s var(--ease) forwards}
+.bloom.b2{stroke:var(--sakura);animation-delay:.18s;opacity:0}
+@keyframes bloom{0%{transform:scale(.6);opacity:.8}100%{transform:scale(5.5);opacity:0}}
+
+/* 注记：字号只用站内阶梯 16 / 13 / 11 / 10 */
+.lbl{paint-order:stroke fill;stroke:var(--halo-stroke);stroke-width:3.2px;stroke-linejoin:round;pointer-events:none;transition:opacity .3s}
+.l-star{font:13px var(--font-zh);letter-spacing:.06em;fill:var(--ink)}
+.l-isl{font:16px var(--font-zh);letter-spacing:.14em;fill:var(--ink)}
+.l-isl-en{font:10px var(--font-mono);letter-spacing:.24em;fill:var(--ink3);text-transform:uppercase}
+.l-ser{font:11px var(--font-mono);letter-spacing:.22em;fill:var(--ink2)}
+.l-ser.zh{font:12px var(--font-zh);letter-spacing:.16em}
+.isl-dot{fill:var(--c)}
+.moon{fill:#F4F1EA}
+.moon-dark{fill:#0A0F1D}
+
+/* ══ 玻璃面板：OasisLights 的光茧 / Dock 同一配方 ══════════════════════════════ */
+.glass{background:var(--glass);border:1px solid var(--glass-edge);border-radius:24px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--shadow);
+  transition:background-color 1s,border-color 1s}
+#rail{position:fixed;left:32px;top:150px;bottom:124px;width:292px;z-index:20;display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .5s var(--ease),opacity .4s}
+body.rail-off #rail{transform:translateX(-340px);opacity:0}
+.rail-head{padding:20px 20px 12px}
+.rail-head .eyebrow{color:color-mix(in srgb,var(--accent) 80%,transparent);letter-spacing:.34em}
+.rail-head h3{margin:8px 0 2px;font:400 20px var(--font-zh);letter-spacing:.08em}
+.stat{font:10px/1.8 var(--font-mono);letter-spacing:.16em;color:var(--ink3)}
+.search{display:flex;align-items:center;gap:8px;margin-top:14px;height:36px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 40%,transparent);color:var(--ink3)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font:13px var(--font-zh)}
+.search kbd{font:9px var(--font-mono);border:1px solid var(--line);border-radius:6px;padding:2px 5px}
+.rail-body{flex:1;overflow:auto;padding:4px 12px 12px;scrollbar-width:none}
+.rail-body::-webkit-scrollbar{display:none}
+.cat{margin:8px 0 6px;--ci:color-mix(in oklab,var(--c) 45%,#1e293b)}
+[data-theme=night] .cat{--ci:color-mix(in oklab,var(--c) 88%,#f8fafc)}
+.row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border-radius:12px;padding:6px 8px;transition:background-color .2s}
+.row:hover,.row.hot{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.row.sel{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.cat-h .dot{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 60%,transparent);flex:none}
+.cat-h .zh{font:15px var(--font-zh);letter-spacing:.1em}
+.cat-h .en{font:9px var(--font-mono);letter-spacing:.22em;color:var(--ci);text-transform:uppercase}
+.n{margin-left:auto;font:10px var(--font-mono);color:var(--ink3)}
+.ser{margin:2px 0 2px 12px;border-left:1px dashed var(--line);padding-left:6px}
+.ser-h{font:11px var(--font-mono);letter-spacing:.14em;color:var(--ink2)}
+.ser-h svg{flex:none;color:var(--ci)}
+.ser ol,.loose{list-style:none;margin:0;padding:0}
+.ser.fold ol{display:none}
+.post{font:13px var(--font-zh);color:var(--ink2);letter-spacing:.04em;padding:5px 8px}
+.post .no{font:9px var(--font-mono);color:var(--ink3);width:14px;flex:none;text-align:right}
+.post .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.post .m{margin-left:auto;font:9px var(--font-mono);color:var(--ink3);flex:none}
+.post.hit{color:var(--ink)}
+.post.miss{opacity:.32}
+.loose{margin-left:12px}
+.rail-foot{padding:12px 16px 14px 20px;border-top:1px solid var(--line)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;max-height:52px;overflow:hidden}
+.tag{font:9px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);transition:all .2s}
+.tag:hover,.tag.on{border-color:color-mix(in srgb,var(--sakura) 70%,transparent);color:color-mix(in oklab,var(--sakura) 55%,var(--ink))}
+.legend{display:grid;grid-template-columns:40px 1fr 40px 1fr;row-gap:4px;column-gap:6px;align-items:center;font:9.5px var(--font-mono);letter-spacing:.04em;color:var(--ink3)}
+.legend svg{overflow:visible}
+.grip{display:none}
+.rail-toggle{position:fixed;left:32px;bottom:124px;z-index:21;display:none}
+body.rail-off .rail-toggle{display:flex}
+
+/* 星卡 */
+#card{position:fixed;right:32px;top:150px;width:340px;max-height:calc(100vh - 290px);overflow:auto;z-index:25;padding:24px 24px 20px;
+  opacity:0;transform:translateX(16px);pointer-events:none;transition:opacity .32s var(--ease),transform .32s var(--ease);scrollbar-width:none;
+  --ci:color-mix(in oklab,var(--c) 45%,#1e293b)}
+[data-theme=night] #card{--ci:color-mix(in oklab,var(--c) 88%,#f8fafc)}
+#card.on{opacity:1;transform:none;pointer-events:auto}
+#card .x{position:absolute;right:16px;top:14px;width:28px;height:28px;border-radius:999px;color:var(--ink3);font:16px var(--font-mono)}
+#card .x:hover{color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding-right:28px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:9px var(--font-mono);letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ci);background:color-mix(in srgb,var(--paper) 55%,transparent);border:1px solid var(--line)}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.chip.ser{text-transform:none;letter-spacing:.1em;color:var(--accent-ink)}
+#card h2{margin:0 0 10px;font:400 22px/1.45 var(--font-zh);letter-spacing:.05em}
+.meta{font:10px/1.9 var(--font-mono);letter-spacing:.12em;color:var(--ink3);margin-bottom:12px}
+.ex{font-size:14px;line-height:1.9;color:var(--ink2);font-style:italic;margin:0 0 16px;white-space:pre-line}
+.relh{display:flex;align-items:baseline;gap:8px;font:9px var(--font-mono);letter-spacing:.26em;text-transform:uppercase;color:var(--ink3);margin:16px 0 6px}
+.relh b{font:12px var(--font-zh);letter-spacing:.1em;color:var(--ink2);text-transform:none}
+.pathbar{display:flex;align-items:center;gap:0;margin:6px 0 8px}
+.pathbar button{flex:1;height:18px;display:flex;align-items:center;justify-content:center;position:relative}
+.pathbar button::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--line)}
+.pathbar button i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--ink3);transition:transform .2s}
+.pathbar button.cur i{background:var(--accent);transform:scale(1.5);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.pathbar button:hover i{transform:scale(1.4)}
+.pnav{display:flex;justify-content:space-between;gap:12px;font:12px var(--font-zh);color:var(--ink2)}
+.pnav button{max-width:48%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pnav button:last-child{text-align:right}
+.pnav button:hover{color:var(--accent-ink)}
+.rlist{list-style:none;margin:0;padding:0}
+.rlist li button{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;padding:4px 0;font:13px var(--font-zh);color:var(--ink2)}
+.rlist li button:hover{color:var(--accent-ink)}
+.rlist .why{margin-left:auto;font:9px var(--font-mono);letter-spacing:.1em;color:var(--ink3);flex:none}
+.muted{font:12px var(--font-zh);color:var(--ink3);font-style:italic}
+.cta{text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px;height:40px;border-radius:999px;
+  font:10px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--teal);box-shadow:0 8px 24px -10px rgba(57,197,187,.7)}
+[data-theme=night] .cta{color:#0A0F1D;background:var(--accent)}
+
+/* 工具：与顶栏同款 pill */
+.tools{position:fixed;right:32px;bottom:124px;z-index:20;display:flex;gap:10px}
+.time{position:fixed;left:50%;bottom:124px;transform:translateX(-50%);z-index:22;display:none;align-items:center;gap:14px;height:44px;padding:0 20px;border-radius:999px;font:10px var(--font-mono);letter-spacing:.14em;color:var(--ink2)}
+body.time-on .time{display:flex}
+.time input{width:min(38vw,380px);accent-color:var(--teal)}
+.toast{position:fixed;left:50%;bottom:128px;transform:translate(-50%,8px);z-index:40;padding:12px 22px;border-radius:999px;font:13px var(--font-zh);color:var(--ink2);opacity:0;transition:all .4s var(--ease);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* Dock 复刻：只为证明它和全站放在一起不违和 */
+.dock{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:14px}
+.dock nav{display:flex;gap:10px;padding:10px;border-radius:26px;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.55);
+  backdrop-filter:blur(40px);box-shadow:0 18px 44px -20px rgba(15,23,42,.34),inset 0 1px 0 rgba(255,255,255,.42)}
+[data-theme=night] .dock nav{background:rgba(10,15,29,.7);border-color:rgba(255,255,255,.1);box-shadow:0 20px 48px -20px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.08)}
+.dock nav span{width:44px;height:44px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#64748B}
+[data-theme=night] .dock nav span{color:#94A3B8}
+.dock nav span.on{color:#0E8C85;background:rgba(57,197,187,.11);border:1px solid rgba(57,197,187,.2)}
+[data-theme=night] .dock nav span.on{color:#66DED5}
+.dock svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dock .miku{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.55);box-shadow:0 10px 30px -18px rgba(15,23,42,.4);color:#475569}
+[data-theme=night] .dock .miku{background:rgba(10,15,29,.7);border-color:rgba(255,255,255,.1);color:#CBD5E1}
+
+/* ══ 窄屏：目录为主、缩景为辅——星图回到手机 Dock ══════════════════════════════ */
+@media (max-width:767px){
+  .hud{inset:20px}.pills{top:20px;left:20px;gap:8px}.pill{height:34px;padding:0 12px}
+  .scale{top:62px;right:20px}
+  .place-head{top:104px}.place-head p{font-size:12px}
+  #rail{left:12px;right:12px;width:auto;top:auto;bottom:100px;height:44vh}
+  .grip{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+  .rail-head{padding:10px 16px 8px}.rail-head h3,.legend{display:none}.search{margin-top:10px;height:34px}
+  .tags{flex-wrap:nowrap;overflow-x:auto;max-height:none;margin:6px 0 0;scrollbar-width:none}.tag{flex:none}
+  .rail-foot{padding:8px 16px 10px}.rail-foot .eyebrow{display:none}
+  body.rail-off #rail{transform:translateY(120%)}
+  .rail-toggle{left:50%;transform:translateX(-50%);bottom:108px}
+  #card{left:12px;right:12px;width:auto;top:auto;bottom:100px;max-height:52vh}
+  #card{transform:translateY(24px);background:color-mix(in srgb,var(--paper) 94%,transparent)}
+  .tools{top:62px;left:20px;right:auto;bottom:auto}.tools .opt{display:none}
+  .time{bottom:calc(44vh + 112px)}
+  .dock{bottom:20px;gap:8px}.dock nav{gap:2px;padding:8px}.dock nav span{width:40px;height:40px}.dock .miku{width:44px;height:44px}
+  .toast{bottom:calc(44vh + 112px)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<div class="wash"></div>
+<canvas id="fx"></canvas>
+<div class="vignette"></div>
+<div class="hud"><i style="left:0;top:0">+</i><i style="right:0;top:0">+</i><i style="left:0;bottom:0">+</i><i style="right:0;bottom:0">+</i><span class="clock" id="clock">21:40 · OASIS</span></div>
+
+<div class="pills">
+  <button class="pill" title="⌘K"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>⌘K</button>
+  <button class="pill" id="theme">◐ AUTO · ☼</button>
+</div>
+<div class="scale" aria-label="原型：数据规模"><span>规模</span><button data-n="8" aria-pressed="true">8 真</button><button data-n="24">24</button><button data-n="60">60</button><button data-n="160">160</button></div>
+
+<header class="place-head">
+  <div class="eyebrow">Constellation · 星图</div>
+  <p id="sub">白砂上的每一块石，都是写下的字。</p>
+</header>
+
+<svg id="stage" aria-label="知识星图"></svg>
+
+<aside id="rail" class="glass" aria-label="庭记 · 目录">
+  <div class="rail-head">
+    <button class="grip" id="grip" aria-label="收起庭记，看整片庭"></button>
+    <div class="eyebrow">Index · 庭记</div>
+    <h3>这座花园里长着什么</h3>
+    <div class="stat" id="stat"></div>
+    <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="q" placeholder="寻一颗星" autocomplete="off"><kbd>/</kbd></label>
+  </div>
+  <div class="rail-body" id="tree"></div>
+  <div class="rail-foot">
+    <div class="eyebrow" style="letter-spacing:.3em">Topics · 话题</div>
+    <div class="tags" id="tags"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</aside>
+<button class="pill rail-toggle" id="railOn">☰ 庭记</button>
+
+<aside id="card" class="glass" aria-live="polite" aria-label="星卡"></aside>
+
+<div class="tools">
+  <button class="pill opt" id="railBtn" aria-pressed="true">☰ 庭记</button>
+  <button class="pill opt" id="timeBtn" aria-pressed="false">◴ 时光</button>
+  <button class="pill opt" id="careBtn" aria-pressed="false">◎ 待照料</button>
+  <button class="pill" id="fitBtn">⤢ 全图</button>
+</div>
+<div class="time glass" id="time"><span>时光</span><input type="range" id="timeR" min="0" max="1000" value="1000"><span id="timeL"></span></div>
+<div class="toast glass" id="toast"></div>
+
+<div class="dock">
+  <nav>
+    <span><svg viewBox="0 0 24 24"><path d="M4 13.6v-1.9a8 8 0 0 1 16 0v1.9"/><rect x="2" y="12.8" width="4.6" height="7.4" rx="2.3"/><rect x="17.4" y="12.8" width="4.6" height="7.4" rx="2.3"/></svg></span>
+    <span class="on"><svg viewBox="0 0 24 24"><path d="M5.4 8.8 11.2 5.3l2.2 9.2 5.6 4" opacity=".58"/><circle cx="5.4" cy="8.8" r="1.8" fill="currentColor" stroke="none"/><circle cx="11.2" cy="5.3" r="1.25" fill="currentColor" stroke="none"/><circle cx="13.4" cy="14.5" r="1.25" fill="currentColor" stroke="none"/><circle cx="19" cy="18.5" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+    <span><svg viewBox="0 0 24 24"><path d="M12 20.3V10.1"/><path d="M12 11.5C12 7.3 8.9 3.7 3.9 3.7c0 5 3.4 7.8 8.1 7.8Z"/><path d="M12 15.3c0-3.6 3-6.2 8.1-6.2 0 4.2-3.4 6.2-8.1 6.2Z"/></svg></span>
+    <span><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="8.6" cy="9.6" r="1.45" fill="currentColor" stroke="none"/><path d="m4.6 16.9 4.4-4.9 4 4.5 2.6-3 3.9 4.2"/></svg></span>
+    <span><svg viewBox="0 0 24 24"><path d="M12 3v2.3M7.2 5.6h9.6"/><path d="M15.3 5.6c2.9 1.3 4.5 3.6 4.5 6.2s-1.6 4.9-4.5 6.2H8.7c-2.9-1.3-4.5-3.6-4.5-6.2s1.6-4.9 4.5-6.2Z"/><path d="M7.2 18h9.6M12 18v3"/></svg></span>
+  </nav>
+  <div class="miku"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 17c-1.5-3-1-8 3-10.5S16 5 18.5 8 20 15 19 17"/><path d="M8 13c1 1 2.5 1 3 0m2 0c.5 1 2 1 3 0"/></svg></div>
+</div>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════════════════
+   砂与星 · 星图第四轮原型
+   同一套几何，昼是枯山水砂庭，夜是星池。所有美术笔触都在编码一件数据：
+     石 / 星       = 文章（大小 = 篇幅，形 = 生长度）
+     庭            = 分类（一组石 + 庭名）
+     飞石 / 星座线 = 合集（次序）
+     石桥 / 鹊桥   = 双链
+     砂纹          = 距离场的等值线（Bubble Sets 同一原理）——悬停话题时收成一个圈
+     水纹          = 近三周照料过
+   ═══════════════════════════════════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const el = (n, a = {}, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const seeded = str => { let h = 0; for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h); const x = Math.sin(h) * 10000; return x - Math.floor(x); };
+const DAY = 864e5;
+const NOW = Date.parse("2026-09-24T21:40:00+10:00");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* —— 分类：与 useCategories 的内置五类同名同色（AURA），星图不再另起一套光谱色 —— */
+const CATS = {
+  thought: { zh: "随笔", en: "Thoughts", c: "#39C5BB" },
+  weekly:  { zh: "周报", en: "Weekly",   c: "#FFB7C5" },
+  note:    { zh: "学习笔记", en: "Notes", c: "#60A5FA" },
+  growth:  { zh: "成长", en: "Growth",   c: "#A7F3D0" },
+  project: { zh: "项目复盘", en: "Projects", c: "#A78BFA" },
+};
+const GROW = { seedling: "种子", growing: "生长中", evergreen: "常青" };
+const CN = "零一二三四五六七八九十".split("");
+const cnNum = n => n <= 10 ? CN[n] : n < 20 ? `十${n % 10 ? CN[n % 10] : ""}` : n < 100 ? `${CN[Math.floor(n / 10)]}十${n % 10 ? CN[n % 10] : ""}` : String(n);
+
+/* —— 真实数据：线上那 8 篇，一个字段没改 —— */
+const REAL = [
+  { id: "p1", t: "给我一颗可以反悔的心", s: "COMP3121", cat: "note", cr: "2026-07-20", up: "2026-08-13", min: 9, g: "growing", tags: ["计算机", "comp3121", "网络流"], ex: "网络流的引入与初步介绍" },
+  { id: "e1", t: "天行健，君子以自强不息", s: null, cat: "thought", cr: "2026-07-18", up: "2026-08-05", min: 3, g: "seedling", tags: ["易经", "随笔"], ex: "丙午年六月初三，十九最后一次轻吻我" },
+  { id: "h1", t: "来日方长", s: "Hackathon", cat: "project", cr: "2026-07-25", up: "2026-08-06", min: 2, g: "growing", tags: ["hackathon", "projects"], ex: "我们team第一次的线下final pitch" },
+  { id: "p2", t: "貌虽不一，却有她三分骨气", s: "COMP3121", cat: "note", cr: "2026-07-25", up: "2026-08-12", min: 16, g: "evergreen", tags: ["计算机", "comp3121"], ex: "物不以貌别，终见于骨气——归约的介绍与引入" },
+  { id: "p3", t: "贪恋有你的未来", s: "COMP3121", cat: "note", cr: "2026-08-10", up: "2026-08-12", min: 21, g: "growing", tags: ["计算机", "comp3121"], ex: "我贪恋的何止是当下，是你最有可能出现的未来。\n——贪心策略的介绍与引入" },
+  { id: "p4", t: "以史为鉴，不泥于史", s: "COMP3121", cat: "note", cr: "2026-08-11", up: "2026-08-11", min: 25, g: "seedling", tags: ["comp3121", "计算机"], ex: "动态规划的介绍与应用" },
+  { id: "p5", t: "树下的分开又重逢", s: "COMP3121", cat: "note", cr: "2026-08-11", up: "2026-08-12", min: 18, g: "growing", tags: ["comp3121", "计算机"], ex: "分开是为了更好的重逢——Divide and Conquer 的一些整理" },
+  { id: "p6", t: "见招拆招，逢水架桥", s: "COMP3121", cat: "note", cr: "2026-08-12", up: "2026-08-12", min: 25, g: "growing", tags: ["comp3121", "计算机"], ex: "COMP3121的总结与一些考点" },
+].map((p, i) => ({ ...p, cr: Date.parse(p.cr + "T10:00:00+10:00") + i * 1000, up: Date.parse(p.up + "T10:00:00+10:00"), links: [] }));
+
+/* —— 规模模拟：真实 8 篇 + 按站内分类/话题习惯生成的样本。种子固定，每次一样 —— */
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const SYN = {
+  note:    { w: .36, series: ["COMP3121", "COMP6771 · C++", "机器学习札记", "操作系统拾遗"], tags: ["计算机", "comp3121", "算法", "c++", "机器学习", "系统", "图论", "网络流"] },
+  thought: { w: .22, series: ["夜读", "易经小记"], tags: ["随笔", "易经", "读书", "夜", "音乐", "yorushika"] },
+  project: { w: .16, series: ["Hackathon", "Oasis 建站手记"], tags: ["hackathon", "projects", "react", "设计", "oasis"] },
+  weekly:  { w: .14, series: ["周报 · 2026"], tags: ["周报", "复盘", "计划"] },
+  growth:  { w: .12, series: ["晨跑"], tags: ["跑步", "习惯", "成长", "夜"] },
+};
+const TA = ["春", "夏", "秋", "冬", "夜", "雨", "风", "月", "星", "水", "石", "灯", "潮", "云", "雪", "海"];
+const TB = ["归约", "贪心", "回溯", "分治", "并查集", "指针", "协程", "梯度", "注意力", "调度", "页表", "锁", "一杯热水", "长夜", "远行", "旧信", "晚风", "重逢", "答案", "初心", "余温", "小径"];
+const TT = [(a, b) => `${a}下的${b}`, (a, b) => `当${a}遇见${b}`, (a, b) => `${a}与${b}`, (a, b) => `关于${b}的几件小事`, (a, b) => `在${a}里写${b}`, (a, b) => `${b}札记`, (a, b) => `${a}夜读${b}`, (a, b) => `一${a}一${b}`];
+function synth(N) {
+  if (N <= 8) return REAL.map(p => ({ ...p }));
+  const r = mulberry(39), out = REAL.map(p => ({ ...p, links: [] }));
+  const cats = Object.keys(SYN), t0 = Date.parse("2025-02-04"), t1 = Date.parse("2026-09-20");
+  for (let i = 8; i < N; i++) {
+    let x = r(), cat = cats[0]; for (const c of cats) { if ((x -= SYN[c].w) < 0) { cat = c; break; } }
+    const S = SYN[cat], cr = t0 + Math.pow(r(), .8) * (t1 - t0);
+    const tags = [S.tags[Math.floor(r() * S.tags.length)]]; if (r() < .6) tags.push(S.tags[Math.floor(r() * S.tags.length)]);
+    const title = TT[Math.floor(r() * TT.length)](TA[Math.floor(r() * TA.length)], TB[Math.floor(r() * TB.length)]);
+    const g = r(); const min = Math.round(2 + 26 * Math.pow(r(), 2.1));
+    out.push({ id: "s" + i, t: title, s: r() < .5 ? S.series[Math.floor(Math.pow(r(), 1.6) * S.series.length)] : null, cat, cr, up: Math.min(NOW, cr + r() * r() * 200 * DAY),
+      min, g: g < .3 ? "seedling" : g < .8 ? "growing" : "evergreen", tags: [...new Set(tags)], ex: "（样本）" + title, links: [] });
+  }
+  // 双链：约 14% 的文章引用一篇更早的文章，六成落在同一分类
+  const byCr = [...out].sort((a, b) => a.cr - b.cr);
+  byCr.forEach((p, i) => { if (i < 3 || r() > .14) return;
+    const pool = r() < .6 ? byCr.slice(0, i).filter(q => q.cat === p.cat) : byCr.slice(0, i);
+    const q = pool[Math.floor(r() * pool.length)]; if (q && q.id !== p.id && q.s !== p.s) p.links.push(q.id); });
+  return out;
+}
+
+/* ══ 星等 = 篇幅（沿用：门限贴着真实数据定） ═════════════════════════════════ */
+const MAG = [7, 12, 18, 25];
+const magOf = p => { let m = 1; for (const g of MAG) if (p.min >= g) m++; return Math.min(5, m); };
+const RS = [4.4, 5.4, 6.6, 8.2, 10.2];     // 石的屏幕半径 px（昼）
+const RC = [1.7, 2.1, 2.6, 3.3, 4.3];      // 星核屏幕半径 px（夜）
+
+/* ══ 落座：出生时择邻，此后终生不迁（沿用第三轮的不变量，只多一层「庭」） ════════════
+   1) 分类 = 庭：第 k 个出现的分类在黄金角螺线上取一块庭址，此后不动。
+   2) 庭内：老小径续一步（带种子转角）；新小径在庭内另起；散石先找同庭里共话题的亲戚。
+   3) 候选评分：离锚点近、转角小、离庭心近，并对别的庭的石子强烈避让 → 庭与庭之间自然留出白砂。
+   4) 任意两石间距 ≥ MIN_SEP；每一步只看已落好的石 → layout(posts[:k]) 恒为 layout(posts) 的前缀。 */
+const MIN_SEP = 30, STEP = 54, ISLAND = 270, GOLD = 2.39996, SQ = .82;
+function layout(posts) {
+  const order = [...posts].sort((a, b) => a.cr - b.cr || (a.id < b.id ? -1 : 1));
+  const CELL = 40, grid = new Map(), key = (i, j) => i * 100003 + j;
+  const add = s => { const k = key(Math.floor(s.x / CELL), Math.floor(s.y / CELL)); let b = grid.get(k); if (!b) grid.set(k, b = []); b.push(s); };
+  const near = (x, y, r) => { const out = []; for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++) for (let j = Math.floor((y - r) / CELL); j <= Math.floor((y + r) / CELL); j++) { const b = grid.get(key(i, j)); if (b) for (const s of b) if (Math.hypot(s.x - x, s.y - y) < r) out.push(s); } return out; };
+  const islands = new Map(), series = new Map(), stars = [];
+  const choose = (anchor, dir, dist, isl, ser) => {
+    if (dist === 0 && !near(anchor.x, anchor.y, MIN_SEP).length) return { x: anchor.x, y: anchor.y };
+    const base = dist || STEP * .9; let best = null, bs = Infinity;
+    for (let ring = 0; ring < 10; ring++) {
+      const r = base * (1 + ring * .3);
+      for (let m = 0; m < 18; m++) {
+        const off = (m % 2 ? 1 : -1) * Math.ceil(m / 2) * (Math.PI / 9), a = dir + off;
+        const x = anchor.x + Math.cos(a) * r, y = anchor.y + Math.sin(a) * r * SQ;
+        if (near(x, y, MIN_SEP).length) continue;
+        let sc = ring * 9 + Math.abs(off) * 8 + Math.hypot(x - isl.seed.x, (y - isl.seed.y) / SQ) * (ser ? .1 : .14);
+        for (const q of near(x, y, 120)) {
+          const d = Math.hypot(q.x - x, q.y - y);
+          if (q.isl !== isl) sc += (120 - d) * 2.4;                       // 别的庭：让出白砂
+          else if (ser && q.series !== ser.name && d < 64) sc += (64 - d) * .8;   // 同庭别的小径：稍让
+        }
+        if (sc < bs) { bs = sc; best = { x, y }; }
+      }
+    }
+    return best || { x: anchor.x + MIN_SEP * 3, y: anchor.y };
+  };
+  for (const p of order) {
+    let isl = islands.get(p.cat);
+    if (!isl) {
+      const k = islands.size, a = k * GOLD + .74 + (seeded("isl:" + p.cat) - .5) * .5;   // +.74：第二片庭落在正左，横版更舒展
+      const r = k ? ISLAND * Math.sqrt(k) * (.92 + seeded("ir:" + p.cat) * .2) : 0;
+      isl = { cat: p.cat, k, seed: { x: Math.cos(a) * r, y: Math.sin(a) * r * .66 }, stars: [] };
+      islands.set(p.cat, isl);
+    }
+    const u = seeded("u:" + p.id), v = seeded("v:" + p.id);
+    let ser = p.s ? series.get(p.s) : null, anchor, dir, dist;
+    if (ser) {                                   // 老小径：从最后一块石沿走向续一步
+      const t = ser.stars[ser.stars.length - 1], pv = ser.stars[ser.stars.length - 2];
+      const head = pv ? Math.atan2(t.y - pv.y, t.x - pv.x) : ser.head;
+      dir = head + (u - .5) * 1.7 * (v > .8 ? 1.4 : 1); dist = STEP * (.72 + v * .75); anchor = t;
+    } else if (p.s) {                            // 新小径：庭内另起一处
+      anchor = isl.seed; dist = isl.stars.length ? STEP * 1.6 : 0; dir = u * Math.PI * 2;
+    } else {                                     // 散石：先找同庭共话题的亲戚
+      let kin = null; for (let i = isl.stars.length - 1; i >= 0 && !kin; i--) if (isl.stars[i].p.tags.some(t => p.tags.includes(t))) kin = isl.stars[i];
+      anchor = kin || isl.seed; dist = kin ? STEP * .95 : (isl.stars.length ? STEP * 1.2 : 0); dir = u * Math.PI * 2;
+    }
+    const pos = choose(anchor, dir, dist, isl, ser);
+    const s = { p, x: pos.x, y: pos.y, isl, series: p.s || null, mag: magOf(p) };
+    add(s); stars.push(s); isl.stars.push(s);
+    if (p.s) {
+      if (!ser) { ser = { name: p.s, cat: p.cat, stars: [], head: Math.atan2(s.y - isl.seed.y, s.x - isl.seed.x) || u * 6.28 }; series.set(p.s, ser); }
+      ser.stars.push(s);
+    }
+  }
+  return { stars, islands: [...islands.values()], series: [...series.values()] };
+}
+
+/* ══ 砂纹：smooth-min 距离场 + marching squares ══════════════════════════════════
+   场值 = 到最近那块石边缘的「软」距离：-K·ln Σ exp(-dᵢ/K)。单块石时它就是距离本身，
+   两块石挨近时等值线自动合拢——这正是耙砂时围石的水纹，也正是 Bubble Sets 的等值线。 */
+const LV = [9, 17, 25];          // 三圈砂纹，屏幕 px
+function sandField(list, kT, radiusPx = i => RS[i.mag - 1], reachPx = LV[2] + 36, Kpx = 7) {
+  if (!list.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of list) { x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y); }
+  const reach = reachPx / kT, pad = reach + 14 / kT; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  let g = 3.2 / kT, nx = Math.ceil((x1 - x0) / g) + 1, ny = Math.ceil((y1 - y0) / g) + 1;
+  const CAP = 160000; if (nx * ny > CAP) { g *= Math.sqrt(nx * ny / CAP); nx = Math.ceil((x1 - x0) / g) + 1; ny = Math.ceil((y1 - y0) / g) + 1; }
+  const C = reach, B = new Map(), bk = (i, j) => i * 100003 + j;
+  for (const s of list) { const k = bk(Math.floor(s.x / C), Math.floor(s.y / C)); let b = B.get(k); if (!b) B.set(k, b = []); b.push([s.x, s.y, radiusPx(s) / kT]); }
+  const K = Kpx / kT, v = new Float32Array(nx * ny);
+  for (let j = 0; j < ny; j++) { const y = y0 + j * g, cj = Math.floor(y / C);
+    for (let i = 0; i < nx; i++) { const x = x0 + i * g, ci = Math.floor(x / C); let acc = 0;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const bb = B.get(bk(ci + a, cj + b)); if (!bb) continue;
+        for (const q of bb) { const d = Math.hypot(q[0] - x, q[1] - y) - q[2]; if (d < reach) acc += Math.exp(-d / K); } }
+      v[j * nx + i] = acc > 0 ? Math.min(reach, -K * Math.log(acc)) : reach; } }
+  return { nx, ny, x0, y0, g, v };
+}
+function iso(F, level) {
+  const { nx, ny, x0, y0, g, v } = F, segs = [];
+  const hx = (i, j) => { const a = v[j * nx + i], b = v[j * nx + i + 1]; return [x0 + (i + (level - a) / (b - a)) * g, y0 + j * g]; };
+  const vy = (i, j) => { const a = v[j * nx + i], b = v[(j + 1) * nx + i]; return [x0 + i * g, y0 + (j + (level - a) / (b - a)) * g]; };
+  const s = (p, q) => segs.push(p[0], p[1], q[0], q[1]);
+  for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const a = v[j * nx + i], b = v[j * nx + i + 1], c = v[(j + 1) * nx + i + 1], d = v[(j + 1) * nx + i];
+    const id = (a < level ? 8 : 0) | (b < level ? 4 : 0) | (c < level ? 2 : 0) | (d < level ? 1 : 0);
+    if (id === 0 || id === 15) continue;
+    const T = () => hx(i, j), Bo = () => hx(i, j + 1), L = () => vy(i, j), R = () => vy(i + 1, j);
+    switch (id) {
+      case 1: case 14: s(L(), Bo()); break;
+      case 2: case 13: s(Bo(), R()); break;
+      case 3: case 12: s(L(), R()); break;
+      case 4: case 11: s(T(), R()); break;
+      case 6: case 9: s(T(), Bo()); break;
+      case 7: case 8: s(T(), L()); break;
+      case 5: if ((a + b + c + d) / 4 < level) { s(T(), L()); s(Bo(), R()); } else { s(T(), R()); s(L(), Bo()); } break;
+      case 10: if ((a + b + c + d) / 4 < level) { s(T(), R()); s(L(), Bo()); } else { s(T(), L()); s(Bo(), R()); } break;
+    }
+  }
+  return join(segs);
+}
+function join(segs) {
+  const n = segs.length / 4, used = new Uint8Array(n), map = new Map();
+  const K = (x, y) => Math.round(x * 64) + "_" + Math.round(y * 64);
+  for (let s = 0; s < n; s++) for (let e = 0; e < 2; e++) { const k = K(segs[4 * s + 2 * e], segs[4 * s + 2 * e + 1]); let a = map.get(k); if (!a) map.set(k, a = []); a.push(s); }
+  const step = (x, y) => { const c = map.get(K(x, y)); if (!c) return null; for (const t of c) if (!used[t]) { used[t] = 1; return K(segs[4 * t], segs[4 * t + 1]) === K(x, y) ? [segs[4 * t + 2], segs[4 * t + 3]] : [segs[4 * t], segs[4 * t + 1]]; } return null; };
+  const out = [];
+  for (let s = 0; s < n; s++) { if (used[s]) continue; used[s] = 1;
+    const fw = [[segs[4 * s], segs[4 * s + 1]], [segs[4 * s + 2], segs[4 * s + 3]]], bw = [];
+    for (let p; (p = step(...fw[fw.length - 1]));) fw.push(p);
+    for (let p; (p = step(...(bw.length ? bw[bw.length - 1] : fw[0])));) bw.push(p);
+    out.push(bw.reverse().concat(fw)); }
+  return out;
+}
+const smooth = (pts, dp = 1) => {
+  const n = pts.length; if (n < 3) return "";
+  const f = x => x.toFixed(dp), mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const closed = Math.hypot(pts[0][0] - pts[n - 1][0], pts[0][1] - pts[n - 1][1]) < 1e-6;
+  const P = closed ? pts.slice(0, -1) : pts, m = P.length;
+  if (closed) { const s0 = mid(P[m - 1], P[0]); let d = `M${f(s0[0])} ${f(s0[1])}`;
+    for (let i = 0; i < m; i++) { const q = mid(P[i], P[(i + 1) % m]); d += `Q${f(P[i][0])} ${f(P[i][1])} ${f(q[0])} ${f(q[1])}`; } return d + "Z"; }
+  let d = `M${f(P[0][0])} ${f(P[0][1])}`;
+  for (let i = 1; i < m - 1; i++) { const q = mid(P[i], P[i + 1]); d += `Q${f(P[i][0])} ${f(P[i][1])} ${f(q[0])} ${f(q[1])}`; }
+  return d + `L${f(P[m - 1][0])} ${f(P[m - 1][1])}`;
+};
+
+/* ══ 石与星的笔：图例与图上用同一支笔，所以它不会说谎 ═══════════════════════════ */
+function stoneShape(id, R) {          // 种子化的卵石轮廓：两道低频起伏 + 俯视略扁
+  const a1 = seeded("a1" + id) * 6.28, a2 = seeded("a2" + id) * 6.28, e1 = .08 + seeded("e1" + id) * .07, e2 = .04 + seeded("e2" + id) * .05, rot = seeded("ro" + id) * 3.14;
+  const pts = []; for (let i = 0; i < 12; i++) { const t = i / 12 * 6.283; const r = R * (1 + e1 * Math.sin(2 * t + a1) + e2 * Math.sin(3 * t + a2));
+    const x = Math.cos(t) * r, y = Math.sin(t) * r * .84; pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]); }
+  pts.push(pts[0]); return smooth(pts, 2);
+}
+const SPARK = "M0,-1C.06,-.34 .34,-.06 1,0C.34,.06 .06,.34 0,1C-.06,.34 -.34,.06 -1,0C-.34,-.06 -.06,-.34 0,-1Z";
+function glyph(parent, p, mag) {
+  const R = RS[mag - 1], rc = RC[mag - 1];
+  const sg = el("g", { class: "stone" }, parent);
+  el("ellipse", { class: "st-shadow", cx: R * .28, cy: R * .42, rx: R * 1.02, ry: R * .74 }, sg);
+  el("path", { class: "st-body" + (p.g === "seedling" ? " seed" : ""), d: stoneShape(p.id, R) }, sg);
+  if (p.g !== "seedling") el("ellipse", { class: "st-hi", cx: -R * .3, cy: -R * .32, rx: R * .38, ry: R * .22, transform: "rotate(-24)" }, sg);
+  if (p.g === "evergreen") el("path", { class: "st-moss", d: `M${-R * .62} ${-R * .18}Q${-R * .1} ${-R * 1.02} ${R * .66} ${-R * .3}Q${R * .1} ${-R * .52} ${-R * .62} ${-R * .18}Z` }, sg);
+  const ng = el("g", { class: "star" }, parent);
+  if (p.g !== "seedling") el("circle", { class: "sr-halo", r: rc * 4.2, fill: `url(#halo-${p.cat})` }, ng);
+  el("circle", { class: "sr-core" + (p.g === "seedling" ? " seed" : ""), r: rc }, ng);
+  if (p.g === "evergreen") el("path", { class: "sr-spark", d: SPARK, transform: `scale(${rc * 3.1})` }, ng);
+  return R;
+}
+
+/* ══ 状态 ══════════════════════════════════════════════════════════════════════ */
+const svg = $("#stage");
+let DATA = [], L = null, byId = new Map(), view = { k: 1, x: 0, y: 0 }, fitK = 1, tierK = 0;
+let selId = null, hovId = null, cutoff = Infinity, topic = null, query = "";
+let G = {};                              // svg 图层
+let symEls = [], labelSyms = [];         // 需要反向缩放的符号组（石/星、注记）
+
+function neighbors(id) {
+  const s = byId.get(id); if (!s) return { path: [], bridges: [], kin: [] };
+  const path = s.series ? L.series.find(x => x.name === s.series).stars.filter(q => q.p.cr <= cutoff) : [];
+  const bridges = [];
+  for (const q of L.stars) { if (q.p.cr > cutoff) continue;
+    if (s.p.links.includes(q.p.id)) bridges.push({ s: q, dir: "out" });
+    else if (q.p.links.includes(s.p.id)) bridges.push({ s: q, dir: "in" }); }
+  const tf = new Map(); L.stars.forEach(q => q.p.tags.forEach(t => tf.set(t, (tf.get(t) || 0) + 1)));
+  const kin = L.stars.filter(q => q !== s && q.p.cr <= cutoff && !path.includes(q))
+    .map(q => ({ s: q, tags: q.p.tags.filter(t => s.p.tags.includes(t) && tf.get(t) <= 14) }))
+    .filter(x => x.tags.length).sort((a, b) => b.tags.length - a.tags.length || b.s.mag - a.s.mag).slice(0, 5);
+  return { path, bridges, kin };
+}
+
+/* ══ 构建 ══════════════════════════════════════════════════════════════════════ */
+function build(n) {
+  DATA = synth(n); L = layout(DATA); byId = new Map(L.stars.map(s => [s.p.id, s]));
+  selId = null; hovId = null; topic = null; pinTopic = false; cutoff = Infinity; tierK = 0; $("#timeR").value = 1000;
+  svg.replaceChildren();
+  const defs = el("defs", {}, svg);
+  // 渐变里的 currentColor 取的是渐变自己的 color，不是引用它的元素——所以每个分类一支渐变
+  for (const [cat, C] of Object.entries(CATS)) { const rg = el("radialGradient", { id: "halo-" + cat }, defs);
+    [[0, .42], [.35, .12], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": C.c, "stop-opacity": a }, rg)); }
+  const mk = G.mask = el("mask", { id: "rakeMask", maskUnits: "userSpaceOnUse" }, defs);
+  G.maskBase = el("rect", { fill: "url(#fade)" }, mk); G.maskHole = el("g", {}, mk);
+  const fade = el("radialGradient", { id: "fade" }, defs);
+  el("stop", { offset: ".55", "stop-color": "#fff" }, fade); el("stop", { offset: "1", "stop-color": "#000" }, fade);
+  G.cam = el("g", {}, svg);
+  G.rake = el("path", { class: "rk", mask: "url(#rakeMask)" }, G.cam);
+  G.pool = el("g", {}, G.cam);
+  G.rings = el("g", {}, G.cam);
+  G.topic = el("g", {}, G.cam);
+  G.rel = el("g", { class: "rel" }, G.cam);
+  G.spokes = el("g", {}, G.cam);
+  G.nodes = el("g", {}, G.cam);
+  G.labels = el("g", {}, G.cam);
+  // 小径与桥（世界坐标，线宽不随缩放）
+  L.series.filter(s => s.stars.length > 1).forEach(s => {
+    const g = el("g", { class: "path", "data-series": s.name }, G.rel);
+    s.el = g; for (const c of ["step-a", "step-b", "chain"]) el("path", { class: c }, g);
+    el("title", {}, el("path", { class: "hit" }, g)).textContent = `小径 · ${s.name}：同一合集，按写作先后`;
+  });
+  L.stars.forEach(s => s.p.links.forEach(tid => { const t = byId.get(tid); if (!t) return;
+    const g = el("g", { class: "bridge", "data-a": s.p.id, "data-b": tid }, G.rel);
+    const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2, dx = t.x - s.x, dy = t.y - s.y, bend = (seeded(s.p.id + tid) > .5 ? 1 : -1) * .22;
+    const d = `M${s.x} ${s.y}Q${mx - dy * bend} ${my + dx * bend} ${t.x} ${t.y}`;
+    for (const c of ["br-a", "br-b", "br-n"]) el("path", { class: c, d }, g);
+    el("title", {}, el("path", { class: "hit", d }, g)).textContent = `桥 · 《${s.p.t}》引用了《${t.p.t}》`;
+  }));
+  // 石 / 星
+  L.stars.forEach(s => {
+    const c = CATS[s.p.cat].c;
+    const g = el("g", { class: "node", transform: `translate(${s.x} ${s.y})`, "data-id": s.p.id, style: `--c:${c};color:${c}` }, G.nodes);
+    const sym = el("g", { class: "sym" }, g); symEls.push(sym);
+    const R = glyph(sym, s.p, s.mag);
+    el("circle", { class: "sel-ring", r: R + 5 }, sym);
+    el("circle", { class: "care", r: R + 4 }, sym);
+    if (NOW - s.p.up < 21 * DAY) { const f = el("circle", { class: "fresh", r: R + 1 }, sym); f.style.animationDelay = `${-seeded("f" + s.p.id) * 5}s`; }
+    if (s.p.g === "seedling" || NOW - s.p.up > 60 * DAY) g.classList.add("tend");
+    s.el = g; s.sym = sym; s.R = R;
+  });
+  symEls = [...svg.querySelectorAll(".sym")];
+  renderRail(); renderTags(); renderLegend(); stat();
+  fit(false); sand(true); paths(); labels(); focus();
+  if (!DATA.length) return;
+  const h = decodeURIComponent((location.hash.match(/#\/constellation\/(.+)$/) || [])[1] || "");
+  if (h && byId.has(h)) select(h, false);
+}
+
+/* ══ 相机：全程直写 transform ═════════════════════════════════════════════════ */
+function write() {
+  G.cam.setAttribute("transform", `translate(${view.x.toFixed(2)} ${view.y.toFixed(2)}) scale(${view.k.toFixed(5)})`);
+  const inv = `scale(${(1 / view.k).toFixed(5)})`;
+  for (const e of symEls) e.setAttribute("transform", inv);
+  for (const e of labelSyms) e.setAttribute("transform", inv);
+}
+function avail() {
+  const W = innerWidth, H = innerHeight, narrow = W < 768;
+  const railOn = !document.body.classList.contains("rail-off");
+  const top = narrow ? 168 : 150, bottom = narrow ? (railOn ? H * .44 + 112 : 112) : 124;
+  const left = narrow ? 16 : (railOn ? 32 + 292 + 28 : 40), right = narrow ? 16 : 40;
+  return { x: left, y: top, w: W - left - right, h: H - top - bottom };
+}
+function bbox(list) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of list) { x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y); }
+  return { x0, y0, x1, y1 };
+}
+function fit(anim = true) {
+  const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length) return;
+  const b = bbox(vis), A = avail(), padPx = 70;
+  const bw = Math.max(b.x1 - b.x0, 180), bh = Math.max(b.y1 - b.y0, 120);
+  const k = clamp(Math.min((A.w - padPx * 2) / bw, (A.h - padPx * 2) / bh), .25, 2.2);
+  fitK = k;
+  const to = { k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h / 2 - (b.y0 + b.y1) / 2 * k };
+  fly(to, anim);
+}
+const bez = (() => { const x1 = .16, y1 = 1, x2 = .3, y2 = 1; const cx = t => 3 * x1 * t * (1 - t) ** 2 + 3 * x2 * t * t * (1 - t) + t ** 3, cy = t => 3 * y1 * t * (1 - t) ** 2 + 3 * y2 * t * t * (1 - t) + t ** 3;
+  return x => { let lo = 0, hi = 1; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (cx(m) < x) lo = m; else hi = m; } return cy((lo + hi) / 2); }; })();
+let flyId = 0;
+function fly(to, anim = true) {
+  const from = { ...view }, id = ++flyId;
+  if (!anim || reduce) { view = to; write(); settle(); return; }
+  const t0 = performance.now(), D = 640;
+  const tick = t => { if (id !== flyId) return; const e = bez(Math.min(1, (t - t0) / D));
+    view = { k: from.k + (to.k - from.k) * e, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e }; write();
+    if (e < 1) requestAnimationFrame(tick); else settle(); };
+  requestAnimationFrame(tick);
+}
+let settleT = 0;
+function settle() { clearTimeout(settleT); settleT = setTimeout(() => {
+  const tier = Math.round(clamp(Math.log2(view.k / fitK) / .8, 0, 3));
+  if (tier !== tierK) { tierK = tier; sand(); } labels(); }, 110); }
+const toWorld = (cx, cy) => ({ x: (cx - view.x) / view.k, y: (cy - view.y) / view.k });
+const toScreen = s => ({ x: s.x * view.k + view.x, y: s.y * view.k + view.y });
+
+/* ══ 砂纹 ══════════════════════════════════════════════════════════════════════ */
+function sand() {
+  const kT = fitK * [1, 1.8, 3.2, 5.6][tierK];
+  const vis = L.stars.filter(s => s.p.cr <= cutoff);
+  for (const g of [G.rings, G.pool, G.maskHole]) g.replaceChildren();
+  if (!vis.length) { G.rake.setAttribute("d", ""); return; }
+  const dp = kT > 2 ? 2 : 1;
+  // 每片庭各算一套砂纹：同庭的石合成一个聚落，庭与庭之间留白砂
+  L.islands.forEach(isl => {
+    const st = isl.stars.filter(s => s.p.cr <= cutoff); if (!st.length) return;
+    const F = sandField(st, kT), c = CATS[isl.cat].c;
+    const loops = LV.map(l => iso(F, l / kT).map(p => smooth(p, dp)).join(""));
+    loops.forEach((d, i) => el("path", { class: "rg" + (i === 0 ? " in" : ""), d, style: `--c:${c}` }, G.rings));
+    el("path", { class: "poolfill", d: loops[2], "fill-rule": "evenodd" }, G.pool);
+    el("path", { d: loops[2], fill: "#000", "fill-rule": "evenodd" }, G.maskHole);
+  });
+  // 直纹：其余的白砂耙成平行线，在最外一圈砂纹处停住；外缘渐隐，没有版框
+  const b = bbox(vis), padW = 240 / kT, x0 = b.x0 - padW, x1 = b.x1 + padW, y0 = b.y0 - padW * .8, y1 = b.y1 + padW * .8, gap = 7 / kT;
+  let d = ""; for (let y = y0; y <= y1; y += gap) d += `M${x0.toFixed(1)} ${y.toFixed(1)}H${x1.toFixed(1)}`;
+  G.rake.setAttribute("d", d);
+  for (const [k, v] of Object.entries({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 })) { G.maskBase.setAttribute(k, v); G.mask.setAttribute(k, v); }
+  if (topic) showTopic(topic);
+}
+
+/* ══ 小径：昼是飞石，夜是星座线。两端让开石身 ═════════════════════════════════ */
+function paths() {
+  L.series.forEach(s => { if (!s.el) return;
+    const pts = s.stars.filter(q => q.p.cr <= cutoff);
+    let d = "";
+    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], L2 = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const ta = (a.R + 7) / view.k / L2, tb = (b.R + 7) / view.k / L2; if (ta + tb >= 1) continue;
+      d += `M${(a.x + (b.x - a.x) * ta).toFixed(1)} ${(a.y + (b.y - a.y) * ta).toFixed(1)}L${(b.x - (b.x - a.x) * tb).toFixed(1)} ${(b.y - (b.y - a.y) * tb).toFixed(1)}`; }
+    const full = pts.length > 1 ? "M" + pts.map(q => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join("L") : "";
+    const [a, b, c, h] = s.el.children; a.setAttribute("d", d); b.setAttribute("d", d); c.setAttribute("d", d); h.setAttribute("d", full);
+  });
+}
+
+/* ══ 注记：屏幕空间择位（八方位，右上优先），量一次宽度，全局互不重叠 ═══════════════ */
+const ctx = document.createElement("canvas").getContext("2d");
+const tw = (t, font) => { ctx.font = font; return ctx.measureText(t).width; };
+const FZH = '"LXGW WenKai Screen","Songti SC","Noto Serif SC",serif', FMO = '"JetBrains Mono",ui-monospace,monospace';
+function labels() {
+  G.labels.replaceChildren(); labelSyms = []; paths();
+  const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length) return;
+  const W = innerWidth, H = innerHeight, taken = [];
+  const discs = vis.map(s => { const p = toScreen(s), r = s.R + 3; return { x: p.x - r, y: p.y - r, w: r * 2, h: r * 2 }; });
+  const hit = (b, pad = 3) => [...discs, ...taken].some(o => b.x < o.x + o.w + pad && o.x < b.x + b.w + pad && b.y < o.y + o.h + pad && o.y < b.y + b.h + pad);
+  // 窄屏上面板是底部抽屉：注记不许落到抽屉后面
+  let floor = H - 8;
+  if (W < 768) { const panel = $("#card").classList.contains("on") ? $("#card") : document.body.classList.contains("rail-off") ? null : $("#rail"); if (panel) floor = panel.getBoundingClientRect().top - 8; }
+  const ceil = W < 768 ? 150 : 60, onScreen = b => b.x > 8 && b.y > ceil && b.x + b.w < W - 8 && b.y + b.h < floor;
+  const put = (wx, wy, dx, dy, build) => { const g = el("g", { transform: `translate(${wx} ${wy})` }, G.labels); const s = el("g", { transform: `scale(${1 / view.k})` }, g); labelSyms.push(s); el("g", { transform: `translate(${dx} ${dy})` }, s).append(...build()); };
+  const txt = (t, cls, x, y, anchor = "start") => { const e = el("text", { class: "lbl " + cls, x, y, "text-anchor": anchor }); e.textContent = t; return e; };
+  const focusSet = new Set(); const f = selId || hovId;
+  if (f) { const nb = neighbors(f); focusSet.add(f); nb.path.forEach(q => focusSet.add(q.p.id)); nb.bridges.forEach(b => focusSet.add(b.s.p.id)); if (selId) nb.kin.forEach(k => focusSet.add(k.s.p.id)); }
+  // ① 庭名：目录的一级标题，常驻
+  [...L.islands].sort((a, b) => b.stars.length - a.stars.length).forEach(isl => {
+    const st = isl.stars.filter(s => s.p.cr <= cutoff); if (!st.length) return;
+    // 以庭的「重心」而不是包围盒落名：一条长小径会把包围盒拉得很远，名字就飘离了石群
+    const pts = st.map(toScreen), med = a => { const q = [...a].sort((x, y) => x - y); return q[Math.floor(q.length / 2)]; };
+    const cx = med(pts.map(p => p.x)), cy = med(pts.map(p => p.y));
+    const rr = Math.max(14, med(pts.map(p => Math.hypot(p.x - cx, p.y - cy))) * 1.1);
+    const bx = cx - rr, by = cy - rr, ex = cx + rr, ey = cy + rr;
+    const C = CATS[isl.cat], zh = C.zh, en = `${C.en} · ${st.length}`;
+    const zw = tw(zh, `16px ${FZH}`) + zh.length * 2.24, w = 14 + zw + 12 + tw(en.toUpperCase(), `10px ${FMO}`) + en.length * 2.4, h = 20;
+    const cands = [[bx - 18, by - 44], [cx - w / 2, by - 44], [bx - 18, ey + 34], [ex + 26, cy - 10], [bx - w - 26, cy - 10], [cx - w / 2, ey + 34], [bx - 18, by - 74], [cx - w / 2, ey + 64]];
+    // 名字离谁最近就会被读成谁的：只接受「最近的那块石属于本庭」的位置
+    const own = b => { let best = null, bd = Infinity; const mx = b.x + b.w / 2, my = b.y + b.h / 2;
+      for (const q of vis) { const p = toScreen(q), d = Math.hypot(Math.max(Math.abs(p.x - mx) - b.w / 2, 0), p.y - my); if (d < bd) { bd = d; best = q; } }
+      return best && best.isl === isl; };
+    let pick = null, loose = null;
+    for (const c of cands) { const b = { x: c[0], y: c[1], w, h }; if (hit(b) || !onScreen(b)) continue; if (own(b)) { pick = c; break; } loose = loose || c; }
+    pick = pick || loose; if (!pick) return;      // 庭在屏外：名字不追出去
+    taken.push({ x: pick[0], y: pick[1], w, h });
+    const wp = toWorld(pick[0], pick[1]);
+    put(wp.x, wp.y, 0, 0, () => { const dot = el("circle", { class: "isl-dot", cx: 4, cy: 11, r: 3.2, style: `--c:${C.c}` });
+      return [dot, txt(zh, "l-isl", 14, 16), txt(en, "l-isl-en", 14 + zw + 12, 15)]; });
+  });
+  // ② 小径名：目录的二级标题
+  const budgetSer = [8, 14, 30, 99][tierK];
+  [...L.series].filter(s => s.stars.filter(q => q.p.cr <= cutoff).length > 1).sort((a, b) => b.stars.length - a.stars.length).slice(0, budgetSer).forEach(s => {
+    const st = s.stars.filter(q => q.p.cr <= cutoff), zh = /[一-鿿]/.test(s.name);
+    const label = `${s.name}${zh ? "" : ""} · ${cnNum(st.length)}`, font = zh ? `12px ${FZH}` : `11px ${FMO}`;
+    const w = tw(label, font) + label.length * (zh ? 1.9 : 2.4), h = 14;
+    const pts = st.map(toScreen), cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+    const order = pts.map((p, i) => [p, i]).sort((a, b) => Math.abs(a[0].x - cx) - Math.abs(b[0].x - cx));
+    let pick = null;
+    const bx0 = Math.min(...pts.map(p => p.x)), bx1 = Math.max(...pts.map(p => p.x)), by0 = Math.min(...pts.map(p => p.y)), by1 = Math.max(...pts.map(p => p.y));
+    for (const [x, y] of [[(bx0 + bx1) / 2 - w / 2, by1 + 18], [bx1 + 20, (by0 + by1) / 2 - 7], [bx0 - w - 20, (by0 + by1) / 2 - 7], [(bx0 + bx1) / 2 - w / 2, by0 - 30]]) {
+      const b = { x, y, w, h }; if (!hit(b) && onScreen(b)) { pick = b; break; } }
+    if (!pick) for (const [p] of order) { for (const [dx, dy] of [[-w / 2, 24], [-w / 2, -34], [16, 16], [-w - 16, 16]]) { const b = { x: p.x + dx, y: p.y + dy, w, h }; if (!hit(b) && onScreen(b)) { pick = b; break; } } if (pick) break; }
+    if (!pick) return; taken.push(pick);
+    const wp = toWorld(pick.x, pick.y);
+    put(wp.x, wp.y, 0, 0, () => [txt(label, "l-ser" + (zh ? " zh" : ""), 0, 11)]);
+  });
+  // ③ 星名：焦点与邻里优先，其余按星等；庭里只有一两块石时也常驻（它就是这片庭的全部目录）
+  const want = vis.filter(s => focusSet.has(s.p.id) || s.isl.stars.filter(q => q.p.cr <= cutoff).length <= 2 || s.mag >= [5, 4, 3, 1][tierK] || (query && matches(s.p)));
+  want.sort((a, b) => (focusSet.has(b.p.id) - focusSet.has(a.p.id)) || (b.p.id === f) - (a.p.id === f) || b.mag - a.mag);
+  const cap = [10, 22, 48, 999][tierK] + focusSet.size;
+  want.slice(0, cap).forEach(s => {
+    const p = toScreen(s), w = tw(s.p.t, `13px ${FZH}`) + s.p.t.length * .8, h = 16, gp = s.R + 6;
+    const C8 = [[gp, -gp - h + 4, "start"], [-gp - w, -gp - h + 4, "start"], [gp, gp - 2, "start"], [-gp - w, gp - 2, "start"], [-w / 2, -gp - h - 2, "start"], [-w / 2, gp + 2, "start"], [gp + 2, -h / 2, "start"], [-gp - 2 - w, -h / 2, "start"]];
+    let pick = null; for (const c of C8) { const b = { x: p.x + c[0], y: p.y + c[1], w, h }; if (!hit(b, 2) && onScreen(b)) { pick = c; break; } }
+    if (!pick && s.p.id === f) pick = C8[0];
+    if (!pick) return; taken.push({ x: p.x + pick[0], y: p.y + pick[1], w, h });
+    put(s.x, s.y, pick[0], pick[1], () => [txt(s.p.t, "l-star", 0, 13)]);
+  });
+  moon();
+}
+function moon() {        // 夜里才有：今晚真实的月相（朔望月 29.53 天），挂在庭外右上的白砂上空
+  const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length || innerWidth < 768) return;
+  const ph = ((NOW - Date.parse("2026-01-18T19:52:00Z")) / DAY % 29.530589) / 29.530589;   // 0 = 朔，.5 = 望
+  const A = avail(), wp = toWorld(A.x + A.w - 150, A.y + 6), R = 9;
+  const g = el("g", { transform: `translate(${wp.x} ${wp.y})`, class: "star" }, G.labels), s = el("g", { class: "sym" }, g); labelSyms.push(s);
+  s.setAttribute("transform", `scale(${1 / view.k})`);
+  el("circle", { class: "moon", r: R, opacity: .12 }, s);                      // 地照：暗面也隐约可见
+  const q = ph < .5 ? ph : 1 - ph, k = Math.cos(2 * Math.PI * q);            // 亮面 = 半个圆盘 + 一段椭圆明暗界线
+  el("path", { class: "moon", d: `M0 ${-R}A${R} ${R} 0 0 1 0 ${R}A${(R * Math.abs(k)).toFixed(2)} ${R} 0 0 ${k > 0 ? 0 : 1} 0 ${-R}Z`, transform: ph < .5 ? "" : "scale(-1 1)" }, s);
+  el("text", { class: "lbl l-isl-en", x: 16, y: 4 }, s).textContent = `${Math.round((1 - Math.cos(2 * Math.PI * ph)) * 50)}% · 今夜月相`;
+}
+
+/* ══ 焦点：悬停或选中时，邻里亮、其余暗；并按关系类型画出为什么相连 ═══════════════ */
+function focus() {
+  const f = selId || hovId, nb = f ? neighbors(f) : null, lit = new Set();
+  if (f) { lit.add(f); nb.path.forEach(q => lit.add(q.p.id)); nb.bridges.forEach(b => lit.add(b.s.p.id)); nb.kin.forEach(k => lit.add(k.s.p.id)); }
+  const cat = hotCat, ser = hotSer, tp = topic;
+  L.stars.forEach(s => {
+    const future = s.p.cr > cutoff;
+    let dim = false;
+    if (f) dim = !lit.has(s.p.id);
+    else if (cat) dim = s.p.cat !== cat;
+    else if (ser) dim = s.series !== ser;
+    else if (tp) dim = !s.p.tags.includes(tp);
+    else if (query) dim = !matches(s.p);
+    s.el.classList.toggle("dim", dim); s.el.classList.toggle("future", future); s.el.classList.toggle("sel", s.p.id === selId);
+  });
+  const filt = !!(cat || tp || query);
+  L.series.forEach(s => { if (!s.el) return;
+    s.el.classList.toggle("lit", (!!f && byId.get(f).series === s.name) || ser === s.name);
+    s.el.style.opacity = f ? (byId.get(f).series === s.name ? 1 : .2) : ser ? (ser === s.name ? 1 : .25) : cat ? (s.cat === cat ? 1 : .25) : filt ? .35 : 1; });
+  svg.querySelectorAll(".bridge").forEach(b => { const A = byId.get(b.dataset.a), B = byId.get(b.dataset.b);
+    b.style.opacity = (A.p.cr > cutoff || B.p.cr > cutoff) ? 0 : f ? (A.p.id === f || B.p.id === f ? 1 : .1) : (filt || ser) ? .18 : .32; });
+  // 同话题：选中时才画成虚线辐条——共享标签线不常驻，常驻就是毛线团
+  G.spokes.replaceChildren();
+  if (selId) { const s = byId.get(selId); nb.kin.forEach(k => { const d = `M${s.x} ${s.y}L${k.s.x} ${k.s.y}`; const g = el("g", {}, G.spokes); el("path", { class: "spoke", d }, g);
+    el("title", {}, el("path", { class: "hit", d }, g)).textContent = `同话题 · ${k.tags.map(t => "#" + t).join(" ")}`; }); }
+  // 目录同步
+  document.querySelectorAll(".post").forEach(b => { b.classList.toggle("sel", b.dataset.id === selId); b.classList.toggle("hot", b.dataset.id === hovId); });
+}
+
+/* ══ 话题圈：只用成员再算一次场，取一条等值线——Bubble Sets；离得远就退成连线（Kelp） ══ */
+function showTopic(t) {
+  G.topic.replaceChildren(); if (!t) return;
+  const mem = L.stars.filter(s => s.p.tags.includes(t) && s.p.cr <= cutoff); if (!mem.length) return;
+  const kT = view.k, F = sandField(mem, kT, s => s.R, 60, 12);
+  const d = iso(F, 30 / kT).map(p => smooth(p, 2)).join("");
+  el("path", { class: "topic on", d, "fill-rule": "nonzero" }, G.topic);
+  // 最小生成树把分散的成员串起来：成员再远也看得出是一伙的
+  const inT = [mem[0]], rest = mem.slice(1), edges = [];
+  while (rest.length) { let bi = 0, bj = 0, bd = Infinity; inT.forEach((a, i) => rest.forEach((b, j) => { const dd = Math.hypot(a.x - b.x, a.y - b.y); if (dd < bd) { bd = dd; bi = i; bj = j; } }));
+    const b = rest.splice(bj, 1)[0]; if (bd * kT > 60) edges.push([inT[bi], b]); inT.push(b); }
+  edges.forEach(([a, b]) => el("path", { class: "kelp", d: `M${a.x} ${a.y}L${b.x} ${b.y}` }, G.topic));
+}
+
+/* ══ 目录栏：与地图是同一份目录的两种形态（brushing & linking） ═══════════════════ */
+let hotCat = null, hotSer = null;
+const matches = p => !query || p.t.toLowerCase().includes(query) || p.tags.some(t => t.toLowerCase().includes(query)) || (p.s || "").toLowerCase().includes(query);
+function renderRail() {
+  const tree = $("#tree"); tree.replaceChildren();
+  const big = DATA.length > 40;
+  L.islands.forEach(isl => {
+    const C = CATS[isl.cat], sec = document.createElement("section");
+    sec.className = "cat"; sec.style.setProperty("--c", C.c); sec.dataset.cat = isl.cat;
+    const st = isl.stars.filter(s => s.p.cr <= cutoff);
+    sec.innerHTML = `<button class="row cat-h"><i class="dot"></i><span class="zh">${C.zh}</span><span class="en">${C.en}</span><span class="n">${st.length}</span></button>`;
+    const sers = L.series.filter(s => s.cat === isl.cat && s.stars.some(q => q.p.cr <= cutoff));
+    sers.forEach(s => { const ss = s.stars.filter(q => q.p.cr <= cutoff);
+      const div = document.createElement("div"); div.className = "ser" + (big && !ss.some(q => q.p.id === selId) ? " fold" : ""); div.dataset.series = s.name;
+      div.innerHTML = `<button class="row ser-h"><svg width="18" height="10" viewBox="0 0 18 10"><path d="M1 7L6 3L11 6L17 2" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 2.2" stroke-linecap="round"/></svg>${esc(s.name)}<span class="n">${ss.length}</span></button><ol>${ss.map((q, i) => `<li><button class="row post" data-id="${q.p.id}"><span class="no">${i + 1}</span><span class="t">${esc(q.p.t)}</span><span class="m">${q.p.min}′</span></button></li>`).join("")}</ol>`;
+      sec.appendChild(div); });
+    const loose = st.filter(s => !s.series).sort((a, b) => b.p.cr - a.p.cr);
+    if (loose.length) { const ul = document.createElement("ul"); ul.className = "loose";
+      ul.innerHTML = loose.map(q => `<li><button class="row post" data-id="${q.p.id}"><span class="no">·</span><span class="t">${esc(q.p.t)}</span><span class="m">${q.p.min}′</span></button></li>`).join("");
+      sec.appendChild(ul); }
+    tree.appendChild(sec);
+  });
+  applyQuery();
+}
+function renderTags() {
+  const tf = new Map(); L.stars.forEach(s => s.p.tags.forEach(t => tf.set(t, (tf.get(t) || 0) + 1)));
+  $("#tags").innerHTML = [...tf].filter(([, n]) => n >= 1).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([t, n]) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)} ${n}</button>`).join("");
+}
+function renderLegend() {
+  const lg = $("#legend"); lg.replaceChildren();
+  const row = (draw, text) => { const s = el("svg", { width: 40, height: 20, viewBox: "-6 -10 50 20" }); draw(s); const span = document.createElement("span"); span.textContent = text; lg.append(s, span); };
+  row(s => [1, 3, 5].forEach((m, i) => { const g = el("g", { transform: `translate(${i * 15 + 2} 0)`, style: "--c:#60A5FA;color:#60A5FA" }, s); glyph(g, { id: "lg" + m, g: "growing", cat: "note" }, m); }), "大小=篇幅");
+  row(s => { const g = el("g", { style: "--c:#60A5FA;color:#60A5FA" }, s);
+    [["seedling", 0], ["growing", 15], ["evergreen", 31]].forEach(([gg, x]) => glyph(el("g", { transform: `translate(${x} 0)` }, g), { id: "lg" + gg, g: gg, cat: "note" }, 3)); }, "种子 → 常青");
+  row(s => { const d = "M-2 4L12 -3L24 3L38 -4"; for (const c of ["step-a", "step-b", "chain"]) el("path", { class: c, d }, s); }, "小径=合集");
+  row(s => { const d = "M-2 5Q18 -12 38 5"; for (const c of ["br-a", "br-b", "br-n"]) el("path", { class: c, d }, s); }, "桥=双链");
+  row(s => { [5, 9, 13].forEach((r, i) => el("ellipse", { class: "rg" + (i ? "" : " in"), cx: 18, cy: 0, rx: r * 1.5, ry: r * .7 }, s)); }, "砂纹=同庭");
+}
+function stat() {
+  const vis = L.stars.filter(s => s.p.cr <= cutoff), isl = new Set(vis.map(s => s.p.cat)).size;
+  const ser = L.series.filter(s => s.stars.filter(q => q.p.cr <= cutoff).length > 1).length;
+  const br = vis.reduce((a, s) => a + s.p.links.filter(t => byId.get(t).p.cr <= cutoff).length, 0);
+  const first = Math.min(...DATA.map(p => p.cr));
+  $("#stat").innerHTML = `${vis.length} 石 · ${isl} 庭 · ${ser} 径 · ${br} 桥<br>秋分 · 花园第 ${Math.round((NOW - first) / DAY)} 日`;
+}
+function applyQuery() {
+  document.querySelectorAll(".post").forEach(b => { const p = byId.get(b.dataset.id).p; b.classList.toggle("miss", !!query && !matches(p)); b.classList.toggle("hit", !!query && matches(p)); });
+}
+
+/* ══ 选中：涟漪一圈 → 相机让位 → 星卡滑入。天空不消失、不重排 ═══════════════════ */
+function select(id, anim = true) {
+  selId = id; const s = byId.get(id); const card = $("#card");
+  if (!s) { card.classList.remove("on"); history.replaceState(null, "", "#/constellation"); focus(); labels(); return; }
+  history.replaceState(null, "", "#/constellation/" + encodeURIComponent(id));
+  if (anim && !reduce) { for (const c of ["bloom", "bloom b2"]) { const r = el("circle", { class: c, r: s.R + 2 }, s.sym); setTimeout(() => r.remove(), 1900); } }
+  const nb = neighbors(id), C = CATS[s.p.cat], idx = nb.path.indexOf(s);
+  card.style.setProperty("--c", C.c);
+  const days = Math.floor((NOW - s.p.up) / DAY);
+  card.innerHTML = `<button class="x" aria-label="关闭">×</button>
+    <div class="chips"><span class="chip"><i></i>${C.zh} · ${C.en}</span>${s.series ? `<span class="chip ser">${esc(s.series)} · 第${cnNum(idx + 1)}章</span>` : ""}</div>
+    <h2>${esc(s.p.t)}</h2>
+    <div class="meta">${new Date(s.p.cr).toLocaleDateString("zh-CN")} · ${s.p.min} 分钟 · ${GROW[s.p.g]} · ${days ? days + " 天前照料" : "今日照料"}</div>
+    <p class="ex">${esc(s.p.ex)}</p>
+    ${nb.path.length > 1 ? `<div class="relh">小径 <b>${esc(s.series)}</b></div>
+      <div class="pathbar">${nb.path.map((q, i) => `<button data-go="${q.p.id}" class="${q === s ? "cur" : ""}" title="${esc(q.p.t)}"><i></i></button>`).join("")}</div>
+      <div class="pnav"><button data-go="${idx > 0 ? nb.path[idx - 1].p.id : ""}">${idx > 0 ? "← " + esc(nb.path[idx - 1].p.t) : ""}</button><button data-go="${idx < nb.path.length - 1 ? nb.path[idx + 1].p.id : ""}">${idx < nb.path.length - 1 ? esc(nb.path[idx + 1].p.t) + " →" : ""}</button></div>` : ""}
+    <div class="relh">桥 <b>双链</b></div>
+    ${nb.bridges.length ? `<ul class="rlist">${nb.bridges.map(b => `<li><button data-go="${b.s.p.id}">${b.dir === "out" ? "→" : "←"} ${esc(b.s.p.t)}<span class="why">${b.dir === "out" ? "引用了它" : "引用了这篇"}</span></button></li>`).join("")}</ul>` : `<div class="muted">还没有桥。写下 [[标题]] 就会架起一座。</div>`}
+    <div class="relh">同话题 <b>砂纹相邻</b></div>
+    ${nb.kin.length ? `<ul class="rlist">${nb.kin.map(k => `<li><button data-go="${k.s.p.id}">${esc(k.s.p.t)}<span class="why">${k.tags.map(t => "#" + esc(t)).join(" ")}</span></button></li>`).join("")}</ul>` : `<div class="muted">${nb.path.length > 1 ? "同话题的都已在这条小径上。" : "暂无同话题的文章。"}</div>`}
+    <a class="cta" href="#/garden/${encodeURIComponent(id)}" data-read>进入阅读舱 →</a>`;
+  card.classList.add("on");
+  focus(); labels(); renderRailSel();
+  // 让位：星若被星卡或目录挡住，平移到可见区中偏左
+  const p = toScreen(s), cr = card.getBoundingClientRect(), A = avail(), narrow = innerWidth < 768;
+  if (narrow) {            // 窄屏：卡片占下半屏，把「这颗星 + 它的邻里」重新取景到卡片上方
+    const grp = [s, ...nb.path, ...nb.bridges.map(b => b.s), ...nb.kin.map(k => k.s)], b = bbox(grp), top = 170, bot = cr.top - 16;
+    const k = clamp(Math.min((innerWidth - 150) / Math.max(b.x1 - b.x0, 40), (bot - top - 60) / Math.max(b.y1 - b.y0, 40)), fitK * .8, fitK * 3);
+    fly({ k, x: innerWidth / 2 - (b.x0 + b.x1) / 2 * k, y: (top + bot) / 2 - (b.y0 + b.y1) / 2 * k }, anim); return;
+  }
+  const safeR = narrow ? innerWidth - 16 : cr.left - 48, safeB = narrow ? cr.top - 24 : innerHeight - 124;
+  if (p.x > safeR || p.x < A.x + 20 || p.y > safeB || p.y < A.y + 10) {
+    const tx = narrow ? innerWidth / 2 : (A.x + safeR) / 2, ty = narrow ? (A.y + safeB) / 2 : A.y + A.h / 2;
+    fly({ k: view.k, x: view.x + (tx - p.x), y: view.y + (ty - p.y) }, anim);
+  }
+}
+function renderRailSel() {
+  const s = byId.get(selId); if (!s) return;
+  document.querySelectorAll(".ser").forEach(d => { if (d.dataset.series === s.series) d.classList.remove("fold"); });
+  const b = document.querySelector(`.post[data-id="${CSS.escape(selId)}"]`); if (b) b.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  focus();
+}
+
+/* ══ 输入 ══════════════════════════════════════════════════════════════════════ */
+const ptrs = new Map(); let drag = null, moved = 0, pinch = null;
+function nearest(cx, cy) {
+  let best = null, bd = Infinity;
+  for (const s of L.stars) { if (s.p.cr > cutoff) continue; const p = toScreen(s), d = Math.hypot(p.x - cx, p.y - cy); if (d < bd) { bd = d; best = s; } }
+  return best && bd < Math.max(best.R + 10, 18) ? best : null;
+}
+svg.addEventListener("pointerdown", e => {
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); svg.setPointerCapture(e.pointerId);
+  if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; moved = 0; flyId++; }
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, vx: view.x, vy: view.y }; drag = null; }
+});
+svg.addEventListener("pointermove", e => {
+  if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    const k = clamp(pinch.k * d / pinch.d, fitK * .6, fitK * 8), w = { x: (pinch.cx - pinch.vx) / pinch.k, y: (pinch.cy - pinch.vy) / pinch.k };
+    view = { k, x: pinch.cx - w.x * k, y: pinch.cy - w.y * k }; write(); moved = 99; return; }
+  if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+    if (moved > 4) { svg.classList.add("dragging"); view.x = drag.vx + dx; view.y = drag.vy + dy; write(); } return; }
+  const h = nearest(e.clientX, e.clientY), id = h ? h.p.id : null;
+  if (id !== hovId) { hovId = id; svg.style.cursor = id ? "pointer" : ""; focus(); if (!selId) labels(); }
+});
+const up = e => {
+  ptrs.delete(e.pointerId); svg.classList.remove("dragging");
+  if (pinch && ptrs.size < 2) { pinch = null; settle(); return; }
+  if (drag) { const wasTap = moved <= 4; drag = null; if (!wasTap) { settle(); return; }
+    const h = nearest(e.clientX, e.clientY); select(h ? h.p.id : null); }
+};
+svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+svg.addEventListener("pointerleave", () => { if (hovId) { hovId = null; focus(); if (!selId) labels(); } });
+svg.addEventListener("wheel", e => { e.preventDefault(); flyId++;
+  const k = clamp(view.k * Math.exp(-e.deltaY * .0016), fitK * .6, fitK * 8), w = toWorld(e.clientX, e.clientY);
+  view = { k, x: e.clientX - w.x * k, y: e.clientY - w.y * k }; write(); settle(); }, { passive: false });
+
+$("#card").addEventListener("click", e => {
+  const b = e.target.closest("[data-go]"); if (b && b.dataset.go) { select(b.dataset.go); return; }
+  if (e.target.closest(".x")) select(null);
+  if (e.target.closest("[data-read]")) { e.preventDefault(); toast("→ 跳到博客阅读舱 #/garden/" + selId + "（星图内不做长文阅读）"); }
+});
+const tree = $("#tree");
+tree.addEventListener("mouseover", e => {
+  const p = e.target.closest(".post"), sh = e.target.closest(".ser-h"), ch = e.target.closest(".cat-h");
+  const nh = p ? p.dataset.id : null, ns = sh ? sh.parentElement.dataset.series : null, nc = ch ? ch.parentElement.dataset.cat : null;
+  if (nh !== hovId || ns !== hotSer || nc !== hotCat) { hovId = nh; hotSer = ns; hotCat = nc; focus(); if (!selId) labels(); }
+});
+tree.addEventListener("mouseleave", () => { hovId = hotSer = hotCat = null; focus(); if (!selId) labels(); });
+tree.addEventListener("click", e => {
+  const p = e.target.closest(".post"); if (p) { select(p.dataset.id); return; }
+  const sh = e.target.closest(".ser-h"); if (sh) { sh.parentElement.classList.toggle("fold");
+    const s = L.series.find(x => x.name === sh.parentElement.dataset.series); flyTo(s.stars.filter(q => q.p.cr <= cutoff)); return; }
+  const ch = e.target.closest(".cat-h"); if (ch) { const isl = L.islands.find(i => i.cat === ch.parentElement.dataset.cat); flyTo(isl.stars.filter(q => q.p.cr <= cutoff)); }
+});
+function flyTo(list) {
+  if (!list.length) return; const b = bbox(list), A = avail();
+  const k = clamp(Math.min((A.w - 200) / Math.max(b.x1 - b.x0, 60), (A.h - 200) / Math.max(b.y1 - b.y0, 60)), fitK, fitK * 3.2);
+  fly({ k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h / 2 - (b.y0 + b.y1) / 2 * k });
+}
+$("#tags").addEventListener("mouseover", e => { const t = e.target.closest(".tag"); const v = t ? t.dataset.tag : null; if (v !== topic && !pinTopic) { topic = v; showTopic(topic); focus(); } });
+$("#tags").addEventListener("mouseleave", () => { if (!pinTopic) { topic = null; showTopic(null); focus(); } });
+let pinTopic = false;
+$("#tags").addEventListener("click", e => { const t = e.target.closest(".tag"); if (!t) return;
+  pinTopic = !(pinTopic && topic === t.dataset.tag); topic = pinTopic ? t.dataset.tag : null;
+  document.querySelectorAll(".tag").forEach(x => x.classList.toggle("on", pinTopic && x.dataset.tag === topic)); showTopic(topic); focus(); });
+$("#q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); applyQuery(); focus(); labels(); });
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter") { const s = L.stars.find(s => s.p.cr <= cutoff && matches(s.p)); if (s) { select(s.p.id); e.target.blur(); } } });
+addEventListener("keydown", e => {
+  const typing = e.target.tagName === "INPUT";
+  if (e.key === "/" && !typing) { e.preventDefault(); $("#q").focus(); return; }
+  if (e.key === "Escape") { if (typing) { e.target.value = ""; query = ""; applyQuery(); e.target.blur(); focus(); labels(); } else select(null); return; }
+  if (typing) return;
+  if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && selId) {      // 沿小径走：飞石一块一块踩过去
+    const s = byId.get(selId), line = s.series ? neighbors(selId).path : L.stars.filter(q => q.p.cat === s.p.cat && !q.series && q.p.cr <= cutoff).sort((a, b) => a.p.cr - b.p.cr);
+    const i = line.indexOf(s) + (e.key === "ArrowRight" ? 1 : -1); if (line[i]) select(line[i].p.id);
+  }
+  if (e.key === "Enter" && selId) toast("→ 跳到博客阅读舱 #/garden/" + selId);
+  if (e.key === "t") toggleTheme();
+});
+$("#fitBtn").onclick = () => { select(null); fit(); };
+$("#railBtn").onclick = () => { document.body.classList.add("rail-off"); $("#railBtn").setAttribute("aria-pressed", "false"); fit(); };
+$("#grip").onclick = () => $("#railBtn").onclick();
+$("#railOn").onclick = () => { document.body.classList.remove("rail-off"); $("#railBtn").setAttribute("aria-pressed", "true"); fit(); };
+$("#careBtn").onclick = e => { const on = document.body.classList.toggle("care-on"); e.currentTarget.setAttribute("aria-pressed", on); };
+$("#timeBtn").onclick = e => { const on = document.body.classList.toggle("time-on"); e.currentTarget.setAttribute("aria-pressed", on); if (!on) { $("#timeR").value = 1000; setCut(Infinity); } else setCut(cutFromSlider()); };
+const tspan = () => { const t = DATA.map(p => p.cr); return [Math.min(...t) - DAY, NOW]; };
+const cutFromSlider = () => { const [a, b] = tspan(); return a + (b - a) * $("#timeR").value / 1000; };
+let cutRaf = 0;
+$("#timeR").addEventListener("input", () => { cancelAnimationFrame(cutRaf); cutRaf = requestAnimationFrame(() => setCut(cutFromSlider())); });
+function setCut(c) { cutoff = c; $("#timeL").textContent = isFinite(c) ? new Date(Math.min(c, NOW)).toLocaleDateString("zh-CN") : ""; if (selId && byId.get(selId).p.cr > c) select(null);
+  sand(); focus(); labels(); stat(); renderRail(); }
+document.querySelectorAll(".scale button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); history.replaceState(null, "", "#/constellation"); build(+b.dataset.n); });
+let toastT = 0;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
+function toggleTheme() {
+  const night = document.documentElement.dataset.theme !== "night";
+  document.documentElement.dataset.theme = night ? "night" : "day";
+  $("#theme").textContent = night ? "☽ DARK" : "☼ LIGHT";
+  $("#sub").textContent = night ? "池水静下来，星便落进来了。" : "白砂上的每一块石，都是写下的字。";
+  if (L) labels();
+}
+$("#theme").onclick = toggleTheme;
+let rT = 0; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => { fxSize(); fit(false); }, 120); });
+
+/* ══ 同一片空气：昼是秋天的落叶，夜是萤火（全站 OasisBackground 的简化版，星图上降到六成） ══ */
+const fx = $("#fx"), fg = fx.getContext("2d"), P = [];
+function fxSize() { const d = Math.min(2, devicePixelRatio || 1); fx.width = innerWidth * d; fx.height = innerHeight * d; fx.style.width = innerWidth + "px"; fx.style.height = innerHeight + "px"; fg.setTransform(d, 0, 0, d, 0, 0); }
+fxSize();
+const TONES = [["254,215,170", "234,122,40"], ["253,200,150", "220,88,42"], ["250,208,160", "200,70,50"]];
+for (let i = 0; i < 26; i++) P.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, z: .25 + Math.random() * .75, a: Math.random() * 6.28, ph: Math.random() * 1e4, tone: TONES[i % 3], bokeh: Math.random() < .3 });
+function fxFrame(t) {
+  fg.clearRect(0, 0, innerWidth, innerHeight);
+  const night = document.documentElement.dataset.theme === "night";
+  for (const p of P) {
+    if (!reduce) { if (night) { p.y -= .05 + .06 * p.z; p.x += Math.sin((t + p.ph) * .0004) * .06; } else { p.y += (.18 + .12 * p.z); p.x += Math.sin((t + p.ph) * .0006) * .3 * p.z; p.a += .004; } }
+    if (p.y > innerHeight + 40) p.y = -40; if (p.y < -40) p.y = innerHeight + 40;
+    if (night) { const r = (p.bokeh ? 22 : 5) * p.z * (0.8 + .4 * (Math.sin((t + p.ph) * .001) + 1) / 2), gr = fg.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      if (p.bokeh) { gr.addColorStop(0, "rgba(57,197,187,.07)"); gr.addColorStop(1, "rgba(57,197,187,0)"); } else { gr.addColorStop(0, "rgba(255,255,255,.55)"); gr.addColorStop(.2, "rgba(57,197,187,.35)"); gr.addColorStop(1, "rgba(57,197,187,0)"); }
+      fg.fillStyle = gr; fg.beginPath(); fg.arc(p.x, p.y, r, 0, 6.3); fg.fill(); }
+    else if (!p.bokeh) { const s = 5.5 * p.z; fg.save(); fg.translate(p.x, p.y); fg.rotate(p.a); fg.scale(.45 + .55 * Math.abs(Math.cos((t + p.ph) * .001)), 1);
+      const gr = fg.createLinearGradient(0, -s, 0, s); gr.addColorStop(0, `rgba(${p.tone[0]},.55)`); gr.addColorStop(1, `rgba(${p.tone[1]},.5)`);
+      fg.beginPath(); fg.moveTo(0, -s); fg.bezierCurveTo(s * .85, -s * .55, s * .65, s * .45, s * .18, s * .82); fg.lineTo(0, s * .62); fg.lineTo(-s * .18, s * .82); fg.bezierCurveTo(-s * .65, s * .45, -s * .85, -s * .55, 0, -s); fg.fillStyle = gr; fg.fill(); fg.restore(); }
+  }
+  if (!reduce) requestAnimationFrame(fxFrame);
+}
+requestAnimationFrame(fxFrame);
+
+/* 启动：?n=160&theme=night&sel=p3 方便截图与评审 */
+const Q = new URLSearchParams(location.search);
+if (Q.get("theme") === "night") toggleTheme(); else $("#theme").textContent = "☼ LIGHT";
+if (Q.get("rail") === "off") document.body.classList.add("rail-off");
+const N0 = +(Q.get("n") || 8);
+document.querySelectorAll(".scale button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.n === N0));
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
+  build(N0);
+  if (Q.get("sel")) select(Q.get("sel"), false);
+  if (Q.get("topic")) { topic = Q.get("topic"); pinTopic = true; showTopic(topic); focus(); }
+  if (Q.get("time")) { document.body.classList.add("time-on"); $("#timeR").value = +Q.get("time"); setCut(cutFromSlider()); }
+});
+</script>
+</body>
+</html>
