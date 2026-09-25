@@ -3,179 +3,243 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>砂与星 · 星图原型</title>
+<title>砂与星 · 星图原型 v2</title>
 <link rel="icon" href="data:,">
 <!-- 字体与站点同源：仓库里 npm i 之后从 node_modules 取；直接双击打开又没装依赖时落回系统衬线体。
-     推荐用 `npx vite` 起在仓库根目录，然后打开 /docs/redesign-2026-09/sand-and-stars-prototype.html -->
+     推荐用 `npx vite` 起在仓库根目录，然后打开 /docs/redesign-2026-09/sand-and-stars-prototype.html
+     参数：?n=8|24|60|160  &theme=night  &sel=p3  &topic=夜  &time=520  &rail=off  &slow=5  &view=specimen -->
 <link rel="stylesheet" href="../../node_modules/lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css">
 <link rel="stylesheet" href="../../node_modules/@fontsource/eb-garamond/400.css">
 <link rel="stylesheet" href="../../node_modules/@fontsource/eb-garamond/400-italic.css">
 <link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/400.css">
 <style>
-/* ══ 令牌：全部取自全站（index.css / OasisDock / OasisLights），不新造颜色 ══════════════ */
+/* ══ 1. 令牌 ═══════════════════════════════════════════════════════════════════
+   颜色全部取自全站（index.css / OasisDock / OasisLights / AURA）与日本传统色；
+   新增的只有「石」这一族材质色，且都有出处（白練 / 白鼠 / 銀鼠 / 利休鼠 / 鈍）。
+   时长统一乘 --slow（按 m 键或 ?slow=5 慢放五倍，评审动效用）。 */
 :root{
   --font-serif:"EB Garamond","LXGW WenKai Screen","Songti SC","Noto Serif SC",ui-serif,Georgia,serif;
   --font-zh:"LXGW WenKai Screen","Songti SC","Noto Serif SC",ui-serif,serif;
   --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --teal:#39C5BB; --sakura:#FFB7C5;
-  --ease:cubic-bezier(.16,1,.3,1);
+  --teal:#39C5BB; --sakura:#FFB7C5; --amber:#FDBA74;
+  /* 石的五色：日本传统色 */
+  --shironeri:#FCFAF2;   /* 白練：高光、灯窗 */
+  --shironezumi:#BDC0BA; /* 白鼠：浅石 */
+  --ginnezumi:#91989F;   /* 銀鼠：石的本色 */
+  --rikyu:#707C74;       /* 利休鼠：皴笔 */
+  --nibi:#656765;        /* 鈍：背光面 */
+  --stone-base:color-mix(in oklab,var(--shironezumi) 52%,var(--ginnezumi));
+  --moss:#869457; --moss-dk:#5F6B3A;
+  /* 动效令牌：进场用减速（ease-out），退场用加速（ease-in）且更短 */
+  --slow:1;
+  --t-xs:calc(120ms * var(--slow)); --t-sm:calc(200ms * var(--slow)); --t-md:calc(320ms * var(--slow));
+  --t-lg:calc(480ms * var(--slow)); --t-xl:calc(900ms * var(--slow));
+  --ease-out:cubic-bezier(.16,1,.3,1);   /* 全站 customEase */
+  --ease-in:cubic-bezier(.4,0,.9,.2);    /* App.tsx 场所退场 */
+  --ease-io:cubic-bezier(.65,0,.35,1);
 }
-/* 昼：站点纸色 #FAF8F3 + 季节光。星图不再自带天幕。 */
 [data-theme=day]{
-  --paper:#FAF8F3; --ink:#334155; --ink2:#64748B; --ink3:#94A3B8;
-  --accent:#39C5BB; --accent-ink:#1B7A74;
+  --paper:#FAF8F3; --ink:#334155; --ink2:#5B6B80; --ink3:#7F8B9C;
+  --accent:#39C5BB; --accent-ink:#1B7A74; --accent-line:#2A9D95;
+  --cat-ink-mix:40%; --cat-ink-base:#1E293B;
   --glass:rgba(255,255,255,.55); --glass-edge:rgba(255,255,255,.72); --line:rgba(148,163,184,.26);
   --shadow:0 18px 50px -30px rgba(15,23,42,.35);
-  --ring-base:#64748B; --ring-o:.2; --ring-in-o:.32; --rake:rgba(100,116,139,.085);
-  --pool:transparent;
-  --stone:#B8B0A3; --stone-rim:rgba(71,85,105,.28);
-  --step:#D4CCBF; --step-rim:#B3AA9C;
+  --ring-base:#64748B; --ring-o:.2; --ring-in-o:.32; --rake:rgba(100,116,139,.085); --pool:transparent;
+  --step:#D6D2C8; --step-rim:rgba(101,103,101,.28);
   --bridge:rgba(100,116,139,.5);
+  --ln-body:#8E938C; --ln-win:#FCFAF2;
   --stone-o:1; --star-o:0; --dim:.24;
   --halo-stroke:rgba(250,248,243,.92);
 }
-/* 夜：站点夜墨 #0A0F1D + 萤火。与 Dock 暗态的 #66DED5 同一支绿。 */
 [data-theme=night]{
-  --paper:#0A0F1D; --ink:#E2E8F0; --ink2:#94A3B8; --ink3:#64748B;
-  --accent:#66DED5; --accent-ink:#6FD8CF;
+  --paper:#0A0F1D; --ink:#E2E8F0; --ink2:#94A3B8; --ink3:#7A8AA0;
+  --accent:#66DED5; --accent-ink:#6FD8CF; --accent-line:#66DED5;
+  --cat-ink-mix:88%; --cat-ink-base:#F8FAFC;
   --glass:rgba(12,18,34,.68); --glass-edge:rgba(255,255,255,.09); --line:rgba(255,255,255,.09);
   --shadow:0 20px 48px -20px rgba(0,0,0,.72);
-  --ring-base:#66DED5; --ring-o:.09; --ring-in-o:.17; --rake:rgba(102,222,213,.018);
-  --pool:rgba(102,222,213,.022);
+  --ring-base:#66DED5; --ring-o:.09; --ring-in-o:.17; --rake:rgba(102,222,213,.018); --pool:rgba(102,222,213,.022);
+  --step:#3A4556; --step-rim:transparent;
   --bridge:rgba(255,183,197,.62);
+  --ln-body:#26303F; --ln-win:#FDBA74;
   --stone-o:0; --star-o:1; --dim:.2;
   --halo-stroke:rgba(10,15,29,.9);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
-body{background:var(--paper);color:var(--ink);font-family:var(--font-serif);
-  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
-  transition:background-color 1.2s ease,color 1.2s ease}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-serif);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  transition:background-color calc(1200ms * var(--slow)) ease,color calc(1200ms * var(--slow)) ease}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
-/* 季节光：与 App.tsx 的暖纸底光同一配方（秋：琥珀 + 极淡青） */
-.wash{position:fixed;inset:0;pointer-events:none;transition:opacity 1.2s ease;
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ══ 2. 同一片空气 ═════════════════════════════════════════════════════════════ */
+.wash{position:fixed;inset:0;pointer-events:none;transition:opacity calc(1200ms * var(--slow));
   background:radial-gradient(120% 90% at 15% 12%,rgba(253,226,196,.55) 0%,rgba(250,248,243,.45) 42%,transparent 70%),
              radial-gradient(90% 80% at 88% 92%,rgba(57,197,187,.07) 0%,transparent 60%)}
 [data-theme=night] .wash{opacity:0}
+#sky{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity calc(900ms * var(--slow)) ease}
+[data-theme=night] #sky{opacity:.9;transition-delay:calc(260ms * var(--slow))}
+#fx{position:fixed;inset:0;pointer-events:none;opacity:.6}
 .vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 150px rgba(0,0,0,.05)}
 [data-theme=night] .vignette{box-shadow:inset 0 0 150px rgba(0,0,0,.8)}
-#fx{position:fixed;inset:0;pointer-events:none;opacity:.6}
-
-/* HUD：四角的 + 与时钟，与 OasisHUD 一致 */
 .hud{position:fixed;inset:32px;pointer-events:none;opacity:.3;color:#94A3B8;font:12px var(--font-mono)}
 .hud i{position:absolute;font-style:normal;line-height:1}
 .hud .clock{position:absolute;right:0;top:24px;font-size:10px;letter-spacing:.3em}
 .pills{position:fixed;top:32px;left:32px;display:flex;gap:12px;z-index:30}
-.pill{display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;
-  font:9px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);
-  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  box-shadow:0 1px 2px rgba(15,23,42,.05);transition:color .5s,border-color .5s}
+.pill{display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font:9px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);
+  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 2px rgba(15,23,42,.05);
+  transition:color var(--t-md),border-color var(--t-md),background-color var(--t-md)}
 .pill:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
-.pill[aria-pressed=true]{color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.pill[aria-pressed=true]{color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 9%,var(--glass))}
+.pill:active{transform:scale(.97)}
 .scale{position:fixed;top:78px;right:32px;z-index:30;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;
   background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);font:9px var(--font-mono);letter-spacing:.16em;color:var(--ink3)}
 .scale span{padding:0 8px 0 10px}
-.scale button{padding:6px 10px;border-radius:999px;color:var(--ink2)}
+.scale button{padding:6px 10px;border-radius:999px;color:var(--ink2);transition:background-color var(--t-sm),color var(--t-sm)}
 .scale button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-ink)}
+.scale i{width:1px;height:14px;background:var(--line);margin:0 4px}
 
-/* 场所页头：与 Lanterns / Atelier 同款——英文等宽小字 + 衬线斜体一句 */
 .place-head{position:fixed;top:92px;left:50%;transform:translateX(-50%);text-align:center;z-index:5;pointer-events:none;width:min(560px,80vw)}
 .eyebrow{font:10px var(--font-mono);letter-spacing:.5em;text-transform:uppercase;color:var(--ink3)}
 .place-head .eyebrow{color:color-mix(in srgb,var(--accent) 80%,transparent)}
-.place-head p{margin:10px 0 0;font-style:italic;font-size:14px;color:var(--ink3)}
+.place-head p{margin:10px 0 0;font-style:italic;font-size:14px;color:var(--ink3);transition:opacity var(--t-md)}
 
-/* ══ 地图 ═════════════════════════════════════════════════════════════════ */
+/* ══ 3. 地图 ═════════════════════════════════════════════════════════════════════ */
 #stage{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none}
 #stage.dragging{cursor:grabbing}
-.rk{fill:none;stroke:var(--rake);stroke-width:1;vector-effect:non-scaling-stroke}
-/* 砂纹按庭各算一套，带一丝分类色：庭与庭的边界就是目录的一级标题 */
-.rg{fill:none;stroke:color-mix(in oklab,var(--c,#64748B) 34%,var(--ring-base));stroke-opacity:var(--ring-o);stroke-width:1;vector-effect:non-scaling-stroke;transition:stroke .8s,stroke-opacity .8s}
+.rk{fill:none;stroke:var(--rake);stroke-width:1;vector-effect:non-scaling-stroke;transition:stroke calc(900ms * var(--slow))}
+.rg{fill:none;stroke:color-mix(in oklab,var(--c,#64748B) 34%,var(--ring-base));stroke-opacity:var(--ring-o);stroke-width:1;vector-effect:non-scaling-stroke;
+  transition:stroke calc(900ms * var(--slow)),stroke-opacity calc(900ms * var(--slow))}
 .rg.in{stroke-opacity:var(--ring-in-o)}
+/* 进场：砂纹像被耙子一圈圈耙出来（仅桌面，一次性） */
+.entering .rg{stroke-dasharray:1;stroke-dashoffset:1;animation:rake calc(1100ms * var(--slow)) var(--ease-io) forwards;animation-delay:var(--rd,0ms)}
+@keyframes rake{to{stroke-dashoffset:0}}
 .poolfill{fill:var(--pool);stroke:none}
-.topic{fill:color-mix(in srgb,var(--sakura) 12%,transparent);stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:4 5;
-  vector-effect:non-scaling-stroke;opacity:0;transition:opacity .35s}
-.topic.on{opacity:1}
-.kelp{fill:none;stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:1 5;stroke-linecap:round;vector-effect:non-scaling-stroke}
-/* 小径：昼是飞石（圆头短划 = 一块块踏石），夜是星座连线 */
-.step-a{fill:none;stroke:var(--step-rim);stroke-width:7.4;stroke-linecap:round;stroke-dasharray:.1 13;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
-.step-b{fill:none;stroke:var(--step);stroke-width:5.6;stroke-linecap:round;stroke-dasharray:.1 13;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
-.chain{fill:none;stroke:rgba(226,232,240,.5);stroke-width:1;vector-effect:non-scaling-stroke;opacity:var(--star-o)}
-.path.lit .chain{stroke:rgba(226,232,240,.9)}
-.path.lit .step-b{stroke:color-mix(in srgb,var(--accent) 45%,var(--step))}
-/* 桥：双链。昼是石桥（双线），夜是鹊桥（樱粉虚线） */
+.topic{fill:color-mix(in srgb,var(--sakura) 12%,transparent);stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:4 5;vector-effect:non-scaling-stroke;
+  animation:fadein var(--t-md) var(--ease-out) both}
+.kelp{fill:none;stroke:var(--sakura);stroke-width:1.2;stroke-dasharray:1 5;stroke-linecap:round;vector-effect:non-scaling-stroke;animation:fadein var(--t-md) var(--ease-out) both}
+@keyframes fadein{from{opacity:0}}
+
+/* 小径：昼是千鸟打的飞石，夜是星座连线；入口立一盏石灯笼 */
+.stp{fill:var(--step);stroke:var(--step-rim);stroke-width:.7}
+.stp-sh{fill:rgba(30,41,59,.10)}
+.path.lit .stp{fill:color-mix(in oklab,var(--accent) 34%,var(--step))}
+.chain{fill:none;stroke:rgba(226,232,240,.5);stroke-width:1;vector-effect:non-scaling-stroke}
+.path.lit .chain{stroke:rgba(226,232,240,.92)}
+.ln-body{fill:var(--ln-body);transition:fill calc(900ms * var(--slow))}
+.ln-win{fill:var(--ln-win);transition:fill calc(900ms * var(--slow))}
+.ln-glow{opacity:var(--star-o);transition:opacity calc(900ms * var(--slow))}
+.ln-sh{fill:rgba(30,41,59,.12);opacity:var(--stone-o)}
+.stepg,.chain,.lanterng{transition:opacity var(--t-lg) var(--ease-out)}
+/* 桥：昼是石桥（双线），夜是鹊桥（樱粉虚线） */
 .br-a{fill:none;stroke:var(--bridge);stroke-width:3.6;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
 .br-b{fill:none;stroke:var(--paper);stroke-width:1.8;vector-effect:non-scaling-stroke;opacity:var(--stone-o)}
 .br-n{fill:none;stroke:var(--bridge);stroke-width:1.1;stroke-dasharray:3 4;vector-effect:non-scaling-stroke;opacity:var(--star-o)}
 .hit{fill:none;stroke:transparent;stroke-width:12;vector-effect:non-scaling-stroke;pointer-events:stroke}
-.spoke{fill:none;stroke:color-mix(in srgb,var(--accent) 70%,transparent);stroke-width:1;stroke-dasharray:1 4;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.rel{transition:opacity .35s}
-.rel.dim{opacity:.18}
+.spoke{fill:none;stroke:color-mix(in srgb,var(--accent) 70%,transparent);stroke-width:1;stroke-dasharray:1 4;stroke-linecap:round;vector-effect:non-scaling-stroke;animation:fadein var(--t-md) var(--ease-out) both}
+.bridge,.path{transition:opacity var(--t-md) var(--ease-out)}
 
-/* 石 / 星：同一个节点两种光，靠令牌交叉淡入，不换几何 */
-.node{transition:opacity .4s ease}
+/* ══ 4. 石与星：同一个节点两种光。几何不变，只换光 ═══════════════════════════════════ */
+.node{transition:opacity var(--t-lg) var(--ease-out)}
 .node.dim{opacity:var(--dim)}
-.node.future{opacity:0;pointer-events:none}
-.stone{opacity:var(--stone-o);transition:opacity 1s ease}
-.star{opacity:var(--star-o);transition:opacity 1s ease}
-.st-shadow{fill:rgba(15,23,42,.10)}
-.st-body{fill:color-mix(in oklab,var(--c) 20%,var(--stone));stroke:var(--stone-rim);stroke-width:.8}
-.st-body.seed{fill:color-mix(in srgb,var(--paper) 70%,transparent);stroke:color-mix(in oklab,var(--c) 38%,#94A3B8);stroke-width:1}
-.st-hi{fill:rgba(255,255,255,.5)}
-.st-moss{fill:color-mix(in oklab,var(--c) 70%,#2F6B55)}
-.sr-core{fill:color-mix(in oklab,var(--c) 22%,#fff)}
-.sr-core.seed{opacity:.55}
-.sr-spark{fill:color-mix(in oklab,var(--c) 35%,#fff);opacity:.9}
-.sel-ring{fill:none;stroke:var(--accent);stroke-width:1.3;opacity:0;transition:opacity .3s}
-.node.sel .sel-ring{opacity:1}
-.care{fill:none;stroke:var(--sakura);stroke-width:1.1;stroke-dasharray:2 3;opacity:0;transition:opacity .3s}
+.node.future{opacity:0;pointer-events:none;transition:opacity var(--t-sm) var(--ease-in)}
+.stone{opacity:var(--stone-o);transition:opacity calc(520ms * var(--slow)) var(--ease-io) var(--wd,0ms)}
+.star{opacity:var(--star-o);transition:opacity calc(620ms * var(--slow)) var(--ease-io) var(--wd,0ms),transform calc(620ms * var(--slow)) var(--ease-out) var(--wd,0ms);transform-box:fill-box;transform-origin:center}
+[data-theme=day] .star{transform:scale(.55)}
+.lift{transform-box:fill-box;transform-origin:center;transition:transform var(--t-xs) var(--ease-out)}
+.node.hov .lift{transform:translate(-.6px,-1.2px) scale(1.08)}
+.st-sh{transition:transform var(--t-xs) var(--ease-out),opacity calc(520ms * var(--slow)) var(--ease-io) var(--wd,0ms)}
+.node.hov .st-sh{transform:translate(.8px,1px) scale(1.1)}
+.st-body{stroke:rgba(71,85,105,.26);stroke-width:.6}
+.st-body.seed{fill:color-mix(in oklab,color-mix(in oklab,var(--c) 20%,var(--stone-base)) 26%,var(--shironeri));stroke:color-mix(in oklab,var(--c) 30%,var(--ginnezumi));stroke-width:.9;stroke-dasharray:2 1.6}
+.st-hi{fill:var(--shironeri);opacity:.55}
+.st-cun{fill:none;stroke:var(--rikyu);stroke-width:.75;stroke-linecap:round;opacity:.42}
+.st-moss{fill:var(--moss)}
+.st-moss-dot{fill:var(--moss-dk)}
+.sg0{stop-color:color-mix(in oklab,color-mix(in oklab,var(--c) 20%,var(--stone-base)) 42%,var(--shironeri))}
+.sg1{stop-color:color-mix(in oklab,var(--c) 20%,var(--stone-base))}
+.sg2{stop-color:color-mix(in oklab,color-mix(in oklab,var(--c) 20%,var(--stone-base)) 58%,var(--nibi))}
+.sr-core{fill:color-mix(in oklab,var(--c) 16%,#fff)}
+.sr-core.seed{opacity:.5}
+.sr-seedring{fill:none;stroke:rgba(226,232,240,.38);stroke-width:.8;stroke-dasharray:1.2 1.8}
+.sr-spark{fill:color-mix(in oklab,var(--c) 25%,#fff);opacity:.92}
+.sr-spike{stroke:rgba(255,255,255,.2);stroke-width:.6;stroke-linecap:round}
+.sr-glow{opacity:.75}
+[data-theme=night] .sr-glow.tw{animation:twinkle var(--tw) ease-in-out var(--twd) infinite alternate}
+@keyframes twinkle{from{opacity:.45}to{opacity:.95}}
+.sel-ring{fill:none;stroke:var(--accent-line);stroke-width:1.3;stroke-dasharray:1;stroke-dashoffset:1;opacity:0;transition:opacity var(--t-sm)}
+.node.sel .sel-ring{opacity:1;animation:draw var(--t-md) var(--ease-out) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.care{fill:none;stroke:var(--sakura);stroke-width:1.1;stroke-dasharray:2 3;opacity:0;transition:opacity var(--t-md)}
 body.care-on .node.tend .care{opacity:.95}
-.fresh{fill:none;stroke:var(--sakura);stroke-width:1;transform-box:fill-box;transform-origin:center;animation:fresh 5s var(--ease) infinite}
+.fresh{fill:none;stroke:var(--sakura);stroke-width:1;transform-box:fill-box;transform-origin:center;animation:fresh calc(5s * var(--slow)) var(--ease-out) infinite}
 [data-theme=night] .fresh{stroke:var(--accent)}
 @keyframes fresh{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(3.4);opacity:0}}
-.bloom{fill:none;stroke:var(--accent);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:bloom 1.5s var(--ease) forwards}
-.bloom.b2{stroke:var(--sakura);animation-delay:.18s;opacity:0}
+.bloom{fill:none;stroke:var(--accent);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:bloom calc(1500ms * var(--slow)) var(--ease-out) forwards}
+.bloom.b2{stroke:var(--sakura);animation-delay:calc(180ms * var(--slow));opacity:0}
 @keyframes bloom{0%{transform:scale(.6);opacity:.8}100%{transform:scale(5.5);opacity:0}}
+/* 进场：石按种下先后逐块落定，落地时砂面荡一圈 */
+.land{fill:none;stroke:var(--ink3);stroke-width:.8;opacity:0;transform-box:fill-box;transform-origin:center}
+.entering .node .lift{animation:drop calc(420ms * var(--slow)) var(--ease-out) both;animation-delay:var(--ed)}
+.entering .node .st-sh{animation:fadein calc(420ms * var(--slow)) ease both;animation-delay:var(--ed)}
+.entering .node .land{animation:land calc(900ms * var(--slow)) var(--ease-out) forwards;animation-delay:calc(var(--ed) + 140ms * var(--slow))}
+@keyframes drop{0%{opacity:0;transform:translateY(-7px) scale(.7)}60%{opacity:1;transform:translateY(0) scale(1.05)}100%{opacity:1;transform:none}}
+@keyframes land{0%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(2.6)}}
+.entering .labels{animation:fadein var(--t-lg) var(--ease-out) both;animation-delay:var(--ld,600ms)}
+/* 昼夜切换：注记先隐去 160ms（加速）→ 光变 → 再现 320ms（减速）。字色与描边若跟着底色一起渐变，中段会糊成一团灰 */
+.labels{transition:opacity var(--t-md) var(--ease-out)}
+.theme-swap .labels{opacity:0;transition:opacity calc(160ms * var(--slow)) var(--ease-in)}
+.entering .relg,.entering .lanterng{animation:fadein var(--t-lg) var(--ease-out) both;animation-delay:calc(var(--ld,600ms) - 200ms * var(--slow))}
+/* 时光拨盘里新生的石 */
+.node.born .lift{animation:born calc(620ms * var(--slow)) var(--ease-out)}
+@keyframes born{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:none}}
+.bornring{fill:none;stroke:var(--sakura);stroke-width:1.2;transform-box:fill-box;transform-origin:center;animation:bloom calc(900ms * var(--slow)) var(--ease-out) forwards}
+[data-theme=night] .bornring{stroke:var(--accent)}
 
 /* 注记：字号只用站内阶梯 16 / 13 / 11 / 10 */
-.lbl{paint-order:stroke fill;stroke:var(--halo-stroke);stroke-width:3.2px;stroke-linejoin:round;pointer-events:none;transition:opacity .3s}
+.lbl{paint-order:stroke fill;stroke:var(--halo-stroke);stroke-width:3.2px;stroke-linejoin:round;pointer-events:none}
 .l-star{font:13px var(--font-zh);letter-spacing:.06em;fill:var(--ink)}
-.l-isl{font:16px var(--font-zh);letter-spacing:.14em;fill:var(--ink)}
-.l-isl-en{font:10px var(--font-mono);letter-spacing:.24em;fill:var(--ink3);text-transform:uppercase}
-.l-ser{font:11px var(--font-mono);letter-spacing:.22em;fill:var(--ink2)}
+.l-star.on{fill:var(--accent-ink)}
+.l-isl{font:16px var(--font-zh);letter-spacing:.26em;fill:var(--ink);writing-mode:vertical-rl}
+.l-isl-h{font:16px var(--font-zh);letter-spacing:.14em;fill:var(--ink)}
+.l-isl-en{font:9.5px var(--font-mono);letter-spacing:.22em;fill:var(--ink3)}
+.l-isl-en.v{writing-mode:vertical-rl;letter-spacing:.3em}
+.l-isl-n{font:10px var(--font-mono);fill:var(--ink2)}
+.l-ser{font:11px var(--font-mono);letter-spacing:.2em;fill:var(--ink2)}
 .l-ser.zh{font:12px var(--font-zh);letter-spacing:.16em}
-.isl-dot{fill:var(--c)}
+.l-ser-n{font:10px var(--font-zh);letter-spacing:.1em;fill:var(--ink2)}
+.isl-sq{fill:var(--c)}
 .moon{fill:#F4F1EA}
-.moon-dark{fill:#0A0F1D}
 
-/* ══ 玻璃面板：OasisLights 的光茧 / Dock 同一配方 ══════════════════════════════ */
-.glass{background:var(--glass);border:1px solid var(--glass-edge);border-radius:24px;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--shadow);
-  transition:background-color 1s,border-color 1s}
-#rail{position:fixed;left:32px;top:150px;bottom:124px;width:292px;z-index:20;display:flex;flex-direction:column;overflow:hidden;
-  transition:transform .5s var(--ease),opacity .4s}
-body.rail-off #rail{transform:translateX(-340px);opacity:0}
+/* ══ 5. 玻璃面板 ══════════════════════════════════════════════════════════════════ */
+.glass{background:var(--glass);border:1px solid var(--glass-edge);border-radius:24px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--shadow);
+  transition:background-color calc(1000ms * var(--slow)),border-color calc(1000ms * var(--slow))}
+#rail{position:fixed;left:32px;top:152px;bottom:120px;width:288px;z-index:20;display:flex;flex-direction:column;overflow:hidden;
+  transition:transform var(--t-lg) var(--ease-io),opacity var(--t-lg) var(--ease-io)}
+.entering-ui #rail{animation:railin var(--t-lg) var(--ease-out) both;animation-delay:calc(80ms * var(--slow))}
+@keyframes railin{from{opacity:0;transform:translateX(-16px)}}
+body.rail-off #rail{transform:translateX(-336px);opacity:0}
 .rail-head{padding:20px 20px 12px}
 .rail-head .eyebrow{color:color-mix(in srgb,var(--accent) 80%,transparent);letter-spacing:.34em}
-.rail-head h3{margin:8px 0 2px;font:400 20px var(--font-zh);letter-spacing:.08em}
-.stat{font:10px/1.8 var(--font-mono);letter-spacing:.16em;color:var(--ink3)}
-.search{display:flex;align-items:center;gap:8px;margin-top:14px;height:36px;padding:0 14px;border-radius:999px;
-  border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 40%,transparent);color:var(--ink3)}
+.rail-head h3{margin:8px 0 4px;font:400 20px var(--font-zh);letter-spacing:.08em}
+.stat{font:10px/1.8 var(--font-mono);letter-spacing:.14em;color:var(--ink3)}
+.search{display:flex;align-items:center;gap:8px;margin-top:14px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--paper) 40%,transparent);color:var(--ink3);transition:border-color var(--t-sm),box-shadow var(--t-sm)}
+.search:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
 .search input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font:13px var(--font-zh)}
 .search kbd{font:9px var(--font-mono);border:1px solid var(--line);border-radius:6px;padding:2px 5px}
 .rail-body{flex:1;overflow:auto;padding:4px 12px 12px;scrollbar-width:none}
 .rail-body::-webkit-scrollbar{display:none}
-.cat{margin:8px 0 6px;--ci:color-mix(in oklab,var(--c) 45%,#1e293b)}
-[data-theme=night] .cat{--ci:color-mix(in oklab,var(--c) 88%,#f8fafc)}
-.row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border-radius:12px;padding:6px 8px;transition:background-color .2s}
+.cat{margin:8px 0 6px;--ci:color-mix(in oklab,var(--c) var(--cat-ink-mix),var(--cat-ink-base))}
+.row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border-radius:12px;padding:6px 8px;transition:background-color var(--t-xs)}
 .row:hover,.row.hot{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .row.sel{background:color-mix(in srgb,var(--accent) 16%,transparent)}
-.cat-h .dot{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 60%,transparent);flex:none}
+.sq{width:7px;height:7px;border-radius:2px;background:var(--c);flex:none}
 .cat-h .zh{font:15px var(--font-zh);letter-spacing:.1em}
 .cat-h .en{font:9px var(--font-mono);letter-spacing:.22em;color:var(--ci);text-transform:uppercase}
 .n{margin-left:auto;font:10px var(--font-mono);color:var(--ink3)}
 .ser{margin:2px 0 2px 12px;border-left:1px dashed var(--line);padding-left:6px}
 .ser-h{font:11px var(--font-mono);letter-spacing:.14em;color:var(--ink2)}
-.ser-h svg{flex:none;color:var(--ci)}
+.ser-h svg{flex:none}
 .ser ol,.loose{list-style:none;margin:0;padding:0}
 .ser.fold ol{display:none}
 .post{font:13px var(--font-zh);color:var(--ink2);letter-spacing:.04em;padding:5px 8px}
@@ -187,63 +251,99 @@ body.rail-off #rail{transform:translateX(-340px);opacity:0}
 .loose{margin-left:12px}
 .rail-foot{padding:12px 16px 14px 20px;border-top:1px solid var(--line)}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;max-height:52px;overflow:hidden}
-.tag{font:9px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);transition:all .2s}
+.tag{font:9px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);transition:all var(--t-sm)}
 .tag:hover,.tag.on{border-color:color-mix(in srgb,var(--sakura) 70%,transparent);color:color-mix(in oklab,var(--sakura) 55%,var(--ink))}
 .legend{display:grid;grid-template-columns:40px 1fr 40px 1fr;row-gap:4px;column-gap:6px;align-items:center;font:9.5px var(--font-mono);letter-spacing:.04em;color:var(--ink3)}
 .legend svg{overflow:visible}
 .grip{display:none}
-.rail-toggle{position:fixed;left:32px;bottom:124px;z-index:21;display:none}
+.rail-toggle{position:fixed;left:32px;bottom:120px;z-index:21;display:none}
 body.rail-off .rail-toggle{display:flex}
 
-/* 星卡 */
-#card{position:fixed;right:32px;top:150px;width:340px;max-height:calc(100vh - 290px);overflow:auto;z-index:25;padding:24px 24px 20px;
-  opacity:0;transform:translateX(16px);pointer-events:none;transition:opacity .32s var(--ease),transform .32s var(--ease);scrollbar-width:none;
-  --ci:color-mix(in oklab,var(--c) 45%,#1e293b)}
-[data-theme=night] #card{--ci:color-mix(in oklab,var(--c) 88%,#f8fafc)}
-#card.on{opacity:1;transform:none;pointer-events:auto}
-#card .x{position:absolute;right:16px;top:14px;width:28px;height:28px;border-radius:999px;color:var(--ink3);font:16px var(--font-mono)}
-#card .x:hover{color:var(--accent)}
+/* 星卡：进场减速 320ms，内容按 40ms 错峰；退场加速 200ms；换星时只换内容不换框 */
+#card{position:fixed;right:32px;top:152px;width:344px;max-height:calc(100vh - 290px);overflow:auto;z-index:25;padding:24px 24px 20px;
+  opacity:0;transform:translateX(12px);pointer-events:none;scrollbar-width:none;
+  transition:opacity var(--t-sm) var(--ease-in),transform var(--t-sm) var(--ease-in);
+  --ci:color-mix(in oklab,var(--c) var(--cat-ink-mix),var(--cat-ink-base))}
+#card.on{opacity:1;transform:none;pointer-events:auto;transition:opacity var(--t-md) var(--ease-out),transform var(--t-md) var(--ease-out)}
+#card.on .ci{animation:ciin var(--t-md) var(--ease-out) both;animation-delay:calc(var(--i) * 40ms * var(--slow) + 40ms * var(--slow))}
+#card.swap .ci{opacity:0;transform:translateY(-3px);transition:opacity var(--t-xs) var(--ease-in),transform var(--t-xs) var(--ease-in);animation:none}
+@keyframes ciin{from{opacity:0;transform:translateY(6px)}}
+#card .x{position:absolute;right:16px;top:14px;width:28px;height:28px;border-radius:999px;color:var(--ink3);font:16px var(--font-mono);transition:color var(--t-xs),background-color var(--t-xs)}
+#card .x:hover{color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding-right:28px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:9px var(--font-mono);letter-spacing:.18em;text-transform:uppercase;
   color:var(--ci);background:color-mix(in srgb,var(--paper) 55%,transparent);border:1px solid var(--line)}
-.chip i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.chip i{width:6px;height:6px;border-radius:1.5px;background:var(--c)}
 .chip.ser{text-transform:none;letter-spacing:.1em;color:var(--accent-ink)}
 #card h2{margin:0 0 10px;font:400 22px/1.45 var(--font-zh);letter-spacing:.05em}
 .meta{font:10px/1.9 var(--font-mono);letter-spacing:.12em;color:var(--ink3);margin-bottom:12px}
-.ex{font-size:14px;line-height:1.9;color:var(--ink2);font-style:italic;margin:0 0 16px;white-space:pre-line}
+.ex{font-size:14px;line-height:1.9;color:var(--ink2);font-style:italic;margin:0 0 6px;white-space:pre-line}
 .relh{display:flex;align-items:baseline;gap:8px;font:9px var(--font-mono);letter-spacing:.26em;text-transform:uppercase;color:var(--ink3);margin:16px 0 6px}
 .relh b{font:12px var(--font-zh);letter-spacing:.1em;color:var(--ink2);text-transform:none}
 .pathbar{display:flex;align-items:center;gap:0;margin:6px 0 8px}
-.pathbar button{flex:1;height:18px;display:flex;align-items:center;justify-content:center;position:relative}
-.pathbar button::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--line)}
-.pathbar button i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--ink3);transition:transform .2s}
-.pathbar button.cur i{background:var(--accent);transform:scale(1.5);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
-.pathbar button:hover i{transform:scale(1.4)}
+.pathbar .lnic{flex:none;margin-right:6px;color:var(--ink3)}
+.pathbar button{flex:1;height:20px;display:flex;align-items:center;justify-content:center;position:relative}
+.pathbar button i{position:relative;width:11px;height:7.5px;border-radius:50%;background:var(--step);border:1px solid var(--step-rim);transition:transform var(--t-xs) var(--ease-out),background-color var(--t-xs)}
+[data-theme=night] .pathbar button i{background:var(--ink3);border-color:transparent;width:7px;height:7px}
+.pathbar button:nth-child(odd) i{transform:translateY(1.5px)}
+.pathbar button:nth-child(even) i{transform:translateY(-1.5px)}
+.pathbar button.cur i{background:var(--accent);border-color:transparent;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.pathbar button:hover i{transform:scale(1.25)}
 .pnav{display:flex;justify-content:space-between;gap:12px;font:12px var(--font-zh);color:var(--ink2)}
-.pnav button{max-width:48%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pnav button{max-width:48%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color var(--t-xs)}
 .pnav button:last-child{text-align:right}
 .pnav button:hover{color:var(--accent-ink)}
 .rlist{list-style:none;margin:0;padding:0}
-.rlist li button{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;padding:4px 0;font:13px var(--font-zh);color:var(--ink2)}
+.rlist li button{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;padding:4px 0;font:13px var(--font-zh);color:var(--ink2);transition:color var(--t-xs)}
 .rlist li button:hover{color:var(--accent-ink)}
 .rlist .why{margin-left:auto;font:9px var(--font-mono);letter-spacing:.1em;color:var(--ink3);flex:none}
 .muted{font:12px var(--font-zh);color:var(--ink3);font-style:italic}
 .cta{text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px;height:40px;border-radius:999px;
-  font:10px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--teal);box-shadow:0 8px 24px -10px rgba(57,197,187,.7)}
+  font:10px var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--teal);box-shadow:0 8px 24px -10px rgba(57,197,187,.7);
+  transition:transform var(--t-xs) var(--ease-out),box-shadow var(--t-xs)}
+.cta:hover{transform:translateY(-1px);box-shadow:0 12px 28px -10px rgba(57,197,187,.8)}
 [data-theme=night] .cta{color:#0A0F1D;background:var(--accent)}
 
-/* 工具：与顶栏同款 pill */
-.tools{position:fixed;right:32px;bottom:124px;z-index:20;display:flex;gap:10px}
-.time{position:fixed;left:50%;bottom:124px;transform:translateX(-50%);z-index:22;display:none;align-items:center;gap:14px;height:44px;padding:0 20px;border-radius:999px;font:10px var(--font-mono);letter-spacing:.14em;color:var(--ink2)}
-body.time-on .time{display:flex}
-.time input{width:min(38vw,380px);accent-color:var(--teal)}
-.toast{position:fixed;left:50%;bottom:128px;transform:translate(-50%,8px);z-index:40;padding:12px 22px;border-radius:999px;font:13px var(--font-zh);color:var(--ink2);opacity:0;transition:all .4s var(--ease);pointer-events:none}
+.tools{position:fixed;right:32px;bottom:120px;z-index:20;display:flex;gap:10px}
+
+/* ══ 6. 时光拨盘：从底部升起 480ms，月份柱按 14ms 错峰长出；收起前先把花园「快进」回今天 ══════ */
+.time{position:fixed;left:50%;bottom:120px;z-index:22;display:flex;align-items:center;gap:14px;height:68px;padding:0 10px 0 12px;border-radius:999px;
+  width:min(680px,calc(100vw - 720px));min-width:520px;
+  opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,14px) scale(.96);
+  transition:opacity var(--t-sm) var(--ease-in),transform var(--t-sm) var(--ease-in),visibility 0s linear var(--t-sm)}
+body.time-on .time{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0) scale(1);
+  transition:opacity var(--t-lg) var(--ease-out),transform var(--t-lg) var(--ease-out),visibility 0s}
+.tplay,.tclose{flex:none;width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:var(--ink2);transition:background-color var(--t-xs),color var(--t-xs)}
+.tplay{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink)}
+.tplay:hover,.tclose:hover{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent-ink)}
+.ttrack{position:relative;flex:1;height:48px}
+.thist{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.hb{fill:var(--ink3);opacity:.35;transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);transition:transform var(--t-sm) var(--ease-in),fill var(--t-sm),opacity var(--t-sm)}
+.hb.past{fill:var(--accent);opacity:.75}
+body.time-on .hb{transform:scaleY(1);transition:transform var(--t-lg) var(--ease-out),fill var(--t-sm),opacity var(--t-sm);transition-delay:calc(var(--i) * 14ms * var(--slow) + 120ms * var(--slow)),0s,0s}
+.tick{stroke:var(--ink3);stroke-width:1;opacity:.45}
+.tick.p{opacity:.8}
+.tyear{font:9px var(--font-mono);letter-spacing:.14em;fill:var(--ink3)}
+#timeR{position:absolute;left:0;right:0;top:0;bottom:0;width:100%;height:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:ew-resize}
+#timeR::-webkit-slider-runnable-track{height:100%;background:transparent}
+#timeR::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:17px;border-radius:50%;background:var(--paper);border:2px solid var(--accent-line);box-shadow:0 2px 8px rgba(15,23,42,.2);transition:transform var(--t-xs)}
+#timeR:active::-webkit-slider-thumb{transform:scale(1.25)}
+#timeR:focus-visible{outline:none}
+#timeR:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 28%,transparent),0 2px 8px rgba(15,23,42,.2)}
+#timeR::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--paper);border:2px solid var(--accent)}
+#timeR::-moz-range-track{background:transparent}
+.tlabel{flex:none;width:112px;display:flex;flex-direction:column;gap:2px;font:9.5px var(--font-mono);letter-spacing:.12em;color:var(--ink3)}
+.tlabel b{font:400 15px var(--font-zh);letter-spacing:.2em;color:var(--ink)}
+body.time-on .tlabel,body.time-on .tplay{animation:fadein var(--t-lg) var(--ease-out) both;animation-delay:calc(160ms * var(--slow))}
+
+.toast{position:fixed;left:50%;bottom:204px;transform:translate(-50%,8px);z-index:40;padding:12px 22px;border-radius:999px;font:13px var(--font-zh);color:var(--ink2);opacity:0;
+  transition:opacity var(--t-md) var(--ease-out),transform var(--t-md) var(--ease-out);pointer-events:none}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* Dock 复刻：只为证明它和全站放在一起不违和 */
 .dock{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:14px}
-.dock nav{display:flex;gap:10px;padding:10px;border-radius:26px;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.55);
-  backdrop-filter:blur(40px);box-shadow:0 18px 44px -20px rgba(15,23,42,.34),inset 0 1px 0 rgba(255,255,255,.42)}
+.dock nav{display:flex;gap:10px;padding:10px;border-radius:26px;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(40px);
+  box-shadow:0 18px 44px -20px rgba(15,23,42,.34),inset 0 1px 0 rgba(255,255,255,.42)}
 [data-theme=night] .dock nav{background:rgba(10,15,29,.7);border-color:rgba(255,255,255,.1);box-shadow:0 20px 48px -20px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.08)}
 .dock nav span{width:44px;height:44px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#64748B}
 [data-theme=night] .dock nav span{color:#94A3B8}
@@ -253,41 +353,78 @@ body.time-on .time{display:flex}
 .dock .miku{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.55);box-shadow:0 10px 30px -18px rgba(15,23,42,.4);color:#475569}
 [data-theme=night] .dock .miku{background:rgba(10,15,29,.7);border-color:rgba(255,255,255,.1);color:#CBD5E1}
 
-/* ══ 窄屏：目录为主、缩景为辅——星图回到手机 Dock ══════════════════════════════ */
+/* ══ 7. 设计样张（?view=specimen） ═══════════════════════════════════════════════ */
+#specimen{display:none}
+body.specimen #specimen{display:block;position:fixed;inset:0;overflow:auto;z-index:50;background:var(--paper)}
+body.specimen #stage,body.specimen #rail,body.specimen #card,body.specimen .tools,body.specimen .place-head,body.specimen .dock,body.specimen .rail-toggle{display:none}
+.sp{max-width:1180px;margin:0 auto;padding:120px 32px 96px}
+.sp h1{font:400 34px var(--font-zh);letter-spacing:.1em;margin:10px 0 6px}
+.sp .lead{font-style:italic;color:var(--ink3);margin:0 0 40px;font-size:15px}
+.sp h2{font:400 20px var(--font-zh);letter-spacing:.12em;margin:48px 0 6px;display:flex;align-items:baseline;gap:12px}
+.sp h2 small{font:10px var(--font-mono);letter-spacing:.3em;color:var(--ink3);text-transform:uppercase}
+.sp .note{font:13px/1.9 var(--font-zh);color:var(--ink2);margin:0 0 16px;max-width:820px}
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pane{border-radius:24px;padding:20px 22px;border:1px solid var(--line);background:var(--paper);color:var(--ink);overflow:hidden;position:relative}
+.pane .ph{font:10px var(--font-mono);letter-spacing:.3em;color:var(--ink3);text-transform:uppercase;margin-bottom:12px}
+.grid5{display:grid;grid-template-columns:64px repeat(5,1fr);align-items:center;row-gap:6px}
+.grid5 .h{font:9.5px var(--font-mono);letter-spacing:.1em;color:var(--ink3);text-align:center}
+.grid5 .rh{font:12px var(--font-zh);color:var(--ink2)}
+.grid5 svg{display:block;margin:0 auto;overflow:visible}
+.cats5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;text-align:center}
+.cats5 .nm{font:13px var(--font-zh);letter-spacing:.1em}
+.cats5 .sub{font:9px var(--font-mono);color:var(--ink3);letter-spacing:.1em}
+.sw{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font:11px var(--font-mono);color:var(--ink2)}
+.sw i{width:28px;height:28px;border-radius:8px;border:1px solid var(--line)}
+.sw b{font:13px var(--font-zh);font-weight:400;color:var(--ink)}
+.sw .cr{font:10px var(--font-mono);color:var(--ink3)}
+.sw .cr.ok{color:var(--accent-ink)}
+.type-row{display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.type-row .spec{font:10.5px/1.7 var(--font-mono);color:var(--ink3)}
+.mo{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mo svg{width:100%;height:auto;display:block}
+.gantt text{font:9.5px var(--font-mono);fill:var(--ink3)}
+.gantt .bar{rx:3}
+
+/* ══ 8. 窄屏：目录为主、缩景为辅 ══════════════════════════════════════════════════ */
 @media (max-width:767px){
   .hud{inset:20px}.pills{top:20px;left:20px;gap:8px}.pill{height:34px;padding:0 12px}
-  .scale{top:62px;right:20px}
+  .scale{top:62px;right:20px}.scale .opt{display:none}
   .place-head{top:104px}.place-head p{font-size:12px}
   #rail{left:12px;right:12px;width:auto;top:auto;bottom:100px;height:44vh}
-  .grip{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
   .rail-head{padding:10px 16px 8px}.rail-head h3,.legend{display:none}.search{margin-top:10px;height:34px}
+  .grip{display:block;width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
   .tags{flex-wrap:nowrap;overflow-x:auto;max-height:none;margin:6px 0 0;scrollbar-width:none}.tag{flex:none}
   .rail-foot{padding:8px 16px 10px}.rail-foot .eyebrow{display:none}
   body.rail-off #rail{transform:translateY(120%)}
   .rail-toggle{left:50%;transform:translateX(-50%);bottom:108px}
-  #card{left:12px;right:12px;width:auto;top:auto;bottom:100px;max-height:52vh}
-  #card{transform:translateY(24px);background:color-mix(in srgb,var(--paper) 94%,transparent)}
+  body.card-on .place-head{opacity:0;transition:opacity var(--t-sm) var(--ease-in)}
+  .cta{position:sticky;bottom:0}
+  #card{left:12px;right:12px;width:auto;top:auto;bottom:100px;max-height:46vh;transform:translateY(24px);background:color-mix(in srgb,var(--paper) 94%,transparent)}
   .tools{top:62px;left:20px;right:auto;bottom:auto}.tools .opt{display:none}
-  .time{bottom:calc(44vh + 112px)}
   .dock{bottom:20px;gap:8px}.dock nav{gap:2px;padding:8px}.dock nav span{width:40px;height:40px}.dock .miku{width:44px;height:44px}
   .toast{bottom:calc(44vh + 112px)}
+  .panes,.mo{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
-  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0ms!important}
 }
 </style>
 </head>
 <body>
+<!-- 共享的渐变：图、图例、样张都引用这一份 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="defs"></defs></svg>
 <div class="wash"></div>
+<canvas id="sky"></canvas>
 <canvas id="fx"></canvas>
 <div class="vignette"></div>
-<div class="hud"><i style="left:0;top:0">+</i><i style="right:0;top:0">+</i><i style="left:0;bottom:0">+</i><i style="right:0;bottom:0">+</i><span class="clock" id="clock">21:40 · OASIS</span></div>
+<div class="hud"><i style="left:0;top:0">+</i><i style="right:0;top:0">+</i><i style="left:0;bottom:0">+</i><i style="right:0;bottom:0">+</i><span class="clock">21:40 · OASIS</span></div>
 
 <div class="pills">
   <button class="pill" title="⌘K"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>⌘K</button>
-  <button class="pill" id="theme">◐ AUTO · ☼</button>
+  <button class="pill" id="theme">☼ LIGHT</button>
 </div>
-<div class="scale" aria-label="原型：数据规模"><span>规模</span><button data-n="8" aria-pressed="true">8 真</button><button data-n="24">24</button><button data-n="60">60</button><button data-n="160">160</button></div>
+<div class="scale" aria-label="原型控制"><span>规模</span><button data-n="8" aria-pressed="true">8 真</button><button data-n="24">24</button><button data-n="60">60</button><button data-n="160">160</button>
+  <i class="opt"></i><button class="opt" id="slowBtn" aria-pressed="false" title="慢放五倍，看清动效（m）">慢放</button><button class="opt" id="specBtn" aria-pressed="false" title="设计样张">样张</button></div>
 
 <header class="place-head">
   <div class="eyebrow">Constellation · 星图</div>
@@ -303,7 +440,7 @@ body.time-on .time{display:flex}
     <h3>这座花园里长着什么</h3>
     <div class="stat" id="stat"></div>
     <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="q" placeholder="寻一颗星" autocomplete="off"><kbd>/</kbd></label>
+      <input id="q" placeholder="寻一块石" autocomplete="off"><kbd>/</kbd></label>
   </div>
   <div class="rail-body" id="tree"></div>
   <div class="rail-foot">
@@ -322,7 +459,13 @@ body.time-on .time{display:flex}
   <button class="pill opt" id="careBtn" aria-pressed="false">◎ 待照料</button>
   <button class="pill" id="fitBtn">⤢ 全图</button>
 </div>
-<div class="time glass" id="time"><span>时光</span><input type="range" id="timeR" min="0" max="1000" value="1000"><span id="timeL"></span></div>
+
+<div class="time glass" id="time" role="group" aria-label="时光拨盘">
+  <button class="tplay" id="tplay" aria-label="播放花园生长"><svg width="12" height="12" viewBox="0 0 12 12"><path id="tplayIc" d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg></button>
+  <div class="ttrack"><svg class="thist" id="thist"></svg><input type="range" id="timeR" min="0" max="1000" value="1000" aria-label="时光"></div>
+  <div class="tlabel"><b id="tterm">秋分</b><span id="tdate"></span><span id="tcount"></span></div>
+  <button class="tclose" id="tclose" aria-label="收起时光"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+</div>
 <div class="toast glass" id="toast"></div>
 
 <div class="dock">
@@ -336,39 +479,56 @@ body.time-on .time{display:flex}
   <div class="miku"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 17c-1.5-3-1-8 3-10.5S16 5 18.5 8 20 15 19 17"/><path d="M8 13c1 1 2.5 1 3 0m2 0c.5 1 2 1 3 0"/></svg></div>
 </div>
 
+<div id="specimen"></div>
+
 <script>
 "use strict";
 /* ═══════════════════════════════════════════════════════════════════════════
-   砂与星 · 星图第四轮原型
-   同一套几何，昼是枯山水砂庭，夜是星池。所有美术笔触都在编码一件数据：
-     石 / 星       = 文章（大小 = 篇幅，形 = 生长度）
-     庭            = 分类（一组石 + 庭名）
-     飞石 / 星座线 = 合集（次序）
-     石桥 / 鹊桥   = 双链
-     砂纹          = 距离场的等值线（Bubble Sets 同一原理）——悬停话题时收成一个圈
-     水纹          = 近三周照料过
+   砂与星 · 星图第四轮原型 v2
+   同一套几何，昼是枯山水砂庭，夜是星池。每一笔都在编码一件数据：
+     石 / 星         = 文章（大小 = 篇幅；石高 → 影长；形 = 五行石里俯视可辨的三种）
+     生长度          = 种子是虚线卵石 / 虚线星环；生长中是实石 / 亮星；常青是覆苔 / 四角芒
+     庭              = 分类（一组石 + 竖排庭名 + 带分类色的砂纹）
+     飞石 / 星座线   = 合集（千鸟打的踏石；入口立一盏石灯笼 = 第一章）
+     石桥 / 鹊桥     = 双链
+     砂纹            = 距离场等值线（Bubble Sets 同一原理）；悬停话题时收成一个圈
+     水纹            = 近三周照料过
+     池面倒影        = 悉尼今夜真实的星空（Yale BSC5，≤ 5 等，1630 颗）——材质不是数据，永远比最暗的数据星小
    ═══════════════════════════════════════════════════════════════════════════ */
 const $ = s => document.querySelector(s);
 const NS = "http://www.w3.org/2000/svg";
-const el = (n, a = {}, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+const el = (n, a = {}, p) => { const e = document.createElementNS(NS, n); for (const k in a) if (a[k] != null) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 const seeded = str => { let h = 0; for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h); const x = Math.sin(h) * 10000; return x - Math.floor(x); };
+const deg = r => r * 180 / Math.PI;
 const DAY = 864e5;
 const NOW = Date.parse("2026-09-24T21:40:00+10:00");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const Q = new URLSearchParams(location.search);
+let SLOW = +(Q.get("slow") || 1);
+document.documentElement.style.setProperty("--slow", SLOW);
+const ms = t => t * SLOW;
 
-/* —— 分类：与 useCategories 的内置五类同名同色（AURA），星图不再另起一套光谱色 —— */
+/* —— 分类：与 useCategories 的内置五类同名同色（AURA）。石色 = 分类色兑 20% 进銀鼠，
+      于是每类石都像一种真实的庭石：青磁、桜鼠、青石、苔、藤鼠 —— */
 const CATS = {
-  thought: { zh: "随笔", en: "Thoughts", c: "#39C5BB" },
-  weekly:  { zh: "周报", en: "Weekly",   c: "#FFB7C5" },
-  note:    { zh: "学习笔记", en: "Notes", c: "#60A5FA" },
-  growth:  { zh: "成长", en: "Growth",   c: "#A7F3D0" },
-  project: { zh: "项目复盘", en: "Projects", c: "#A78BFA" },
+  thought: { zh: "随笔", en: "Thoughts", c: "#39C5BB", stone: "青磁" },
+  weekly:  { zh: "周报", en: "Weekly",   c: "#FFB7C5", stone: "桜鼠" },
+  note:    { zh: "学习笔记", en: "Notes", c: "#60A5FA", stone: "青石" },
+  growth:  { zh: "成长", en: "Growth",   c: "#A7F3D0", stone: "苔石" },
+  project: { zh: "项目复盘", en: "Projects", c: "#A78BFA", stone: "藤鼠" },
 };
 const GROW = { seedling: "种子", growing: "生长中", evergreen: "常青" };
 const CN = "零一二三四五六七八九十".split("");
 const cnNum = n => n <= 10 ? CN[n] : n < 20 ? `十${n % 10 ? CN[n % 10] : ""}` : n < 100 ? `${CN[Math.floor(n / 10)]}十${n % 10 ? CN[n % 10] : ""}` : String(n);
+
+/* —— 二十四节气（近似到日；正式实现用 lib/solarTerms.ts） —— */
+const TERMS = [["小寒", 1, 6], ["大寒", 1, 20], ["立春", 2, 4], ["雨水", 2, 19], ["惊蛰", 3, 6], ["春分", 3, 21], ["清明", 4, 5], ["谷雨", 4, 20], ["立夏", 5, 6], ["小满", 5, 21], ["芒种", 6, 6], ["夏至", 6, 21],
+  ["小暑", 7, 7], ["大暑", 7, 23], ["立秋", 8, 8], ["处暑", 8, 23], ["白露", 9, 8], ["秋分", 9, 23], ["寒露", 10, 8], ["霜降", 10, 23], ["立冬", 11, 7], ["小雪", 11, 22], ["大雪", 12, 7], ["冬至", 12, 22]];
+const PRINCIPAL = new Set(["立春", "春分", "立夏", "夏至", "立秋", "秋分", "立冬", "冬至"]);
+const termOf = ts => { const d = new Date(ts), y = d.getFullYear(); let best = ["冬至", y - 1, 12, 22];
+  for (const [n, m, dd] of TERMS) if (new Date(y, m - 1, dd) <= d) best = [n, y, m, dd]; return best[0]; };
 
 /* —— 真实数据：线上那 8 篇，一个字段没改 —— */
 const REAL = [
@@ -395,7 +555,7 @@ const TA = ["春", "夏", "秋", "冬", "夜", "雨", "风", "月", "星", "水"
 const TB = ["归约", "贪心", "回溯", "分治", "并查集", "指针", "协程", "梯度", "注意力", "调度", "页表", "锁", "一杯热水", "长夜", "远行", "旧信", "晚风", "重逢", "答案", "初心", "余温", "小径"];
 const TT = [(a, b) => `${a}下的${b}`, (a, b) => `当${a}遇见${b}`, (a, b) => `${a}与${b}`, (a, b) => `关于${b}的几件小事`, (a, b) => `在${a}里写${b}`, (a, b) => `${b}札记`, (a, b) => `${a}夜读${b}`, (a, b) => `一${a}一${b}`];
 function synth(N) {
-  if (N <= 8) return REAL.map(p => ({ ...p }));
+  if (N <= 8) return REAL.map(p => ({ ...p, links: [] }));
   const r = mulberry(39), out = REAL.map(p => ({ ...p, links: [] }));
   const cats = Object.keys(SYN), t0 = Date.parse("2025-02-04"), t1 = Date.parse("2026-09-20");
   for (let i = 8; i < N; i++) {
@@ -407,7 +567,6 @@ function synth(N) {
     out.push({ id: "s" + i, t: title, s: r() < .5 ? S.series[Math.floor(Math.pow(r(), 1.6) * S.series.length)] : null, cat, cr, up: Math.min(NOW, cr + r() * r() * 200 * DAY),
       min, g: g < .3 ? "seedling" : g < .8 ? "growing" : "evergreen", tags: [...new Set(tags)], ex: "（样本）" + title, links: [] });
   }
-  // 双链：约 14% 的文章引用一篇更早的文章，六成落在同一分类
   const byCr = [...out].sort((a, b) => a.cr - b.cr);
   byCr.forEach((p, i) => { if (i < 3 || r() > .14) return;
     const pool = r() < .6 ? byCr.slice(0, i).filter(q => q.cat === p.cat) : byCr.slice(0, i);
@@ -415,17 +574,22 @@ function synth(N) {
   return out;
 }
 
-/* ══ 星等 = 篇幅（沿用：门限贴着真实数据定） ═════════════════════════════════ */
+/* ══ 尺寸阶 ══════════════════════════════════════════════════════════════════════
+   星等 = 篇幅（门限贴真实数据：7 / 12 / 18 / 25 分钟）。
+   相邻两档半径 ×1.26（面积 ×1.59）。人眼对圆面积的感知约为实际面积的 0.87 次方（Flannery），
+   ×1.26 补偿后，五档在感知上大致等距；最大最小面积比约 6.5 倍。 */
 const MAG = [7, 12, 18, 25];
 const magOf = p => { let m = 1; for (const g of MAG) if (p.min >= g) m++; return Math.min(5, m); };
-const RS = [4.4, 5.4, 6.6, 8.2, 10.2];     // 石的屏幕半径 px（昼）
-const RC = [1.7, 2.1, 2.6, 3.3, 4.3];      // 星核屏幕半径 px（夜）
+const RS = [4.4, 5.6, 7.0, 8.9, 11.2];   // 石半径 px（昼）
+const RH = [0.8, 1.4, 2.2, 3.2, 4.2];    // 石高 → 影长 px：越长的文章越「高」，影子越长
+const RC = [1.6, 2.0, 2.5, 3.2, 4.0];    // 星核半径 px（夜）；晕 = 核 × 4.4
+// 借日本庭园「五行石」的分法（高立、低立、平、斜出、横卧），俯视能分辨的只取三种：一二等平石、三等低立石、四五等立石
+const ARCH = [
+  { name: "平石", sq: .62, e1: .05, e2: .03 }, { name: "平石", sq: .68, e1: .06, e2: .04 },
+  { name: "低立石", sq: .8, e1: .08, e2: .05 }, { name: "立石", sq: .88, e1: .1, e2: .06 }, { name: "立石", sq: .92, e1: .12, e2: .07 },
+];
 
-/* ══ 落座：出生时择邻，此后终生不迁（沿用第三轮的不变量，只多一层「庭」） ════════════
-   1) 分类 = 庭：第 k 个出现的分类在黄金角螺线上取一块庭址，此后不动。
-   2) 庭内：老小径续一步（带种子转角）；新小径在庭内另起；散石先找同庭里共话题的亲戚。
-   3) 候选评分：离锚点近、转角小、离庭心近，并对别的庭的石子强烈避让 → 庭与庭之间自然留出白砂。
-   4) 任意两石间距 ≥ MIN_SEP；每一步只看已落好的石 → layout(posts[:k]) 恒为 layout(posts) 的前缀。 */
+/* ══ 落座：出生时择邻，此后终生不迁 ══════════════════════════════════════════════ */
 const MIN_SEP = 30, STEP = 54, ISLAND = 270, GOLD = 2.39996, SQ = .82;
 function layout(posts) {
   const order = [...posts].sort((a, b) => a.cr - b.cr || (a.id < b.id ? -1 : 1));
@@ -443,11 +607,8 @@ function layout(posts) {
         const x = anchor.x + Math.cos(a) * r, y = anchor.y + Math.sin(a) * r * SQ;
         if (near(x, y, MIN_SEP).length) continue;
         let sc = ring * 9 + Math.abs(off) * 8 + Math.hypot(x - isl.seed.x, (y - isl.seed.y) / SQ) * (ser ? .1 : .14);
-        for (const q of near(x, y, 120)) {
-          const d = Math.hypot(q.x - x, q.y - y);
-          if (q.isl !== isl) sc += (120 - d) * 2.4;                       // 别的庭：让出白砂
-          else if (ser && q.series !== ser.name && d < 64) sc += (64 - d) * .8;   // 同庭别的小径：稍让
-        }
+        for (const q of near(x, y, 120)) { const d = Math.hypot(q.x - x, q.y - y);
+          if (q.isl !== isl) sc += (120 - d) * 2.4; else if (ser && q.series !== ser.name && d < 64) sc += (64 - d) * .8; }
         if (sc < bs) { bs = sc; best = { x, y }; }
       }
     }
@@ -455,39 +616,31 @@ function layout(posts) {
   };
   for (const p of order) {
     let isl = islands.get(p.cat);
-    if (!isl) {
-      const k = islands.size, a = k * GOLD + .74 + (seeded("isl:" + p.cat) - .5) * .5;   // +.74：第二片庭落在正左，横版更舒展
+    if (!isl) { const k = islands.size, a = k * GOLD + .74 + (seeded("isl:" + p.cat) - .5) * .5;
       const r = k ? ISLAND * Math.sqrt(k) * (.92 + seeded("ir:" + p.cat) * .2) : 0;
-      isl = { cat: p.cat, k, seed: { x: Math.cos(a) * r, y: Math.sin(a) * r * .66 }, stars: [] };
-      islands.set(p.cat, isl);
-    }
+      isl = { cat: p.cat, k, seed: { x: Math.cos(a) * r, y: Math.sin(a) * r * .66 }, stars: [] }; islands.set(p.cat, isl); }
     const u = seeded("u:" + p.id), v = seeded("v:" + p.id);
     let ser = p.s ? series.get(p.s) : null, anchor, dir, dist;
-    if (ser) {                                   // 老小径：从最后一块石沿走向续一步
-      const t = ser.stars[ser.stars.length - 1], pv = ser.stars[ser.stars.length - 2];
+    if (ser) { const t = ser.stars[ser.stars.length - 1], pv = ser.stars[ser.stars.length - 2];
       const head = pv ? Math.atan2(t.y - pv.y, t.x - pv.x) : ser.head;
       dir = head + (u - .5) * 1.7 * (v > .8 ? 1.4 : 1); dist = STEP * (.72 + v * .75); anchor = t;
-    } else if (p.s) {                            // 新小径：庭内另起一处
-      anchor = isl.seed; dist = isl.stars.length ? STEP * 1.6 : 0; dir = u * Math.PI * 2;
-    } else {                                     // 散石：先找同庭共话题的亲戚
-      let kin = null; for (let i = isl.stars.length - 1; i >= 0 && !kin; i--) if (isl.stars[i].p.tags.some(t => p.tags.includes(t))) kin = isl.stars[i];
-      anchor = kin || isl.seed; dist = kin ? STEP * .95 : (isl.stars.length ? STEP * 1.2 : 0); dir = u * Math.PI * 2;
-    }
+    } else if (p.s) { anchor = isl.seed; dist = isl.stars.length ? STEP * 1.6 : 0; dir = u * Math.PI * 2;
+    } else { let kin = null; for (let i = isl.stars.length - 1; i >= 0 && !kin; i--) if (isl.stars[i].p.tags.some(t => p.tags.includes(t))) kin = isl.stars[i];
+      anchor = kin || isl.seed; dist = kin ? STEP * .95 : (isl.stars.length ? STEP * 1.2 : 0); dir = u * Math.PI * 2; }
     const pos = choose(anchor, dir, dist, isl, ser);
     const s = { p, x: pos.x, y: pos.y, isl, series: p.s || null, mag: magOf(p) };
     add(s); stars.push(s); isl.stars.push(s);
-    if (p.s) {
-      if (!ser) { ser = { name: p.s, cat: p.cat, stars: [], head: Math.atan2(s.y - isl.seed.y, s.x - isl.seed.x) || u * 6.28 }; series.set(p.s, ser); }
-      ser.stars.push(s);
-    }
+    if (p.s) { if (!ser) { ser = { name: p.s, cat: p.cat, stars: [], head: Math.atan2(s.y - isl.seed.y, s.x - isl.seed.x) || u * 6.28 }; series.set(p.s, ser); } ser.stars.push(s); }
   }
+  // 石的朝向：小径上的石长轴顺着小径摆（飞石的规矩），散石随种子
+  series.forEach(ser => ser.stars.forEach((s, i) => { const a = ser.stars[Math.max(0, i - 1)], b = ser.stars[Math.min(ser.stars.length - 1, i + 1)];
+    s.rot = a === b ? seeded("ro" + s.p.id) * 3.14 : Math.atan2(b.y - a.y, b.x - a.x); }));
+  stars.forEach(s => { if (s.rot == null) s.rot = seeded("ro" + s.p.id) * 3.14; });
   return { stars, islands: [...islands.values()], series: [...series.values()] };
 }
 
-/* ══ 砂纹：smooth-min 距离场 + marching squares ══════════════════════════════════
-   场值 = 到最近那块石边缘的「软」距离：-K·ln Σ exp(-dᵢ/K)。单块石时它就是距离本身，
-   两块石挨近时等值线自动合拢——这正是耙砂时围石的水纹，也正是 Bubble Sets 的等值线。 */
-const LV = [9, 17, 25];          // 三圈砂纹，屏幕 px
+/* ══ 砂纹：smooth-min 距离场 + marching squares ═══════════════════════════════════ */
+const LV = [9, 17, 25];
 function sandField(list, kT, radiusPx = i => RS[i.mag - 1], reachPx = LV[2] + 36, Kpx = 7) {
   if (!list.length) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -516,12 +669,8 @@ function iso(F, level) {
     if (id === 0 || id === 15) continue;
     const T = () => hx(i, j), Bo = () => hx(i, j + 1), L = () => vy(i, j), R = () => vy(i + 1, j);
     switch (id) {
-      case 1: case 14: s(L(), Bo()); break;
-      case 2: case 13: s(Bo(), R()); break;
-      case 3: case 12: s(L(), R()); break;
-      case 4: case 11: s(T(), R()); break;
-      case 6: case 9: s(T(), Bo()); break;
-      case 7: case 8: s(T(), L()); break;
+      case 1: case 14: s(L(), Bo()); break; case 2: case 13: s(Bo(), R()); break; case 3: case 12: s(L(), R()); break;
+      case 4: case 11: s(T(), R()); break; case 6: case 9: s(T(), Bo()); break; case 7: case 8: s(T(), L()); break;
       case 5: if ((a + b + c + d) / 4 < level) { s(T(), L()); s(Bo(), R()); } else { s(T(), R()); s(L(), Bo()); } break;
       case 10: if ((a + b + c + d) / 4 < level) { s(T(), R()); s(L(), Bo()); } else { s(T(), L()); s(Bo(), R()); } break;
     }
@@ -553,42 +702,89 @@ const smooth = (pts, dp = 1) => {
   return d + `L${f(P[m - 1][0])} ${f(P[m - 1][1])}`;
 };
 
-/* ══ 石与星的笔：图例与图上用同一支笔，所以它不会说谎 ═══════════════════════════ */
-function stoneShape(id, R) {          // 种子化的卵石轮廓：两道低频起伏 + 俯视略扁
-  const a1 = seeded("a1" + id) * 6.28, a2 = seeded("a2" + id) * 6.28, e1 = .08 + seeded("e1" + id) * .07, e2 = .04 + seeded("e2" + id) * .05, rot = seeded("ro" + id) * 3.14;
-  const pts = []; for (let i = 0; i < 12; i++) { const t = i / 12 * 6.283; const r = R * (1 + e1 * Math.sin(2 * t + a1) + e2 * Math.sin(3 * t + a2));
-    const x = Math.cos(t) * r, y = Math.sin(t) * r * .84; pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]); }
+/* ══ 共享渐变 ════════════════════════════════════════════════════════════════════ */
+function buildDefs() {
+  const d = $("#defs"); d.replaceChildren();
+  for (const [cat, C] of Object.entries(CATS)) {
+    // 石：光从左上 135° 来。三个停点：白練高光 → 本色 → 鈍色背光（stop-color 只能走 CSS，SVG 属性里 color-mix 不解析）
+    const lg = el("linearGradient", { id: "st-" + cat, x1: "0", y1: "0", x2: "1", y2: "1", style: `--c:${C.c}` }, d);
+    el("stop", { class: "sg0", offset: "0" }, lg); el("stop", { class: "sg1", offset: ".52" }, lg); el("stop", { class: "sg2", offset: "1" }, lg);
+    // 星晕：色相住在晕上，核几乎白（亮星的核在照片里本就过曝）
+    const rg = el("radialGradient", { id: "halo-" + cat }, d);
+    [[0, .42], [.35, .12], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": C.c, "stop-opacity": a }, rg));
+  }
+  const gl = el("radialGradient", { id: "glow" }, d); [[0, .62], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": "#fff", "stop-opacity": a }, gl));
+  const sh = el("radialGradient", { id: "stShadow" }, d); [[0, .22], [.6, .1], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": "#1E293B", "stop-opacity": a }, sh));
+  const lgw = el("radialGradient", { id: "lanternGlow" }, d); [[0, .55], [.4, .16], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": "#FDBA74", "stop-opacity": a }, lgw));
+  const fade = el("radialGradient", { id: "fade" }, d); el("stop", { offset: ".55", "stop-color": "#fff" }, fade); el("stop", { offset: "1", "stop-color": "#000" }, fade);
+}
+
+/* ══ 字形：图、图例、样张用同一支笔，所以图例不会说谎 ═════════════════════════════ */
+function stonePath(id, R, A, rot) {
+  const a1 = seeded("a1" + id) * 6.28, a2 = seeded("a2" + id) * 6.28, e1 = A.e1 * (.8 + seeded("e1" + id) * .5), e2 = A.e2 * (.8 + seeded("e2" + id) * .5);
+  const pts = []; for (let i = 0; i < 14; i++) { const t = i / 14 * 6.2832, r = R * (1 + e1 * Math.sin(2 * t + a1) + e2 * Math.sin(3 * t + a2));
+    const x = Math.cos(t) * r, y = Math.sin(t) * r * A.sq; pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]); }
   pts.push(pts[0]); return smooth(pts, 2);
 }
 const SPARK = "M0,-1C.06,-.34 .34,-.06 1,0C.34,.06 .06,.34 0,1C-.06,.34 -.34,.06 -1,0C-.34,-.06 -.06,-.34 0,-1Z";
-function glyph(parent, p, mag) {
-  const R = RS[mag - 1], rc = RC[mag - 1];
-  const sg = el("g", { class: "stone" }, parent);
-  el("ellipse", { class: "st-shadow", cx: R * .28, cy: R * .42, rx: R * 1.02, ry: R * .74 }, sg);
-  el("path", { class: "st-body" + (p.g === "seedling" ? " seed" : ""), d: stoneShape(p.id, R) }, sg);
-  if (p.g !== "seedling") el("ellipse", { class: "st-hi", cx: -R * .3, cy: -R * .32, rx: R * .38, ry: R * .22, transform: "rotate(-24)" }, sg);
-  if (p.g === "evergreen") el("path", { class: "st-moss", d: `M${-R * .62} ${-R * .18}Q${-R * .1} ${-R * 1.02} ${R * .66} ${-R * .3}Q${R * .1} ${-R * .52} ${-R * .62} ${-R * .18}Z` }, sg);
-  const ng = el("g", { class: "star" }, parent);
-  if (p.g !== "seedling") el("circle", { class: "sr-halo", r: rc * 4.2, fill: `url(#halo-${p.cat})` }, ng);
-  el("circle", { class: "sr-core" + (p.g === "seedling" ? " seed" : ""), r: rc }, ng);
-  if (p.g === "evergreen") el("path", { class: "sr-spark", d: SPARK, transform: `scale(${rc * 3.1})` }, ng);
+function moss(g, id, R, A) {       // 苔：左上一块不规则的绿，加几粒深色苔点——苔是「常青」的唯一记号，与分类色无关
+  const cx = -R * .16, cy = -R * .26 * A.sq, pts = [];
+  for (let i = 0; i < 9; i++) { const t = i / 9 * 6.2832, r = R * .44 * (1 + .22 * Math.sin(3 * t + seeded("m" + id) * 6));
+    pts.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r * .62]); }
+  pts.push(pts[0]); el("path", { class: "st-moss", d: smooth(pts, 2) }, g);
+  for (let i = 0; i < 4; i++) el("circle", { class: "st-moss-dot", cx: cx + (seeded("mx" + i + id) - .5) * R * .6, cy: cy + (seeded("my" + i + id) - .5) * R * .3, r: .45 + seeded("mr" + i + id) * .35 }, g);
+}
+function glyph(parent, p, mag, rot = seeded("ro" + p.id) * 3.14) {
+  const R = RS[mag - 1], H = RH[mag - 1], rc = RC[mag - 1], A = ARCH[mag - 1], seed = p.g === "seedling";
+  // 影子留在 lift 外面：石被悬停抬起时影子不跟着走，这才像「抬起」
+  const sh = el("g", { class: "stone st-sh" }, parent);
+  if (!seed) el("ellipse", { cx: H * .75, cy: H * .95, rx: R * 1.08, ry: R * A.sq * 1.06, fill: "url(#stShadow)", transform: `rotate(${deg(rot).toFixed(1)} ${H * .75} ${H * .95})` }, sh);
+  el("circle", { class: "land", r: R + 2 }, parent);
+  const lift = el("g", { class: "lift" }, parent);
+  const sg = el("g", { class: "stone" }, lift);
+  el("path", { class: "st-body" + (seed ? " seed" : ""), d: stonePath(p.id, R, A, rot), fill: seed ? null : `url(#st-${p.cat})` }, sg);
+  if (!seed) {
+    el("ellipse", { class: "st-hi", cx: -R * .32, cy: -R * .3 * A.sq, rx: R * .34, ry: R * .18 * A.sq + .4, transform: `rotate(-28 ${-R * .32} ${-R * .3 * A.sq})` }, sg);
+    if (mag >= 3) el("path", { class: "st-cun", d: `M${-R * .2} ${R * .24 * A.sq}Q${R * .1} ${R * .04} ${R * .46} ${-R * .2 * A.sq}`, transform: `rotate(${(deg(rot) * .3).toFixed(1)})` }, sg);
+    if (mag >= 4) el("path", { class: "st-cun", d: `M${R * .02} ${R * .52 * A.sq}Q${R * .28} ${R * .34 * A.sq} ${R * .54} ${R * .16 * A.sq}`, transform: `rotate(${(deg(rot) * .3).toFixed(1)})` }, sg);
+    if (p.g === "evergreen") moss(sg, p.id, R, A);
+  }
+  const ng = el("g", { class: "star" }, lift);
+  if (!seed) el("circle", { r: rc * 4.4, fill: `url(#halo-${p.cat})` }, ng);
+  if (!seed) el("circle", { class: "sr-glow" + (mag >= 3 ? " tw" : ""), r: rc * 2, fill: "url(#glow)", style: `--tw:${(3.2 + seeded("tw" + p.id) * 2.8).toFixed(2)}s;--twd:${(-seeded("td" + p.id) * 6).toFixed(2)}s` }, ng);
+  if (mag === 5 && !seed) el("path", { class: "sr-spike", d: `M${-rc * 7} 0H${rc * 7}M0 ${-rc * 7}V${rc * 7}` }, ng);
+  el("circle", { class: "sr-core" + (seed ? " seed" : ""), r: rc }, ng);
+  if (seed) el("circle", { class: "sr-seedring", r: rc + 2.2 }, ng);
+  if (p.g === "evergreen") el("path", { class: "sr-spark", d: SPARK, transform: `scale(${(rc * 3.3).toFixed(2)})` }, ng);
   return R;
 }
+// 石灯笼（春日灯籠的剪影）：高 15px，底座在 (0,0)。立在每条小径的入口——也就是第一章
+function lantern(g) {
+  el("ellipse", { class: "ln-sh", cx: 2.2, cy: .6, rx: 4.6, ry: 1.4 }, g);
+  el("circle", { class: "ln-glow", cx: 0, cy: -9, r: 11, fill: "url(#lanternGlow)" }, g);
+  el("rect", { class: "ln-body", x: -3.2, y: -1.3, width: 6.4, height: 1.3, rx: .35 }, g);
+  el("rect", { class: "ln-body", x: -.9, y: -6.3, width: 1.8, height: 5.2 }, g);
+  el("rect", { class: "ln-body", x: -3, y: -7.5, width: 6, height: 1.3, rx: .35 }, g);
+  el("rect", { class: "ln-body", x: -2.3, y: -10.9, width: 4.6, height: 3.5, rx: .3 }, g);
+  el("rect", { class: "ln-win", x: -1.2, y: -10.2, width: 2.4, height: 2.1, rx: .2 }, g);
+  el("path", { class: "ln-body", d: "M-4.8 -10.7C-3.2 -11.4 -1.5 -12.6 0 -13.3C1.5 -12.6 3.2 -11.4 4.8 -10.7Z" }, g);
+  el("circle", { class: "ln-body", cx: 0, cy: -14.1, r: .95 }, g);
+}
+const LANTERN_ICON = `<svg width="10" height="15" viewBox="-5 -15 10 15" aria-hidden="true"><g fill="currentColor"><rect x="-3.2" y="-1.3" width="6.4" height="1.3" rx=".35"/><rect x="-.9" y="-6.3" width="1.8" height="5.2"/><rect x="-3" y="-7.5" width="6" height="1.3" rx=".35"/><rect x="-2.3" y="-10.9" width="4.6" height="3.5" rx=".3"/><path d="M-4.8 -10.7C-3.2 -11.4 -1.5 -12.6 0 -13.3C1.5 -12.6 3.2 -11.4 4.8 -10.7Z"/><circle cy="-14.1" r=".95"/></g><rect x="-1.2" y="-10.2" width="2.4" height="2.1" fill="var(--ln-win)"/></svg>`;
 
-/* ══ 状态 ══════════════════════════════════════════════════════════════════════ */
+/* ══ 状态 ═══════════════════════════════════════════════════════════════════════ */
 const svg = $("#stage");
 let DATA = [], L = null, byId = new Map(), view = { k: 1, x: 0, y: 0 }, fitK = 1, tierK = 0;
-let selId = null, hovId = null, cutoff = Infinity, topic = null, query = "";
-let G = {};                              // svg 图层
-let symEls = [], labelSyms = [];         // 需要反向缩放的符号组（石/星、注记）
+let selId = null, hovId = null, cutoff = Infinity, topic = null, pinTopic = false, query = "", hotCat = null, hotSer = null;
+let G = {}, symEls = [], labelSyms = [], stepSyms = [];
+const isNarrow = () => innerWidth < 768;
 
 function neighbors(id) {
   const s = byId.get(id); if (!s) return { path: [], bridges: [], kin: [] };
   const path = s.series ? L.series.find(x => x.name === s.series).stars.filter(q => q.p.cr <= cutoff) : [];
   const bridges = [];
   for (const q of L.stars) { if (q.p.cr > cutoff) continue;
-    if (s.p.links.includes(q.p.id)) bridges.push({ s: q, dir: "out" });
-    else if (q.p.links.includes(s.p.id)) bridges.push({ s: q, dir: "in" }); }
+    if (s.p.links.includes(q.p.id)) bridges.push({ s: q, dir: "out" }); else if (q.p.links.includes(s.p.id)) bridges.push({ s: q, dir: "in" }); }
   const tf = new Map(); L.stars.forEach(q => q.p.tags.forEach(t => tf.set(t, (tf.get(t) || 0) + 1)));
   const kin = L.stars.filter(q => q !== s && q.p.cr <= cutoff && !path.includes(q))
     .map(q => ({ s: q, tags: q.p.tags.filter(t => s.p.tags.includes(t) && tf.get(t) <= 14) }))
@@ -596,33 +792,31 @@ function neighbors(id) {
   return { path, bridges, kin };
 }
 
-/* ══ 构建 ══════════════════════════════════════════════════════════════════════ */
-function build(n) {
+/* ══ 构建 + 进场编排 ════════════════════════════════════════════════════════════════
+   0ms 目录栏滑入（480ms）→ 石按种下先后逐块落定（每块 420ms，错峰 ≤ 700ms 总长）→
+   每片庭的砂纹像被耙出来一样一圈圈画出（1100ms，按庭错开 90ms、按圈错开 120ms）→ 注记淡入。 */
+function build(n, entrance = true) {
   DATA = synth(n); L = layout(DATA); byId = new Map(L.stars.map(s => [s.p.id, s]));
   selId = null; hovId = null; topic = null; pinTopic = false; cutoff = Infinity; tierK = 0; $("#timeR").value = 1000;
+  $("#card").classList.remove("on");
   svg.replaceChildren();
   const defs = el("defs", {}, svg);
-  // 渐变里的 currentColor 取的是渐变自己的 color，不是引用它的元素——所以每个分类一支渐变
-  for (const [cat, C] of Object.entries(CATS)) { const rg = el("radialGradient", { id: "halo-" + cat }, defs);
-    [[0, .42], [.35, .12], [1, 0]].forEach(([o, a]) => el("stop", { offset: o, "stop-color": C.c, "stop-opacity": a }, rg)); }
-  const mk = G.mask = el("mask", { id: "rakeMask", maskUnits: "userSpaceOnUse" }, defs);
-  G.maskBase = el("rect", { fill: "url(#fade)" }, mk); G.maskHole = el("g", {}, mk);
-  const fade = el("radialGradient", { id: "fade" }, defs);
-  el("stop", { offset: ".55", "stop-color": "#fff" }, fade); el("stop", { offset: "1", "stop-color": "#000" }, fade);
+  G.mask = el("mask", { id: "rakeMask", maskUnits: "userSpaceOnUse" }, defs);
+  G.maskBase = el("rect", { fill: "url(#fade)" }, G.mask); G.maskHole = el("g", {}, G.mask);
   G.cam = el("g", {}, svg);
   G.rake = el("path", { class: "rk", mask: "url(#rakeMask)" }, G.cam);
   G.pool = el("g", {}, G.cam);
   G.rings = el("g", {}, G.cam);
   G.topic = el("g", {}, G.cam);
-  G.rel = el("g", { class: "rel" }, G.cam);
+  G.rel = el("g", { class: "relg" }, G.cam);
   G.spokes = el("g", {}, G.cam);
+  G.lanterns = el("g", { class: "lanterng" }, G.cam);
   G.nodes = el("g", {}, G.cam);
-  G.labels = el("g", {}, G.cam);
-  // 小径与桥（世界坐标，线宽不随缩放）
+  G.labels = el("g", { class: "labels" }, G.cam);
   L.series.filter(s => s.stars.length > 1).forEach(s => {
-    const g = el("g", { class: "path", "data-series": s.name }, G.rel);
-    s.el = g; for (const c of ["step-a", "step-b", "chain"]) el("path", { class: c }, g);
-    el("title", {}, el("path", { class: "hit" }, g)).textContent = `小径 · ${s.name}：同一合集，按写作先后`;
+    const g = el("g", { class: "path", "data-series": s.name }, G.rel); s.el = g;
+    s.steps = el("g", { class: "stepg stone" }, g); s.chain = el("path", { class: "chain" }, g);
+    el("title", {}, s.hit = el("path", { class: "hit" }, g)).textContent = `小径 · ${s.name}：同一合集，按写作先后`;
   });
   L.stars.forEach(s => s.p.links.forEach(tid => { const t = byId.get(tid); if (!t) return;
     const g = el("g", { class: "bridge", "data-a": s.p.id, "data-b": tid }, G.rel);
@@ -631,62 +825,64 @@ function build(n) {
     for (const c of ["br-a", "br-b", "br-n"]) el("path", { class: c, d }, g);
     el("title", {}, el("path", { class: "hit", d }, g)).textContent = `桥 · 《${s.p.t}》引用了《${t.p.t}》`;
   }));
-  // 石 / 星
+  const order = [...L.stars].sort((a, b) => a.p.cr - b.p.cr), stepMs = Math.min(55, 700 / Math.max(1, order.length));
+  order.forEach((s, i) => s.ed = i * stepMs);
   L.stars.forEach(s => {
     const c = CATS[s.p.cat].c;
-    const g = el("g", { class: "node", transform: `translate(${s.x} ${s.y})`, "data-id": s.p.id, style: `--c:${c};color:${c}` }, G.nodes);
-    const sym = el("g", { class: "sym" }, g); symEls.push(sym);
-    const R = glyph(sym, s.p, s.mag);
-    el("circle", { class: "sel-ring", r: R + 5 }, sym);
+    const g = el("g", { class: "node", transform: `translate(${s.x} ${s.y})`, "data-id": s.p.id, style: `--c:${c};--ed:${ms(s.ed).toFixed(0)}ms` }, G.nodes);
+    const sym = el("g", {}, g);
+    const R = glyph(sym, s.p, s.mag, s.rot);
+    el("circle", { class: "sel-ring", r: R + 5, pathLength: 1 }, sym);
     el("circle", { class: "care", r: R + 4 }, sym);
     if (NOW - s.p.up < 21 * DAY) { const f = el("circle", { class: "fresh", r: R + 1 }, sym); f.style.animationDelay = `${-seeded("f" + s.p.id) * 5}s`; }
     if (s.p.g === "seedling" || NOW - s.p.up > 60 * DAY) g.classList.add("tend");
     s.el = g; s.sym = sym; s.R = R;
   });
-  symEls = [...svg.querySelectorAll(".sym")];
+  symEls = L.stars.map(s => s.sym);
   renderRail(); renderTags(); renderLegend(); stat();
-  fit(false); sand(true); paths(); labels(); focus();
-  if (!DATA.length) return;
+  const doEnter = entrance && !reduce;
+  if (doEnter) { document.body.classList.add("entering"); svg.classList.add("entering"); svg.style.setProperty("--ld", `${ms(order.length * stepMs + 380).toFixed(0)}ms`); }
+  fit(false); sand(doEnter && !isNarrow()); paths(); labels(); focus(); drawHist();
+  if (doEnter) setTimeout(() => { svg.classList.remove("entering"); document.body.classList.remove("entering");
+    G.rings.querySelectorAll("[pathLength]").forEach(p => p.removeAttribute("pathLength")); }, ms(order.length * stepMs + 1900));
   const h = decodeURIComponent((location.hash.match(/#\/constellation\/(.+)$/) || [])[1] || "");
   if (h && byId.has(h)) select(h, false);
 }
 
-/* ══ 相机：全程直写 transform ═════════════════════════════════════════════════ */
+/* ══ 相机：全程直写 transform ═══════════════════════════════════════════════════════ */
 function write() {
   G.cam.setAttribute("transform", `translate(${view.x.toFixed(2)} ${view.y.toFixed(2)}) scale(${view.k.toFixed(5)})`);
   const inv = `scale(${(1 / view.k).toFixed(5)})`;
   for (const e of symEls) e.setAttribute("transform", inv);
   for (const e of labelSyms) e.setAttribute("transform", inv);
+  for (const e of stepSyms) e.setAttribute("transform", e.dataset.t + " " + inv);
 }
 function avail() {
-  const W = innerWidth, H = innerHeight, narrow = W < 768;
-  const railOn = !document.body.classList.contains("rail-off");
-  const top = narrow ? 168 : 150, bottom = narrow ? (railOn ? H * .44 + 112 : 112) : 124;
-  const left = narrow ? 16 : (railOn ? 32 + 292 + 28 : 40), right = narrow ? 16 : 40;
+  const W = innerWidth, H = innerHeight, narrow = isNarrow(), railOn = !document.body.classList.contains("rail-off");
+  const top = narrow ? 168 : 152, bottom = narrow ? (railOn ? H * .44 + 112 : 112) : 120 + (document.body.classList.contains("time-on") ? 84 : 0);
+  const left = narrow ? 16 : (railOn ? 32 + 288 + 28 : 40), right = narrow ? 16 : 40;
   return { x: left, y: top, w: W - left - right, h: H - top - bottom };
 }
-function bbox(list) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const s of list) { x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y); }
-  return { x0, y0, x1, y1 };
-}
-function fit(anim = true) {
+function bbox(list) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of list) { x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y); } return { x0, y0, x1, y1 }; }
+function fit(anim = true, D = 640) {
   const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length) return;
-  const b = bbox(vis), A = avail(), padPx = 70;
+  const b = bbox(vis), A = avail(), padPx = 72;
   const bw = Math.max(b.x1 - b.x0, 180), bh = Math.max(b.y1 - b.y0, 120);
   const k = clamp(Math.min((A.w - padPx * 2) / bw, (A.h - padPx * 2) / bh), .25, 2.2);
   fitK = k;
-  const to = { k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h / 2 - (b.y0 + b.y1) / 2 * k };
-  fly(to, anim);
+  // 视觉中心比几何中心高 2%：版面的「重心」在上，不显得往下坠
+  fly({ k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h * .48 - (b.y0 + b.y1) / 2 * k }, anim, D);
 }
-const bez = (() => { const x1 = .16, y1 = 1, x2 = .3, y2 = 1; const cx = t => 3 * x1 * t * (1 - t) ** 2 + 3 * x2 * t * t * (1 - t) + t ** 3, cy = t => 3 * y1 * t * (1 - t) ** 2 + 3 * y2 * t * t * (1 - t) + t ** 3;
-  return x => { let lo = 0, hi = 1; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (cx(m) < x) lo = m; else hi = m; } return cy((lo + hi) / 2); }; })();
+const bezier = (x1, y1, x2, y2) => { const cx = t => 3 * x1 * t * (1 - t) ** 2 + 3 * x2 * t * t * (1 - t) + t ** 3, cy = t => 3 * y1 * t * (1 - t) ** 2 + 3 * y2 * t * t * (1 - t) + t ** 3;
+  return x => { let lo = 0, hi = 1; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (cx(m) < x) lo = m; else hi = m; } return cy((lo + hi) / 2); }; };
+const EASE_OUT = bezier(.16, 1, .3, 1), EASE_IO = bezier(.65, 0, .35, 1);
 let flyId = 0;
-function fly(to, anim = true) {
+function fly(to, anim = true, D = 640, ease = EASE_OUT) {
   const from = { ...view }, id = ++flyId;
   if (!anim || reduce) { view = to; write(); settle(); return; }
-  const t0 = performance.now(), D = 640;
-  const tick = t => { if (id !== flyId) return; const e = bez(Math.min(1, (t - t0) / D));
+  const t0 = performance.now(), dur = ms(D);
+  const tick = t => { if (id !== flyId) return; const e = ease(Math.min(1, (t - t0) / dur));
     view = { k: from.k + (to.k - from.k) * e, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e }; write();
     if (e < 1) requestAnimationFrame(tick); else settle(); };
   requestAnimationFrame(tick);
@@ -694,27 +890,24 @@ function fly(to, anim = true) {
 let settleT = 0;
 function settle() { clearTimeout(settleT); settleT = setTimeout(() => {
   const tier = Math.round(clamp(Math.log2(view.k / fitK) / .8, 0, 3));
-  if (tier !== tierK) { tierK = tier; sand(); } labels(); }, 110); }
+  if (tier !== tierK) { tierK = tier; sand(); } paths(); labels(); }, 110); }
 const toWorld = (cx, cy) => ({ x: (cx - view.x) / view.k, y: (cy - view.y) / view.k });
 const toScreen = s => ({ x: s.x * view.k + view.x, y: s.y * view.k + view.y });
 
-/* ══ 砂纹 ══════════════════════════════════════════════════════════════════════ */
-function sand() {
-  const kT = fitK * [1, 1.8, 3.2, 5.6][tierK];
-  const vis = L.stars.filter(s => s.p.cr <= cutoff);
+/* ══ 砂纹：每片庭各算一套；最外一圈同时是直纹的蒙版洞与夜间水面 ═══════════════════ */
+function sand(rakeIn = false) {
+  const kT = fitK * [1, 1.8, 3.2, 5.6][tierK], vis = L.stars.filter(s => s.p.cr <= cutoff);
   for (const g of [G.rings, G.pool, G.maskHole]) g.replaceChildren();
   if (!vis.length) { G.rake.setAttribute("d", ""); return; }
   const dp = kT > 2 ? 2 : 1;
-  // 每片庭各算一套砂纹：同庭的石合成一个聚落，庭与庭之间留白砂
-  L.islands.forEach(isl => {
+  L.islands.forEach((isl, ii) => {
     const st = isl.stars.filter(s => s.p.cr <= cutoff); if (!st.length) return;
     const F = sandField(st, kT), c = CATS[isl.cat].c;
     const loops = LV.map(l => iso(F, l / kT).map(p => smooth(p, dp)).join(""));
-    loops.forEach((d, i) => el("path", { class: "rg" + (i === 0 ? " in" : ""), d, style: `--c:${c}` }, G.rings));
+    loops.forEach((d, i) => el("path", { class: "rg" + (i === 0 ? " in" : ""), d, style: `--c:${c};--rd:${ms(260 + ii * 90 + i * 120)}ms`, pathLength: rakeIn ? 1 : null }, G.rings));
     el("path", { class: "poolfill", d: loops[2], "fill-rule": "evenodd" }, G.pool);
     el("path", { d: loops[2], fill: "#000", "fill-rule": "evenodd" }, G.maskHole);
   });
-  // 直纹：其余的白砂耙成平行线，在最外一圈砂纹处停住；外缘渐隐，没有版框
   const b = bbox(vis), padW = 240 / kT, x0 = b.x0 - padW, x1 = b.x1 + padW, y0 = b.y0 - padW * .8, y1 = b.y1 + padW * .8, gap = 7 / kT;
   let d = ""; for (let y = y0; y <= y1; y += gap) d += `M${x0.toFixed(1)} ${y.toFixed(1)}H${x1.toFixed(1)}`;
   G.rake.setAttribute("d", d);
@@ -722,161 +915,174 @@ function sand() {
   if (topic) showTopic(topic);
 }
 
-/* ══ 小径：昼是飞石，夜是星座线。两端让开石身 ═════════════════════════════════ */
+/* ══ 小径：千鸟打的飞石（左右交错 ±1.8px，间距 13px，长轴顺路），夜里是连线；入口一盏石灯笼 ══ */
 function paths() {
-  L.series.forEach(s => { if (!s.el) return;
+  stepSyms = []; G.lanterns.replaceChildren();
+  L.series.forEach(s => {
     const pts = s.stars.filter(q => q.p.cr <= cutoff);
-    let d = "";
-    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], L2 = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const ta = (a.R + 7) / view.k / L2, tb = (b.R + 7) / view.k / L2; if (ta + tb >= 1) continue;
-      d += `M${(a.x + (b.x - a.x) * ta).toFixed(1)} ${(a.y + (b.y - a.y) * ta).toFixed(1)}L${(b.x - (b.x - a.x) * tb).toFixed(1)} ${(b.y - (b.y - a.y) * tb).toFixed(1)}`; }
-    const full = pts.length > 1 ? "M" + pts.map(q => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join("L") : "";
-    const [a, b, c, h] = s.el.children; a.setAttribute("d", d); b.setAttribute("d", d); c.setAttribute("d", d); h.setAttribute("d", full);
+    if (s.el) {
+      s.steps.replaceChildren(); let chain = "", n = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i], Lw = Math.hypot(b.x - a.x, b.y - a.y) || 1, Ls = Lw * view.k, ux = (b.x - a.x) / Lw, uy = (b.y - a.y) / Lw;
+        const s0 = a.R + 8, s1 = Ls - b.R - 8; if (s1 - s0 < 4) continue;
+        chain += `M${(a.x + ux * s0 / view.k).toFixed(1)} ${(a.y + uy * s0 / view.k).toFixed(1)}L${(a.x + ux * s1 / view.k).toFixed(1)} ${(a.y + uy * s1 / view.k).toFixed(1)}`;
+        const cnt = Math.max(1, Math.round((s1 - s0) / 13) + 1), gap = cnt > 1 ? (s1 - s0) / (cnt - 1) : 0, ang = deg(Math.atan2(uy, ux));
+        for (let j = 0; j < cnt; j++) {
+          const d = cnt > 1 ? s0 + j * gap : (s0 + s1) / 2, off = (n++ % 2 ? 1 : -1) * 1.8;
+          const wx = a.x + (ux * d - uy * off) / view.k, wy = a.y + (uy * d + ux * off) / view.k;
+          const g = el("g", { transform: `translate(${wx.toFixed(2)} ${wy.toFixed(2)})` }, s.steps), sym = el("g", {}, g);
+          sym.dataset.t = ""; stepSyms.push(sym);
+          const rot = ang + (seeded("sj" + s.name + n) - .5) * 16;
+          el("ellipse", { class: "stp-sh", cx: .6, cy: .8, rx: 3, ry: 2, transform: `rotate(${rot.toFixed(1)})` }, sym);
+          el("ellipse", { class: "stp", rx: 2.9, ry: 1.95, transform: `rotate(${rot.toFixed(1)})` }, sym);
+        }
+      }
+      s.chain.setAttribute("d", chain);
+      s.hit.setAttribute("d", pts.length > 1 ? "M" + pts.map(q => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join("L") : "");
+    }
+    if (!pts.length) return;
+    // 灯笼立在第一章之前，沿小径的反方向退一步
+    const h0 = pts[0], h1 = pts[1], dx = h1 ? h1.x - h0.x : 1, dy = h1 ? h1.y - h0.y : 0, dl = Math.hypot(dx, dy) || 1;
+    const gap = (h0.R + 15) / view.k, lx = h0.x - dx / dl * gap, ly = h0.y - dy / dl * gap + 6 / view.k;
+    const g = el("g", { transform: `translate(${lx.toFixed(2)} ${ly.toFixed(2)})`, "data-series": s.name }, G.lanterns), sym = el("g", {}, g);
+    sym.dataset.t = ""; stepSyms.push(sym); lantern(sym); s.lantern = { x: lx, y: ly };
   });
+  write();
 }
 
-/* ══ 注记：屏幕空间择位（八方位，右上优先），量一次宽度，全局互不重叠 ═══════════════ */
+/* ══ 注记（Imhof：面状名跟随区域、点状名贴点右上、线状名随线）══════════════════════════
+   庭名竖排（像庭园入口的木札），星名横排——方向本身就是层级。量一次宽度，屏幕空间择位，全局不重叠。 */
 const ctx = document.createElement("canvas").getContext("2d");
 const tw = (t, font) => { ctx.font = font; return ctx.measureText(t).width; };
 const FZH = '"LXGW WenKai Screen","Songti SC","Noto Serif SC",serif', FMO = '"JetBrains Mono",ui-monospace,monospace';
 function labels() {
-  G.labels.replaceChildren(); labelSyms = []; paths();
+  G.labels.replaceChildren(); labelSyms = [];
   const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length) return;
-  const W = innerWidth, H = innerHeight, taken = [];
+  const W = innerWidth, H = innerHeight, taken = [], narrow = isNarrow();
   const discs = vis.map(s => { const p = toScreen(s), r = s.R + 3; return { x: p.x - r, y: p.y - r, w: r * 2, h: r * 2 }; });
+  L.series.forEach(s => { if (s.lantern && s.stars.some(q => q.p.cr <= cutoff)) { const p = toScreen(s.lantern); discs.push({ x: p.x - 6, y: p.y - 16, w: 12, h: 17 }); } });
   const hit = (b, pad = 3) => [...discs, ...taken].some(o => b.x < o.x + o.w + pad && o.x < b.x + b.w + pad && b.y < o.y + o.h + pad && o.y < b.y + b.h + pad);
-  // 窄屏上面板是底部抽屉：注记不许落到抽屉后面
   let floor = H - 8;
-  if (W < 768) { const panel = $("#card").classList.contains("on") ? $("#card") : document.body.classList.contains("rail-off") ? null : $("#rail"); if (panel) floor = panel.getBoundingClientRect().top - 8; }
-  const ceil = W < 768 ? 150 : 60, onScreen = b => b.x > 8 && b.y > ceil && b.x + b.w < W - 8 && b.y + b.h < floor;
-  const put = (wx, wy, dx, dy, build) => { const g = el("g", { transform: `translate(${wx} ${wy})` }, G.labels); const s = el("g", { transform: `scale(${1 / view.k})` }, g); labelSyms.push(s); el("g", { transform: `translate(${dx} ${dy})` }, s).append(...build()); };
+  if (narrow) { const panel = $("#card").classList.contains("on") ? $("#card") : document.body.classList.contains("rail-off") ? null : $("#rail"); if (panel) floor = panel.getBoundingClientRect().top - 8; }
+  // 注记只能落在地图的可用区里：不压页头、不钻进目录栏 / 星卡 / Dock 底下
+  const A = avail(), cardOn = !narrow && $("#card").classList.contains("on");
+  const left = narrow ? 8 : A.x - 20, right = W - (cardOn ? 32 + 344 + 16 : narrow ? 8 : 24), ceil = narrow ? (document.body.classList.contains("card-on") ? 96 : 150) : 146;
+  if (!narrow) floor = H - (document.body.classList.contains("time-on") ? 196 : 108);
+  const onScreen = b => b.x > left && b.y > ceil && b.x + b.w < right && b.y + b.h < floor;
+  const put = (wx, wy, dx, dy, build) => { const g = el("g", { transform: `translate(${wx} ${wy})` }, G.labels), s = el("g", { transform: `scale(${1 / view.k})` }, g); labelSyms.push(s); const inner = el("g", { transform: `translate(${dx} ${dy})` }, s); inner.append(...build()); return inner; };
   const txt = (t, cls, x, y, anchor = "start") => { const e = el("text", { class: "lbl " + cls, x, y, "text-anchor": anchor }); e.textContent = t; return e; };
-  const focusSet = new Set(); const f = selId || hovId;
+  const focusSet = new Set(), f = selId || hovId;
   if (f) { const nb = neighbors(f); focusSet.add(f); nb.path.forEach(q => focusSet.add(q.p.id)); nb.bridges.forEach(b => focusSet.add(b.s.p.id)); if (selId) nb.kin.forEach(k => focusSet.add(k.s.p.id)); }
-  // ① 庭名：目录的一级标题，常驻
+  const med = a => { const q = [...a].sort((x, y) => x - y); return q[Math.floor(q.length / 2)]; };
+  // ① 庭名：目录的一级标题，常驻。竖排（木札）：方块 + 竖排中文 + 侧排英文 + 篇数
   [...L.islands].sort((a, b) => b.stars.length - a.stars.length).forEach(isl => {
     const st = isl.stars.filter(s => s.p.cr <= cutoff); if (!st.length) return;
-    // 以庭的「重心」而不是包围盒落名：一条长小径会把包围盒拉得很远，名字就飘离了石群
-    const pts = st.map(toScreen), med = a => { const q = [...a].sort((x, y) => x - y); return q[Math.floor(q.length / 2)]; };
-    const cx = med(pts.map(p => p.x)), cy = med(pts.map(p => p.y));
-    const rr = Math.max(14, med(pts.map(p => Math.hypot(p.x - cx, p.y - cy))) * 1.1);
-    const bx = cx - rr, by = cy - rr, ex = cx + rr, ey = cy + rr;
-    const C = CATS[isl.cat], zh = C.zh, en = `${C.en} · ${st.length}`;
-    const zw = tw(zh, `16px ${FZH}`) + zh.length * 2.24, w = 14 + zw + 12 + tw(en.toUpperCase(), `10px ${FMO}`) + en.length * 2.4, h = 20;
-    const cands = [[bx - 18, by - 44], [cx - w / 2, by - 44], [bx - 18, ey + 34], [ex + 26, cy - 10], [bx - w - 26, cy - 10], [cx - w / 2, ey + 34], [bx - 18, by - 74], [cx - w / 2, ey + 64]];
-    // 名字离谁最近就会被读成谁的：只接受「最近的那块石属于本庭」的位置
+    const pts = st.map(toScreen), cx = med(pts.map(p => p.x)), cy = med(pts.map(p => p.y));
+    const rr = Math.max(16, med(pts.map(p => Math.hypot(p.x - cx, p.y - cy))) * 1.1), bx = cx - rr, by = cy - rr, ex = cx + rr, ey = cy + rr;
+    const C = CATS[isl.cat], n = String(st.length), zhW = tw(C.zh, `16px ${FZH}`) + C.zh.length * 2.24;
+    const V = { w: 30, h: 16 + C.zh.length * 20.2 + 16 }, Hh = { w: 14 + zhW + 10 + tw(`${C.en} · ${n}`.toUpperCase(), `9.5px ${FMO}`) + 20, h: 20 };
     const own = b => { let best = null, bd = Infinity; const mx = b.x + b.w / 2, my = b.y + b.h / 2;
-      for (const q of vis) { const p = toScreen(q), d = Math.hypot(Math.max(Math.abs(p.x - mx) - b.w / 2, 0), p.y - my); if (d < bd) { bd = d; best = q; } }
+      for (const q of vis) { const p = toScreen(q), d = Math.hypot(Math.max(Math.abs(p.x - mx) - b.w / 2, 0), Math.max(Math.abs(p.y - my) - b.h / 2, 0)); if (d < bd) { bd = d; best = q; } }
       return best && best.isl === isl; };
-    let pick = null, loose = null;
-    for (const c of cands) { const b = { x: c[0], y: c[1], w, h }; if (hit(b) || !onScreen(b)) continue; if (own(b)) { pick = c; break; } loose = loose || c; }
-    pick = pick || loose; if (!pick) return;      // 庭在屏外：名字不追出去
-    taken.push({ x: pick[0], y: pick[1], w, h });
-    const wp = toWorld(pick[0], pick[1]);
-    put(wp.x, wp.y, 0, 0, () => { const dot = el("circle", { class: "isl-dot", cx: 4, cy: 11, r: 3.2, style: `--c:${C.c}` });
-      return [dot, txt(zh, "l-isl", 14, 16), txt(en, "l-isl-en", 14 + zw + 12, 15)]; });
+    const tries = [];
+    if (!narrow) { const { w, h } = V; tries.push(...[[bx - w - 10, by - 4], [ex + 10, by - 4], [bx - w - 10, cy - h / 2], [ex + 10, cy - h / 2], [cx - w / 2, by - h - 10], [cx - w / 2, ey + 12]].map(c => ({ c, v: true, w, h }))); }
+    { const { w, h } = Hh; tries.push(...[[bx - 8, by - 34], [cx - w / 2, by - 34], [bx - 8, ey + 22], [ex + 16, cy - 10], [bx - w - 16, cy - 10], [cx - w / 2, ey + 22]].map(c => ({ c, v: false, w, h }))); }
+    let pick = tries.find(t => { const b = { x: t.c[0], y: t.c[1], w: t.w, h: t.h }; return !hit(b) && onScreen(b) && own(b); })
+      || tries.find(t => { const b = { x: t.c[0], y: t.c[1], w: t.w, h: t.h }; return !hit(b) && onScreen(b) && Math.hypot(b.x + b.w / 2 - cx, b.y + b.h / 2 - cy) < rr + 120; });
+    if (!pick) return;
+    taken.push({ x: pick.c[0], y: pick.c[1], w: pick.w, h: pick.h });
+    const wp = toWorld(pick.c[0], pick.c[1]);
+    const box = put(wp.x, wp.y, 0, 0, () => pick.v
+      ? [el("rect", { class: "isl-sq", x: 4.5, y: 0, width: 7, height: 7, rx: 1.8, style: `--c:${C.c}` }), txt(C.zh, "l-isl", 8, 15), txt(C.en.toUpperCase(), "l-isl-en v", 24, 15),
+         txt(n, "l-isl-n", 8, 16 + C.zh.length * 20.2 + 12, "middle")]
+      : [el("rect", { class: "isl-sq", x: 0, y: 7, width: 7, height: 7, rx: 1.8, style: `--c:${C.c}` }), txt(C.zh, "l-isl-h", 14, 16), txt(`${C.en} · ${n}`, "l-isl-en", 14 + zhW + 10, 15)]);
+    // 竖排字的实际高度随字体而变：渲染后量一次，把篇数放在最后一个字下面 10px
+    if (pick.v) { const zb = box.querySelector(".l-isl").getBBox(); box.querySelector(".l-isl-n").setAttribute("y", (zb.y + zb.height + 12).toFixed(1)); }
   });
-  // ② 小径名：目录的二级标题
+  // ② 小径名：写在入口的石灯笼旁
   const budgetSer = [8, 14, 30, 99][tierK];
-  [...L.series].filter(s => s.stars.filter(q => q.p.cr <= cutoff).length > 1).sort((a, b) => b.stars.length - a.stars.length).slice(0, budgetSer).forEach(s => {
-    const st = s.stars.filter(q => q.p.cr <= cutoff), zh = /[一-鿿]/.test(s.name);
-    const label = `${s.name}${zh ? "" : ""} · ${cnNum(st.length)}`, font = zh ? `12px ${FZH}` : `11px ${FMO}`;
-    const w = tw(label, font) + label.length * (zh ? 1.9 : 2.4), h = 14;
-    const pts = st.map(toScreen), cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
-    const order = pts.map((p, i) => [p, i]).sort((a, b) => Math.abs(a[0].x - cx) - Math.abs(b[0].x - cx));
+  [...L.series].filter(s => s.stars.some(q => q.p.cr <= cutoff) && s.lantern).sort((a, b) => b.stars.length - a.stars.length).slice(0, budgetSer).forEach(s => {
+    const n = s.stars.filter(q => q.p.cr <= cutoff).length, zh = /[一-鿿]/.test(s.name), font = zh ? `12px ${FZH}` : `11px ${FMO}`;
+    const w1 = tw(s.name, font) + s.name.length * (zh ? 1.9 : 2.2), w = w1 + 8 + tw(`${cnNum(n)}章`, `10px ${FZH}`) + 6, h = 14;
+    const lp = toScreen(s.lantern);
     let pick = null;
-    const bx0 = Math.min(...pts.map(p => p.x)), bx1 = Math.max(...pts.map(p => p.x)), by0 = Math.min(...pts.map(p => p.y)), by1 = Math.max(...pts.map(p => p.y));
-    for (const [x, y] of [[(bx0 + bx1) / 2 - w / 2, by1 + 18], [bx1 + 20, (by0 + by1) / 2 - 7], [bx0 - w - 20, (by0 + by1) / 2 - 7], [(bx0 + bx1) / 2 - w / 2, by0 - 30]]) {
-      const b = { x, y, w, h }; if (!hit(b) && onScreen(b)) { pick = b; break; } }
-    if (!pick) for (const [p] of order) { for (const [dx, dy] of [[-w / 2, 24], [-w / 2, -34], [16, 16], [-w - 16, 16]]) { const b = { x: p.x + dx, y: p.y + dy, w, h }; if (!hit(b) && onScreen(b)) { pick = b; break; } } if (pick) break; }
+    for (const [dx, dy] of [[10, -14], [-w - 10, -14], [-w / 2, 6], [-w / 2, -34], [10, 0], [-w - 10, 0]]) { const b = { x: lp.x + dx, y: lp.y + dy, w, h }; if (!hit(b) && onScreen(b)) { pick = b; break; } }
     if (!pick) return; taken.push(pick);
     const wp = toWorld(pick.x, pick.y);
-    put(wp.x, wp.y, 0, 0, () => [txt(label, "l-ser" + (zh ? " zh" : ""), 0, 11)]);
+    put(wp.x, wp.y, 0, 0, () => [txt(s.name, "l-ser" + (zh ? " zh" : ""), 0, 11), txt(`${cnNum(n)}章`, "l-ser-n", w1 + 8, 11)]);
   });
-  // ③ 星名：焦点与邻里优先，其余按星等；庭里只有一两块石时也常驻（它就是这片庭的全部目录）
+  // ③ 星名：焦点与邻里 > 小庭里仅有的一两篇 > 星等配额
   const want = vis.filter(s => focusSet.has(s.p.id) || s.isl.stars.filter(q => q.p.cr <= cutoff).length <= 2 || s.mag >= [5, 4, 3, 1][tierK] || (query && matches(s.p)));
   want.sort((a, b) => (focusSet.has(b.p.id) - focusSet.has(a.p.id)) || (b.p.id === f) - (a.p.id === f) || b.mag - a.mag);
-  const cap = [10, 22, 48, 999][tierK] + focusSet.size;
-  want.slice(0, cap).forEach(s => {
+  want.slice(0, [10, 22, 48, 999][tierK] + focusSet.size).forEach(s => {
     const p = toScreen(s), w = tw(s.p.t, `13px ${FZH}`) + s.p.t.length * .8, h = 16, gp = s.R + 6;
-    const C8 = [[gp, -gp - h + 4, "start"], [-gp - w, -gp - h + 4, "start"], [gp, gp - 2, "start"], [-gp - w, gp - 2, "start"], [-w / 2, -gp - h - 2, "start"], [-w / 2, gp + 2, "start"], [gp + 2, -h / 2, "start"], [-gp - 2 - w, -h / 2, "start"]];
+    const C8 = [[gp, -gp - h + 4], [-gp - w, -gp - h + 4], [gp, gp - 2], [-gp - w, gp - 2], [-w / 2, -gp - h - 2], [-w / 2, gp + 2], [gp + 2, -h / 2], [-gp - 2 - w, -h / 2]];
     let pick = null; for (const c of C8) { const b = { x: p.x + c[0], y: p.y + c[1], w, h }; if (!hit(b, 2) && onScreen(b)) { pick = c; break; } }
     if (!pick && s.p.id === f) pick = C8[0];
     if (!pick) return; taken.push({ x: p.x + pick[0], y: p.y + pick[1], w, h });
-    put(s.x, s.y, pick[0], pick[1], () => [txt(s.p.t, "l-star", 0, 13)]);
+    put(s.x, s.y, pick[0], pick[1], () => [txt(s.p.t, "l-star" + (s.p.id === selId ? " on" : ""), 0, 13)]);
   });
   moon();
 }
-function moon() {        // 夜里才有：今晚真实的月相（朔望月 29.53 天），挂在庭外右上的白砂上空
-  const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length || innerWidth < 768) return;
-  const ph = ((NOW - Date.parse("2026-01-18T19:52:00Z")) / DAY % 29.530589) / 29.530589;   // 0 = 朔，.5 = 望
+function moon() {        // 夜里才有：今晚真实的月相（朔望月 29.53 天）
+  const vis = L.stars.filter(s => s.p.cr <= cutoff); if (!vis.length || isNarrow()) return;
+  const ph = ((NOW - Date.parse("2026-01-18T19:52:00Z")) / DAY % 29.530589) / 29.530589;
   const A = avail(), wp = toWorld(A.x + A.w - 150, A.y + 6), R = 9;
-  const g = el("g", { transform: `translate(${wp.x} ${wp.y})`, class: "star" }, G.labels), s = el("g", { class: "sym" }, g); labelSyms.push(s);
-  s.setAttribute("transform", `scale(${1 / view.k})`);
-  el("circle", { class: "moon", r: R, opacity: .12 }, s);                      // 地照：暗面也隐约可见
-  const q = ph < .5 ? ph : 1 - ph, k = Math.cos(2 * Math.PI * q);            // 亮面 = 半个圆盘 + 一段椭圆明暗界线
+  const g = el("g", { transform: `translate(${wp.x} ${wp.y})`, class: "star" }, G.labels), s = el("g", { transform: `scale(${1 / view.k})` }, g); labelSyms.push(s);
+  el("circle", { class: "moon", r: R, opacity: .12 }, s);
+  const q = ph < .5 ? ph : 1 - ph, k = Math.cos(2 * Math.PI * q);
   el("path", { class: "moon", d: `M0 ${-R}A${R} ${R} 0 0 1 0 ${R}A${(R * Math.abs(k)).toFixed(2)} ${R} 0 0 ${k > 0 ? 0 : 1} 0 ${-R}Z`, transform: ph < .5 ? "" : "scale(-1 1)" }, s);
   el("text", { class: "lbl l-isl-en", x: 16, y: 4 }, s).textContent = `${Math.round((1 - Math.cos(2 * Math.PI * ph)) * 50)}% · 今夜月相`;
 }
 
-/* ══ 焦点：悬停或选中时，邻里亮、其余暗；并按关系类型画出为什么相连 ═══════════════ */
+/* ══ 焦点：悬停或选中时，邻里亮、其余暗 ══════════════════════════════════════════════ */
 function focus() {
   const f = selId || hovId, nb = f ? neighbors(f) : null, lit = new Set();
   if (f) { lit.add(f); nb.path.forEach(q => lit.add(q.p.id)); nb.bridges.forEach(b => lit.add(b.s.p.id)); nb.kin.forEach(k => lit.add(k.s.p.id)); }
-  const cat = hotCat, ser = hotSer, tp = topic;
+  const cat = hotCat, ser = hotSer, tp = topic, filt = !!(cat || tp || query);
   L.stars.forEach(s => {
-    const future = s.p.cr > cutoff;
     let dim = false;
-    if (f) dim = !lit.has(s.p.id);
-    else if (cat) dim = s.p.cat !== cat;
-    else if (ser) dim = s.series !== ser;
-    else if (tp) dim = !s.p.tags.includes(tp);
-    else if (query) dim = !matches(s.p);
-    s.el.classList.toggle("dim", dim); s.el.classList.toggle("future", future); s.el.classList.toggle("sel", s.p.id === selId);
+    if (f) dim = !lit.has(s.p.id); else if (cat) dim = s.p.cat !== cat; else if (ser) dim = s.series !== ser; else if (tp) dim = !s.p.tags.includes(tp); else if (query) dim = !matches(s.p);
+    s.el.classList.toggle("dim", dim); s.el.classList.toggle("future", s.p.cr > cutoff); s.el.classList.toggle("sel", s.p.id === selId); s.el.classList.toggle("hov", s.p.id === hovId);
   });
-  const filt = !!(cat || tp || query);
   L.series.forEach(s => { if (!s.el) return;
     s.el.classList.toggle("lit", (!!f && byId.get(f).series === s.name) || ser === s.name);
     s.el.style.opacity = f ? (byId.get(f).series === s.name ? 1 : .2) : ser ? (ser === s.name ? 1 : .25) : cat ? (s.cat === cat ? 1 : .25) : filt ? .35 : 1; });
+  G.lanterns.querySelectorAll("[data-series]").forEach(l => { const s = L.series.find(x => x.name === l.dataset.series);
+    l.style.opacity = f ? (byId.get(f).series === s.name ? 1 : .25) : ser ? (ser === s.name ? 1 : .3) : cat ? (s.cat === cat ? 1 : .3) : 1; });
   svg.querySelectorAll(".bridge").forEach(b => { const A = byId.get(b.dataset.a), B = byId.get(b.dataset.b);
     b.style.opacity = (A.p.cr > cutoff || B.p.cr > cutoff) ? 0 : f ? (A.p.id === f || B.p.id === f ? 1 : .1) : (filt || ser) ? .18 : .32; });
-  // 同话题：选中时才画成虚线辐条——共享标签线不常驻，常驻就是毛线团
   G.spokes.replaceChildren();
   if (selId) { const s = byId.get(selId); nb.kin.forEach(k => { const d = `M${s.x} ${s.y}L${k.s.x} ${k.s.y}`; const g = el("g", {}, G.spokes); el("path", { class: "spoke", d }, g);
     el("title", {}, el("path", { class: "hit", d }, g)).textContent = `同话题 · ${k.tags.map(t => "#" + t).join(" ")}`; }); }
-  // 目录同步
   document.querySelectorAll(".post").forEach(b => { b.classList.toggle("sel", b.dataset.id === selId); b.classList.toggle("hot", b.dataset.id === hovId); });
 }
 
-/* ══ 话题圈：只用成员再算一次场，取一条等值线——Bubble Sets；离得远就退成连线（Kelp） ══ */
+/* ══ 话题圈：Bubble Sets；离得远就退成生成树点线（Kelp） ═══════════════════════════════ */
 function showTopic(t) {
   G.topic.replaceChildren(); if (!t) return;
   const mem = L.stars.filter(s => s.p.tags.includes(t) && s.p.cr <= cutoff); if (!mem.length) return;
   const kT = view.k, F = sandField(mem, kT, s => s.R, 60, 12);
-  const d = iso(F, 30 / kT).map(p => smooth(p, 2)).join("");
-  el("path", { class: "topic on", d, "fill-rule": "nonzero" }, G.topic);
-  // 最小生成树把分散的成员串起来：成员再远也看得出是一伙的
+  el("path", { class: "topic", d: iso(F, 30 / kT).map(p => smooth(p, 2)).join("") }, G.topic);
   const inT = [mem[0]], rest = mem.slice(1), edges = [];
   while (rest.length) { let bi = 0, bj = 0, bd = Infinity; inT.forEach((a, i) => rest.forEach((b, j) => { const dd = Math.hypot(a.x - b.x, a.y - b.y); if (dd < bd) { bd = dd; bi = i; bj = j; } }));
     const b = rest.splice(bj, 1)[0]; if (bd * kT > 60) edges.push([inT[bi], b]); inT.push(b); }
   edges.forEach(([a, b]) => el("path", { class: "kelp", d: `M${a.x} ${a.y}L${b.x} ${b.y}` }, G.topic));
 }
 
-/* ══ 目录栏：与地图是同一份目录的两种形态（brushing & linking） ═══════════════════ */
-let hotCat = null, hotSer = null;
+/* ══ 目录栏：与地图是同一份目录的两种形态（brushing & linking） ═══════════════════════ */
 const matches = p => !query || p.t.toLowerCase().includes(query) || p.tags.some(t => t.toLowerCase().includes(query)) || (p.s || "").toLowerCase().includes(query);
 function renderRail() {
   const tree = $("#tree"); tree.replaceChildren();
   const big = DATA.length > 40;
   L.islands.forEach(isl => {
-    const C = CATS[isl.cat], sec = document.createElement("section");
+    const C = CATS[isl.cat], sec = document.createElement("section"), st = isl.stars.filter(s => s.p.cr <= cutoff);
+    if (!st.length) return;
     sec.className = "cat"; sec.style.setProperty("--c", C.c); sec.dataset.cat = isl.cat;
-    const st = isl.stars.filter(s => s.p.cr <= cutoff);
-    sec.innerHTML = `<button class="row cat-h"><i class="dot"></i><span class="zh">${C.zh}</span><span class="en">${C.en}</span><span class="n">${st.length}</span></button>`;
-    const sers = L.series.filter(s => s.cat === isl.cat && s.stars.some(q => q.p.cr <= cutoff));
-    sers.forEach(s => { const ss = s.stars.filter(q => q.p.cr <= cutoff);
+    sec.innerHTML = `<button class="row cat-h"><i class="sq"></i><span class="zh">${C.zh}</span><span class="en">${C.en}</span><span class="n">${st.length}</span></button>`;
+    L.series.filter(s => s.cat === isl.cat && s.stars.some(q => q.p.cr <= cutoff)).forEach(s => { const ss = s.stars.filter(q => q.p.cr <= cutoff);
       const div = document.createElement("div"); div.className = "ser" + (big && !ss.some(q => q.p.id === selId) ? " fold" : ""); div.dataset.series = s.name;
-      div.innerHTML = `<button class="row ser-h"><svg width="18" height="10" viewBox="0 0 18 10"><path d="M1 7L6 3L11 6L17 2" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 2.2" stroke-linecap="round"/></svg>${esc(s.name)}<span class="n">${ss.length}</span></button><ol>${ss.map((q, i) => `<li><button class="row post" data-id="${q.p.id}"><span class="no">${i + 1}</span><span class="t">${esc(q.p.t)}</span><span class="m">${q.p.min}′</span></button></li>`).join("")}</ol>`;
+      div.innerHTML = `<button class="row ser-h" style="color:var(--ink2)">${LANTERN_ICON}${esc(s.name)}<span class="n">${ss.length}</span></button><ol>${ss.map((q, i) => `<li><button class="row post" data-id="${q.p.id}"><span class="no">${i + 1}</span><span class="t">${esc(q.p.t)}</span><span class="m">${q.p.min}′</span></button></li>`).join("")}</ol>`;
       sec.appendChild(div); });
     const loose = st.filter(s => !s.series).sort((a, b) => b.p.cr - a.p.cr);
     if (loose.length) { const ul = document.createElement("ul"); ul.className = "loose";
@@ -888,65 +1094,65 @@ function renderRail() {
 }
 function renderTags() {
   const tf = new Map(); L.stars.forEach(s => s.p.tags.forEach(t => tf.set(t, (tf.get(t) || 0) + 1)));
-  $("#tags").innerHTML = [...tf].filter(([, n]) => n >= 1).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([t, n]) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)} ${n}</button>`).join("");
+  $("#tags").innerHTML = [...tf].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([t, n]) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)} ${n}</button>`).join("");
 }
-function renderLegend() {
-  const lg = $("#legend"); lg.replaceChildren();
-  const row = (draw, text) => { const s = el("svg", { width: 40, height: 20, viewBox: "-6 -10 50 20" }); draw(s); const span = document.createElement("span"); span.textContent = text; lg.append(s, span); };
-  row(s => [1, 3, 5].forEach((m, i) => { const g = el("g", { transform: `translate(${i * 15 + 2} 0)`, style: "--c:#60A5FA;color:#60A5FA" }, s); glyph(g, { id: "lg" + m, g: "growing", cat: "note" }, m); }), "大小=篇幅");
-  row(s => { const g = el("g", { style: "--c:#60A5FA;color:#60A5FA" }, s);
-    [["seedling", 0], ["growing", 15], ["evergreen", 31]].forEach(([gg, x]) => glyph(el("g", { transform: `translate(${x} 0)` }, g), { id: "lg" + gg, g: gg, cat: "note" }, 3)); }, "种子 → 常青");
-  row(s => { const d = "M-2 4L12 -3L24 3L38 -4"; for (const c of ["step-a", "step-b", "chain"]) el("path", { class: c, d }, s); }, "小径=合集");
-  row(s => { const d = "M-2 5Q18 -12 38 5"; for (const c of ["br-a", "br-b", "br-n"]) el("path", { class: c, d }, s); }, "桥=双链");
-  row(s => { [5, 9, 13].forEach((r, i) => el("ellipse", { class: "rg" + (i ? "" : " in"), cx: 18, cy: 0, rx: r * 1.5, ry: r * .7 }, s)); }, "砂纹=同庭");
+function legendRows(host, cat = "note") {
+  const c = CATS[cat].c;
+  const row = (draw, text) => { const s = el("svg", { width: 40, height: 20, viewBox: "-6 -10 50 20" }); draw(el("g", { style: `--c:${c}` }, s)); const span = document.createElement("span"); span.textContent = text; host.append(s, span); };
+  row(g => [1, 3, 5].forEach((m, i) => glyph(el("g", { transform: `translate(${i * 16 + 2} 0)` }, g), { id: "lg" + m, g: "growing", cat }, m, .4)), "大小=篇幅");
+  row(g => [["seedling", 0], ["growing", 15], ["evergreen", 31]].forEach(([gg, x]) => glyph(el("g", { transform: `translate(${x} 0)` }, g), { id: "lg" + gg, g: gg, cat }, 3, .4)), "种子→常青");
+  row(g => { [0, 12, 24].forEach((x, i) => { el("ellipse", { class: "stp stone", cx: x, cy: i % 2 ? 1.5 : -1.5, rx: 2.9, ry: 1.95 }, g); }); el("path", { class: "chain star", d: "M-2 0H30", style: "vector-effect:none" }, g); lantern(el("g", { transform: "translate(38 7) scale(.9)" }, g)); }, "小径=合集");
+  row(g => { const d = "M-2 5Q18 -12 38 5"; for (const k of ["br-a", "br-b", "br-n"]) el("path", { class: k, d }, g); }, "桥=双链");
+  row(g => { [5, 9, 13].forEach((r, i) => el("ellipse", { class: "rg" + (i ? "" : " in"), cx: 18, cy: 0, rx: r * 1.5, ry: r * .7, style: `--c:${c}` }, g)); }, "砂纹=同庭");
 }
+function renderLegend() { const lg = $("#legend"); lg.replaceChildren(); legendRows(lg); }
 function stat() {
   const vis = L.stars.filter(s => s.p.cr <= cutoff), isl = new Set(vis.map(s => s.p.cat)).size;
   const ser = L.series.filter(s => s.stars.filter(q => q.p.cr <= cutoff).length > 1).length;
-  const br = vis.reduce((a, s) => a + s.p.links.filter(t => byId.get(t).p.cr <= cutoff).length, 0);
-  const first = Math.min(...DATA.map(p => p.cr));
-  $("#stat").innerHTML = `${vis.length} 石 · ${isl} 庭 · ${ser} 径 · ${br} 桥<br>秋分 · 花园第 ${Math.round((NOW - first) / DAY)} 日`;
+  const br = vis.reduce((a, s) => a + s.p.links.filter(t => byId.get(t).p.cr <= cutoff).length, 0), first = Math.min(...DATA.map(p => p.cr));
+  $("#stat").innerHTML = `${vis.length} 石 · ${isl} 庭 · ${ser} 径 · ${br} 桥<br>${termOf(NOW)} · 花园第 ${Math.round((NOW - first) / DAY)} 日`;
 }
-function applyQuery() {
-  document.querySelectorAll(".post").forEach(b => { const p = byId.get(b.dataset.id).p; b.classList.toggle("miss", !!query && !matches(p)); b.classList.toggle("hit", !!query && matches(p)); });
-}
+function applyQuery() { document.querySelectorAll(".post").forEach(b => { const p = byId.get(b.dataset.id).p; b.classList.toggle("miss", !!query && !matches(p)); b.classList.toggle("hit", !!query && matches(p)); }); }
 
-/* ══ 选中：涟漪一圈 → 相机让位 → 星卡滑入。天空不消失、不重排 ═══════════════════ */
+/* ══ 选中：涟漪两圈 → 选中环画出 → 相机让位 → 星卡。换星时框不动、只换内容 ══════════════ */
+let swapT = 0;
 function select(id, anim = true) {
-  selId = id; const s = byId.get(id); const card = $("#card");
+  const card = $("#card"), prev = selId; selId = id; const s = byId.get(id);
+  document.body.classList.toggle("card-on", !!s);
   if (!s) { card.classList.remove("on"); history.replaceState(null, "", "#/constellation"); focus(); labels(); return; }
   history.replaceState(null, "", "#/constellation/" + encodeURIComponent(id));
-  if (anim && !reduce) { for (const c of ["bloom", "bloom b2"]) { const r = el("circle", { class: c, r: s.R + 2 }, s.sym); setTimeout(() => r.remove(), 1900); } }
-  const nb = neighbors(id), C = CATS[s.p.cat], idx = nb.path.indexOf(s);
-  card.style.setProperty("--c", C.c);
-  const days = Math.floor((NOW - s.p.up) / DAY);
-  card.innerHTML = `<button class="x" aria-label="关闭">×</button>
-    <div class="chips"><span class="chip"><i></i>${C.zh} · ${C.en}</span>${s.series ? `<span class="chip ser">${esc(s.series)} · 第${cnNum(idx + 1)}章</span>` : ""}</div>
-    <h2>${esc(s.p.t)}</h2>
-    <div class="meta">${new Date(s.p.cr).toLocaleDateString("zh-CN")} · ${s.p.min} 分钟 · ${GROW[s.p.g]} · ${days ? days + " 天前照料" : "今日照料"}</div>
-    <p class="ex">${esc(s.p.ex)}</p>
-    ${nb.path.length > 1 ? `<div class="relh">小径 <b>${esc(s.series)}</b></div>
-      <div class="pathbar">${nb.path.map((q, i) => `<button data-go="${q.p.id}" class="${q === s ? "cur" : ""}" title="${esc(q.p.t)}"><i></i></button>`).join("")}</div>
-      <div class="pnav"><button data-go="${idx > 0 ? nb.path[idx - 1].p.id : ""}">${idx > 0 ? "← " + esc(nb.path[idx - 1].p.t) : ""}</button><button data-go="${idx < nb.path.length - 1 ? nb.path[idx + 1].p.id : ""}">${idx < nb.path.length - 1 ? esc(nb.path[idx + 1].p.t) + " →" : ""}</button></div>` : ""}
-    <div class="relh">桥 <b>双链</b></div>
-    ${nb.bridges.length ? `<ul class="rlist">${nb.bridges.map(b => `<li><button data-go="${b.s.p.id}">${b.dir === "out" ? "→" : "←"} ${esc(b.s.p.t)}<span class="why">${b.dir === "out" ? "引用了它" : "引用了这篇"}</span></button></li>`).join("")}</ul>` : `<div class="muted">还没有桥。写下 [[标题]] 就会架起一座。</div>`}
-    <div class="relh">同话题 <b>砂纹相邻</b></div>
-    ${nb.kin.length ? `<ul class="rlist">${nb.kin.map(k => `<li><button data-go="${k.s.p.id}">${esc(k.s.p.t)}<span class="why">${k.tags.map(t => "#" + esc(t)).join(" ")}</span></button></li>`).join("")}</ul>` : `<div class="muted">${nb.path.length > 1 ? "同话题的都已在这条小径上。" : "暂无同话题的文章。"}</div>`}
-    <a class="cta" href="#/garden/${encodeURIComponent(id)}" data-read>进入阅读舱 →</a>`;
-  card.classList.add("on");
+  if (anim && !reduce) for (const c of ["bloom", "bloom b2"]) { const r = el("circle", { class: c, r: s.R + 2 }, s.sym); setTimeout(() => r.remove(), ms(1900)); }
+  const fill = () => { cardContent(s); card.classList.remove("swap"); card.classList.add("on"); };
+  clearTimeout(swapT);
+  if (card.classList.contains("on") && prev && prev !== id && anim && !reduce) { card.classList.add("swap"); swapT = setTimeout(fill, ms(120)); } else fill();
   focus(); labels(); renderRailSel();
-  // 让位：星若被星卡或目录挡住，平移到可见区中偏左
-  const p = toScreen(s), cr = card.getBoundingClientRect(), A = avail(), narrow = innerWidth < 768;
-  if (narrow) {            // 窄屏：卡片占下半屏，把「这颗星 + 它的邻里」重新取景到卡片上方
-    const grp = [s, ...nb.path, ...nb.bridges.map(b => b.s), ...nb.kin.map(k => k.s)], b = bbox(grp), top = 170, bot = cr.top - 16;
-    const k = clamp(Math.min((innerWidth - 150) / Math.max(b.x1 - b.x0, 40), (bot - top - 60) / Math.max(b.y1 - b.y0, 40)), fitK * .8, fitK * 3);
+  const nb = neighbors(id), p = toScreen(s), A = avail();
+  if (isNarrow()) {
+    const grp = [s, ...nb.path, ...nb.bridges.map(b => b.s), ...nb.kin.map(k => k.s)], b = bbox(grp), top = 104, bot = innerHeight - 100 - innerHeight * .46 - 12;
+    const k = clamp(Math.min((innerWidth - 150) / Math.max(b.x1 - b.x0, 40), (bot - top - 50) / Math.max(b.y1 - b.y0, 40)), fitK * .5, fitK * 3);
     fly({ k, x: innerWidth / 2 - (b.x0 + b.x1) / 2 * k, y: (top + bot) / 2 - (b.y0 + b.y1) / 2 * k }, anim); return;
   }
-  const safeR = narrow ? innerWidth - 16 : cr.left - 48, safeB = narrow ? cr.top - 24 : innerHeight - 124;
-  if (p.x > safeR || p.x < A.x + 20 || p.y > safeB || p.y < A.y + 10) {
-    const tx = narrow ? innerWidth / 2 : (A.x + safeR) / 2, ty = narrow ? (A.y + safeB) / 2 : A.y + A.h / 2;
-    fly({ k: view.k, x: view.x + (tx - p.x), y: view.y + (ty - p.y) }, anim);
-  }
+  const safeR = innerWidth - 32 - 344 - 48;
+  if (p.x > safeR || p.x < A.x + 20 || p.y > innerHeight - 140 || p.y < A.y + 10)
+    fly({ k: view.k, x: view.x + ((A.x + safeR) / 2 - p.x), y: view.y + (A.y + A.h / 2 - p.y) }, anim);
+}
+function cardContent(s) {
+  const card = $("#card"), nb = neighbors(s.p.id), C = CATS[s.p.cat], idx = nb.path.indexOf(s), days = Math.floor((NOW - s.p.up) / DAY);
+  card.style.setProperty("--c", C.c);
+  let i = 0; const ci = (cls = "") => `class="${cls ? cls + " " : ""}ci" style="--i:${i++}"`;
+  card.innerHTML = `<button class="x" aria-label="关闭">×</button>
+    <div ${ci()}><div class="chips"><span class="chip"><i></i>${C.zh} · ${C.en}</span>${s.series ? `<span class="chip ser">${esc(s.series)} · 第${cnNum(idx + 1)}章</span>` : ""}</div></div>
+    <h2 ${ci()}>${esc(s.p.t)}</h2>
+    <div ${ci("meta")}>${new Date(s.p.cr).toLocaleDateString("zh-CN")} · ${termOf(s.p.cr)} · ${s.p.min} 分钟 · ${GROW[s.p.g]} · ${days ? days + " 天前照料" : "今日照料"}</div>
+    <p ${ci("ex")}>${esc(s.p.ex)}</p>
+    ${nb.path.length > 1 ? `<div ${ci()}><div class="relh">小径 <b>${esc(s.series)}</b></div>
+      <div class="pathbar"><span class="lnic">${LANTERN_ICON}</span>${nb.path.map(q => `<button data-go="${q.p.id}" class="${q === s ? "cur" : ""}" title="${esc(q.p.t)}"><i></i></button>`).join("")}</div>
+      <div class="pnav"><button data-go="${idx > 0 ? nb.path[idx - 1].p.id : ""}">${idx > 0 ? "← " + esc(nb.path[idx - 1].p.t) : ""}</button><button data-go="${idx < nb.path.length - 1 ? nb.path[idx + 1].p.id : ""}">${idx < nb.path.length - 1 ? esc(nb.path[idx + 1].p.t) + " →" : ""}</button></div></div>` : ""}
+    <div ${ci()}><div class="relh">桥 <b>双链</b></div>
+    ${nb.bridges.length ? `<ul class="rlist">${nb.bridges.map(b => `<li><button data-go="${b.s.p.id}">${b.dir === "out" ? "→" : "←"} ${esc(b.s.p.t)}<span class="why">${b.dir === "out" ? "引用了它" : "引用了这篇"}</span></button></li>`).join("")}</ul>` : `<div class="muted">还没有桥。写下 [[标题]] 就会架起一座。</div>`}</div>
+    <div ${ci()}><div class="relh">同话题 <b>砂纹相邻</b></div>
+    ${nb.kin.length ? `<ul class="rlist">${nb.kin.map(k => `<li><button data-go="${k.s.p.id}">${esc(k.s.p.t)}<span class="why">${k.tags.map(t => "#" + esc(t)).join(" ")}</span></button></li>`).join("")}</ul>` : `<div class="muted">${nb.path.length > 1 ? "同话题的都已在这条小径上。" : "暂无同话题的文章。"}</div>`}</div>
+    <a ${ci("cta")} href="#/garden/${encodeURIComponent(s.p.id)}" data-read>进入阅读舱 →</a>`;
 }
 function renderRailSel() {
   const s = byId.get(selId); if (!s) return;
@@ -955,18 +1161,78 @@ function renderRailSel() {
   focus();
 }
 
-/* ══ 输入 ══════════════════════════════════════════════════════════════════════ */
-const ptrs = new Map(); let drag = null, moved = 0, pinch = null;
-function nearest(cx, cy) {
-  let best = null, bd = Infinity;
-  for (const s of L.stars) { if (s.p.cr > cutoff) continue; const p = toScreen(s), d = Math.hypot(p.x - cx, p.y - cy); if (d < bd) { bd = d; best = s; } }
-  return best && bd < Math.max(best.R + 10, 18) ? best : null;
+/* ══ 时光拨盘 ═════════════════════════════════════════════════════════════════════
+   打开：面板从底部升起 480ms（减速），月份柱按 14ms 错峰长出，播放键与节气标签随后淡入。
+   拖动 / 播放：新生的石「砰」地落下（620ms 过冲）并荡开一圈水纹；尚未种下的石 200ms 淡出。
+   收起：若不在「今天」，先用 520ms 把花园快进回今天（石依次落回），再以 200ms 加速沉下去。 */
+const tspan = () => { const t = DATA.map(p => p.cr); return [Math.min(...t) - 7 * DAY, NOW]; };
+const cutFromSlider = () => { const [a, b] = tspan(); return a + (b - a) * $("#timeR").value / 1000; };
+function drawHist() {
+  const host = $("#thist"), W = host.getBoundingClientRect().width || 480, Hh = 48; host.replaceChildren(); host.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
+  const [a, b] = tspan(), X = t => (t - a) / (b - a) * W;
+  const months = []; for (let d = new Date(new Date(a).getFullYear(), new Date(a).getMonth(), 1); d.getTime() < b; d.setMonth(d.getMonth() + 1)) months.push(d.getTime());
+  const counts = months.map((m, i) => DATA.filter(p => p.cr >= m && p.cr < (months[i + 1] || b + 1)).length), mx = Math.max(1, ...counts);
+  months.forEach((m, i) => { const x0 = Math.max(0, X(m)), x1 = Math.min(W, X(months[i + 1] || b)), h = counts[i] ? 3 + 15 * counts[i] / mx : 0;
+    if (h) el("rect", { class: "hb", x: x0 + 1, y: 26 - h, width: Math.max(1.5, x1 - x0 - 2), height: h, rx: 1, "data-end": months[i + 1] || b, style: `--i:${i}` }, host); });
+  // 节气刻度：八个「分至启闭」长一点
+  for (let y = new Date(a).getFullYear(); y <= new Date(b).getFullYear(); y++) for (const [n, m, d] of TERMS) { const t = new Date(y, m - 1, d).getTime(); if (t < a || t > b) continue;
+    el("line", { class: "tick" + (PRINCIPAL.has(n) ? " p" : ""), x1: X(t), x2: X(t), y1: 30, y2: PRINCIPAL.has(n) ? 36 : 33 }, host); }
+  for (let y = new Date(a).getFullYear() + 1; y <= new Date(b).getFullYear(); y++) { const x = X(new Date(y, 0, 1).getTime()); el("text", { class: "tyear", x: x + 3, y: 46 }, host).textContent = y; }
+  el("text", { class: "tyear", x: 0, y: 46 }, host).textContent = new Date(a).getFullYear();
+  timeLabel();
 }
-svg.addEventListener("pointerdown", e => {
-  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); svg.setPointerCapture(e.pointerId);
+function timeLabel() {
+  const c = isFinite(cutoff) ? Math.min(cutoff, NOW) : NOW, n = L.stars.filter(s => s.p.cr <= c).length;
+  $("#tterm").textContent = termOf(c); $("#tdate").textContent = new Date(c).toLocaleDateString("zh-CN"); $("#tcount").textContent = `${n} 石`;
+  document.querySelectorAll(".hb").forEach(r => r.classList.toggle("past", +r.dataset.end - 31 * DAY <= c));
+}
+let cutThrottle = 0, lastHeavy = 0, playing = false;
+function setCut(c, live = false) {
+  const prev = cutoff; cutoff = c;
+  L.stars.forEach(s => { const was = s.p.cr <= prev, now = s.p.cr <= c;
+    if (!was && now && live && !reduce) { s.el.classList.remove("born"); void s.el.getBBox(); s.el.classList.add("born"); const r = el("circle", { class: "bornring", r: s.R + 2 }, s.sym); setTimeout(() => { r.remove(); s.el.classList.remove("born"); }, ms(950)); } });
+  if (selId && byId.get(selId).p.cr > c) select(null);
+  focus(); timeLabel(); stat();
+  const heavy = () => { lastHeavy = performance.now(); sand(); paths(); labels(); renderRail(); };
+  clearTimeout(cutThrottle);
+  if (!live || performance.now() - lastHeavy > 140) heavy(); else cutThrottle = setTimeout(heavy, 140);
+}
+let playId = 0;
+function play() {
+  const [a, b] = tspan(); let from = cutFromSlider(); if (from >= b - DAY) from = a;
+  const id = ++playId, t0 = performance.now(), D = ms(reduce ? 1 : 7000 * (b - from) / (b - a)); playing = true;
+  $("#tplayIc").setAttribute("d", "M3 1.5h2.2v9H3zM6.8 1.5H9v9H6.8z"); $("#tplay").setAttribute("aria-label", "暂停");
+  const tick = t => { if (id !== playId) return; const e = EASE_IO(Math.min(1, (t - t0) / D)), c = from + (b - from) * e;
+    $("#timeR").value = Math.round((c - a) / (b - a) * 1000); setCut(c, true);
+    if (e < 1) requestAnimationFrame(tick); else stopPlay(); };
+  requestAnimationFrame(tick);
+}
+function stopPlay() { playId++; playing = false; $("#tplayIc").setAttribute("d", "M3 1.5v9l7.5-4.5z"); $("#tplay").setAttribute("aria-label", "播放花园生长"); }
+function openTime() {
+  document.body.classList.add("time-on"); $("#timeBtn").setAttribute("aria-pressed", "true"); drawHist();
+  fit(true, 480);                                   // 地图同步上移让位：与面板升起同一时长
+  toast("拖动或按 ▶，看花园怎样一块一块长出来", 2400);
+  setTimeout(() => $("#timeR").focus({ preventScroll: true }), ms(200));
+}
+function closeTime() {
+  stopPlay(); $("#timeBtn").setAttribute("aria-pressed", "false");
+  const [a, b] = tspan(), from = isFinite(cutoff) ? cutoff : b;
+  const done = () => { document.body.classList.remove("time-on"); $("#timeR").value = 1000; setCut(Infinity); fit(true, 480); };
+  if (from >= b - DAY || reduce) { done(); return; }
+  const t0 = performance.now(), D = ms(520), id = ++playId;
+  const tick = t => { if (id !== playId) return; const e = EASE_OUT(Math.min(1, (t - t0) / D)), c = from + (b - from) * e;
+    $("#timeR").value = Math.round((c - a) / (b - a) * 1000); setCut(c, true); if (e < 1) requestAnimationFrame(tick); else setTimeout(done, ms(160)); };
+  requestAnimationFrame(tick);
+}
+
+/* ══ 输入 ════════════════════════════════════════════════════════════════════════ */
+const ptrs = new Map(); let drag = null, moved = 0, pinch = null;
+function nearest(cx, cy) { let best = null, bd = Infinity;
+  for (const s of L.stars) { if (s.p.cr > cutoff) continue; const p = toScreen(s), d = Math.hypot(p.x - cx, p.y - cy); if (d < bd) { bd = d; best = s; } }
+  return best && bd < Math.max(best.R + 10, matchMedia("(pointer:coarse)").matches ? 22 : 18) ? best : null; }
+svg.addEventListener("pointerdown", e => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); svg.setPointerCapture(e.pointerId);
   if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; moved = 0; flyId++; }
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, vx: view.x, vy: view.y }; drag = null; }
-});
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, vx: view.x, vy: view.y }; drag = null; } });
 svg.addEventListener("pointermove", e => {
   if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -977,86 +1243,114 @@ svg.addEventListener("pointermove", e => {
   const h = nearest(e.clientX, e.clientY), id = h ? h.p.id : null;
   if (id !== hovId) { hovId = id; svg.style.cursor = id ? "pointer" : ""; focus(); if (!selId) labels(); }
 });
-const up = e => {
-  ptrs.delete(e.pointerId); svg.classList.remove("dragging");
+const up = e => { ptrs.delete(e.pointerId); svg.classList.remove("dragging");
   if (pinch && ptrs.size < 2) { pinch = null; settle(); return; }
-  if (drag) { const wasTap = moved <= 4; drag = null; if (!wasTap) { settle(); return; }
-    const h = nearest(e.clientX, e.clientY); select(h ? h.p.id : null); }
-};
+  if (drag) { const wasTap = moved <= 4; drag = null; if (!wasTap) { settle(); return; } const h = nearest(e.clientX, e.clientY); select(h ? h.p.id : null); } };
 svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
 svg.addEventListener("pointerleave", () => { if (hovId) { hovId = null; focus(); if (!selId) labels(); } });
 svg.addEventListener("wheel", e => { e.preventDefault(); flyId++;
   const k = clamp(view.k * Math.exp(-e.deltaY * .0016), fitK * .6, fitK * 8), w = toWorld(e.clientX, e.clientY);
   view = { k, x: e.clientX - w.x * k, y: e.clientY - w.y * k }; write(); settle(); }, { passive: false });
-
 $("#card").addEventListener("click", e => {
   const b = e.target.closest("[data-go]"); if (b && b.dataset.go) { select(b.dataset.go); return; }
   if (e.target.closest(".x")) select(null);
-  if (e.target.closest("[data-read]")) { e.preventDefault(); toast("→ 跳到博客阅读舱 #/garden/" + selId + "（星图内不做长文阅读）"); }
-});
+  if (e.target.closest("[data-read]")) { e.preventDefault(); toast("→ 跳到博客阅读舱 #/garden/" + selId + "（星图内不做长文阅读）"); } });
 const tree = $("#tree");
 tree.addEventListener("mouseover", e => {
   const p = e.target.closest(".post"), sh = e.target.closest(".ser-h"), ch = e.target.closest(".cat-h");
   const nh = p ? p.dataset.id : null, ns = sh ? sh.parentElement.dataset.series : null, nc = ch ? ch.parentElement.dataset.cat : null;
-  if (nh !== hovId || ns !== hotSer || nc !== hotCat) { hovId = nh; hotSer = ns; hotCat = nc; focus(); if (!selId) labels(); }
-});
+  if (nh !== hovId || ns !== hotSer || nc !== hotCat) { hovId = nh; hotSer = ns; hotCat = nc; focus(); if (!selId) labels(); } });
 tree.addEventListener("mouseleave", () => { hovId = hotSer = hotCat = null; focus(); if (!selId) labels(); });
 tree.addEventListener("click", e => {
   const p = e.target.closest(".post"); if (p) { select(p.dataset.id); return; }
-  const sh = e.target.closest(".ser-h"); if (sh) { sh.parentElement.classList.toggle("fold");
-    const s = L.series.find(x => x.name === sh.parentElement.dataset.series); flyTo(s.stars.filter(q => q.p.cr <= cutoff)); return; }
-  const ch = e.target.closest(".cat-h"); if (ch) { const isl = L.islands.find(i => i.cat === ch.parentElement.dataset.cat); flyTo(isl.stars.filter(q => q.p.cr <= cutoff)); }
-});
-function flyTo(list) {
-  if (!list.length) return; const b = bbox(list), A = avail();
+  const sh = e.target.closest(".ser-h"); if (sh) { sh.parentElement.classList.toggle("fold"); flyTo(L.series.find(x => x.name === sh.parentElement.dataset.series).stars.filter(q => q.p.cr <= cutoff)); return; }
+  const ch = e.target.closest(".cat-h"); if (ch) flyTo(L.islands.find(i => i.cat === ch.parentElement.dataset.cat).stars.filter(q => q.p.cr <= cutoff)); });
+function flyTo(list) { if (!list.length) return; const b = bbox(list), A = avail();
   const k = clamp(Math.min((A.w - 200) / Math.max(b.x1 - b.x0, 60), (A.h - 200) / Math.max(b.y1 - b.y0, 60)), fitK, fitK * 3.2);
-  fly({ k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h / 2 - (b.y0 + b.y1) / 2 * k });
-}
+  fly({ k, x: A.x + A.w / 2 - (b.x0 + b.x1) / 2 * k, y: A.y + A.h / 2 - (b.y0 + b.y1) / 2 * k }); }
 $("#tags").addEventListener("mouseover", e => { const t = e.target.closest(".tag"); const v = t ? t.dataset.tag : null; if (v !== topic && !pinTopic) { topic = v; showTopic(topic); focus(); } });
 $("#tags").addEventListener("mouseleave", () => { if (!pinTopic) { topic = null; showTopic(null); focus(); } });
-let pinTopic = false;
 $("#tags").addEventListener("click", e => { const t = e.target.closest(".tag"); if (!t) return;
   pinTopic = !(pinTopic && topic === t.dataset.tag); topic = pinTopic ? t.dataset.tag : null;
   document.querySelectorAll(".tag").forEach(x => x.classList.toggle("on", pinTopic && x.dataset.tag === topic)); showTopic(topic); focus(); });
 $("#q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); applyQuery(); focus(); labels(); });
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") { const s = L.stars.find(s => s.p.cr <= cutoff && matches(s.p)); if (s) { select(s.p.id); e.target.blur(); } } });
 addEventListener("keydown", e => {
-  const typing = e.target.tagName === "INPUT";
+  const typing = e.target.tagName === "INPUT" && e.target.type !== "range", timeOn = document.body.classList.contains("time-on");
   if (e.key === "/" && !typing) { e.preventDefault(); $("#q").focus(); return; }
-  if (e.key === "Escape") { if (typing) { e.target.value = ""; query = ""; applyQuery(); e.target.blur(); focus(); labels(); } else select(null); return; }
+  if (e.key === "Escape") { if (typing) { e.target.value = ""; query = ""; applyQuery(); e.target.blur(); focus(); labels(); } else if (timeOn) closeTime(); else select(null); return; }
   if (typing) return;
-  if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && selId) {      // 沿小径走：飞石一块一块踩过去
+  if (timeOn && e.key === " ") { e.preventDefault(); playing ? stopPlay() : play(); return; }
+  if (timeOn && e.target.id === "timeR") return;
+  if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && selId) {
     const s = byId.get(selId), line = s.series ? neighbors(selId).path : L.stars.filter(q => q.p.cat === s.p.cat && !q.series && q.p.cr <= cutoff).sort((a, b) => a.p.cr - b.p.cr);
-    const i = line.indexOf(s) + (e.key === "ArrowRight" ? 1 : -1); if (line[i]) select(line[i].p.id);
-  }
+    const i = line.indexOf(s) + (e.key === "ArrowRight" ? 1 : -1); if (line[i]) select(line[i].p.id); }
   if (e.key === "Enter" && selId) toast("→ 跳到博客阅读舱 #/garden/" + selId);
   if (e.key === "t") toggleTheme();
+  if (e.key === "m") toggleSlow();
 });
 $("#fitBtn").onclick = () => { select(null); fit(); };
-$("#railBtn").onclick = () => { document.body.classList.add("rail-off"); $("#railBtn").setAttribute("aria-pressed", "false"); fit(); };
-$("#grip").onclick = () => $("#railBtn").onclick();
-$("#railOn").onclick = () => { document.body.classList.remove("rail-off"); $("#railBtn").setAttribute("aria-pressed", "true"); fit(); };
+const railSet = on => { document.body.classList.toggle("rail-off", !on); $("#railBtn").setAttribute("aria-pressed", on); fit(true, 480); };
+$("#railBtn").onclick = () => railSet(false); $("#railOn").onclick = () => railSet(true); $("#grip").onclick = () => railSet(false);
 $("#careBtn").onclick = e => { const on = document.body.classList.toggle("care-on"); e.currentTarget.setAttribute("aria-pressed", on); };
-$("#timeBtn").onclick = e => { const on = document.body.classList.toggle("time-on"); e.currentTarget.setAttribute("aria-pressed", on); if (!on) { $("#timeR").value = 1000; setCut(Infinity); } else setCut(cutFromSlider()); };
-const tspan = () => { const t = DATA.map(p => p.cr); return [Math.min(...t) - DAY, NOW]; };
-const cutFromSlider = () => { const [a, b] = tspan(); return a + (b - a) * $("#timeR").value / 1000; };
+$("#timeBtn").onclick = () => document.body.classList.contains("time-on") ? closeTime() : openTime();
+$("#tclose").onclick = closeTime;
+$("#tplay").onclick = () => playing ? stopPlay() : play();
 let cutRaf = 0;
-$("#timeR").addEventListener("input", () => { cancelAnimationFrame(cutRaf); cutRaf = requestAnimationFrame(() => setCut(cutFromSlider())); });
-function setCut(c) { cutoff = c; $("#timeL").textContent = isFinite(c) ? new Date(Math.min(c, NOW)).toLocaleDateString("zh-CN") : ""; if (selId && byId.get(selId).p.cr > c) select(null);
-  sand(); focus(); labels(); stat(); renderRail(); }
-document.querySelectorAll(".scale button").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); history.replaceState(null, "", "#/constellation"); build(+b.dataset.n); });
+$("#timeR").addEventListener("input", () => { stopPlay(); cancelAnimationFrame(cutRaf); cutRaf = requestAnimationFrame(() => setCut(cutFromSlider(), true)); });
+$("#timeR").addEventListener("change", () => setCut(cutFromSlider()));
+document.querySelectorAll(".scale button[data-n]").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".scale button[data-n]").forEach(x => x.setAttribute("aria-pressed", x === b)); history.replaceState(null, "", "#/constellation");
+  if (document.body.classList.contains("time-on")) { document.body.classList.remove("time-on"); $("#timeBtn").setAttribute("aria-pressed", "false"); }
+  build(+b.dataset.n); if (document.body.classList.contains("specimen")) renderSpecimen(); });
 let toastT = 0;
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
+function toast(msg, D = 2600) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), D); }
+function toggleSlow() { SLOW = SLOW === 1 ? 5 : 1; document.documentElement.style.setProperty("--slow", SLOW); $("#slowBtn").setAttribute("aria-pressed", SLOW > 1); toast(SLOW > 1 ? "慢放 ×5：所有动效放慢五倍" : "恢复常速"); }
+$("#slowBtn").onclick = toggleSlow;
+
+/* ══ 昼夜：从月亮的方向（右上）一路换过去，520ms 的波，石与星交叉淡入 ══════════════════ */
+let themeT = 0, flipT = 0;
 function toggleTheme() {
   const night = document.documentElement.dataset.theme !== "night";
-  document.documentElement.dataset.theme = night ? "night" : "day";
-  $("#theme").textContent = night ? "☽ DARK" : "☼ LIGHT";
-  $("#sub").textContent = night ? "池水静下来，星便落进来了。" : "白砂上的每一块石，都是写下的字。";
-  if (L) labels();
+  if (L && !reduce) { const ks = L.stars.map(s => { const p = toScreen(s); return (innerWidth - p.x) + p.y; }), lo = Math.min(...ks), hi = Math.max(...ks);
+    L.stars.forEach((s, i) => s.el.style.setProperty("--wd", `${ms(((ks[i] - lo) / (hi - lo || 1)) * 520).toFixed(0)}ms`)); }
+  // 三拍：注记先隐去（160ms）→ 换光（石星交叉、波从月亮来）→ 注记再现（760ms 起，320ms）
+  svg.classList.add("theme-swap"); clearTimeout(themeT); clearTimeout(flipT);
+  const flip = () => {
+    document.documentElement.dataset.theme = night ? "night" : "day";
+    $("#theme").textContent = night ? "☽ DARK" : "☼ LIGHT";
+    const sub = $("#sub"); sub.style.opacity = 0; setTimeout(() => { sub.textContent = night ? "池水静下来，星便落进来了。" : "白砂上的每一块石，都是写下的字。"; sub.style.opacity = 1; }, ms(200));
+    drawSky();          // 注记不重建：它们此刻是隐去的，换完光再显现
+    if (document.body.classList.contains("specimen")) renderSpecimen();
+    themeT = setTimeout(() => svg.classList.remove("theme-swap"), ms(600));
+  };
+  if (reduce || !L) flip(); else flipT = setTimeout(flip, ms(160));
 }
 $("#theme").onclick = toggleTheme;
-let rT = 0; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => { fxSize(); fit(false); }, 120); });
+let rT = 0; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => { fxSize(); drawSky(); if (L && !document.body.classList.contains("specimen")) { fit(false); drawHist(); } }, 120); });
+
+/* ══ 池面倒影：悉尼今夜真实的天（Yale BSC5 · ≤ 5.0 等 · 1630 颗），镜像 ═══════════════════
+   只在夜里出现；最大半径 1.4px，恒小于最暗的数据星核（1.6px）——层级不许倒挂；不参与拾取。 */
+const BSC5 = /*BSC5*/[13,-57,46,50,21,291,21,140,23,591,23,72,24,-457,39,50,28,-155,49,65,33,152,28,260,37,202,48,32,37,-189,44,31,43,387,46,95,46,368,45,95,49,-88,36,49,50,-649,42,62,64,-773,28,58,66,-423,24,50,66,-437,39,83,70,-330,48,29,79,545,47,140,79,-488,48,100,79,-630,44,120,79,-630,45,95,83,629,42,280,92,539,37,260,92,337,44,200,96,293,44,54,98,309,33,46,101,565,22,50,105,505,48,260,103,-461,46,52,109,470,49,88,109,-180,20,51,108,-575,44,100,112,483,45,200,110,-106,48,50,118,243,41,49,123,578,34,62,122,510,49,120,122,76,44,44,125,411,45,200,133,611,48,63,133,-11,48,35,138,590,48,47,142,607,25,300,142,592,46,52,142,385,39,88,143,234,44,52,147,-294,43,160,172,863,43,47,157,79,43,50,165,-467,33,52,171,-102,35,49,174,472,43,160,174,356,21,35,171,-552,39,180,178,551,43,83,179,210,47,52,179,301,45,50,184,246,47,50,188,-455,50,63,189,-689,49,66,200,582,50,75,199,273,48,93,206,455,49,50,215,681,47,50,210,-82,36,50,215,602,27,88,214,-146,49,47,219,454,48,68,380,893,20,65,221,-433,34,35,225,61,48,44,229,153,36,53,228,-491,40,50,235,592,47,51,242,414,41,63,245,486,36,46,248,444,50,52,244,-572,5,240,251,406,49,140,254,426,50,59,254,55,44,46,259,507,41,260,257,-37,50,46,260,-159,35,52,263,92,43,52,274,-107,47,71,279,-103,37,50,286,637,34,240,283,296,34,66,284,193,48,120,284,193,48,98,290,687,50,140,284,32,46,50,287,208,26,88,284,-463,44,29,292,-225,49,44,290,-516,37,52,295,236,48,75,287,-676,47,52,293,-474,48,52,305,709,45,93,309,724,40,95,300,-211,40,35,297,-616,29,75,305,28,43,100,310,423,23,46,310,423,48,140,311,-293,47,120,318,235,20,47,321,379,48,88,324,350,30,88,324,259,50,72,331,303,49,55,333,442,48,46,333,88,44,54,343,342,49,60,343,338,40,98,341,-515,36,140,348,-30,30,25,364,503,47,44,354,-687,41,93,373,674,45,88,365,-123,49,120,370,85,43,120,367,-477,43,200,380,-152,48,69,385,-282,49,120,390,56,49,52,399,3,41,260,399,-119,48,68,406,402,49,62,399,-429,48,95,402,-399,41,50,411,492,41,63,409,277,47,240,408,32,35,93,399,-683,41,120,410,-139,43,160,412,101,43,75,413,-186,45,66,420,292,45,49,427,559,38,46,414,-676,48,95,425,273,36,140,426,383,42,72,423,-324,45,50,429,351,45,43,428,-210,48,50,436,528,40,56,435,-499,40,25,426,-751,48,46,441,-89,39,49,447,397,47,95,448,352,49,47,448,213,46,95,448,213,46,95,449,89,47,180,446,-403,32,90,446,-403,44,98,447,-641,50,93,456,41,25,34,462,535,29,52,464,567,48,51,456,-236,41,90,463,388,34,29,480,744,49,95,470,410,21,140,473,496,41,60,474,449,38,50,478,396,46,49,479,197,44,47,480,-290,39,63,487,210,49,98,490,-88,48,88,500,657,48,260,497,342,48,47,496,-225,49,54,498,34,48,55,501,290,45,47,504,433,50,93,499,-218,37,31,500,-431,43,52,511,499,18,68,512,90,36,54,520,491,50,200,523,599,42,120,518,97,37,120,525,589,45,100,523,495,47,240,526,480,44,46,527,129,41,50,527,-51,47,120,523,-629,47,68,532,-95,37,47,541,482,42,200,534,-216,43,140,542,4,43,62,543,-403,46,49,557,478,30,200,556,340,50,300,565,633,48,60,561,323,38,280,556,-319,50,200,563,426,38,68,558,-98,35,50,562,241,37,180,557,-373,46,47,563,245,43,180,576,713,46,95,565,244,39,140,574,655,45,32,566,239,42,180,565,-121,44,32,569,241,29,160,567,-232,42,71,561,-648,39,47,573,241,36,140,571,-376,47,120,574,-362,42,51,585,319,29,280,593,611,50,46,568,-742,32,32,586,-30,48,52,584,-246,47,180,595,400,29,300,597,358,40,390,595,-135,30,35,602,125,35,240,600,-240,47,180,597,-614,46,32,608,60,39,98,612,221,44,50,616,504,43,100,602,-622,45,29,603,-611,50,44,622,477,40,240,630,-68,40,72,627,-420,49,78,637,484,41,60,637,405,47,55,635,93,48,55,636,-103,49,46,639,89,43,240,646,503,46,95,638,-77,44,49,635,-423,39,49,643,206,49,93,636,-625,34,52,640,-515,43,69,651,346,49,52,649,156,37,50,645,-338,36,120,651,274,50,49,654,465,49,220,641,-593,44,47,657,175,38,50,660,174,48,83,663,223,42,83,664,179,43,95,666,228,43,80,660,-340,40,44,666,156,45,75,667,147,47,53,671,164,50,47,672,192,35,51,671,160,38,50,672,159,34,83,676,162,48,85,680,0,49,46,685,148,47,80,684,-298,45,50,692,413,43,44,690,165,9,43,689,102,43,88,691,-34,39,260,689,-306,38,52,685,-550,33,100,695,125,43,85,698,159,47,88,695,-143,39,47,701,-197,43,29,706,230,43,240,701,-419,45,72,714,-33,40,200,725,375,49,46,735,663,43,330,725,70,32,66,727,89,44,98,732,367,48,47,728,56,37,260,731,143,47,31,732,-55,44,69,736,24,37,240,743,538,45,98,737,102,47,100,742,332,27,46,741,135,41,47,748,379,49,98,746,17,45,47,759,604,40,59,755,438,30,75,750,-125,48,75,756,411,38,44,754,-72,48,240,758,216,46,83,754,-201,49,120,767,516,50,75,761,154,47,100,766,412,32,240,761,-355,46,46,764,-224,32,43,769,186,50,56,770,-51,28,93,764,-575,47,65,774,156,48,72,773,-88,43,260,784,385,49,90,781,-119,45,140,783,29,45,50,782,-162,33,120,783,-129,44,120,792,460,1,55,786,-82,1,140,795,334,45,47,798,401,47,59,794,-68,36,200,798,221,49,52,794,-349,48,50,784,-672,48,47,799,-132,43,300,801,-212,47,100,804,-4,47,260,807,35,50,280,812,374,50,44,811,174,50,63,810,-78,41,52,811,-24,34,280,812,18,50,280,813,63,16,260,816,286,17,160,819,219,49,260,817,31,46,260,821,-208,28,55,824,-11,47,43,827,59,42,200,832,322,48,200,831,186,44,32,830,-3,22,330,830,-73,46,300,828,-355,39,49,832,-178,26,75,837,95,44,300,838,99,35,360,838,-60,48,300,838,-48,46,280,839,-59,28,330,841,-12,17,300,842,93,41,50,844,211,30,220,834,-625,38,66,847,-26,38,330,848,41,46,240,847,-72,48,90,853,165,49,240,852,-19,21,330,852,-19,42,300,852,-11,50,260,849,-341,26,160,856,15,49,49,861,-224,36,66,873,392,45,52,867,-148,36,93,873,246,49,52,869,-97,21,300,874,127,49,120,878,373,47,35,879,391,40,51,862,-657,44,83,868,-511,39,88,887,557,50,95,883,276,46,100,878,-209,38,50,881,19,48,49,877,-358,31,47,875,-562,45,49,886,203,44,60,883,-338,49,200,888,74,5,34,899,543,37,50,895,260,48,300,891,-142,37,74,889,-371,50,49,899,449,19,95,900,459,43,31,899,372,26,100,885,-631,47,49,894,-353,44,260,900,-31,45,49,898,-428,40,50,906,96,41,95,905,-106,50,200,910,233,42,53,910,201,46,260,912,-165,49,95,915,-149,47,98,919,148,44,240,930,161,50,200,930,142,45,240,947,693,48,100,926,-550,48,240,945,615,50,31,937,225,33,31,938,295,44,52,937,-63,40,49,949,590,45,95,941,-351,44,50,950,-29,49,34,951,-301,30,260,957,225,29,31,962,493,49,43,957,-180,20,280,955,-334,39,53,959,46,44,88,960,-527,-7,75,972,202,42,180,972,-70,46,240,970,-326,45,220,982,73,45,100,980,-234,43,300,988,-230,45,100,994,164,19,100,998,425,48,46,992,-193,40,49,987,-530,44,100,995,-182,44,49,998,-141,48,47,994,-432,32,140,1002,99,47,390,997,-482,49,52,1016,594,49,93,1010,251,30,52,1010,132,45,50,1013,129,34,68,1013,-167,-15,98,1018,80,48,44,1020,24,45,50,1050,770,46,44,1025,-325,40,280,1032,340,36,93,1027,-344,50,43,1020,-619,33,83,1025,-506,29,49,1025,-536,44,54,1043,584,44,55,1037,132,47,75,1034,-202,48,280,1035,-120,41,44,1035,-242,39,47,1044,451,49,95,1039,-201,47,72,1040,-140,50,55,1040,-171,44,240,1041,-487,50,34,1047,-290,15,260,1054,-279,35,40,1057,-42,50,280,1060,206,38,65,1058,-238,30,240,1059,-156,41,140,1060,-496,49,90,1071,-264,18,63,1079,393,49,44,1078,302,44,47,1076,-42,49,50,1072,-397,48,260,1080,-5,42,95,1083,162,50,29,1072,-705,38,50,1081,-468,45,75,1128,824,50,29,1086,-264,47,240,1083,-452,49,100,1087,-268,39,260,1087,-483,48,140,1095,165,36,93,1092,-233,48,46,1091,-279,46,31,1093,-371,27,46,1100,220,35,72,1097,-246,50,390,1097,-250,44,330,1096,-367,47,260,1092,-680,40,66,1106,-190,50,160,1117,492,46,98,1114,278,38,51,1110,-293,25,200,1114,93,50,54,1118,83,29,140,1123,318,42,75,1120,89,43,46,1124,120,45,49,1125,-230,49,88,1123,-433,33,43,1127,-310,47,57,1137,319,29,95,1137,319,20,98,1134,-145,50,32,1140,269,41,35,1135,-223,45,66,1138,-284,46,140,1148,346,49,71,1139,-525,49,46,1143,-350,45,140,1148,52,4,68,1146,-254,47,140,1158,587,50,93,1147,-268,45,180,1147,-268,46,200,1151,-153,49,46,1149,-383,48,260,1153,-96,39,50,1158,289,43,49,1161,244,36,52,1163,280,11,50,1159,-284,46,46,1160,-290,40,95,1165,185,49,44,1163,-380,36,47,1155,-726,40,50,1170,-259,45,300,1173,-249,33,54,1171,-471,47,50,1173,-464,41,300,1184,268,50,93,1181,-406,37,49,1182,-389,45,260,1183,-496,46,280,1183,-481,42,300,1192,-229,42,65,1194,-303,48,95,1192,-530,35,240,1199,-37,49,47,1196,-492,44,280,1200,-184,46,95,1203,-14,47,44,1206,23,44,47,1209,278,49,49,1201,-636,48,240,1209,-400,23,450,1221,515,48,95,1219,-243,28,66,1221,-30,43,58,1223,-192,44,200,1224,-473,43,280,1224,-473,18,141,1228,-129,47,51,1223,-613,48,68,1220,-686,44,180,1228,-396,45,46,1229,-430,48,88,1233,-158,50,55,1234,-359,48,280,1235,-403,44,49,1241,92,35,44,1246,-367,45,83,1257,432,43,44,1253,-331,48,47,1256,-485,48,280,1256,-595,19,46,1264,-39,39,100,1246,-769,41,68,1276,607,34,55,1252,-775,44,47,1264,-661,38,49,1274,-447,50,260,1301,643,46,49,1294,57,42,98,1288,-580,49,50,1297,33,44,49,1294,-430,41,85,1300,-125,50,44,1299,-296,49,56,1300,-353,40,53,1304,-159,49,51,1302,-466,38,71,1301,-529,36,240,1308,215,47,98,1303,-473,48,88,1308,34,43,240,1302,-598,43,280,1309,-72,46,59,1312,182,39,50,1306,-531,49,240,1309,-332,37,280,1317,288,40,53,1311,-426,41,55,1317,64,34,55,1316,-135,43,52,1312,-547,20,98,1315,-460,39,98,1321,58,44,100,1317,-568,45,240,1326,-277,40,46,1324,-453,49,95,1338,59,31,51,1339,-277,49,93,1348,480,31,83,1338,-606,38,140,1346,119,43,88,1341,-527,47,200,1356,676,48,31,1352,418,40,68,1342,-592,49,260,1350,-413,45,52,1359,472,36,98,1366,385,46,53,1365,51,50,47,1360,-471,38,47,1356,-664,40,95,1376,671,48,66,1372,516,45,75,1377,635,47,71,1370,-259,46,44,1370,-434,22,44,1364,-705,47,260,1363,-726,45,62,1378,-449,50,200,1377,-590,34,260,1390,540,48,88,1378,-623,40,240,1386,23,39,120,1389,-386,49,50,1389,-374,46,68,1383,-697,17,95,1397,368,38,93,1391,-575,43,34,1393,-593,23,80,1403,344,31,40,1399,-120,48,52,1401,-96,48,52,1404,-260,47,34,1402,-624,48,54,1412,262,45,47,1408,-288,47,52,1405,-550,25,260,1419,-87,20,46,1418,-223,47,47,1443,813,43,46,1429,631,37,75,1423,-28,46,66,1423,-360,45,46,1436,698,46,56,1429,230,43,43,1432,517,32,66,1430,113,50,50,1427,-405,36,71,1430,-12,46,93,1437,521,45,95,1436,364,46,52,1428,-570,31,43,1438,396,48,51,1436,-592,41,200,1443,68,50,49,1446,46,47,46,1442,-494,44,88,1450,-11,39,47,1453,99,35,66,1448,-613,45,120,1453,-236,48,180,1456,-239,49,62,1461,-278,48,80,1465,238,30,59,1463,-625,37,55,1477,590,38,72,1468,-651,30,85,1480,541,46,93,1479,-148,41,53,1482,260,39,47,1479,-465,46,55,1486,-259,49,47,1487,-190,49,34,1492,-546,35,200,1501,80,47,32,1513,-131,46,120,1519,352,45,83,1518,168,35,100,1520,100,44,46,1520,-4,45,100,1521,120,14,160,1522,-518,49,240,1526,-124,36,50,1537,-421,39,95,1542,234,34,75,1543,429,35,95,1534,-700,33,140,1543,-613,34,46,1549,195,48,66,1550,198,26,49,1550,198,38,53,1549,-550,46,46,1556,415,31,35,1560,656,50,100,1552,-560,45,240,1556,-416,48,49,1557,-669,50,140,1565,338,47,75,1565,-168,38,44,1570,367,42,51,1561,-740,40,72,1568,-311,43,44,1569,-576,47,78,1577,560,48,63,1570,-587,38,72,1588,757,48,52,1583,404,48,83,1582,93,39,280,1578,-537,49,66,1576,-720,47,98,1580,-617,33,220,1578,-732,49,44,1589,-576,45,46,1593,-274,49,32,1594,-134,48,40,1597,320,47,58,1593,-482,38,69,1596,-169,49,52,1589,-786,41,35,1597,-592,47,44,1598,-556,43,58,1608,691,50,46,1606,-645,48,220,1607,-644,28,300,1609,-606,46,44,1610,-640,48,200,1617,-494,27,55,1617,-644,49,240,1624,-162,31,47,1614,-805,45,260,1633,342,38,50,1635,432,47,98,1634,-589,38,49,1639,247,45,98,1642,-371,46,49,1649,-183,41,50,1651,36,48,49,1650,-422,44,93,1652,61,50,88,1655,564,24,98,1655,-25,47,35,1656,202,44,98,1659,618,18,50,1663,73,46,72,1663,-273,49,71,1666,-624,46,52,1674,445,30,49,1671,-590,39,56,1679,-228,45,95,1681,-603,46,85,1685,205,26,90,1686,154,33,95,1688,231,46,31,1692,-37,45,83,1695,315,49,60,1695,315,44,60,1696,331,35,46,1698,382,48,98,1698,-148,36,52,1703,60,41,120,1703,-545,39,200,1707,435,50,53,1708,-362,50,41,1710,105,39,69,1712,-109,48,43,1712,-177,41,88,1720,29,50,53,1726,-30,48,46,1729,693,38,35,1733,-319,35,53,1737,-543,46,120,1739,-630,31,120,1742,-98,47,120,1742,-8,43,52,1751,-347,47,120,1752,-621,49,57,1762,-184,47,52,1763,83,49,90,1765,65,40,34,1765,478,37,50,1764,-667,36,83,1766,-612,41,55,1766,-405,49,57,1770,202,45,55,1771,-668,47,44,1773,146,21,93,1774,-638,43,240,1775,-702,50,54,1777,18,36,62,1778,-452,45,46,1780,-652,49,220,1782,-339,43,120,1785,537,24,100,1799,-782,49,120,1802,66,47,88,1808,-633,43,88,1811,-632,47,260,1813,87,41,52,1817,-646,42,72,1820,-507,45,180,1821,-507,26,260,1821,-247,40,72,1825,-226,30,47,1829,-524,40,240,1838,-587,28,260,1839,570,33,93,1840,-175,26,140,1841,239,50,52,1841,331,50,50,1844,-680,41,28,1846,-793,43,200,1846,-640,40,260,1847,-551,50,34,1850,-7,39,95,1851,33,50,50,1852,178,47,52,1853,-604,36,46,1856,258,48,60,1860,516,48,54,1866,-631,49,220,1866,-631,13,300,1867,-631,17,280,1866,-515,48,240,1866,273,50,75,1867,283,44,49,1867,268,50,90,1870,-502,39,260,1875,-165,30,120,1878,-571,16,31,1875,692,50,31,1881,-721,39,200,1880,-162,43,72,1884,414,43,60,1886,-234,27,55,1884,698,39,180,1887,226,48,100,1887,700,49,46,1893,-691,27,260,1894,-485,39,95,1898,-80,47,47,1900,-400,46,140,1904,-490,22,98,1905,-597,49,180,1904,-14,37,75,1904,-14,37,75,1905,102,49,100,1906,-488,47,50,1914,-610,47,50,1916,-681,31,260,1913,454,50,32,1916,-565,47,240,1919,-597,13,300,1927,-340,49,100,1929,275,49,60,1933,-489,43,46,1934,-402,43,83,1933,212,49,52,1937,-591,46,220,1936,-572,40,260,1936,-95,48,31,1935,560,18,100,1939,34,34,31,1940,383,29,100,1947,174,48,34,1956,-715,36,47,1951,308,49,51,1952,564,49,72,1955,110,28,52,1959,-495,49,100,1966,-485,47,200,1967,-499,43,280,1968,276,48,43,1973,-231,50,49,1975,-55,44,98,1981,-599,46,140,1980,-378,49,57,1980,279,43,62,1986,-591,49,65,1988,-679,48,140,1984,402,49,52,1993,-668,49,47,1994,55,48,34,1994,406,47,71,1996,-183,47,54,1997,-232,30,52,2001,-367,28,95,2007,-610,45,240,2010,-645,45,54,2010,549,23,98,2010,549,40,98,2013,-112,10,280,2013,550,40,88,2019,-160,48,50,2021,138,50,56,2024,-233,50,25,2028,-394,39,51,2030,-63,47,32,2035,37,49,98,2037,-6,34,93,2037,372,50,72,2036,490,47,88,2044,363,48,83,2050,-535,23,280,2052,547,47,32,2064,-330,42,71,2067,-514,47,52,2068,175,45,66,2074,-417,34,260,2069,493,19,240,2074,-345,42,29,2074,-425,30,260,2075,-181,50,50,2074,158,41,43,2074,213,49,44,2080,-330,46,200,2079,344,47,43,2083,-319,47,220,2079,647,47,31,2089,-473,26,260,2087,184,27,60,2094,-637,47,49,2096,-421,38,260,2097,-448,39,260,2104,-456,43,66,2104,15,43,93,2110,-604,6,280,2115,-412,44,260,2116,-267,33,47,2117,-364,21,50,2111,644,37,100,2125,-534,48,51,2127,-163,49,32,2146,-810,49,95,2126,251,48,62,2132,-103,42,47,2122,775,48,46,2134,518,45,80,2140,-60,41,66,2167,-837,43,47,2139,192,0,49,2140,514,48,78,2141,461,42,100,2149,-461,36,260,2151,-564,43,180,2148,-134,45,95,2145,355,48,50,2152,-452,48,75,2151,-379,41,100,2149,163,49,46,2157,-585,49,52,2158,-395,44,160,2158,-278,48,44,2165,-452,46,260,2165,-454,44,69,2163,519,41,65,2170,-295,50,140,2171,-22,48,58,2182,-505,44,260,2180,304,36,46,2169,757,43,44,2180,383,30,83,2189,-422,23,280,2187,297,45,72,2195,-494,41,200,2199,-608,0,58,2199,-608,13,49,2206,-650,32,88,2205,-474,23,280,2220,-790,38,46,2205,-378,40,240,2202,164,49,120,2203,137,48,95,2203,137,44,95,2204,82,49,53,2209,-352,41,46,2208,-57,39,72,2212,-352,49,100,2209,265,48,31,2215,-254,49,72,2213,170,46,52,2212,271,27,50,2216,19,37,100,2226,-280,44,44,2229,-436,43,200,2227,-160,28,93,2228,-23,49,52,2228,191,46,52,2227,742,21,44,2243,-43,45,75,2246,-431,27,260,2248,-421,31,260,2252,-85,49,120,2244,659,46,29,2255,250,48,44,2257,21,44,50,2255,404,35,52,2260,-253,33,31,2263,-471,47,200,2263,-471,48,200,2261,269,45,47,2259,477,48,62,2272,-453,41,240,2268,249,49,68,2280,-487,39,120,2281,-521,34,52,2282,-445,48,240,2281,-198,45,100,2287,-315,49,74,2294,-636,49,47,2294,-588,41,93,2297,-687,29,98,2289,333,35,52,2296,-479,43,140,2293,-94,26,140,2295,-301,43,51,2303,-406,32,280,2305,-479,50,63,2308,-593,45,200,2305,-363,36,43,2307,-447,34,260,2308,-369,45,220,2310,-103,49,68,2313,-387,46,100,2311,374,43,72,2302,718,31,93,2312,590,33,47,2320,291,37,75,2342,-663,41,49,2338,-412,28,260,2335,-101,46,49,2332,314,41,180,2340,-450,45,240,2339,-148,39,52,2337,105,38,75,2337,105,38,75,2337,267,22,100,2343,-281,36,46,2345,-426,43,44,2347,-298,37,260,2349,-344,47,52,2351,-238,50,46,2353,-447,46,68,2329,773,50,43,2355,-197,47,35,2357,-347,48,200,2354,197,45,98,2357,263,38,120,2361,64,27,47,2365,154,37,95,2366,74,44,60,2372,181,41,35,2374,-34,35,100,2377,-336,40,120,2377,-258,46,240,2374,261,46,57,2377,45,37,95,2388,-634,29,72,2378,210,48,43,2378,357,48,49,2360,778,43,93,2384,-253,46,260,2385,-167,42,52,2382,425,46,63,2392,-292,39,260,2391,157,39,66,2395,-143,49,200,2399,-417,50,50,2397,-261,29,280,2394,269,42,47,2400,-384,34,260,2401,-226,23,300,2399,259,20,240,2394,547,50,75,2409,-578,46,83,2408,-492,47,52,2409,-386,49,180,2408,-259,50,43,2404,299,50,100,2406,228,48,93,2411,-114,48,68,2416,-452,47,88,2407,460,48,120,2414,-198,26,280,2414,-198,49,260,2405,586,40,63,2416,-368,42,260,2417,-207,40,280,2419,-209,43,57,2420,170,50,52,2422,365,48,49,2451,-787,47,28,2422,449,43,120,2434,-546,49,52,2430,-195,40,240,2431,-279,46,260,2439,-637,39,58,2430,-101,49,93,2436,-37,27,35,2443,-501,50,62,2446,-286,48,100,2450,-502,40,52,2446,-47,32,51,2452,-242,46,88,2453,-256,29,280,2449,463,39,200,2455,10,48,75,2455,192,38,78,2471,-701,49,62,2484,-789,39,52,2455,309,49,50,2460,-200,45,50,2468,-476,45,220,2444,758,50,68,2464,140,46,120,2468,-185,44,260,2470,-84,46,93,2460,615,27,52,2474,-264,10,34,2476,-251,48,260,2478,-347,42,260,2478,-166,43,52,2476,215,28,53,2477,20,38,100,2480,-215,45,83,2485,-440,49,300,2482,115,48,40,2470,688,50,100,2508,-775,42,50,2490,-282,28,300,2491,-353,42,41,2485,424,42,120,2493,-106,26,330,2504,-177,50,53,2497,489,49,32,2503,316,28,60,2522,-690,19,47,2507,389,35,53,2502,646,48,50,2524,-590,38,43,2513,568,49,72,2525,-343,23,47,2525,-108,47,65,2530,-380,31,280,2531,-380,36,260,2523,460,48,95,2535,-424,47,280,2536,-424,36,44,2535,102,44,140,2547,-560,31,46,2549,-532,41,44,2544,94,32,47,2540,651,49,66,2553,-42,48,44,2515,820,42,55,2551,309,39,100,2562,-341,49,280,2558,141,50,31,2563,127,49,90,2576,-157,24,95,2580,-432,33,71,2572,657,32,180,2587,144,35,28,2588,248,31,93,2592,-4,47,47,2605,-678,48,47,2588,368,32,46,2593,331,48,280,2594,373,47,95,2603,-211,44,74,2602,-128,43,95,2601,181,50,32,2605,-250,33,260,2613,-555,29,46,2613,-564,33,280,2609,371,45,120,2616,-242,42,93,2618,-299,43,68,2617,-51,45,71,2616,41,43,47,2628,-607,36,140,2627,-373,27,260,2630,-499,30,260,2629,-240,48,120,2627,261,44,46,2634,-371,16,260,2626,523,28,58,2639,-465,46,100,2641,-386,43,50,2643,-430,19,74,2630,552,49,85,2631,552,49,90,2637,126,21,88,2644,-154,35,75,2645,-81,46,140,2651,-494,48,71,2656,-390,24,280,2654,-129,43,95,2664,-647,36,47,2649,460,38,240,2659,-217,49,66,2642,688,48,68,2659,46,28,47,2669,-401,30,72,2669,-278,45,65,2666,277,34,55,2673,-317,48,140,2670,27,38,100,2675,-370,32,47,2675,-401,48,95,2655,721,46,68,2692,-443,49,47,2694,-417,49,35,2684,569,38,47,2691,373,39,49,2698,-98,33,50,2699,-238,48,120,2694,292,37,52,2692,515,22,43,2696,302,44,72,2701,-37,46,72,2701,44,46,260,2700,168,47,50,2702,29,40,200,2704,13,45,95,2704,216,50,88,2713,-296,47,69,2717,-501,37,260,2721,-637,44,83,2715,-304,30,50,2714,25,40,50,2720,-285,46,53,2718,87,46,52,2718,96,37,90,2719,288,38,120,2728,-460,45,50,2722,208,44,260,2631,866,44,98,2719,435,50,52,2729,-237,50,50,2734,-211,39,140,2730,314,50,31,2744,-368,31,31,2745,-270,47,46,2758,-615,44,44,2752,-298,27,46,2752,34,49,52,2751,220,50,34,2753,-29,33,50,2750,361,43,47,2760,-344,19,120,2759,-89,47,51,2759,218,38,47,2763,-205,48,47,2767,-460,35,240,2772,-491,41,52,2770,-254,28,49,2778,-623,46,160,2752,713,42,100,2760,588,50,98,2753,727,36,65,2773,-146,47,93,2779,-459,50,180,2765,656,48,49,2784,-423,46,52,2788,-82,39,46,2781,570,48,65,2808,-714,40,50,2792,388,0,100,2814,-649,48,88,2806,-91,47,72,2811,-356,49,260,2809,-83,49,52,2814,-270,32,140,2812,376,44,90,2814,205,42,66,2818,-47,42,56,2815,267,48,46,2818,182,44,88,2831,-622,42,260,2825,334,35,140,2842,-672,44,68,2835,-227,48,47,2838,-227,50,46,2838,-263,20,260,2828,594,47,51,2837,226,46,56,2846,-529,49,100,2833,507,49,53,2836,369,43,29,2841,42,46,88,2841,42,50,88,2843,-58,48,47,2844,-211,35,49,2847,-371,49,72,2838,439,40,28,2849,151,40,49,2847,327,32,120,2836,713,48,50,2858,-421,48,120,2850,321,49,47,2854,-57,40,49,2857,-299,26,95,2862,-217,38,51,2866,-371,49,63,2866,-371,50,63,2867,-277,33,49,2864,139,30,100,2866,-49,34,120,2871,-405,46,49,2874,-379,41,95,2875,-393,41,50,2874,-210,29,72,2889,-253,49,52,2884,391,44,260,2894,-190,50,52,2891,214,48,220,2885,577,50,47,2881,677,31,51,2891,381,44,50,2893,534,38,51,2907,-445,40,120,2904,-178,39,75,2904,-160,46,260,2908,-448,43,72,2910,-406,40,140,2889,734,45,47,2902,657,46,95,2910,296,50,240,2914,31,34,71,2916,3,47,72,2922,247,44,35,2927,280,31,46,2924,517,38,88,2938,-481,49,50,2929,345,47,240,2935,74,45,46,2936,198,50,140,2942,-249,46,120,2942,-70,50,300,2942,-13,44,200,2931,697,47,50,2941,502,45,69,2948,302,47,52,2950,180,44,59,2953,175,44,52,2966,-198,49,49,2961,374,49,53,2966,106,27,46,2962,451,29,120,2966,337,50,65,2968,185,38,32,2972,191,50,93,2977,89,8,83,2976,329,42,26,2978,226,50,260,2981,10,39,66,2988,-419,41,50,2970,703,38,53,3001,-729,40,100,2984,241,46,120,2986,85,47,51,2990,-263,47,55,2988,64,37,52,2992,-272,45,47,2990,385,49,200,2991,351,39,50,2997,-262,48,54,2989,524,49,90,2999,-353,44,240,2990,588,50,43,2997,195,35,35,3007,-277,46,29,3009,-379,48,43,3003,278,46,90,3011,-321,50,49,3022,-662,36,54,3018,-529,49,34,3007,679,45,46,3024,368,49,260,3028,-8,32,120,3036,152,50,95,3033,468,48,88,3034,467,38,47,3036,368,50,95,3038,256,48,240,3033,566,43,93,3039,278,45,46,3044,-125,42,57,3022,777,44,120,3039,477,40,46,3045,-125,36,52,3044,380,48,260,3052,-128,48,120,3053,-148,31,63,3064,-567,19,260,3056,403,22,63,3060,322,44,47,3072,-178,48,72,3074,-29,49,47,3073,304,40,68,3075,490,50,260,3089,-606,48,74,3074,630,42,83,3083,113,40,180,3094,-615,49,68,3085,353,46,47,3094,-473,31,50,3088,147,47,93,3092,-25,49,43,3094,146,36,68,3096,-11,43,53,3096,212,48,100,3099,159,38,120,3112,-662,34,83,3110,-519,45,83,3104,453,13,95,3109,151,44,83,3115,-253,41,69,3112,253,49,47,3114,307,42,51,3117,161,43,49,3116,340,25,50,3119,-95,38,98,3119,-50,44,31,3124,-462,49,43,3113,576,45,63,3118,344,49,46,3113,618,34,50,3119,365,45,200,3125,-338,49,53,3122,461,48,240,3130,-269,41,35,3137,-585,37,49,3132,-90,47,93,3130,271,46,53,3133,444,48,200,3143,412,39,98,3153,-323,47,54,3150,475,47,280,3161,-199,48,88,3165,-172,41,98,3162,439,37,44,3168,-250,45,35,3167,476,46,44,3174,-114,45,52,3176,101,47,75,3182,302,32,52,3186,100,45,68,3187,380,37,72,3190,52,39,60,3195,-322,47,98,3200,-534,44,88,3194,394,42,120,3195,349,44,260,3202,-408,48,88,3196,439,50,390,3196,626,24,83,3206,-168,43,53,3205,198,41,49,3216,-654,42,66,3217,-224,37,56,3222,-218,45,55,3225,236,46,34,3229,-56,29,60,3222,706,32,280,3235,456,40,52,3254,-774,38,50,3237,385,49,50,3243,-195,47,260,3244,-79,47,83,3250,-167,37,75,3245,621,47,260,3257,-189,47,52,3255,512,47,240,3262,-330,43,100,3260,99,24,47,3260,287,47,66,3261,174,43,55,3262,256,41,68,3259,588,41,32,3255,713,46,49,3268,-161,29,88,3264,611,43,95,3267,493,42,240,3285,-374,30,140,3295,-550,44,75,3292,636,49,32,3308,-568,47,44,3308,-22,47,160,3315,-395,45,46,3314,51,48,44,3314,-3,30,58,3309,646,43,93,3316,-139,43,120,3321,-470,17,160,3318,253,38,68,3321,-330,45,95,3321,-340,50,34,3325,-325,49,66,3326,62,35,95,3325,332,43,68,3327,582,34,49,3325,723,48,53,3335,397,45,46,3339,-413,48,52,3338,570,42,75,3340,377,41,46,3342,-78,42,52,3346,-603,29,46,3354,-14,38,100,3353,283,48,120,3353,465,46,180,3359,522,44,52,3363,14,47,280,3368,-650,45,120,3361,495,46,120,3370,47,48,50,3373,-435,40,54,3372,0,46,66,3372,0,44,71,3374,-437,41,29,3373,584,38,68,3374,477,44,35,3377,-107,48,100,3379,-323,43,100,3376,431,45,260,3383,-620,48,29,3378,503,38,98,3388,-1,40,120,3393,515,46,80,3398,391,49,330,3402,-270,42,140,3415,-814,42,78,3401,443,45,47,3404,108,34,140,3407,-469,21,28,3404,293,48,98,3409,-414,49,50,3409,-188,47,44,3408,302,29,58,3414,-535,49,47,3417,122,42,66,3416,236,40,52,3421,-513,35,93,3424,-136,40,35,3425,246,35,52,3424,662,35,50,3431,-329,45,100,3432,-76,37,32,3430,433,49,35,3419,832,47,46,3437,-158,33,93,3438,88,49,98,3440,-325,42,52,3441,497,50,43,3444,-296,12,93,3452,-528,41,52,3436,843,47,44,3450,569,50,56,3455,423,36,180,3460,38,45,180,3459,281,24,32,3460,501,47,50,3462,152,25,120,3467,-435,43,68,3467,-237,45,51,3468,94,45,34,3468,255,48,52,3467,594,49,300,3474,-212,37,49,3475,-225,47,58,3470,754,44,58,3476,-452,39,49,3481,494,45,75,3486,-60,42,34,3490,-91,42,50,3494,-582,40,74,3493,33,37,51,3495,-92,44,200,3494,490,49,32,3497,-325,44,49,3497,-96,50,100,3497,681,48,50,3502,237,46,88,3507,-201,40,50,3512,623,50,34,3513,234,44,63,3515,-206,44,43,3517,13,49,100,3520,64,43,49,3523,128,46,53,3525,585,49,240,3532,-378,44,120,3533,-209,47,98,3535,313,50,44,3538,-426,47,95,3545,-455,47,95,3544,465,38,52,3545,433,43,140,3549,-142,50,75,3550,56,41,65,3548,776,32,49,3551,443,41,120,3554,-178,48,60,3555,18,45,83,3557,-145,45,120,3560,294,49,50,3565,464,50,55,3568,587,49,49,3572,-281,46,100,3586,575,45,58,3594,-643,50,98,3594,251,47,31,3596,514,48,25,3597,-36,49,51,3598,558,49,280,3598,69,40,69,3600,-656,45,120,4,-771,48,46,5,-60,44,31,9,-173,46,120,11,-105,49,46];
+function drawSky() {
+  const cv = $("#sky"), d = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
+  cv.width = W * d; cv.height = H * d; cv.style.width = W + "px"; cv.style.height = H + "px";
+  const g = cv.getContext("2d"); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
+  const lat = -33.87 * Math.PI / 180, lon = 151.21, JD = NOW / DAY + 2440587.5;
+  const lst = ((280.46061837 + 360.98564736629 * (JD - 2451545) + lon) % 360 + 360) % 360;
+  const Rr = Math.hypot(W, H) * .56, cx = W * .58, cy = H * .5;
+  const tint = K => K < 4000 ? [255, 214, 170] : K < 5500 ? [255, 232, 205] : K < 7000 ? [255, 246, 236] : K < 10000 ? [234, 240, 255] : [206, 222, 255];
+  for (let i = 0; i < BSC5.length; i += 4) {
+    const ra = BSC5[i] / 10, dec = BSC5[i + 1] / 10 * Math.PI / 180, V = BSC5[i + 2] / 10, K = BSC5[i + 3] * 100;
+    const Hh = ((lst - ra) % 360) * Math.PI / 180;
+    const alt = Math.asin(Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(Hh)); if (alt < 0) continue;
+    const az = Math.atan2(-Math.cos(dec) * Math.sin(Hh), Math.sin(dec) * Math.cos(lat) - Math.cos(dec) * Math.sin(lat) * Math.cos(Hh));
+    const rho = Math.tan((Math.PI / 2 - alt) / 2) * Rr;
+    const x = cx - rho * Math.sin(az), y = cy - rho * Math.cos(az);          // 取负号 = 池面的镜像
+    const r = clamp(.28 * (5.3 - V), .35, 1.4), a = Math.min(.55, .1 + .085 * (5.3 - V)), c = tint(K);
+    g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+}
 
 /* ══ 同一片空气：昼是秋天的落叶，夜是萤火（全站 OasisBackground 的简化版，星图上降到六成） ══ */
 const fx = $("#fx"), fg = fx.getContext("2d"), P = [];
@@ -1066,9 +1360,9 @@ const TONES = [["254,215,170", "234,122,40"], ["253,200,150", "220,88,42"], ["25
 for (let i = 0; i < 26; i++) P.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, z: .25 + Math.random() * .75, a: Math.random() * 6.28, ph: Math.random() * 1e4, tone: TONES[i % 3], bokeh: Math.random() < .3 });
 function fxFrame(t) {
   fg.clearRect(0, 0, innerWidth, innerHeight);
-  const night = document.documentElement.dataset.theme === "night";
+  const night = document.documentElement.dataset.theme === "night", sp = 1 / SLOW;
   for (const p of P) {
-    if (!reduce) { if (night) { p.y -= .05 + .06 * p.z; p.x += Math.sin((t + p.ph) * .0004) * .06; } else { p.y += (.18 + .12 * p.z); p.x += Math.sin((t + p.ph) * .0006) * .3 * p.z; p.a += .004; } }
+    if (!reduce) { if (night) { p.y -= (.05 + .06 * p.z) * sp; p.x += Math.sin((t + p.ph) * .0004) * .06 * sp; } else { p.y += (.18 + .12 * p.z) * sp; p.x += Math.sin((t + p.ph) * .0006) * .3 * p.z * sp; p.a += .004 * sp; } }
     if (p.y > innerHeight + 40) p.y = -40; if (p.y < -40) p.y = innerHeight + 40;
     if (night) { const r = (p.bokeh ? 22 : 5) * p.z * (0.8 + .4 * (Math.sin((t + p.ph) * .001) + 1) / 2), gr = fg.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
       if (p.bokeh) { gr.addColorStop(0, "rgba(57,197,187,.07)"); gr.addColorStop(1, "rgba(57,197,187,0)"); } else { gr.addColorStop(0, "rgba(255,255,255,.55)"); gr.addColorStop(.2, "rgba(57,197,187,.35)"); gr.addColorStop(1, "rgba(57,197,187,0)"); }
@@ -1081,17 +1375,100 @@ function fxFrame(t) {
 }
 requestAnimationFrame(fxFrame);
 
-/* 启动：?n=160&theme=night&sel=p3 方便截图与评审 */
-const Q = new URLSearchParams(location.search);
-if (Q.get("theme") === "night") toggleTheme(); else $("#theme").textContent = "☼ LIGHT";
+/* ══ 设计样张：字形矩阵、色板与对比度、字阶、动效曲线与编排时间线 ══════════════════════ */
+const probe = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+function toRGB(css) { probe.clearRect(0, 0, 1, 1); probe.fillStyle = "#000"; probe.fillStyle = css; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; }
+const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+const over = (fg, bg) => fg[3] >= 1 ? fg : [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3]));
+const contrast = (a, b) => { const la = lum(a), lb = lum(b); return (Math.max(la, lb) + .05) / (Math.min(la, lb) + .05); };
+const hex = c => "#" + c.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, "0")).join("").toUpperCase();
+const resolved = (host, css) => { const t = document.createElement("span"); t.style.color = css; host.appendChild(t); const v = getComputedStyle(t).color; t.remove(); return v; };
+function renderSpecimen() {
+  const host = $("#specimen"); host.replaceChildren();
+  const sp = document.createElement("div"); sp.className = "sp"; host.appendChild(sp);
+  sp.innerHTML = `<div class="eyebrow" style="color:color-mix(in srgb,var(--accent) 80%,transparent)">Specimen · 设计样张</div>
+    <h1>砂与星 · 字形与令牌</h1><p class="lead">每一个数字都在这一页上。图、图例、样张用的是同一支笔。</p>`;
+  const panes = (title, en, note, draw) => { const h = document.createElement("h2"); h.innerHTML = `${title}<small>${en}</small>`; sp.appendChild(h);
+    if (note) { const p = document.createElement("p"); p.className = "note"; p.innerHTML = note; sp.appendChild(p); }
+    const w = document.createElement("div"); w.className = "panes"; sp.appendChild(w);
+    ["day", "night"].forEach(th => { const pane = document.createElement("div"); pane.className = "pane"; pane.dataset.theme = th; pane.innerHTML = `<div class="ph">${th === "day" ? "昼 · 砂庭" : "夜 · 星池"}</div>`; w.appendChild(pane); draw(pane, th); }); };
+  panes("石与星", "Glyphs · 5 × 3", "放大 2.4 倍看细节（图上是 1×）。列：星等一至五（篇幅 &lt;7 / ≥7 / ≥12 / ≥18 / ≥25 分钟），半径逐档 ×1.26；石形由平石、低立石到立石，石越「高」影子越长。行：生长度。最后一排：同一块立石在五类庭里的石色。",
+    (pane) => { const day = pane.dataset.theme === "day", g5 = document.createElement("div"); g5.className = "grid5"; pane.appendChild(g5);
+      g5.innerHTML = `<div></div>` + [1, 2, 3, 4, 5].map(m => `<div class="h">${m} 等 · ${m === 1 ? "&lt;7" : "≥" + MAG[m - 2]}′<br>${day ? ARCH[m - 1].name + " r" + RS[m - 1] : "核 r" + RC[m - 1]}</div>`).join("");
+      ["seedling", "growing", "evergreen"].forEach(gw => { const rh = document.createElement("div"); rh.className = "rh"; rh.textContent = GROW[gw]; g5.appendChild(rh);
+        [1, 2, 3, 4, 5].forEach(m => { const s = el("svg", { width: 80, height: 70, viewBox: "-40 -35 80 70" }); const node = el("g", { class: "node", transform: "scale(2.4)", style: `--c:${CATS.note.c}` }, s);
+          glyph(node, { id: "sp" + gw + m, g: gw, cat: "note" }, m, .5); g5.appendChild(s); }); });
+      const c5 = document.createElement("div"); c5.className = "cats5"; pane.appendChild(c5);
+      Object.entries(CATS).forEach(([k, C]) => { const cell = document.createElement("div"); const s = el("svg", { width: 72, height: 60, viewBox: "-36 -30 72 60" });
+        const node = el("g", { class: "node", transform: "scale(2.2)", style: `--c:${C.c}` }, s); glyph(node, { id: "spc" + k, g: "growing", cat: k }, 4, .3);
+        cell.append(s); cell.insertAdjacentHTML("beforeend", `<div class="nm">${day ? C.stone : C.zh}</div><div class="sub">${C.zh} · ${C.c}</div>`); c5.appendChild(cell); }); });
+  panes("小径、桥、灯笼、砂纹", "Paths · Bridges · Lanterns · Ripples", "飞石用「千鳥打ち」：左右交错 ±1.8px、间距 13px、长轴顺路、每块随机偏转 ±8°。灯笼立在第一章之前，夜里点亮（琥珀 #FDBA74，取自 AURA）。",
+    (pane) => { const s = el("svg", { width: "100%", height: 160, viewBox: "0 0 520 160" }); pane.appendChild(s);
+      const pts = [[80, 92], [160, 72], [240, 98], [320, 76]], ring = el("g", {}, s);
+      const F = sandField(pts.map(([x, y], i) => ({ x, y, mag: [2, 3, 4, 5][i] })), 1); LV.forEach((l, i) => el("path", { class: "rg" + (i ? "" : " in"), d: iso(F, l).map(p => smooth(p, 1)).join(""), style: `--c:${CATS.note.c}` }, ring));
+      let n = 0; for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], Lw = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Lw, uy = (by - ay) / Lw;
+        el("path", { class: "chain star", d: `M${ax + ux * 16} ${ay + uy * 16}L${bx - ux * 16} ${by - uy * 16}`, style: "vector-effect:none" }, s);
+        const cnt = Math.round((Lw - 32) / 13) + 1; for (let j = 0; j < cnt; j++) { const d = 16 + j * (Lw - 32) / (cnt - 1), off = (n++ % 2 ? 1 : -1) * 1.8, px = ax + ux * d - uy * off, py = ay + uy * d + ux * off;
+          el("ellipse", { class: "stp stone", cx: px, cy: py, rx: 2.9, ry: 1.95, transform: `rotate(${deg(Math.atan2(uy, ux)).toFixed(1)} ${px} ${py})` }, s); } }
+      pts.forEach(([x, y], i) => glyph(el("g", { class: "node", transform: `translate(${x} ${y})`, style: `--c:${CATS.note.c}` }, s), { id: "pb" + i, g: i === 2 ? "evergreen" : "growing", cat: "note" }, [2, 3, 4, 5][i], .2 + i));
+      lantern(el("g", { transform: "translate(52 100)" }, s));
+      el("text", { class: "lbl l-ser", x: 30, y: 130 }, s).textContent = "COMP3121  四章";
+      const bd = "M390 112Q440 42 500 102"; for (const k of ["br-a", "br-b", "br-n"]) el("path", { class: k, d: bd, style: "vector-effect:none" }, s);
+      [[390, 112, 2], [500, 102, 3]].forEach(([x, y, m], i) => glyph(el("g", { class: "node", transform: `translate(${x} ${y})`, style: `--c:${CATS.project.c}` }, s), { id: "br" + i, g: "growing", cat: "project" }, m, 1));
+      el("text", { class: "lbl l-ser-n", x: 418, y: 146 }, s).textContent = "桥 · 双链"; });
+  const sw = [["纸 / 池", "--paper", "底"], ["墨", "--ink", "正文、星名"], ["次墨", "--ink2", "小径名、摘要"], ["淡墨", "--ink3", "装饰性小字：eyebrow、刻度、年份"], ["强调·线", "--accent", "大面积、光晕、按钮底"], ["强调·环", "--accent-line", "选中环、拨盘把手（图形 ≥3:1）"], ["强调·字", "--accent-ink", "小字强调"],
+    ["樱粉", "--sakura", "话题圈、新近水纹、鹊桥"], ["琥珀", "--amber", "夜里的灯窗"], ["白練", "--shironeri", "石高光、灯窗(昼)"], ["白鼠", "--shironezumi", "浅石"], ["銀鼠", "--ginnezumi", "石本色"], ["利休鼠", "--rikyu", "皴笔"], ["鈍", "--nibi", "石背光"], ["苔", "--moss", "常青之苔"]];
+  panes("色", "Color · WCAG 2.2", "文字色的对比度对各自底色实测（正文 ≥ 4.5，大字/图形 ≥ 3）。石色只作材质，不承担语义，不参与对比度要求。分类色写成小字时一律兑墨（昼 40% 兑 #1E293B，夜 88% 兑 #F8FAFC）。选中环等必须被看见的图形用「强调·环」，满足图形 3:1。",
+    (pane) => { const bg = toRGB(resolved(pane, "var(--paper)"));
+      sw.forEach(([nm, tok, use]) => { const v = resolved(pane, `var(${tok})`), rgb = over(toRGB(v), bg), cr = contrast(rgb, bg);
+        const text = ["--ink", "--ink2", "--ink3", "--accent-ink", "--accent-line"].includes(tok), need = tok === "--accent-line" || tok === "--ink3" ? 3 : 4.5;
+        pane.insertAdjacentHTML("beforeend", `<div class="sw"><i style="background:${v}"></i><div><b>${nm}</b> <span style="color:var(--ink3)">${tok} · ${hex(rgb)}</span><br><span style="color:var(--ink3);font-family:var(--font-zh)">${use}</span></div><span class="cr ${text && cr >= need ? "ok" : ""}">${text ? cr.toFixed(2) + " : 1" + (need === 3 ? " (≥3)" : "") : "材质"}</span></div>`); });
+      Object.entries(CATS).forEach(([k, C]) => { const rgb = toRGB(resolved(pane, `color-mix(in oklab,${C.c} var(--cat-ink-mix),var(--cat-ink-base))`)), cr = contrast(rgb, bg);
+        pane.insertAdjacentHTML("beforeend", `<div class="sw"><i style="background:${C.c}"></i><div><b>${C.zh}</b> <span style="color:var(--ink3)">${C.c} → 小字 ${hex(rgb)}</span></div><span class="cr ${cr >= 4.5 ? "ok" : ""}">${cr.toFixed(2)} : 1</span></div>`); }); });
+  panes("字", "Type · 16 / 13 / 11 / 10", "面状名（庭）竖排，点状名（石）横排，线状名（小径）写在灯笼旁——方向本身就是层级（Imhof）。所有注记恒定屏幕尺寸，描一圈底色压过砂纹。",
+    (pane) => { const rows = [
+      [`<svg width="40" height="116" viewBox="0 0 40 116"><g style="--c:${CATS.note.c}"><rect class="isl-sq" x="5" y="0" width="7" height="7" rx="1.8"/><text class="lbl l-isl" x="8" y="15">学习笔记</text><text class="lbl l-isl-en v" x="24" y="15">NOTES</text><text class="lbl l-isl-n" x="8" y="108" text-anchor="middle">6</text></g></svg>`, "庭名 · 竖排（木札）<br>LXGW WenKai 16 / 字距 .26em<br>方块 7px 圆角 1.8 = 分类色<br>英文 Mono 9.5 侧排 · 篇数 Mono 10 落在名下<br>放不下时退为横排，再放不下就不写"],
+      [`<svg width="220" height="26" viewBox="0 -18 220 26"><g transform="translate(6 4)">${LANTERN_ICON.replace(/<\/?svg[^>]*>/g, "")}</g><text class="lbl l-ser" x="18" y="0">COMP3121</text><text class="lbl l-ser-n" x="98" y="0">六章</text></svg>`, "小径名 · 横排，写在石灯笼旁<br>JetBrains Mono 11 / .2em（中文 12 文楷）<br>章数用汉字：六章"],
+      [`<svg width="220" height="24" viewBox="0 -16 220 24"><text class="lbl l-star" x="0" y="0">见招拆招，逢水架桥</text></svg>`, "星名<br>LXGW WenKai 13 / .06em<br>描边 3.2px 底色 92%"],
+      [`<div style="font:400 22px/1.45 var(--font-zh);letter-spacing:.05em">贪恋有你的未来</div><div class="meta" style="margin:0">2026/8/10 · 立秋 · 21 分钟 · 生长中</div>`, "星卡标题 22 / 元信息 Mono 10 .12em<br>（与博客阅读舱同一字阶）"]];
+      rows.forEach(([demo, spec]) => pane.insertAdjacentHTML("beforeend", `<div class="type-row"><div>${demo}</div><div class="spec">${spec}</div></div>`)); });
+  const h = document.createElement("h2"); h.innerHTML = `动<small>Motion · 令牌与编排</small>`; sp.appendChild(h);
+  sp.insertAdjacentHTML("beforeend", `<p class="note">进场用减速曲线（全站 customEase），退场用加速曲线且更短（Material 的同一原则：进 225 / 出 195）；只动 transform、opacity 与一次性的描边。按 <b>m</b> 慢放五倍。</p>`);
+  const mo = document.createElement("div"); mo.className = "mo"; sp.appendChild(mo);
+  [["ease-out · 进场", [.16, 1, .3, 1]], ["ease-in · 退场", [.4, 0, .9, .2]], ["ease-io · 播放 / 收拢", [.65, 0, .35, 1]]].forEach(([nm, c]) => {
+    const pane = document.createElement("div"); pane.className = "pane"; mo.appendChild(pane);
+    pane.innerHTML = `<div class="ph">${nm}</div>`; const s = el("svg", { viewBox: "-8 -8 136 150" }, pane);
+    el("path", { d: "M0 120H120M0 0V120", stroke: "var(--line)", fill: "none" }, s);
+    el("path", { d: `M0 120C${c[0] * 120} ${120 - c[1] * 120} ${c[2] * 120} ${120 - c[3] * 120} 120 0`, stroke: "var(--accent)", "stroke-width": 2, fill: "none" }, s);
+    el("text", { x: 0, y: 138, style: "font:7px var(--font-mono);fill:var(--ink3)" }, s).textContent = `cubic-bezier(${c.join(", ")})`; });
+  const seqs = [["进场", [["庭记滑入", 80, 480], ["石逐块落定", 0, 860], ["落地水纹", 140, 1000], ["砂纹耙出", 260, 1650], ["注记淡入", 900, 480]]],
+    ["选中", [["两圈水纹", 0, 1680], ["选中环画出", 0, 320], ["相机让位", 0, 640], ["星卡", 0, 320], ["卡内逐行", 40, 520]]],
+    ["时光 · 打开", [["面板升起", 0, 480], ["月份柱长出", 120, 700], ["播放键/节气", 160, 480], ["提示", 0, 2400]]],
+    ["时光 · 收起", [["快进回今天", 0, 520], ["新石落下", 0, 620], ["面板沉下", 680, 200], ["柱收回", 680, 200]]],
+    ["昼夜", [["波从月亮来", 0, 520], ["石淡出", 0, 1040], ["星淡入+放大", 0, 1140], ["倒影星空", 260, 900]]]];
+  const gp = document.createElement("div"); gp.className = "pane"; gp.style.marginTop = "16px"; sp.appendChild(gp);
+  const rowsN = seqs.reduce((a, s) => a + s[1].length + 1, 0), gs = el("svg", { viewBox: `0 0 1000 ${rowsN * 18 + 30}`, class: "gantt", width: "100%" }, gp);
+  const X = t => 170 + t / 2400 * 800; [0, 400, 800, 1200, 1600, 2000, 2400].forEach(t => { el("path", { d: `M${X(t)} 0V${rowsN * 18 + 6}`, stroke: "var(--line)" }, gs); el("text", { x: X(t) + 3, y: rowsN * 18 + 22 }, gs).textContent = t + "ms"; });
+  let yy = 12; seqs.forEach(([nm, bars]) => { el("text", { x: 0, y: yy + 4, style: "font:12px var(--font-zh);fill:var(--ink)" }, gs).textContent = nm; yy += 18;
+    bars.forEach(([b, d0, dur]) => { el("text", { x: 16, y: yy + 4 }, gs).textContent = b; el("rect", { class: "bar", x: X(d0), y: yy - 5, width: dur / 2400 * 800, height: 9, fill: "var(--accent)", opacity: .55 }, gs); yy += 18; }); });
+}
+$("#specBtn").onclick = () => { const on = document.body.classList.toggle("specimen"); $("#specBtn").setAttribute("aria-pressed", on); if (on) renderSpecimen(); };
+
+/* 启动：?n=160&theme=night&sel=p3&view=specimen 方便截图与评审 */
+buildDefs();
+if (Q.get("theme") === "night") { document.documentElement.dataset.theme = "night"; $("#theme").textContent = "☽ DARK"; $("#sub").textContent = "池水静下来，星便落进来了。"; }
 if (Q.get("rail") === "off") document.body.classList.add("rail-off");
+if (SLOW > 1) $("#slowBtn").setAttribute("aria-pressed", "true");
 const N0 = +(Q.get("n") || 8);
-document.querySelectorAll(".scale button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.n === N0));
+document.querySelectorAll(".scale button[data-n]").forEach(x => x.setAttribute("aria-pressed", +x.dataset.n === N0));
+drawSky();
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
-  build(N0);
+  if (Q.get("noenter") !== "1") document.body.classList.add("entering-ui");
+  build(N0, Q.get("noenter") !== "1");
   if (Q.get("sel")) select(Q.get("sel"), false);
   if (Q.get("topic")) { topic = Q.get("topic"); pinTopic = true; showTopic(topic); focus(); }
-  if (Q.get("time")) { document.body.classList.add("time-on"); $("#timeR").value = +Q.get("time"); setCut(cutFromSlider()); }
+  if (Q.get("time")) { openTime(); $("#timeR").value = +Q.get("time"); setCut(cutFromSlider()); }
+  if (Q.get("view") === "specimen") { document.body.classList.add("specimen"); $("#specBtn").setAttribute("aria-pressed", "true"); renderSpecimen(); }
 });
 </script>
 </body>
