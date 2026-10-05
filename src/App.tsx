@@ -308,13 +308,6 @@ function App() {
     navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
   };
 
-  // 🔭 星图里点「未种下的星位」：把题目交给 Garden 写作器，再切换场所。
-  // sessionStorage 只承担这一次跨懒加载组件的轻量交接，Garden 取走后立即删除。
-  const openGardenComposer = (title: string) => {
-    try { sessionStorage.setItem('oasis_orchard_seed_title', title); } catch { /* private mode */ }
-    setAppView('garden');
-    navigate('garden');
-  };
 
   // ⬅️ 浏览器后退 / 前进：hash 变化时把场所切回对应视图（欢迎页除外，避免误触重播入场）
   useEffect(() => {
@@ -488,7 +481,6 @@ function App() {
                       isAdmin={effectiveIsAdmin}
                       itemId={route.view === 'orchard' ? route.itemId : undefined}
                       onNavigate={(id) => navigate('orchard', id)}
-                      onCreatePost={openGardenComposer}
                     />)}
                     {appView === 'lights' && wrap('lights-space', <OasisLights />)}
                     {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}

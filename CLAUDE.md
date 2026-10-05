@@ -23,9 +23,9 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 ### 大组件
 - [OasisGallery.tsx](src/components/OasisGallery.tsx)(~1160 行) — 博客主界面:列表(分类/合集/标签筛选 + 按月归档)、全屏写作编辑器(admin;createPortal 到 body 的 z-[210] 覆盖层,元信息收在底部抽屉,⌘⏎ 发布)、阅读舱(含合集目录导航)。Markdown.tsx: react-markdown + gfm + highlight + rehype-raw。
 - [OasisResonance.tsx](src/components/OasisResonance.tsx)(684 行) — 播放器 UI。
-- [OasisOrchard.tsx](src/components/OasisOrchard.tsx)(~1400 行) — 知识年轮盘,与博客同源 useGarden。定位是「花园的夜间俯瞰」:三层动线 L0 年轮概览(节气 + 写作密度 + 分类带星群) → L1 星卡 → L2 跳博客阅读舱 `#/garden/<id>`,**星图内不提供长文阅读**。五条硬规矩写在文件头,改之前必读:字号/墨度/线宽只有固定档位(令牌在 index.css 的 `.oasis-sky`);昼夜是同一张天只换光;相机与星卡跟随全程不进 React(`viewRef` + 直接写 transform);命中走最近邻拾取;年轮盘是唯一底图,关系线是默认关闭的可选查询图层。
-  - ⚠️ 缩放补偿令牌(`--sky-name` 等)必须声明在 `.oasis-sky-canvas`(即写 `--sky-scale` 的那个元素)上——自定义属性的 `var()` 在**声明它的元素**上就完成替换,放到 `.oasis-sky` 会被固化成 `calc(13px / 1)`。
-  - [lib/constellation.ts](src/lib/constellation.ts) — 纯数据层。**角度 = 日期**(与外圈 24 节气严格对应,不许为构图去动)、**半径 = 分类带**、拥挤处按写作先后贪心落座(`layoutStars`)。由此得两条有测试守着的不变量:新增文章不移动任何旧星;任意两星间距 ≥ `MIN_SEP`,命中区因而永不相交。年轮盘几何统一复用 `densityByTerm` / `annularSector` / `arcPath` / `relaxColumn`。
+- [OasisOrchard.tsx](src/components/OasisOrchard.tsx) — 星图「砂与星」:昼为枯山水砂庭、夜为星池,同一套几何只换光。视觉基准 `docs/sandprototype-v5.1.html`,取舍见 `docs/constellation-v5.1-refinement.md`。石/星=文章(大小=篇幅五档,种子=实线浅卵石、常青覆苔/四角芒),庭=分类,合集=枯流れ(砂纹自身沿章序流成的窄溪,不画连接线;夜里是星座连线)+源头灯笼,石桥/鹊桥=双链,砂纹=整座庭一张距离场的等值线。月亮是固定在右上角的 `orchard/Moon.tsx`(悉尼所见、南半球倒置)。本文件只管版面外的 React 部分(页头、庭记目录、星卡、时光拨盘);**星图内不提供长文阅读**,星卡跳 `#/garden/<id>`。已拍板去掉:星等切换、未种下的星、待照料模式、手机版(窄屏只给告示,Dock 隐藏入口)。每次从别的场所切进来都走一遍进场编排(相机俯身落定 → 石逐块落定 → 砂纹耙出 → 注记淡入)。
+  - [orchard/sandScene.ts](src/components/orchard/sandScene.ts) — 地图引擎,**全程不进 React**:相机直写 transform,屏幕尺寸恒定的东西放 `scale(1/k)` 子组;定位写 SVG transform 特性、CSS 动画放内层 g(CSS transform 会覆盖特性);注记在屏幕空间择位、canvas 量真实字宽;最近邻拾取。样式在同目录 `sand.css`(`.oasis-sand` 昼 / `.dark .oasis-sand` 夜;color-mix 只能写在 CSS 里)。
+  - [lib/sandGarden.ts](src/lib/sandGarden.ts) — 纯数据层:落座「出生时择邻,此后终生不迁」(按 createdAt 依次落座,新分类上黄金角螺线),测试守着前缀不变量(新增文章不移动旧石)与 `MIN_SEP`;关系推导(小径/桥/同话题);砂纹 smooth-min 距离场 + marching squares。
 
 ### 其他
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。
