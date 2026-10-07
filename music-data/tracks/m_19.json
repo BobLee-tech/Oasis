@@ -1,0 +1,46 @@
+{
+  "id": "m_19",
+  "ncmId": 22677579,
+  "sources": {
+    "netease": {
+      "songId": 22677579,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "即使歌声无形",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 16,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "doriko"
+        ],
+        "composer": [
+          "doriko"
+        ],
+        "arranger": [
+          "doriko"
+        ]
+      },
+      "tieIn": "游戏《初音未来 歌姬计划 Mega39's》插曲",
+      "bpm": 98,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "只是镜花水月而已"
+    },
+    "draft": {
+      "intro": "doriko 2008 年 1 月的作品：歌虽然没有形状，却能留下。沙堡融进浪里，伸手也抓不到天空——温柔里带一点苦的告别。",
+      "valence": -0.2,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "VocaDB 标签 heartwarming / bittersweet。",
+      "refs": [
+        {
+          "title": "VocaDB · 歌に形はないけれど",
+          "url": "https://vocadb.net/S/2322"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

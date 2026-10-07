@@ -1,0 +1,37 @@
+{
+  "id": "a_02",
+  "ncmId": 1882029899,
+  "sources": {
+    "netease": {
+      "songId": 1882029899,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "夏霞",
+      "album": "夜明け前",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2021-10-04",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "bpm": 101,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "深蓝脆脆饼",
+      "transUser": "回到回不去的故乡"
+    },
+    "draft": {
+      "intro": "被蓝天晃了眼，一直没看见脚下的花。烟火下像傻瓜一样发誓永远；如今宁愿让夏天的薄雾把两个人都罩住。",
+      "valence": -0.3,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "歌词追忆与后悔。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

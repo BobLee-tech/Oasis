@@ -1,0 +1,37 @@
+{
+  "id": "a_09",
+  "ncmId": 2071843860,
+  "sources": {
+    "netease": {
+      "songId": 2071843860,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "今晚跳支属于我们两个人的舞",
+      "album": "季億の箱",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2023-08-11",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "伤感咩吖",
+      "transUser": "绚殉"
+    },
+    "draft": {
+      "intro": "雨的气味还在，街灯已经亮了。避开水坑，在车灯里跳一支只属于两个人的舞；说出口就会结束，所以谁都不挑明。",
+      "valence": 0.2,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "歌词；暧昧而温柔。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

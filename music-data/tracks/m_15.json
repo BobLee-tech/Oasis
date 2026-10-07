@@ -1,0 +1,34 @@
+{
+  "id": "m_15",
+  "ncmId": 22677575,
+  "sources": {
+    "netease": {
+      "songId": 22677575,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 12,
+      "disc": 1,
+      "released": "2009-08-26",
+      "creditsMissing": true,
+      "bpm": 85,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "海岸之鱼"
+    },
+    "draft": {
+      "intro": "ぢょんP 用初音未来翻唱的 JUDY AND MARY 名曲，原曲是 1996 年《浪客剑心》的第一首片头曲。讨厌的雀斑，像方糖一样化掉的恋爱，轻快地唱失恋。",
+      "valence": 0.2,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "原曲见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · そばかす (曲)",
+          "url": "https://ja.wikipedia.org/wiki/そばかす_(曲)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

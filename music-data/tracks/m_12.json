@@ -1,0 +1,34 @@
+{
+  "id": "m_12",
+  "ncmId": 22677584,
+  "sources": {
+    "netease": {
+      "songId": 22677584,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "电子天使",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 9,
+      "disc": 1,
+      "released": "2009-08-26",
+      "creditsMissing": true,
+      "bpm": 75,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "ヤスオ 2007 年 9 月的作品：只懂 0 和 1 的我，是你教会了我「I」。喜欢唱歌，不是因为被造成这样，而是因为你会高兴。后来还改编成了轻小说。",
+      "valence": 0.5,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "见 VocaDB 标签。",
+      "refs": [
+        {
+          "title": "VocaDB · えれくとりっく・えんじぇぅ",
+          "url": "https://vocadb.net/S/230750"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

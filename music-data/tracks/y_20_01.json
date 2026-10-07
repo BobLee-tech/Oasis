@@ -1,0 +1,30 @@
+{
+  "id": "y_20_01",
+  "ncmId": 1466519468,
+  "sources": {
+    "netease": {
+      "songId": 1466519468,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "音乐小偷的自白",
+      "album": "盗作",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2020-07-29",
+      "bpm": 153
+    },
+    "draft": {
+      "intro": "《盗作》的开场器乐，题为「音乐小偷的自白」。整张专辑是一个盗作音乐的男人的故事，从这段没有歌词的自白开始。",
+      "valence": -0.3,
+      "feel": "sad",
+      "confidence": "medium",
+      "basis": "纯器乐开场；专辑概念见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · 盗作 (アルバム)",
+          "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

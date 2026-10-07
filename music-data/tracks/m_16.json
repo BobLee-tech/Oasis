@@ -1,0 +1,40 @@
+{
+  "id": "m_16",
+  "ncmId": 22677585,
+  "sources": {
+    "netease": {
+      "songId": 22677585,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 13,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "baker"
+        ],
+        "composer": [
+          "baker"
+        ]
+      },
+      "bpm": 88,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "baker 2007 年的作品，用自己拍的实景影像配成 PV；作者说「其实是首郁曲」。冰冷的空气，不停的雨，等一丝光透进来。",
+      "valence": -0.4,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "见 Wikipedia 与 VocaDB 作者备注。",
+      "refs": [
+        {
+          "title": "Wikipedia · baker",
+          "url": "https://ja.wikipedia.org/wiki/Baker_(日本のミュージシャン)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

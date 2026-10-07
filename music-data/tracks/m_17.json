@@ -1,0 +1,45 @@
+{
+  "id": "m_17",
+  "ncmId": 22677581,
+  "sources": {
+    "netease": {
+      "songId": 22677581,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 14,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "livetune"
+        ],
+        "composer": [
+          "livetune"
+        ],
+        "arranger": [
+          "livetune"
+        ],
+        "producer": [
+          "livetune"
+        ]
+      },
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "kz（livetune）2007 年 9 月发表，初音未来热潮的推手之一：把想传达的心意封进包裹，「这个世界的旋律和我的歌声，你收到了吗？」",
+      "valence": 0.5,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · livetune",
+          "url": "https://ja.wikipedia.org/wiki/Livetune"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

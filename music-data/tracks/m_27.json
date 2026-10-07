@@ -1,0 +1,35 @@
+{
+  "id": "m_27",
+  "ncmId": 28152555,
+  "sources": {
+    "netease": {
+      "songId": 28152555,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "很久很久以前今天的我",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2013-12-18",
+      "creditsMissing": true,
+      "bpm": 130,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "五口___"
+    },
+    "draft": {
+      "intro": "漫画《周刊 第一次的初音未来》的主题曲：请空出一点时间，听一首有点消极的歌。镜子里昨天的我和今天一模一样，眼泪最后传到了某个人那里。",
+      "valence": 0.1,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "见 VocaDB 与 Wikipedia。",
+      "refs": [
+        {
+          "title": "VocaDB · むかしむかしのきょうのぼく",
+          "url": "https://vocadb.net/S/1273"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

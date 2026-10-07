@@ -1,0 +1,37 @@
+{
+  "id": "a_04",
+  "ncmId": 1882027029,
+  "sources": {
+    "netease": {
+      "songId": 1882027029,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "祥月",
+      "album": "夜明け前",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2021-10-04",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "bpm": 133,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": false,
+      "lyricUser": "深蓝脆脆饼",
+      "transUser": "旅人passer-by"
+    },
+    "draft": {
+      "intro": "「祥月」是故人离世的那个月份。路灯下、残缺的月影里，仍在找你的脚步声，宁可沉在夜里不醒来。",
+      "valence": -0.6,
+      "feel": "sad",
+      "confidence": "medium",
+      "basis": "词义与歌词；「故人」是否指死别未明说。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

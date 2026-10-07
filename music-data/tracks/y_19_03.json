@@ -1,0 +1,40 @@
+{
+  "id": "y_19_03",
+  "ncmId": 1357953772,
+  "sources": {
+    "netease": {
+      "songId": 1357953772,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "八月、某、月光",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 3,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ]
+      },
+      "bpm": 110,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "第一次翘掉打工，在八月的月光下骑车穿过东伏见与小平。「人生若能死在二十七岁，摇滚就救了我」——n-buna 在采访里说，这是在讲「27 俱乐部」。",
+      "valence": -0.5,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "烦躁、自弃的歌词；27 俱乐部出处见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · 27クラブ",
+          "url": "https://ja.wikipedia.org/wiki/27クラブ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

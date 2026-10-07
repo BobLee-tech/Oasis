@@ -1,0 +1,36 @@
+{
+  "id": "y_23_07",
+  "ncmId": 3400022207,
+  "sources": {
+    "netease": {
+      "songId": 3400022207,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 11,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 130,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": false,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "以海明威《老人与海》为母题：解开鞋带，从旧椅子上站起来，奔向远方。重点在出发本身，不在能不能捕到鱼。",
+      "valence": 0.3,
+      "feel": "wonder",
+      "confidence": "high",
+      "basis": "不以结果衡量生命（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

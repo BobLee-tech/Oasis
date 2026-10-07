@@ -1,0 +1,43 @@
+{
+  "id": "y_19e_04",
+  "ncmId": 1381706151,
+  "sources": {
+    "netease": {
+      "songId": 1381706151,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "雨和卡布奇诺",
+      "album": "エルマ",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2019-08-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 100,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "donanobispacem",
+      "transUser": "-彩虹Rainbow-"
+    },
+    "draft": {
+      "intro": "泛白的灰色言语，像卡布奇诺的颜色。八月的维斯比，雨水漂着落花流过窗前，她只求那段回忆永不褪色。",
+      "valence": -0.1,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "歌词写雨、海与维斯比；专辑封面就在维斯比（英文 Wikipedia）。",
+      "refs": [
+        {
+          "title": "Wikipedia · Elma (album)",
+          "url": "https://en.wikipedia.org/wiki/Elma_(album)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

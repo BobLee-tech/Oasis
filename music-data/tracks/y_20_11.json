@@ -1,0 +1,40 @@
+{
+  "id": "y_20_11",
+  "ncmId": 1466519476,
+  "sources": {
+    "netease": {
+      "songId": 1466519476,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "Escape",
+      "album": "盗作",
+      "trackNo": 11,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "bpm": 105,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "维尔日记",
+      "transUser": "4G-众筹路由器"
+    },
+    "draft": {
+      "intro": "夏日的田间小路、积雨云、邻镇的夜祭——「今天我们出去走走吧」。一路破坏之后，这是一首想牵着你逃开的歌。",
+      "valence": 0.1,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "歌词转向夏日与同行；专辑后半走向回忆。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

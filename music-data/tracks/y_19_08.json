@@ -1,0 +1,34 @@
+{
+  "id": "y_19_08",
+  "ncmId": 1357953769,
+  "sources": {
+    "netease": {
+      "songId": 1357953769,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "五月 窗边的花绿青",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "十二面体"
+    },
+    "draft": {
+      "intro": "空教室里风吹着窗帘，和你一起仰望过的夏天一直在头顶。「花绿青」是带毒的鲜绿颜料，连眼泪都被染成那种颜色。",
+      "valence": -0.4,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "花绿青的毒性与眼泪意象，与《エルマ》的《歩く》互文（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

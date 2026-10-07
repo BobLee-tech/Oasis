@@ -1,0 +1,43 @@
+{
+  "id": "y_19_07",
+  "ncmId": 1357953771,
+  "sources": {
+    "netease": {
+      "songId": 1357953771,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "六月、抒写雨后的街道",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 80,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "窗外的五月雨，纸上长方形的心；现在的生活是 i²，减去你就小于零。n-buna 在斯德哥尔摩老城因下雨出不了门，在旅馆里想出了这首。",
+      "valence": -0.2,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "雨后街景与追忆；创作缘由见英文 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · That's Why I Gave Up on Music",
+          "url": "https://en.wikipedia.org/wiki/That%27s_Why_I_Gave_Up_on_Music"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

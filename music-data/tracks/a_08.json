@@ -1,0 +1,44 @@
+{
+  "id": "a_08",
+  "ncmId": 2071844822,
+  "sources": {
+    "netease": {
+      "songId": 2071844822,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "如果只是说喜欢的话",
+      "album": "季億の箱",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2023-08-11",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "KERENMI"
+        ]
+      },
+      "tieIn": "电影《交换谎言日记》主题曲",
+      "bpm": 136,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "SAK_UTA"
+    },
+    "draft": {
+      "intro": "如果能看着你说一句「喜欢」就好了。与 KERENMI（蔦谷好位置）合作，为电影《交换谎言日记》写的主题曲，是乐队少见的明亮恋歌。",
+      "valence": 0.6,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "合作与主题曲见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · あたらよ",
+          "url": "https://ja.wikipedia.org/wiki/あたらよ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

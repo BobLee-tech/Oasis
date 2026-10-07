@@ -1,0 +1,43 @@
+{
+  "id": "y_19_12",
+  "ncmId": 1357960252,
+  "sources": {
+    "netease": {
+      "songId": 1357960252,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "Elma",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 12,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 130,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "十二面体"
+    },
+    "draft": {
+      "intro": "以她的名字为题：你撒的谎我都懂，可还是会痛。初夏的森林、洒满月光的小路上，艾米唱起道别；下一张专辑便以艾尔玛为名，从她那一侧回应。",
+      "valence": -0.2,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "道别与温柔；续作关系见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · エルマ (ヨルシカのアルバム)",
+          "url": "https://ja.wikipedia.org/wiki/エルマ_(ヨルシカのアルバム)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

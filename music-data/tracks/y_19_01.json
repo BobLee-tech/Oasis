@@ -1,0 +1,29 @@
+{
+  "id": "y_19_01",
+  "ncmId": 1357960251,
+  "sources": {
+    "netease": {
+      "songId": 1357960251,
+      "fetchedAt": "2026-10-06",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2019-04-10",
+      "bpm": 139
+    },
+    "draft": {
+      "intro": "以日期为题的器乐开场。这张专辑的四首纯音乐都是日期：8/31、7/13、5/6、4/10，倒着往回数，像把艾米的旅途日记一页页往前翻。",
+      "valence": -0.2,
+      "feel": "nostalgic",
+      "confidence": "medium",
+      "basis": "四首器乐的标题是倒序日期；「日记」是推测。",
+      "refs": [
+        {
+          "title": "Wikipedia · だから僕は音楽を辞めた",
+          "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

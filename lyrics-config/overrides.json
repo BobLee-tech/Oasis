@@ -6,6 +6,11 @@
     "初音ミク": ["Hatsune Miku", "Miku"]
   },
   "tracks": {
+    "y_17_01": { "kind": "instrumental" },
+    "y_17_05": { "kind": "instrumental" },
+    "y_18_01": { "kind": "instrumental" },
+    "y_18_05": { "kind": "instrumental" },
+    "y_18_09": { "kind": "instrumental" },
     "y_19_01": { "kind": "instrumental" },
     "y_19_05": { "kind": "instrumental" },
     "y_19_10": { "kind": "instrumental" },
@@ -20,6 +25,7 @@
     "y_20_12": { "kind": "instrumental" },
     "y_20_04": { "sameLyricsAs": "y_18_03" },
     "m_04": { "kind": "instrumental" },
-    "m_20": { "kind": "instrumental" }
+    "m_20": { "kind": "instrumental" },
+    "m_24": { "searchTitle": "心壊サミット" }
   }
 }

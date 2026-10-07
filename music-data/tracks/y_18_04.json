@@ -1,0 +1,40 @@
+{
+  "id": "y_18_04",
+  "ncmId": 557581315,
+  "sources": {
+    "netease": {
+      "songId": 557581315,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "希区柯克 Hitchcock",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2018-05-09",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "bpm": 169,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "曾骨科",
+      "transUser": "絵梨eri"
+    },
+    "draft": {
+      "intro": "写成一连串问老师的话：为什么闻到雨会怀念，为什么被嘲笑就会流泪，「幸」字里为什么藏着「￥」。曾期待青春像希区柯克的电影，结果只想什么都不做地看蓝天。",
+      "valence": -0.2,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "人生咨询式的追问；标题悬疑指对青春的期待（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

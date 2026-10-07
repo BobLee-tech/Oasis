@@ -1,0 +1,43 @@
+{
+  "id": "y_19_02",
+  "ncmId": 1357960253,
+  "sources": {
+    "netease": {
+      "songId": 1357960253,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "靛蓝平方",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 105,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "纱痳",
+      "transUser": "纱痳"
+    },
+    "draft": {
+      "intro": "正午躺在高架桥下，为白纸一样的人生独自鼓掌。写给你的故事里，水电、社会和新闻都无关紧要；这是放弃音乐之前，把一生都化作墨水的自白。",
+      "valence": -0.5,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "歌词直述自我否定与时效将至的梦想。",
+      "refs": [
+        {
+          "title": "Wikipedia · だから僕は音楽を辞めた",
+          "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

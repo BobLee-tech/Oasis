@@ -1,0 +1,43 @@
+{
+  "id": "y_23_10",
+  "ncmId": 2036444271,
+  "sources": {
+    "netease": {
+      "songId": 2036444271,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "百年",
+      "album": "幻燈",
+      "trackNo": 10,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 75,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "以夏目漱石《梦十夜》第一夜为母题：「请等我一百年。」坟前守候，百合开放，网易云把它译作「百年」。《幻灯》数字版仅有的两首新曲之一。",
+      "valence": -0.1,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记；新曲见英文 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · Magic Lantern (album)",
+          "url": "https://en.wikipedia.org/wiki/Magic_Lantern_(album)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

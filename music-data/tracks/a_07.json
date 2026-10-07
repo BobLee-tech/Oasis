@@ -1,0 +1,37 @@
+{
+  "id": "a_07",
+  "ncmId": 1882027031,
+  "sources": {
+    "netease": {
+      "songId": 1882027031,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "骗子",
+      "album": "夜明け前",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2021-10-04",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "bpm": 69,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "深蓝脆脆饼",
+      "transUser": "TruK27"
+    },
+    "draft": {
+      "intro": "最先说「我爱你」的是你，最先离开的也是你。爱一点点冷掉，只剩越积越多的怨，于是她也说起无聊的谎话。",
+      "valence": -0.6,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "歌词。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

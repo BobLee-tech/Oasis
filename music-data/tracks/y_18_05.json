@@ -1,0 +1,23 @@
+{
+  "id": "y_18_05",
+  "ncmId": 557581316,
+  "sources": {
+    "netease": {
+      "songId": 557581316,
+      "fetchedAt": "2026-10-06",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2018-05-09",
+      "bpm": 79
+    },
+    "draft": {
+      "intro": "一分多钟的器乐，题为「落下」。和「前世」「夏、巴士站、等你」一起，把这张迷你专辑隔成几段。",
+      "valence": -0.1,
+      "feel": "peaceful",
+      "confidence": "low",
+      "basis": "纯器乐间奏；仅凭标题与位置。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

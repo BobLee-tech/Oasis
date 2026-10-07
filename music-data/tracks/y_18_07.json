@@ -1,0 +1,45 @@
+{
+  "id": "y_18_07",
+  "ncmId": 557579321,
+  "sources": {
+    "netease": {
+      "songId": 557579321,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "仅予你的晴天",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2018-05-09",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "bpm": 139,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "五月Asteroidea"
+    },
+    "draft": {
+      "intro": "夏天的巴士站背后浮现出你，就这样来不及地长成了大人。歌里改写了正冈子规的一句俳句；这是 Yorushika 第一首串流破亿的歌，MV 在富山雨晴海岸拍摄。",
+      "valence": 0,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "子规俳句改写见你的专辑注记；破亿与拍摄地见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · ただ君に晴れ",
+          "url": "https://ja.wikipedia.org/wiki/ただ君に晴れ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

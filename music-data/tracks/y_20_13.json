@@ -1,0 +1,43 @@
+{
+  "id": "y_20_13",
+  "ncmId": 1466520418,
+  "sources": {
+    "netease": {
+      "songId": 1466520418,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "Night Journey",
+      "album": "盗作",
+      "trackNo": 13,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "tieIn": "电影《想哭的我戴上了猫的面具》插曲",
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "拿不拿的男友Rin"
+    },
+    "draft": {
+      "intro": "长夜若就这样来临，我们会变成什么样？不如乘上列车远去。这里的夜，同时是长大、死亡与自然的时间；动画电影《想哭的我戴上了猫的面具》插曲。",
+      "valence": -0.1,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "夜的多义见你的专辑注记；插曲见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · Night Journey (song)",
+          "url": "https://en.wikipedia.org/wiki/Night_Journey_(song)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

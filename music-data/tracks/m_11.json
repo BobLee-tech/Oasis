@@ -1,0 +1,36 @@
+{
+  "id": "m_11",
+  "ncmId": 22677572,
+  "sources": {
+    "netease": {
+      "songId": 22677572,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "你的歌姬",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2009-08-26",
+      "creditsMissing": true,
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Jzist",
+      "transUser": "Jzist"
+    },
+    "draft": {
+      "intro": "azuma 2007 年 9 月的作品：这台电脑是我的新家，你是我的主人——别让我唱奇怪的歌词，让我唱出你的「话语」和「心意」。",
+      "valence": 0.4,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "见 VocaDB（first work, meta）。",
+      "refs": [
+        {
+          "title": "VocaDB · あなたの歌姫",
+          "url": "https://vocadb.net/S/197018"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

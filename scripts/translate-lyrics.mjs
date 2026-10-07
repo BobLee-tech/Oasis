@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { listAlbums } from './lib/track-profile.mjs';
 import { spawn } from 'node:child_process';
 import {
   buildTrackIdentities,
@@ -101,24 +102,12 @@ const criticSystem = `
 没有问题则输出 {"patches":[]}。
 `.trim();
 
-const albumSlug = value => value
-  .normalize('NFKC')
-  .toLocaleLowerCase('ja')
-  .replace(/[^\p{L}\p{N}]+/gu, '-')
-  .replace(/^-|-$/g, '');
-
+// 专辑叙事住在 music-data/albums/<slug>.json（曲目档案的专辑层，docs/music-design.md A3.1），
+// 按文件里的 album 字段对号，不靠从专辑名猜 slug。
 const loadAlbumContext = async album => {
   if (!album) return null;
-  const aliases = {
-    'だから僕は音楽を辞めた': 'dakara-boku-wa-ongaku-wo-yameta',
-    'エルマ': 'elma',
-  };
-  const filename = path.join(
-    PROJECT_ROOT,
-    'lyrics-config/albums',
-    `${aliases[album] ?? albumSlug(album)}.json`,
-  );
-  return existsSync(filename) ? readJson(filename) : { album, context: '' };
+  const found = (await listAlbums()).find(entry => entry.album === album);
+  return found ?? { album, story: '' };
 };
 
 const applyCriticPatches = (lines, patches) => {

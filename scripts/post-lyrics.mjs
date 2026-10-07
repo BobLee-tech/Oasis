@@ -39,6 +39,9 @@ import {
   resolveNeteaseOverrideId,
   searchNetease,
 } from './lib/netease-lyrics.mjs';
+import { GATE_LABELS, checkLyrics, creditsFromLines, stripHeaderLines } from './lib/lyrics-gate.mjs';
+import { extractInlineRuby, lineKey, loadTokenizer, readingForLine } from './lib/kana.mjs';
+import { pairLyrics, parseLyricResponse } from './lib/sources/netease.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(PROJECT_ROOT, 'src/hooks/useSoundscape.ts');
@@ -49,6 +52,10 @@ const DEV_DIR = path.join(PROJECT_ROOT, 'public/lyrics');
 const REMOTE = 'oasis-r2:oasis-audio/lyrics';
 const PUBLIC_BASE = 'https://audio.boblee.dev/lyrics';
 const MAX_LRC_BYTES = 2 * 1024 * 1024;
+const PROFILE_DIR = path.join(PROJECT_ROOT, 'music-data/tracks');
+// 五道闸里现在就拒绝生成的几道（lib/lyrics-gate.mjs）。译文与读音要等工坊（P3）
+// 和读音层（P4）就位后再加进来，否则旧曲目一首都发不出去；现在只打印警告。
+const ENFORCED_GATES = ['version', 'clean'];
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const run = (cmd, args) => new Promise((resolve, reject) => {
@@ -232,6 +239,38 @@ const fetchNetease = async (track, identity, identityConfig, { debug = false } =
   };
 };
 
+/** 网易云成对版本里的罗马音，按行文本对号（LRCLIB 版本与网易云版本的同一句也能借到）。 */
+const neteaseRomaMap = async trackId => {
+  const map = new Map();
+  try {
+    const profile = JSON.parse(await readFile(path.join(PROFILE_DIR, `${trackId}.json`), 'utf8'));
+    if (!profile.ncmId) return map;
+    const raw = JSON.parse(await readFile(path.join(SOURCE_DIR, trackId, 'ncm', `lyric.${profile.ncmId}.json`), 'utf8'));
+    for (const line of pairLyrics(parseLyricResponse(raw))) {
+      const key = lineKey(line.ja);
+      if (line.roma && key && !map.has(key)) map.set(key, line.roma);
+    }
+  } catch {
+    // 没有档案或缓存：只用词典读音
+  }
+  return map;
+};
+
+const attachReadings = async (trackId, document, overrides = {}) => {
+  const tokenizer = await loadTokenizer();
+  const romaMap = await neteaseRomaMap(trackId);
+  const report = { trackId, generatedAt: new Date().toISOString(), tokenizer: Boolean(tokenizer), lines: [], conflicts: [] };
+  document.lines = document.lines.map((line, index) => {
+    const roma = romaMap.get(lineKey(line.ja)) ?? '';
+    const result = readingForLine(line, roma, tokenizer, overrides);
+    report.lines.push({ index, source: result.source, ...(roma ? { roma } : {}) });
+    for (const conflict of result.conflicts) report.conflicts.push({ index, ja: line.ja, ...conflict });
+    const { kana: _previous, ...rest } = line;
+    return result.kana.length ? { ...rest, kana: result.kana } : rest;
+  });
+  return report;
+};
+
 const firstExisting = async candidates => {
   for (const candidate of candidates.filter(Boolean)) {
     try {
@@ -363,7 +402,9 @@ const main = async () => {
         if (localLrc === archivedLrc) {
           try {
             const archivedMeta = JSON.parse(await readFile(path.join(sourceFolder, 'meta.json'), 'utf8'));
-            if (archivedMeta?.source?.kind === 'lrclib') source = archivedMeta.source;
+            // 归档的原文记得自己从哪来（LRCLIB / 工坊换上的网易云成对版本），重建时沿用。
+            if (['lrclib', 'netease'].includes(archivedMeta?.source?.kind)) source = archivedMeta.source;
+            if (archivedMeta?.source?.label === '工坊打点') source = archivedMeta.source;
           } catch {
             // 旧归档没有元数据时才按本地 LRC 处理。
           }
@@ -404,6 +445,13 @@ const main = async () => {
       }
 
       const parsed = parseLrc(originalText);
+      // 「作词 : …」「曲名 - 艺人」这类歌词头不是正文：解析进 credits，再从行里拿掉。
+      const credits = creditsFromLines(parsed.lines);
+      parsed.lines = stripHeaderLines(parsed.lines, track.title).map(line => {
+        // 「空（そら）」这类行内注音：正文去掉括号，读音进 kana（读音层的第一来源）
+        const { text, ruby } = extractInlineRuby(line.ja);
+        return ruby.length ? { ...line, ja: text, kana: ruby } : line;
+      });
       if (parsed.lines.length < 2) throw new Error('有效同步歌词不足 2 行');
 
       const translationPath = await firstExisting([
@@ -426,6 +474,15 @@ const main = async () => {
       let lines = parsed.lines;
       let translationStatus = lines.some(line => line.zh) ? 'reviewed' : 'none';
       let translator = options.translator.trim().slice(0, 80);
+      // 重建时沿用上一次的译者署名（如「网易云」），不因为没传 --translator 就丢掉出处
+      if (!translator && !options.refresh) {
+        try {
+          const previousMeta = JSON.parse(await readFile(path.join(sourceFolder, 'meta.json'), 'utf8'));
+          if (typeof previousMeta.translator === 'string') translator = previousMeta.translator.trim().slice(0, 80);
+        } catch {
+          // 第一次导入没有 meta.json
+        }
+      }
       if (translatedText) {
         const translated = parseLrc(translatedText);
         const merged = mergeTranslation(lines, translated.lines);
@@ -474,6 +531,33 @@ const main = async () => {
       };
       await assertNoSuspiciousDuplicate(document, track, manifest, identities);
 
+      let outroMs = 0;
+      let readingOverrides = {};
+      try {
+        const profile = JSON.parse(await readFile(path.join(PROFILE_DIR, `${track.id}.json`), 'utf8'));
+        outroMs = Number(profile?.lyrics?.outroMs ?? 0) || 0;
+        if (profile?.lyrics?.readings && typeof profile.lyrics.readings === 'object') readingOverrides = profile.lyrics.readings;
+      } catch {
+        // 还没有曲目档案时按默认 45s 尾奏判断。
+      }
+      // 读音层：你定的读法 > 行内注音 > 网易云罗马音 > kuromoji；冲突记到 lyrics-src/<id>/kana.json 给工坊
+      const kanaReport = await attachReadings(track.id, document, readingOverrides);
+      if (kanaReport.conflicts.length) {
+        console.log(`${label} · 读音冲突 ${kanaReport.conflicts.length} 处（工坊「歌词」页签可见）`);
+      }
+      const gate = checkLyrics(document, { durationMs: identity.tags.durationMs, outroMs });
+      const refused = ENFORCED_GATES.filter(name => !gate.gates[name].pass);
+      if (refused.length) {
+        const error = new Error(refused.map(name => `${GATE_LABELS[name]}闸：${gate.gates[name].detail}`).join('；'));
+        // 新生成的版本过不了闸，不等于旧版本也该下线：保留 manifest 里已有的那份
+        error.keepExisting = true;
+        throw error;
+      }
+      const warned = gate.blocked.filter(name => !ENFORCED_GATES.includes(name));
+      if (warned.length) {
+        console.log(`${label} · 待补：${warned.map(name => `${GATE_LABELS[name]}（${gate.gates[name].detail}）`).join('、')}`);
+      }
+
       if (!options.dry) {
         await mkdir(sourceFolder, { recursive: true });
         if (!existsSync(path.join(sourceFolder, 'original.lrc'))) {
@@ -486,9 +570,11 @@ const main = async () => {
           trackId: track.id,
           source,
           warnings: parsed.warnings.slice(0, 100),
+          ...(Object.keys(credits).length ? { credits } : {}),
           translationStatus,
           ...(translator ? { translator } : {}),
         });
+        await writeJson(path.join(sourceFolder, 'kana.json'), kanaReport);
         await writeJson(path.join(OUT_DIR, key), document);
         await writeJson(path.join(DEV_DIR, key), document);
       }
@@ -500,7 +586,7 @@ const main = async () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`${label} · 失败：${message}`);
-      if (options.force) delete manifest.tracks[track.id];
+      if (options.force && !error?.keepExisting) delete manifest.tracks[track.id];
       report.failed.push({ id: track.id, message });
     }
   }

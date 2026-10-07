@@ -1,0 +1,37 @@
+{
+  "id": "y_18_06",
+  "ncmId": 557581317,
+  "sources": {
+    "netease": {
+      "songId": 557581317,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "准透明少年",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2018-05-09",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 97,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Riecheselva",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "午后校园里谁也看不见的「透明人」，只能靠唱歌让自己被看见。想把整颗心交给那个凛然的你，却也明白自己的眼睛照不到长夜的对岸。",
+      "valence": -0.3,
+      "feel": "sad",
+      "confidence": "medium",
+      "basis": "透明、透过与淘汰的意象（你的专辑注记）；渴望被看见。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "m_04",
+  "ncmId": 22677578,
+  "sources": {
+    "netease": {
+      "songId": 22677578,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2009-08-26",
+      "bpm": 206
+    },
+    "draft": {
+      "intro": "精选集《初音ミク ベスト～memories～》四十秒的开场，ケフィアP 制作，像翻开相册的第一页。",
+      "valence": 0.4,
+      "feel": "joyful",
+      "confidence": "medium",
+      "basis": "纯器乐；作者来自音频标签。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

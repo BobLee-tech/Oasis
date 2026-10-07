@@ -1,0 +1,36 @@
+{
+  "id": "y_23_03",
+  "ncmId": 3400023085,
+  "sources": {
+    "netease": {
+      "songId": 3400023085,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "取自纪德的散文诗《地粮》：花瓶里的白花快要枯了，也该换掉了。合上书本，告别旧生活，走向街市与夕阳。",
+      "valence": 0.1,
+      "feel": "peaceful",
+      "confidence": "high",
+      "basis": "出处与劝告意味见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

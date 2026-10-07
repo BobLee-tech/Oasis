@@ -1,0 +1,29 @@
+{
+  "id": "y_18_01",
+  "ncmId": 557584330,
+  "sources": {
+    "netease": {
+      "songId": 557584330,
+      "fetchedAt": "2026-10-06",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2018-05-09",
+      "bpm": 139
+    },
+    "draft": {
+      "intro": "第二张迷你专辑的序曲，题为「前世」。后来乐队把线上演唱会与首次武道馆巡演都命名为「前世」，这个词一直跟着他们。",
+      "valence": 0,
+      "feel": "peaceful",
+      "confidence": "medium",
+      "basis": "纯器乐；演唱会命名见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · ヨルシカ",
+          "url": "https://ja.wikipedia.org/wiki/ヨルシカ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "y_20_02",
+  "ncmId": 1466520409,
+  "sources": {
+    "netease": {
+      "songId": 1466520409,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "白日窃贼",
+      "album": "盗作",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "arranger": [
+          "n-buna"
+        ],
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 130,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "绛岛",
+      "transUser": "拿不拿的男友Rin"
+    },
+    "draft": {
+      "intro": "「昼鳶」是白天入室行窃的黑话。他嫉妒别人的才能、智慧和价值观，嫉妒到骨子里——故事里，这是主人公年轻时开始偷窃的阶段。",
+      "valence": -0.5,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "黑话与阶段见你的专辑注记；歌词满是嫉妒。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

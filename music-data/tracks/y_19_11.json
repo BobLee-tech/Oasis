@@ -1,0 +1,36 @@
+{
+  "id": "y_19_11",
+  "ncmId": 1357628744,
+  "sources": {
+    "netease": {
+      "songId": 1357628744,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "游行Parade",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 11,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 110,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "十二面体"
+    },
+    "draft": {
+      "intro": "身体深处、喉咙之下，那里生出语言的瞬间。他坦白自己一直在模仿你写的诗，只求你再记住一会儿——这场一个人的游行。",
+      "valence": -0.2,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "关于声音与模仿的自白；《声》回应它（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

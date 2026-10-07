@@ -1,0 +1,30 @@
+{
+  "id": "y_19e_01",
+  "ncmId": 1387098933,
+  "sources": {
+    "netease": {
+      "songId": 1387098933,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "车窗",
+      "album": "エルマ",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2019-08-28",
+      "bpm": 150
+    },
+    "draft": {
+      "intro": "《エルマ》的开场器乐，题为「车窗」。艾尔玛的旅程从一扇车窗开始，沿着艾米走过的路线一路向北。",
+      "valence": 0,
+      "feel": "peaceful",
+      "confidence": "medium",
+      "basis": "纯器乐；旅行叙事见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · Elma (album)",
+          "url": "https://en.wikipedia.org/wiki/Elma_(album)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

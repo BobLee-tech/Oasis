@@ -1,0 +1,39 @@
+{
+  "id": "m_01",
+  "ncmId": 22677560,
+  "sources": {
+    "netease": {
+      "songId": 22677560,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～impacts～",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "livetune"
+        ],
+        "composer": [
+          "livetune"
+        ],
+        "arranger": [
+          "livetune"
+        ]
+      },
+      "tieIn": "演唱会《初音未来魔法未来演唱会2014》插曲",
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "滑稽是我_我是滑稽"
+    },
+    "draft": {
+      "intro": "livetune 名曲在「魔法未来 2014」官方专辑里的重制版。看着你熟睡的侧脸，握着你的手说晚安，那句再见却始终没说出口。",
+      "valence": -0.3,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "出处见网易云；歌词温柔而哀伤。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

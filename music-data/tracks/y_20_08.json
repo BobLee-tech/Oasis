@@ -1,0 +1,24 @@
+{
+  "id": "y_20_08",
+  "ncmId": 1466519474,
+  "sources": {
+    "netease": {
+      "songId": 1466519474,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "朱夏期、音乐小偷",
+      "album": "盗作",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2020-07-29",
+      "bpm": 80
+    },
+    "draft": {
+      "intro": "器乐，题为「朱夏期、音乐小偷」。朱夏指人生的盛年，也是他偷来的音乐最响亮的时候。",
+      "valence": -0.2,
+      "feel": "tense",
+      "confidence": "low",
+      "basis": "纯器乐；「最响亮」是对标题的解读。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

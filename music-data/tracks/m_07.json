@@ -1,0 +1,51 @@
+{
+  "id": "m_07",
+  "ncmId": 22677570,
+  "sources": {
+    "netease": {
+      "songId": 22677570,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "世界第一的公主殿下",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2008-05-31",
+      "credits": {
+        "lyricist": [
+          "ryo (supercell)"
+        ],
+        "composer": [
+          "ryo (supercell)"
+        ],
+        "arranger": [
+          "ryo (supercell)"
+        ]
+      },
+      "tieIn": "游戏《世界计划 多彩舞台 feat.初音未来》插曲",
+      "bpm": 162,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "_因果応報_",
+      "transUser": "穰静葉"
+    },
+    "draft": {
+      "intro": "「世界第一的公主殿下」：发型变了要发现，鞋子也要看，一句话要回三句。ryo 2008 年的傲娇宣言，后来成了初音未来最具代表性的形象之一。",
+      "valence": 0.6,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "见 Wikipedia 与 VocaDB。",
+      "refs": [
+        {
+          "title": "Wikipedia · supercell (アルバム)",
+          "url": "https://ja.wikipedia.org/wiki/Supercell_(アルバム)"
+        },
+        {
+          "title": "VocaDB · ワールドイズマイン",
+          "url": "https://vocadb.net/S/1326"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

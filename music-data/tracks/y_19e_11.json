@@ -1,0 +1,37 @@
+{
+  "id": "y_19e_11",
+  "ncmId": 1387099649,
+  "sources": {
+    "netease": {
+      "songId": 1387099649,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "声音",
+      "album": "エルマ",
+      "trackNo": 11,
+      "disc": 1,
+      "released": "2019-08-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 108,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "翼织猫",
+      "transUser": "雨残片"
+    },
+    "draft": {
+      "intro": "怎么也碰不到，怎么也找不见；明明很容易忘，却还想再记住一点。它回答了《パレード》里关于声音的谜：那首歌在语言的另一端。",
+      "valence": -0.2,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "回应《パレード》见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

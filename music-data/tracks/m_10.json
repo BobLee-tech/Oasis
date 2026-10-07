@@ -1,0 +1,45 @@
+{
+  "id": "m_10",
+  "ncmId": 22677576,
+  "sources": {
+    "netease": {
+      "songId": 22677576,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "最终之所",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "arranger": [
+          "小林オニキス"
+        ],
+        "lyricist": [
+          "小林オニキス"
+        ],
+        "composer": [
+          "小林オニキス"
+        ]
+      },
+      "bpm": 146,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "Jzist"
+    },
+    "draft": {
+      "intro": "小林オニキス 2008 年的作品，写与重要之人的永别；虽未明说，唱的是死亡：晴得让人难过的告别日，愿你一路平安。后由フルカワミキ翻唱。",
+      "valence": -0.4,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "见 Wikipedia；曲调快而苦甜。",
+      "refs": [
+        {
+          "title": "Wikipedia · サイハテ",
+          "url": "https://ja.wikipedia.org/wiki/サイハテ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

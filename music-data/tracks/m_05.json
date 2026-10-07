@@ -1,0 +1,37 @@
+{
+  "id": "m_05",
+  "ncmId": 22677571,
+  "sources": {
+    "netease": {
+      "songId": 22677571,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "最初的声音",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2009-08-26",
+      "creditsMissing": true,
+      "tieIn": "游戏《初音未来：未来计划2》插曲",
+      "bpm": 100,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Jzist",
+      "transUser": "Jzist"
+    },
+    "draft": {
+      "intro": "malo 2007 年 10 月发表：「你最初的声音是什么样的？」初音未来对着赋予她声音的人唱的歌，早期最具代表性的「关于自己」的作品之一。",
+      "valence": 0.3,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "发表时间见中文 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · VOCALOID (音乐风格)",
+          "url": "https://zh.wikipedia.org/wiki/VOCALOID_(音乐风格)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

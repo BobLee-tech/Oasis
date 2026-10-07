@@ -1,0 +1,43 @@
+{
+  "id": "y_17_03",
+  "ncmId": 487527980,
+  "sources": {
+    "netease": {
+      "songId": 487527980,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "说吧。",
+      "album": "夏草が邪魔をする",
+      "trackNo": 3,
+      "disc": 1,
+      "released": "2017-06-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 180,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "伊織透明",
+      "transUser": "fullwidthslash"
+    },
+    "draft": {
+      "intro": "轻快的节奏里，藏着一件早已知道却不愿承认的事：你已经不在了。日语「说了」与「逝去」同音，那句「再多说一点」，是迟来的悼念。",
+      "valence": -0.3,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "明快曲调与悼亡歌词形成反差；你的专辑注记指出「言った／逝った」同音。",
+      "refs": [
+        {
+          "title": "Wikipedia · Say It (Yorushika song)",
+          "url": "https://en.wikipedia.org/wiki/Say_It_(Yorushika_song)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

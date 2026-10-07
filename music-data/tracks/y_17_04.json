@@ -1,0 +1,37 @@
+{
+  "id": "y_17_04",
+  "ncmId": 487527981,
+  "sources": {
+    "netease": {
+      "songId": 487527981,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "在那个夏天绽放吧！",
+      "album": "夏草が邪魔をする",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2017-06-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 160,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "-Karqsy",
+      "transUser": "泽-伽马-芙恰"
+    },
+    "draft": {
+      "intro": "一个无名的写作者，在巴士站把她的样子一遍遍写下、画下。嫉妒、空虚、够不着的距离，都被明亮的吉他推着往前，「OVER」一声声像在呼叫那个回不去的夏天。",
+      "valence": 0,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "歌词围绕描写与错过；节奏明快，情绪是怀念里的不甘。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

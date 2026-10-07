@@ -1,0 +1,36 @@
+{
+  "id": "y_23_05",
+  "ncmId": 3400023087,
+  "sources": {
+    "netease": {
+      "songId": 3400023087,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "关联雷·布拉德伯里《华氏 451 度》，那是纸张燃烧的温度。火同时指焚书、作品被消费，也指胸口烧起来的创作欲。",
+      "valence": 0,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "出处与火的三重含义见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

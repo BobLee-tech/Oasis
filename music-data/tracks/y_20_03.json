@@ -1,0 +1,42 @@
+{
+  "id": "y_20_03",
+  "ncmId": 1466520411,
+  "sources": {
+    "netease": {
+      "songId": 1466520411,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "卖春",
+      "album": "盗作",
+      "trackNo": 3,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 95,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "小熊炒面面包"
+    },
+    "draft": {
+      "intro": "「春ひさぎ」是卖春的古语。表面像游女的应答，底下是为了生活削减自尊、把作品连同自己廉价出售的商业音乐。专辑先行曲之一。",
+      "valence": -0.5,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "隐喻见你的专辑注记；先行曲见中文 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · 盗作",
+          "url": "https://zh.wikipedia.org/wiki/盗作"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

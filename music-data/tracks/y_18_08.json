@@ -1,0 +1,36 @@
+{
+  "id": "y_18_08",
+  "ncmId": 557583336,
+  "sources": {
+    "netease": {
+      "songId": 557583336,
+      "fetchedAt": "2026-10-06",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2018-05-09",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 90,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Riecheselva",
+      "transUser": "Mikan_cr209"
+    },
+    "draft": {
+      "intro": "从秋到冬睡一场长觉，醒来化作水、化作花。既然神明不存在，梦想会落空，就把工作和学校都辞掉吧，只想和你一起活下去。",
+      "valence": -0.2,
+      "feel": "peaceful",
+      "confidence": "medium",
+      "basis": "季节轮回与长眠；逃离与终结的阴影应保留（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

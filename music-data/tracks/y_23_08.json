@@ -1,0 +1,40 @@
+{
+  "id": "y_23_08",
+  "ncmId": 2036444269,
+  "sources": {
+    "netease": {
+      "songId": 2036444269,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "tieIn": "电影《今夜，就算这份爱恋从世界上消失》主题曲",
+      "bpm": 75,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "借王尔德《快乐王子》逐渐失去宝石与金叶的结构，写对方的轮廓和自己的一部分一点点剥落。电影《今夜，就算这份爱恋从世界上消失》主题曲。",
+      "valence": -0.3,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记；主题曲见网易云。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

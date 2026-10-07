@@ -1,0 +1,42 @@
+{
+  "id": "y_23_01",
+  "ncmId": 3400022203,
+  "sources": {
+    "netease": {
+      "songId": 3400022203,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 120,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "化用《万叶集》但马皇女的和歌：清晨渡河、流言和离别，古今叠在一起。「此刻，我正从京城落下。」《幻灯》数字版仅有的两首新曲之一。",
+      "valence": -0.2,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记；新曲见英文 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · Magic Lantern (album)",
+          "url": "https://en.wikipedia.org/wiki/Magic_Lantern_(album)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "y_20_04",
+  "ncmId": 1466520413,
+  "sources": {
+    "netease": {
+      "songId": 1466520413,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "炸弹魔",
+      "album": "盗作",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "绛岛",
+      "transUser": "Shigo_45"
+    },
+    "draft": {
+      "intro": "2018 年旧作的重录，歌词一字未改：攥着炸弹，想把一切炸掉。放进《盗作》之后，它成了整张专辑破坏冲动的源头。",
+      "valence": -0.4,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "重录与定位见 Wikipedia 与你的专辑注记。",
+      "refs": [
+        {
+          "title": "Wikipedia · 盗作 (アルバム)",
+          "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

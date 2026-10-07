@@ -1,0 +1,36 @@
+{
+  "id": "m_31",
+  "ncmId": 28152562,
+  "sources": {
+    "netease": {
+      "songId": 28152562,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "爱的话语2",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 14,
+      "disc": 1,
+      "released": "2013-10-08",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 137,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Jelisn"
+    },
+    "draft": {
+      "intro": "《爱言叶》的续篇：曾经的歌如今已经「一百万岁」，迎来了五周年的生日。比我自己更了解我的你——从此开始的无数感谢，都想唱给你。",
+      "valence": 0.7,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "歌词。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

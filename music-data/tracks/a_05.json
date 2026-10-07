@@ -1,0 +1,37 @@
+{
+  "id": "a_05",
+  "ncmId": 1882027030,
+  "sources": {
+    "netease": {
+      "songId": 1882027030,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "8.8",
+      "album": "夜明け前",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2021-10-04",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": false,
+      "lyricUser": "深蓝脆脆饼",
+      "transUser": "回到回不去的故乡"
+    },
+    "draft": {
+      "intro": "八点八叠的房间里，只是等你回来。你留下的气味还没散，我还能追上你吗——用一句谢谢，代替对不起。",
+      "valence": -0.5,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "歌词。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

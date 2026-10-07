@@ -1,0 +1,23 @@
+{
+  "id": "m_20",
+  "ncmId": 22677586,
+  "sources": {
+    "netease": {
+      "songId": 22677586,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 17,
+      "disc": 1,
+      "released": "2009-08-26",
+      "bpm": 127
+    },
+    "draft": {
+      "intro": "精选集的尾声，North-T 的「タイムリミット -Endless-」。和开头的 intro 一起，把整张 memories 合上。",
+      "valence": 0.2,
+      "feel": "joyful",
+      "confidence": "low",
+      "basis": "纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

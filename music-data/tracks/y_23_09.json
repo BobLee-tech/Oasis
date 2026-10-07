@@ -1,0 +1,44 @@
+{
+  "id": "y_23_09",
+  "ncmId": 2036444270,
+  "sources": {
+    "netease": {
+      "songId": 2036444270,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "阿尔吉侬",
+      "album": "幻燈",
+      "trackNo": 9,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "tieIn": "电视剧《黄昏时分、牵着手》主题曲",
+      "bpm": 72,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "取自丹尼尔·凯斯《献给阿尔吉侬的花束》：你为什么给了我心，又画出我的眼睛？在聪慧、变化与终将衰退之间保持克制。日剧《黄昏时分、牵着手》主题曲。",
+      "valence": -0.1,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记；主题曲见 ciatr。",
+      "refs": [
+        {
+          "title": "ciatr · ヨルシカ アルジャーノン",
+          "url": "https://ciatr.jp/topics/322874"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

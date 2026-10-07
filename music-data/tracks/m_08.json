@@ -1,0 +1,39 @@
+{
+  "id": "m_08",
+  "ncmId": 22677582,
+  "sources": {
+    "netease": {
+      "songId": 22677582,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "魔法笔刷",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "OSTER project"
+        ]
+      },
+      "bpm": 107,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "不朽提灯人"
+    },
+    "draft": {
+      "intro": "OSTER project 2007 年的作品，少见的百老汇式大乐队爵士：用魔法画笔把我画进梦里，直到指尖都染上你的颜色。",
+      "valence": 0.5,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "风格见 VocaDB 备注。",
+      "refs": [
+        {
+          "title": "VocaDB · ミラクルペイント",
+          "url": "https://vocadb.net/S/3658"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "id": "m_14",
+  "ncmId": 22677580,
+  "sources": {
+    "netease": {
+      "songId": 22677580,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 11,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "mikuru396"
+        ],
+        "composer": [
+          "mikuru396"
+        ],
+        "arranger": [
+          "mikuru396"
+        ]
+      },
+      "bpm": 142,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Boucal",
+      "transUser": "鈴木綾"
+    },
+    "draft": {
+      "intro": "mikuru396 2007 年 10 月发表，最早的初音未来歌曲之一。以「Vocaloid Version 2, Code 01」的启动语音开场，接着是一首温柔的 trance 恋歌。",
+      "valence": 0.2,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "见 VocaDB 备注；开场语音来自网易云歌词。",
+      "refs": [
+        {
+          "title": "VocaDB · melody...",
+          "url": "https://vocadb.net/S/2734"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "m_25",
+  "ncmId": 28152553,
+  "sources": {
+    "netease": {
+      "songId": 28152553,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "罪与罚",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2009-09-08",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 120,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "该昵称从未被占用过",
+      "transUser": "该昵称从未被占用过"
+    },
+    "draft": {
+      "intro": "「如果你有耳朵，就能让你听这首歌。」可爱的电子音色唱着病态的单恋：被你讨厌的话，就杀了我吧。DECO*27 2009 年 9 月作。",
+      "valence": -0.7,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "歌词；VocaDB 标签 lyrical dissonance。",
+      "refs": [
+        {
+          "title": "VocaDB · 罪と罰",
+          "url": "https://vocadb.net/S/8478"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

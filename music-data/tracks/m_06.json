@@ -1,0 +1,45 @@
+{
+  "id": "m_06",
+  "ncmId": 22677573,
+  "sources": {
+    "netease": {
+      "songId": 22677573,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "融化",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 3,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "ryo (supercell)"
+        ]
+      },
+      "tieIn": "游戏《太鼓达人》插曲",
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "yizhitooz",
+      "transUser": "日代千鹤"
+    },
+    "draft": {
+      "intro": "ryo 2007 年 12 月发表的第二首原创曲，一年内播放破三百万，掀起「メルト震撼」：一早醒来就想到你，剪了刘海想被问一句「怎么了」。supercell 由此开始。",
+      "valence": 0.5,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · メルト (supercellの曲)",
+          "url": "https://ja.wikipedia.org/wiki/メルト_(supercellの曲)"
+        },
+        {
+          "title": "VocaDB · メルト",
+          "url": "https://vocadb.net/S/1322"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

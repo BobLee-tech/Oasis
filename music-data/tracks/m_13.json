@@ -1,0 +1,42 @@
+{
+  "id": "m_13",
+  "ncmId": 22677577,
+  "sources": {
+    "netease": {
+      "songId": 22677577,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 10,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "GonGoss"
+        ],
+        "composer": [
+          "GonGoss"
+        ]
+      },
+      "bpm": 127,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "水毛GEN",
+      "transUser": "水毛GEN"
+    },
+    "draft": {
+      "intro": "GonGoss 2007 年 9 月的处女作：云缝里飘来一封不可思议的信，信纸一片空白，我却读懂了内容，去「这里」寻找那个看不见的人。",
+      "valence": 0.3,
+      "feel": "wonder",
+      "confidence": "high",
+      "basis": "见 VocaDB（first work）。",
+      "refs": [
+        {
+          "title": "VocaDB · White Letter",
+          "url": "https://vocadb.net/S/10767"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

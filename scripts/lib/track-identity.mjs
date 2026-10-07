@@ -119,8 +119,14 @@ export const buildTrackIdentities = async (projectRoot, playlist, config) => {
   return identities;
 };
 
-export const normalizeIdentity = value => clean(value)
-  .normalize('NFKC')
+// 网易云/LRCLIB 里中文用户上传的条目常把日文汉字写成简体（白の季节）。只为「比对」折叠，
+// 不改任何显示文本；表只收曲库里真遇到过和最常见的几组。
+const KANJI_FOLD = new Map([...'节節爱愛时時间間场場梦夢乐楽气気这這说説话話'
+  .match(/../gu)].map(pair => [...pair]));
+const foldKanji = value => [...value].map(char => KANJI_FOLD.get(char) ?? char).join('');
+
+export const normalizeIdentity = value => foldKanji(clean(value)
+  .normalize('NFKC'))
   .toLocaleLowerCase('ja')
   .replace(/\b(?:feat|featuring|ft|ver|version|complete|original|mix|re-recording)\b/gi, '')
   .replace(/[^\p{L}\p{N}]+/gu, '');

@@ -1,0 +1,42 @@
+{
+  "id": "m_24",
+  "ncmId": 28152552,
+  "sources": {
+    "netease": {
+      "songId": 28152552,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "心碎峰会",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2013-12-18",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 136,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": false,
+      "transUser": "Akiaki-22"
+    },
+    "draft": {
+      "intro": "DECO*27 2009 年 7 月的作品，题名「心坏峰会」。快节奏的流行朋克底下，是阴暗的内心冲突；也是他早期破百万播放的歌之一。",
+      "valence": -0.6,
+      "feel": "tense",
+      "confidence": "medium",
+      "basis": "VocaDB 标签 dark / inner conflict；本地尚无歌词可核。",
+      "refs": [
+        {
+          "title": "VocaDB · 心壊サミット",
+          "url": "https://vocadb.net/S/8474"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

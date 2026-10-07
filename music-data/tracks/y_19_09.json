@@ -1,0 +1,34 @@
+{
+  "id": "y_19_09",
+  "ncmId": 1357960254,
+  "sources": {
+    "netease": {
+      "songId": 1357960254,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "难辨夜色",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 9,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "不想努力、不想打工，只盯着你的照片走在夕阳的街上。人生像机关枪一样扫射，他只想在你心上留下一个洞。",
+      "valence": -0.6,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "歌词最直白的愤怒与空洞；《心に穴が空いた》回应这句（你的专辑注记）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

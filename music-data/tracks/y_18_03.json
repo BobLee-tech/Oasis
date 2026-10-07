@@ -1,0 +1,43 @@
+{
+  "id": "y_18_03",
+  "ncmId": 1466520413,
+  "sources": {
+    "netease": {
+      "songId": 1466520413,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "炸弹魔",
+      "album": "盗作",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 89,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "绛岛",
+      "transUser": "Shigo_45"
+    },
+    "draft": {
+      "intro": "攥着一颗炸弹在街上游荡，想把青春、房间、那个夏天都炸掉；可谁也没看他一眼，他又悄悄把炸弹收了起来。两年后在《盗作》里重录。",
+      "valence": -0.4,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "破坏冲动与无人注视的落空；重录见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · 負け犬にアンコールはいらない",
+          "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-28T11:26:17.249Z",
+  "generatedAt": "2026-10-06T12:53:59.806Z",
   "tracks": {
     "y_17_01": {
       "id": "y_17_01",
@@ -28,7 +28,7 @@
         ],
         "album": "夏草が邪魔をする"
       },
-      "kind": "vocal",
+      "kind": "instrumental",
       "audit": {
         "audioPresent": true
       }
@@ -152,7 +152,7 @@
         ],
         "album": "夏草が邪魔をする"
       },
-      "kind": "vocal",
+      "kind": "instrumental",
       "audit": {
         "audioPresent": true
       }
@@ -245,7 +245,7 @@
         ],
         "album": "負け犬にアンコールはいらない"
       },
-      "kind": "vocal",
+      "kind": "instrumental",
       "audit": {
         "audioPresent": true
       }
@@ -369,7 +369,7 @@
         ],
         "album": "負け犬にアンコールはいらない"
       },
-      "kind": "vocal",
+      "kind": "instrumental",
       "audit": {
         "audioPresent": true
       }
@@ -493,7 +493,7 @@
         ],
         "album": "負け犬にアンコールはいらない"
       },
-      "kind": "vocal",
+      "kind": "instrumental",
       "audit": {
         "audioPresent": true
       }
@@ -3166,7 +3166,7 @@
         "durationMs": 169400
       },
       "lookup": {
-        "title": "心懐サミット",
+        "title": "心壊サミット",
         "artists": [
           "DECO*27 feat. 初音ミク",
           "DECO*27"

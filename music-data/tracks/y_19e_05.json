@@ -1,0 +1,24 @@
+{
+  "id": "y_19e_05",
+  "ncmId": 1387098934,
+  "sources": {
+    "netease": {
+      "songId": 1387098934,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "湖之城",
+      "album": "エルマ",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2019-08-28",
+      "bpm": 80
+    },
+    "draft": {
+      "intro": "器乐小品，题为「湖之城」。艾尔玛一路北上，在湖边的小城停留了一会儿。",
+      "valence": 0,
+      "feel": "peaceful",
+      "confidence": "low",
+      "basis": "纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

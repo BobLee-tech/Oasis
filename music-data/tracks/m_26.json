@@ -1,0 +1,33 @@
+{
+  "id": "m_26",
+  "ncmId": 28152554,
+  "sources": {
+    "netease": {
+      "songId": 28152554,
+      "fetchedAt": "2026-10-06",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2013-12-18",
+      "creditsMissing": true,
+      "bpm": 80,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "DECO*27 2012 年为 3DS 游戏《初音未来 and Future Stars Project mirai》写的歌：先别说我了，我想听听你。昨天一层层叠起来，终于碰到未来时，又会遇见另一扇门。",
+      "valence": 0.6,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · ゆめゆめ",
+          "url": "https://ja.wikipedia.org/wiki/ゆめゆめ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

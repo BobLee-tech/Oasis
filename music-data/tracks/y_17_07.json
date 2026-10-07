@@ -1,0 +1,43 @@
+{
+  "id": "y_17_07",
+  "ncmId": 487527984,
+  "sources": {
+    "netease": {
+      "songId": 487527984,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "云与幽灵",
+      "album": "夏草が邪魔をする",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2017-06-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "-Karqsy",
+      "transUser": "fullwidthslash"
+    },
+    "draft": {
+      "intro": "变成幽灵的我，回去看你，看夏天怎么结束。乐队名「ヨルシカ」就取自这首里的一句：如今只在夜里才能睡去。",
+      "valence": -0.2,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "幽灵自述、日常凝望与放手；乐队名出处见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · ヨルシカ",
+          "url": "https://ja.wikipedia.org/wiki/ヨルシカ"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

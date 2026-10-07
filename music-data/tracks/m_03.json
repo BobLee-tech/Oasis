@@ -1,0 +1,29 @@
+{
+  "id": "m_03",
+  "ncmId": 531040803,
+  "sources": {
+    "netease": {
+      "songId": 531040803,
+      "fetchedAt": "2026-10-06",
+      "album": "ELATE",
+      "trackNo": 12,
+      "disc": 1,
+      "released": "2017-12-29",
+      "creditsMissing": true,
+      "bpm": 132,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": false,
+      "lyricUser": "惆伥",
+      "transUser": "惆伥"
+    },
+    "draft": {
+      "intro": "Aura Qualic 与 Trinity Note 合作、收于专辑《ELATE》的长版电子舞曲，用了初音未来 Append 的 Sweet 与 Dark 两种声线；八分多钟里，人声只在中段出现。",
+      "valence": 0.2,
+      "feel": "wonder",
+      "confidence": "medium",
+      "basis": "署名来自音频标签；人声区间来自网易云歌词时间轴。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

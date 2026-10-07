@@ -1,0 +1,40 @@
+{
+  "id": "y_17_06",
+  "ncmId": 487527983,
+  "sources": {
+    "netease": {
+      "songId": 487527983,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "靴上烟火",
+      "album": "夏草が邪魔をする",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2017-06-28",
+      "credits": {
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "bpm": 120,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "夏无之",
+      "transUser": "fullwidthslash"
+    },
+    "draft": {
+      "intro": "以宫泽贤治《夜鹰之星》为母题：想飞向天空，却连变成夜鹰都是奢望的「我」。鞋尖开出的花与夜空的大烟火之间，是一个够不到你的夏天。",
+      "valence": -0.3,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "Wikipedia 证实以《よだかの星》为母题；飞行与烟火带危险的歧义。",
+      "refs": [
+        {
+          "title": "Wikipedia · よだかの星",
+          "url": "https://ja.wikipedia.org/wiki/よだかの星"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

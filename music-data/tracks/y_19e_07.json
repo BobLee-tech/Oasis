@@ -1,0 +1,37 @@
+{
+  "id": "y_19e_07",
+  "ncmId": 1387098936,
+  "sources": {
+    "netease": {
+      "songId": 1387098936,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "雨后天晴",
+      "album": "エルマ",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2019-08-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 104,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "终于等来雨落，又等到雨停。标题取自种田山头火的俳句，与《六月は雨上がりの街を書く》构成雨前与雨后：你曾在的街道，比想象中更蓝。",
+      "valence": 0.1,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "山头火出处与雨前雨后之对见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

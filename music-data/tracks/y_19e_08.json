@@ -1,0 +1,34 @@
+{
+  "id": "y_19e_08",
+  "ncmId": 1387098937,
+  "sources": {
+    "netease": {
+      "songId": 1387098937,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "行走",
+      "album": "エルマ",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2019-08-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ]
+      },
+      "bpm": 100,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "十二面体",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "今天忽然觉得自己正在死去，又忽然觉得自己正活着。走过你旅行过的城市，花绿青的泪滑过脸颊，这首与《五月は花緑青の窓辺から》遥遥相对。",
+      "valence": -0.3,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "互文关系见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

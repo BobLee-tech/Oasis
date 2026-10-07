@@ -1,0 +1,41 @@
+{
+  "id": "m_22",
+  "ncmId": 28152550,
+  "sources": {
+    "netease": {
+      "songId": 28152550,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "和我相似的你 和你相似的我",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2008-10-08",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 120,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "DECO*27 的出道作（2008 年 10 月）：「这里是五天后的我，收到请回答。」用无线电呼叫的方式，一天天喊回因为小事分开的你。",
+      "valence": -0.4,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "出道作见 Wikipedia；VocaDB 标签 bittersweet / breakup。",
+      "refs": [
+        {
+          "title": "Wikipedia · 相愛性理論",
+          "url": "https://ja.wikipedia.org/wiki/相愛性理論"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "m_29",
+  "ncmId": 28152557,
+  "sources": {
+    "netease": {
+      "songId": 28152557,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "你以上，我未满。",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 9,
+      "disc": 1,
+      "released": "2013-12-18",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 139,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true
+    },
+    "draft": {
+      "intro": "喜欢、很喜欢、超喜欢——比较喜欢的程度，今天就到此为止吧。DECO*27 2009 年 9 月的甜腻恋歌，带着一点可爱的嫉妒。",
+      "valence": 0.6,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "歌词；VocaDB 标签 cute / uplifting。",
+      "refs": [
+        {
+          "title": "VocaDB · キミ以上、ボク未満。",
+          "url": "https://vocadb.net/S/3273"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

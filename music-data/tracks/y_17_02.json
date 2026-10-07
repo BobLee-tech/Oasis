@@ -1,0 +1,37 @@
+{
+  "id": "y_17_02",
+  "ncmId": 487527979,
+  "sources": {
+    "netease": {
+      "songId": 487527979,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "卡特兰 Cattleya",
+      "album": "夏草が邪魔をする",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2017-06-28",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 79,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "酷爽渣渣",
+      "transUser": "翻転岩石"
+    },
+    "draft": {
+      "intro": "以卡特兰为名：想用钱买一颗全新的心，买一双没有阴云的眼睛。冷静的交换语言底下，是那句不肯说破的告别——「我不会让你知道分别的时刻，所以笑吧」。",
+      "valence": -0.4,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "歌词以买心、买眼睛交换告别；结尾的笑是遮掩。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

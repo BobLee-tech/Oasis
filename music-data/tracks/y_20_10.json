@@ -1,0 +1,39 @@
+{
+  "id": "y_20_10",
+  "ncmId": 1466520416,
+  "sources": {
+    "netease": {
+      "songId": 1466520416,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "Thoughtcrime",
+      "album": "盗作",
+      "trackNo": 10,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      },
+      "bpm": 99,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "拿不拿的男友Rin"
+    },
+    "draft": {
+      "intro": "题目取自奥威尔《一九八四》，也向尾崎放哉的自由律俳句致意。诅咒别人才觉得痛快，所以写诗；梦想是有一天登上早间新闻。",
+      "valence": -0.7,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记；全碟最冷硬的一首。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

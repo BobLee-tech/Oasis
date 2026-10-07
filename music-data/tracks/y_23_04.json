@@ -1,0 +1,35 @@
+{
+  "id": "y_23_04",
+  "ncmId": 3400023086,
+  "sources": {
+    "netease": {
+      "songId": 3400023086,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "向萩原朔太郎的同名诗集致意：对着路边的月影狂吠，一个人在夜市里游荡，「这家伙又懂我什么」。孤独里带着一点兽性的放任。",
+      "valence": -0.2,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

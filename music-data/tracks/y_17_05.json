@@ -1,0 +1,24 @@
+{
+  "id": "y_17_05",
+  "ncmId": 487527982,
+  "sources": {
+    "netease": {
+      "songId": 487527982,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "飞行",
+      "album": "夏草が邪魔をする",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2017-06-28",
+      "bpm": 100
+    },
+    "draft": {
+      "intro": "九十秒的器乐间奏，名叫「飞行」。下一首里的「我」会在暮色中飞离这颗星球，这里像是起飞前的那口气。",
+      "valence": 0.2,
+      "feel": "wonder",
+      "confidence": "low",
+      "basis": "纯器乐；与下一首《靴の花火》的飞行意象相连（推测）。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

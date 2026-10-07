@@ -1,0 +1,43 @@
+{
+  "id": "m_21",
+  "ncmId": 28152549,
+  "sources": {
+    "netease": {
+      "songId": 28152549,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "爱的话语",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 1,
+      "disc": 1,
+      "released": "2009-07-21",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      },
+      "tieIn": "游戏《初音未来：歌姬计划f》插曲",
+      "bpm": 137,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "muzukil"
+    },
+    "draft": {
+      "intro": "DECO*27 2009 年 7 月写给听众的谢礼，「爱言叶」就是「爱が十、ありがとう」。后来续写成系列，也是他早期破百万播放的歌之一。",
+      "valence": 0.7,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "见 Wikipedia 与 VocaDB。",
+      "refs": [
+        {
+          "title": "Wikipedia · 愛言葉 (DECO*27の曲)",
+          "url": "https://ja.wikipedia.org/wiki/愛言葉_(DECO*27の曲)"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

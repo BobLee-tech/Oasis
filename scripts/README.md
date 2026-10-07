@@ -12,6 +12,10 @@
 | `npm run lyric:translate` | 整首机器初译 → 定点自检 → 同轴中文 LRC | `lyrics-src/<id>/` |
 | `npm run lyric:netease -- --track <id>` | 已有原文的曲目导入网易云译文，对齐到本地轴并以 machine 状态直接发布 | `lyrics-src/<id>/translation.zh.lrc` → `dist-lyrics/` |
 | `npm run lyric:review` | 生成逐行试听 + 编辑的本地校对页 | `public/__lyrics-review/` |
+| `npm run lyric:gate` | 歌词五道闸全曲库体检（版本/洁净/译文/读音/试听），`--track` 看行号 | 只读，打印报告 |
+| `npm run music:netease` | 网易云事实层：译名、专辑、署名、出处、BPM + 歌词换源提案（有缓存不联网） | `music-data/tracks/<id>.json` 的 `sources.netease` |
+| `npm run music:build` | 曲目档案合并（人标 > 导入 > 自动 > 专辑默认）+ 校验，`prebuild` 自动跑 | `src/data/trackProfiles.generated.json` |
+| `npm run dev` → `/__studio` | **曲目工坊**：歌词换源/打点/补译/读音、资料与网页导入、心境与副歌标注（只在开发服务器） | `music-data/`、`lyrics-src/`、`dist-lyrics/` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
 | `npm run live2d:texture` | Miku 母版贴图降到 1024² WebP | `public/live2d/miku/miku_sample_t04.1024/` |
 | `npm run live2d:patch` | 把六段手势动作修成一次性播放 | `public/live2d/miku/motion/` |

@@ -1,0 +1,37 @@
+{
+  "id": "y_19_06",
+  "ncmId": 1357953774,
+  "sources": {
+    "netease": {
+      "songId": 1357953774,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "起舞吧",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2019-04-10",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 94,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "_Donut_",
+      "transUser": "每天都要早休息"
+    },
+    "draft": {
+      "intro": "嘲笑当初选择音乐的自己，想抹掉曾经炫耀过的吉他，却还是邀你一起跳舞到天亮。自暴自弃里，带着一点豁出去的轻快。",
+      "valence": -0.3,
+      "feel": "tense",
+      "confidence": "medium",
+      "basis": "歌词自嘲与放弃；曲风轻快。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

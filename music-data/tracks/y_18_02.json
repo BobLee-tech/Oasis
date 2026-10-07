@@ -1,0 +1,43 @@
+{
+  "id": "y_18_02",
+  "ncmId": 557581314,
+  "sources": {
+    "netease": {
+      "songId": 557581314,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "败犬不需要安可",
+      "album": "負け犬にアンコールはいらない",
+      "trackNo": 2,
+      "disc": 1,
+      "released": "2018-05-09",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 94,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "Riecheselva",
+      "transUser": "末夏迷子"
+    },
+    "draft": {
+      "intro": "同名曲是一份败犬的自白：不想长大，却已经学会了假笑。倒数五、四、三、二之后的那声嚎叫，既是自嘲，也是仍想发出声音的方式。",
+      "valence": -0.3,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "歌词连续拆解漂亮话；「败犬的远吠」双关（你的专辑注记）。",
+      "refs": [
+        {
+          "title": "Wikipedia · 負け犬にアンコールはいらない",
+          "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

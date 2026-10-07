@@ -1,0 +1,23 @@
+{
+  "id": "y_19_05",
+  "ncmId": 1357953766,
+  "sources": {
+    "netease": {
+      "songId": 1357953766,
+      "fetchedAt": "2026-10-06",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 5,
+      "disc": 1,
+      "released": "2019-04-10",
+      "bpm": 89
+    },
+    "draft": {
+      "intro": "日期标题的第二首器乐，七月十三日。夹在专辑中段，像旅途中没有写下文字的一天。",
+      "valence": -0.1,
+      "feel": "peaceful",
+      "confidence": "low",
+      "basis": "纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

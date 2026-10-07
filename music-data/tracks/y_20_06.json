@@ -1,0 +1,37 @@
+{
+  "id": "y_20_06",
+  "ncmId": 1466519472,
+  "sources": {
+    "netease": {
+      "songId": 1466519472,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "复制人 ",
+      "album": "盗作",
+      "trackNo": 6,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 95,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "绛岛",
+      "transUser": "Akary_eil"
+    },
+    "draft": {
+      "intro": "借用《银翼杀手》与《仿生人会梦见电子羊吗？》的造词：无人的剧场里看着电影，心以外都是假的，连神明也是作品——我们都是复制品。",
+      "valence": -0.3,
+      "feel": "tense",
+      "confidence": "high",
+      "basis": "出处见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

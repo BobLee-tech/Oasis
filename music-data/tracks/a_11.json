@@ -1,0 +1,38 @@
+{
+  "id": "a_11",
+  "ncmId": 2071843862,
+  "sources": {
+    "netease": {
+      "songId": 2071843862,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "我们称其为爱",
+      "album": "季億の箱",
+      "trackNo": 4,
+      "disc": 1,
+      "released": "2023-08-11",
+      "credits": {
+        "lyricist": [
+          "ひとみ"
+        ],
+        "composer": [
+          "ひとみ"
+        ]
+      },
+      "tieIn": "电影《比辛香料注入更多的爱》主题曲",
+      "bpm": 101,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "SAK_UTA"
+    },
+    "draft": {
+      "intro": "凌晨两点有人在哭，三点有人在笑。坑坑洼洼的、会伤人的，我们也把它叫作爱。电影《比辛香料注入更多的爱》主题曲。",
+      "valence": 0.2,
+      "feel": "tender",
+      "confidence": "high",
+      "basis": "歌词；主题曲见网易云。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "m_02",
+  "ncmId": 22677560,
+  "sources": {
+    "netease": {
+      "songId": 22677560,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～impacts～",
+      "trackNo": 8,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "livetune"
+        ],
+        "composer": [
+          "livetune"
+        ],
+        "arranger": [
+          "livetune"
+        ]
+      },
+      "tieIn": "演唱会《初音未来魔法未来演唱会2014》插曲",
+      "bpm": 84,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "滑稽是我_我是滑稽"
+    },
+    "draft": {
+      "intro": "kz（livetune）的代表作之一：握着你的手入睡，盼着再和你度过一个美好的早晨——这么小的希望，也是奇迹。可那句再见始终没说。",
+      "valence": -0.3,
+      "feel": "tender",
+      "confidence": "medium",
+      "basis": "歌词。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

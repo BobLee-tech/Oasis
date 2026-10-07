@@ -1,0 +1,23 @@
+{
+  "id": "y_19_10",
+  "ncmId": 1357960250,
+  "sources": {
+    "netease": {
+      "songId": 1357960250,
+      "fetchedAt": "2026-10-06",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 10,
+      "disc": 1,
+      "released": "2019-04-10",
+      "bpm": 78
+    },
+    "draft": {
+      "intro": "五月六日。又一页没有歌词的日记，留给瑞典的风景，也留给越来越近的终点。",
+      "valence": -0.2,
+      "feel": "peaceful",
+      "confidence": "low",
+      "basis": "纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

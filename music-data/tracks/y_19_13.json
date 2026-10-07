@@ -1,0 +1,29 @@
+{
+  "id": "y_19_13",
+  "ncmId": 1357953767,
+  "sources": {
+    "netease": {
+      "songId": 1357953767,
+      "fetchedAt": "2026-10-06",
+      "album": "だから僕は音楽を辞めた",
+      "trackNo": 13,
+      "disc": 1,
+      "released": "2019-04-10",
+      "bpm": 84
+    },
+    "draft": {
+      "intro": "最后一个日期，四月十日，也正是这张专辑的发行日。故事在这一天合上。",
+      "valence": -0.2,
+      "feel": "peaceful",
+      "confidence": "medium",
+      "basis": "纯器乐；发行日 2019-04-10 见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · だから僕は音楽を辞めた",
+          "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

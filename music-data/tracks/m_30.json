@@ -1,0 +1,46 @@
+{
+  "id": "m_30",
+  "ncmId": 28152558,
+  "sources": {
+    "netease": {
+      "songId": 28152558,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "爱迷挽歌",
+      "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+      "trackNo": 10,
+      "disc": 1,
+      "released": "2013-12-18",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ],
+        "arranger": [
+          "DECO*27"
+        ]
+      },
+      "bpm": 105,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "fortuneparuru",
+      "transUser": "fortuneparuru"
+    },
+    "draft": {
+      "intro": "「再怎么说也哭得太凶了吧」，你笑着说，我却怎么也笑不出来。DECO*27 2010 年的作品，先有 marina 演唱版，再有初音未来版。",
+      "valence": -0.5,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "见 Wikipedia。",
+      "refs": [
+        {
+          "title": "Wikipedia · 愛迷エレジー",
+          "url": "https://ja.wikipedia.org/wiki/愛迷エレジー"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "y_23_02",
+  "ncmId": 3400023084,
+  "sources": {
+    "netease": {
+      "songId": 3400023084,
+      "fetchedAt": "2026-10-06",
+      "album": "幻燈",
+      "trackNo": 3,
+      "disc": 1,
+      "released": "2023-04-05",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "已过期i",
+      "transUser": "Aki惊蛰"
+    },
+    "draft": {
+      "intro": "以格林童话《不来梅的城市乐手》为母题，讲的却是两个被世界弃置的人结伴前行：不用想了，先跟着这声音跳舞吧。",
+      "valence": 0.3,
+      "feel": "joyful",
+      "confidence": "high",
+      "basis": "重点在结伴（你的专辑注记）；歌词邀舞。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

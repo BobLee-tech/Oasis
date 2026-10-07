@@ -1,0 +1,37 @@
+{
+  "id": "y_20_07",
+  "ncmId": 1466519473,
+  "sources": {
+    "netease": {
+      "songId": 1466519473,
+      "fetchedAt": "2026-10-06",
+      "titleAlt": "花人局",
+      "album": "盗作",
+      "trackNo": 7,
+      "disc": 1,
+      "released": "2020-07-29",
+      "credits": {
+        "lyricist": [
+          "n-buna"
+        ],
+        "composer": [
+          "n-buna"
+        ]
+      },
+      "bpm": 125,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "lyricUser": "绛岛",
+      "transUser": "Xzes"
+    },
+    "draft": {
+      "intro": "读作「はなもたせ」，由「美人局」改造而来。醒来时房间空无一人，只剩一枝花和一点余温；这首写的是盗作家的妻子。",
+      "valence": -0.3,
+      "feel": "nostalgic",
+      "confidence": "high",
+      "basis": "读法、来源与人物见你的专辑注记。",
+      "draftedAt": "2026-10-07"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "m_18",
+  "ncmId": 22677583,
+  "sources": {
+    "netease": {
+      "songId": 22677583,
+      "fetchedAt": "2026-10-06",
+      "album": "初音ミクベスト ～memories～",
+      "trackNo": 15,
+      "disc": 1,
+      "released": "2009-08-26",
+      "credits": {
+        "lyricist": [
+          "ジミーサムP"
+        ],
+        "composer": [
+          "ジミーサムP"
+        ]
+      },
+      "bpm": 97,
+      "hasLyrics": true,
+      "hasTranslation": true,
+      "hasRoma": true,
+      "transUser": "_小铭丶"
+    },
+    "draft": {
+      "intro": "ジミーサムP 2009 年的钢琴抒情曲：你转身走开，我在心里像孩子一样喊「别走」；然后我也转身，赶在眼泪落下之前。",
+      "valence": -0.6,
+      "feel": "sad",
+      "confidence": "high",
+      "basis": "VocaDB 标签 ballad / breakup；歌词。",
+      "refs": [
+        {
+          "title": "VocaDB · from Y to Y",
+          "url": "https://vocadb.net/S/4230"
+        }
+      ],
+      "draftedAt": "2026-10-07"
+    }
+  }
+}
