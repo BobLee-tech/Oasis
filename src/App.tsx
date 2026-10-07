@@ -5,13 +5,14 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
 import { useGarden, filterVisible } from './hooks/useGarden';
-import { peekCachedArtworks, filterVisible as filterVisibleArtworks, resolveArtSrc, type Artwork } from './hooks/useAtelier';
 import { playBGM } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
 import { termTint } from './lib/solarTerms';
 import { NIGHT_REMINDERS, MIKU_WHISPERS } from './data/quotes';
+
+const WHISPERS = [...NIGHT_REMINDERS, ...MIKU_WHISPERS];
 import { useCoarsePointer } from './hooks/useCoarsePointer';
 import { getVisitorAlias } from './lib/visitor';
 import { onRipple } from './lib/rippleSignal';
@@ -106,11 +107,8 @@ const ClickRipples = () => {
 };
 
 // 🌙 深夜低语：23:00–4:59 到访时，底部浮起一句温柔提醒后缓缓散去；每次会话只说一次，不扰人。
-//   本地缓存里若有 miku 标签的公开收藏，优先配一张一并浮现（点击直达绘阁灯箱）；
-//   没有则回退纯文字提醒。只读 peekCachedArtworks() 快照，不为此额外发起云端请求。
-type WhisperContent = { kind: 'text'; msg: string } | { kind: 'art'; artwork: Artwork; msg: string };
-const NightWhisper = ({ isAdmin, onOpenArtwork }: { isAdmin: boolean; onOpenArtwork: (id: string) => void }) => {
-  const [content, setContent] = useState<WhisperContent | null>(null);
+const NightWhisper = () => {
+  const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
     if (!isLateNight() || sessionStorage.getItem('oasis_night_whispered')) return;
     // ⚠️ 标记必须在真正展示（show 定时器触发）时才写入，不能在这里同步写：
@@ -118,43 +116,24 @@ const NightWhisper = ({ isAdmin, onOpenArtwork }: { isAdmin: boolean; onOpenArtw
     //   空跑的那一次会抢先占用标记，导致真正存活的那次直接被挡在门外、永远不展示。
     const show = setTimeout(() => {
       sessionStorage.setItem('oasis_night_whispered', '1');
-      const mikuPicks = filterVisibleArtworks(peekCachedArtworks(), isAdmin).filter((a) => a.tags.includes('miku'));
-      if (mikuPicks.length > 0) {
-        const artwork = mikuPicks[Math.floor(Math.random() * mikuPicks.length)];
-        const msg = MIKU_WHISPERS[Math.floor(Math.random() * MIKU_WHISPERS.length)];
-        setContent({ kind: 'art', artwork, msg });
-      } else {
-        setContent({ kind: 'text', msg: NIGHT_REMINDERS[Math.floor(Math.random() * NIGHT_REMINDERS.length)] });
-      }
+      setMsg(WHISPERS[Math.floor(Math.random() * WHISPERS.length)]);
     }, 4000);   // 等入场安顿好再轻声说
-    const hide = setTimeout(() => setContent(null), 14000);  // 停留 10 秒后散去
+    const hide = setTimeout(() => setMsg(null), 14000);  // 停留 10 秒后散去
     return () => { clearTimeout(show); clearTimeout(hide); };
-  }, [isAdmin]);
+  }, []);
   return (
     <AnimatePresence>
-      {content && (
+      {msg && (
         <motion.div
           initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -8, filter: 'blur(6px)' }}
           transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-          onClick={content.kind === 'art' ? () => onOpenArtwork(content.artwork.id) : undefined}
-          className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[350] rounded-full backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 shadow-sm ${
-            content.kind === 'art' ? 'flex items-center gap-3 pl-2 pr-5 py-2 cursor-pointer pointer-events-auto' : 'pointer-events-none px-6 py-3'
-          }`}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[350] rounded-full backdrop-blur-md bg-white/40 dark:bg-white/5 border border-slate-300/40 dark:border-white/10 shadow-sm pointer-events-none px-6 py-3"
         >
-          {content.kind === 'art' ? (
-            <>
-              <img src={resolveArtSrc(content.artwork.imagePath, 'thumb')} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-              <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
-                <span className="mr-2">♪</span>{content.msg}
-              </span>
-            </>
-          ) : (
-            <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
-              <span className="mr-2">🌙</span>{content.msg}
-            </span>
-          )}
+          <span className="font-serif text-sm text-slate-500 dark:text-slate-300 whitespace-nowrap">
+            <span className="mr-2">🌙</span>{msg}
+          </span>
         </motion.div>
       )}
     </AnimatePresence>
@@ -453,7 +432,7 @@ function App() {
 
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
       <OasisBackground phase={bgPhase} isDark={isDarkMode} />
-      {terminalStatus === 'granted' && <NightWhisper isAdmin={effectiveIsAdmin} onOpenArtwork={(id) => navigate('atelier', id)} />}
+      {terminalStatus === 'granted' && <NightWhisper />}
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
@@ -483,7 +462,7 @@ function App() {
                       onNavigate={(id) => navigate('orchard', id)}
                     />)}
                     {appView === 'lights' && wrap('lights-space', <OasisLights />)}
-                    {appView === 'atelier' && wrap('atelier-space', <OasisAtelier isAdmin={effectiveIsAdmin} />)}
+                    {appView === 'atelier' && wrap('atelier-space', <OasisAtelier />)}
                   </AnimatePresence>
                 );
               })()}

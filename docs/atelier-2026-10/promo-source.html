@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap">
+<style>
+/* 宣传短片：1200×900，12 秒循环。所有画面由 seek(t) 纯函数决定，逐帧截图后交给 ffmpeg。
+   动效只用 opacity 与 transform；开头与结尾都落在同一张空纸上，循环无缝。 */
+:root { --paper: #F5F0E6; --ink: #1F2733; --ink2: #4A5463; --ink3: #8A8F98; --seal: #B23A2C; --c: #39C5BB; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1200px; height: 900px; overflow: hidden; background: var(--paper); }
+body { font-family: "Noto Serif SC", serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.stage { position: absolute; inset: 0; overflow: hidden;
+  background: radial-gradient(70% 60% at 18% 12%, color-mix(in srgb, var(--c) 14%, transparent), transparent 70%),
+              radial-gradient(60% 55% at 90% 92%, color-mix(in srgb, var(--c) 10%, transparent), transparent 70%), var(--paper); }
+.tex { position: absolute; inset: 0; background: url("file:///Users/nai/Developer/Oasis/public/textures/paper-cotton.webp") 0 0 / 600px; opacity: .5; mix-blend-mode: multiply; }
+.a { position: absolute; will-change: transform, opacity; opacity: 0; }
+.eyebrow { font-family: "JetBrains Mono", monospace; font-size: 15px; letter-spacing: .32em; text-transform: uppercase; color: var(--ink3); }
+.hl { font-family: "EB Garamond", "Noto Serif SC", serif; font-weight: 500; font-size: 76px; line-height: 1.04; letter-spacing: -.005em; }
+.hl i { font-style: italic; }
+.zh { font-size: 24px; color: var(--ink2); letter-spacing: .06em; }
+.win { border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.04), 0 40px 80px -30px rgba(40,30,10,.45); border: 1px solid rgba(31,39,51,.12); }
+.bar { height: 34px; background: #EFEBE2; border-bottom: 1px solid rgba(31,39,51,.08); display: flex; align-items: center; gap: 7px; padding: 0 14px; }
+.bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(31,39,51,.16); }
+.bar span { margin-left: 12px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--ink3); }
+.view { position: relative; overflow: hidden; }
+.view img { position: absolute; left: 0; top: 0; width: 100%; display: block; transform-origin: 30% 30%; }
+.phone { border-radius: 52px; background: #15171C; padding: 12px; box-shadow: 0 50px 90px -36px rgba(30,20,0,.55), inset 0 0 0 1.5px rgba(255,255,255,.08); }
+.screen { position: relative; border-radius: 41px; overflow: hidden; background: #F7F4EA; }
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.chip { font-family: "JetBrains Mono", monospace; font-size: 16px; letter-spacing: .06em; padding: 10px 18px; border-radius: 999px; background: rgba(255,255,255,.82); border: 1px solid rgba(31,39,51,.12); color: var(--ink); box-shadow: 0 14px 30px -18px rgba(0,0,0,.35); white-space: nowrap; }
+.chip b { color: var(--c); font-weight: 500; filter: brightness(.75); }
+.cap { font-size: 30px; line-height: 1.45; letter-spacing: .02em; }
+.cap small { display: block; font-family: "JetBrains Mono", monospace; font-size: 14px; letter-spacing: .24em; color: var(--ink3); margin-bottom: 10px; text-transform: uppercase; }
+.bubble { background: #fff; border-radius: 16px; padding: 16px 20px; box-shadow: 0 24px 50px -24px rgba(0,0,0,.4); border: 1px solid rgba(31,39,51,.1); font-family: "EB Garamond", serif; font-size: 25px; line-height: 1.35; width: 470px; }
+.bubble small { display: block; font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--ink3); margin-bottom: 6px; }
+.end-t { font-family: "EB Garamond", serif; font-weight: 500; font-size: 128px; line-height: 1; }
+.end-s { font-family: "JetBrains Mono", monospace; font-size: 17px; letter-spacing: .14em; color: var(--ink2); text-align: center; }
+.seal { width: 132px; height: 132px; }
+.seal rect.bg { fill: var(--seal); }
+.seal rect.edge { fill: none; stroke: #FFF4EC; stroke-width: 1.6; opacity: .6; }
+.seal text { fill: #FFF4EC; font-family: "Noto Serif SC", serif; font-weight: 700; font-size: 19px; }
+.ring { width: 220px; height: 64px; border-radius: 999px; border: 3px solid var(--c); }
+</style></head>
+<body><div class="stage" id="stage"><div class="tex"></div></div>
+<svg width="0" height="0" style="position:absolute"><defs><filter id="inkpad" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter></defs></svg>
+<script>
+const SH = '../shots/';
+const P = new URLSearchParams(location.search).get('p') || 'athena';
+const MODE = new URLSearchParams(location.search).get('mode') || 'video';
+const stage = document.getElementById('stage');
+const el = (html, css) => { const d = document.createElement('div'); d.className = 'a'; d.innerHTML = html; Object.assign(d.style, css); stage.appendChild(d); return d; };
+const seal = (a, b) => `<svg class="seal" viewBox="0 0 60 60"><rect class="bg" x="2" y="2" width="56" height="56" rx="4" filter="url(#inkpad)"/><rect class="edge" x="6" y="6" width="48" height="48" rx="2"/><text x="31" y="27" text-anchor="middle">${a}</text><text x="31" y="49" text-anchor="middle">${b}</text></svg>`;
+const win = (src, w, h, url, pos = 'top') => `<div class="win" style="width:${w}px"><div class="bar"><i></i><i></i><i></i><span>${url}</span></div><div class="view" style="height:${h}px"><img src="${src}" style="object-position:${pos}"></div></div>`;
+const phone = (srcs, w) => `<div class="phone" style="width:${w}px"><div class="screen" style="height:${Math.round((w - 24) * 844 / 390)}px">${srcs.map((s, i) => `<img data-k="${i}" src="${s}">`).join('')}</div></div>`;
+
+// —— 时间轴：tracks = [元素, 属性, [[t, v], ...]]；属性 o/x/y/s/r ——
+const E = { o: (t) => t, out: (t) => 1 - Math.pow(1 - t, 3), io: (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, back: (t) => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); } };
+const tracks = [];
+const tw = (node, prop, keys, ease = 'out') => tracks.push({ node, prop, keys, ease });
+const fadeIn = (n, t0, d = .6, dy = 18) => { tw(n, 'o', [[t0, 0], [t0 + d, 1]]); if (dy) tw(n, 'y', [[t0, dy], [t0 + d, 0]]); };
+const fadeOut = (n, t0, d = .45, dy = -10) => { tw(n, 'o', [[t0, 1], [t0 + d, 0]], 'o'); if (dy) tw(n, 'y', [[t0, 0], [t0 + d, dy]], 'io'); };
+const stamp = (n, t0) => { tw(n, 'o', [[t0, 0], [t0 + .18, 1]], 'o'); tw(n, 's', [[t0, 1.4], [t0 + .42, 1]], 'back'); tw(n, 'r', [[t0, -14], [t0 + .42, -4]], 'out'); };
+
+const val = (keys, t, ease) => {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    const [t1, v1] = keys[i], [t0, v0] = keys[i - 1];
+    if (t <= t1) return v0 + (v1 - v0) * E[ease]((t - t0) / (t1 - t0));
+  }
+  return keys[keys.length - 1][1];
+};
+window.seek = (t) => {
+  const st = new Map();
+  for (const tr of tracks) {
+    let s = st.get(tr.node); if (!s) { s = { o: 0, x: 0, y: 0, s: 1, r: 0, has: {} }; st.set(tr.node, s); }
+    // 同一属性多条轨道：按时间先后，最后一条已开始的轨道生效
+    if (t >= tr.keys[0][0] || !s.has[tr.prop]) { s[tr.prop] = val(tr.keys, t, tr.ease); s.has[tr.prop] = true; }
+  }
+  for (const [n, s] of st) { n.style.opacity = s.o; n.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.s}) rotate(${s.r}deg)`; }
+};
+const endCard = (name, s1, s2, line, t0) => {
+  const T = el(`<div class="end-t">${name}</div>`, { left: '0', right: '0', top: '300px', textAlign: 'center' }); fadeIn(T, t0, .7, 24);
+  const S = el(seal(s1, s2), { left: '534px', top: '440px' }); stamp(S, t0 + .5);
+  const L = el(`<div class="end-s">${line}</div>`, { left: '0', right: '0', top: '610px' }); fadeIn(L, t0 + .75, .6, 10);
+  [T, S, L].forEach((n) => fadeOut(n, 11.45, .5, 0));
+};
+
+if (P === 'athena') {
+  document.documentElement.style.setProperty('--c', '#7C6FD6');
+  if (MODE === 'still') {
+    const A = el(win(SH + 'at-atlas.png', 1000, 625, 'athena-zeta-ten.vercel.app'), { left: '100px', top: '96px', opacity: 1 });
+    const B = el(win(SH + 'at-plan.png', 470, 300, 'athena · delivery plan'), { left: '660px', top: '520px', opacity: 1 });
+  } else {
+    const H = el(`<div class="eyebrow">Athena · Organisation Atlas</div><div class="hl" style="margin-top:26px">Every team map<br>is <i>a still photograph.</i></div><div class="zh" style="margin-top:28px">团队状态散在各处，等到站会才发现阻塞。</div>`, { left: '110px', top: '250px' });
+    fadeIn(H, .25, .8, 26); fadeOut(H, 2.3, .5);
+    const A = el(win(SH + 'at-atlas.png', 1000, 625, 'athena-zeta-ten.vercel.app'), { left: '100px', top: '120px' });
+    tw(A, 'o', [[2.5, 0], [3.2, 1], [6.9, 1], [7.4, 0]], 'out'); tw(A, 's', [[2.5, .94], [3.3, 1], [6.9, 1], [7.4, .96]], 'out');
+    const img = A.querySelector('img'); img.classList.add('a'); img.style.opacity = 1;
+    tw(img, 'o', [[0, 1], [12, 1]]); tw(img, 's', [[3.0, 1], [7.2, 1.16]], 'io'); tw(img, 'x', [[3.0, 0], [7.2, -30]], 'io');
+    const c1 = el(`<div class="chip"><b>11</b> 个部门</div>`, { left: '140px', top: '640px' }); fadeIn(c1, 3.6, .5, 12); fadeOut(c1, 6.9, .4, 0);
+    const c2 = el(`<div class="chip"><b>137</b> 个节点</div>`, { left: '330px', top: '640px' }); fadeIn(c2, 3.9, .5, 12); fadeOut(c2, 6.9, .4, 0);
+    const c3 = el(`<div class="chip">文档读进来，<b>图谱</b>自己长出来</div>`, { left: '520px', top: '640px' }); fadeIn(c3, 4.2, .5, 12); fadeOut(c3, 6.9, .4, 0);
+    const D = el(`<div class="bubble"><small>Discord · DM from Athena</small>“Runbook’s done, but legal never got back to me — <b>blocked.</b>”</div>`, { left: '640px', top: '300px' });
+    fadeIn(D, 5.0, .55, 16); fadeOut(D, 6.9, .4, 0);
+    const D2 = el(`<div class="chip">Mistral 抽取 → <b>Blocker</b> 写回图谱</div>`, { left: '700px', top: '470px' }); fadeIn(D2, 5.7, .5, 10); fadeOut(D2, 6.9, .4, 0);
+    const B = el(win(SH + 'at-plan.png', 1000, 625, 'athena · delivery plan'), { left: '100px', top: '120px' });
+    tw(B, 'o', [[7.1, 0], [7.7, 1], [9.5, 1], [9.95, 0]], 'out'); tw(B, 'x', [[7.1, 70], [7.8, 0]], 'out');
+    const bi = B.querySelector('img'); bi.classList.add('a'); tw(bi, 'o', [[0, 1], [12, 1]]); tw(bi, 'y', [[7.6, 0], [9.6, -90]], 'io');
+    const c4 = el(`<div class="chip">16 项分派 · 15 个待澄清问题 · 逐人 Discord 跟进</div>`, { left: '170px', top: '660px' }); fadeIn(c4, 8.0, .5, 12); fadeOut(c4, 9.5, .4, 0);
+    endCard('Athena', '赛道', '冠军', 'SIG TRACK PRIZE · UNSW AI SOCIETY × ATLASSIAN × MISTRAL · 2026', 10.0);
+  }
+}
+
+if (P === 'akeso') {
+  document.documentElement.style.setProperty('--c', '#58B368');
+  const scr = [SH + 'ak-welcome.png', SH + 'ak-s1.png', SH + 'ak-today-top.png', SH + 'ak-viewplan.png'];
+  if (MODE === 'still') {
+    const L = el(phone([SH + 'ak-today-top.png'], 330), { left: '250px', top: '86px', opacity: 1, transform: 'rotate(-4deg)' });
+    const R = el(phone([SH + 'ak-viewplan.png'], 330), { left: '620px', top: '130px', opacity: 1, transform: 'rotate(3deg)' });
+  } else {
+    const H = el(`<div class="eyebrow">Akeso · Personal energy coach</div><div class="hl" style="margin-top:26px">Meet your day<br>at the <i>right energy.</i></div><div class="zh" style="margin-top:28px">难的事放在状态最好的时候。</div>`, { left: '110px', top: '250px' });
+    fadeIn(H, .25, .8, 26); fadeOut(H, 2.3, .5);
+    const F = el(phone(scr, 340), { left: '190px', top: '78px' });
+    tw(F, 'o', [[2.4, 0], [3.1, 1], [9.4, 1], [9.9, 0]], 'out'); tw(F, 'y', [[2.4, 60], [3.2, 0]], 'out');
+    const imgs = [...F.querySelectorAll('img')]; imgs.forEach((im) => im.classList.add('a'));
+    const cuts = [[2.4, 4.0], [4.0, 5.6], [5.6, 7.6], [7.6, 10]];
+    imgs.forEach((im, i) => { const [a, b] = cuts[i]; tw(im, 'o', i === 0 ? [[0, 1], [b - .05, 1], [b + .35, 0]] : [[a - .05, 0], [a + .35, 1], [b - .05, 1], [b + .35, i === 3 ? 1 : 0]], 'io'); });
+    tw(imgs[3], 'y', [[8.2, 0], [9.6, -160]], 'io');
+    const caps = [
+      ['01 · 打卡', '20 秒回答四个问题：<br>精力、睡眠、饮食、饮水。', 4.0, 5.5],
+      ['02 · 分数', '精力分数 80，<br>高峰 10–12 点，低谷 2–4 点。', 5.6, 7.5],
+      ['03 · 日程', '确定性规划器排任务，<br>模型只在约束内写措辞。', 7.6, 9.4],
+    ];
+    caps.forEach(([k, v, a, b]) => { const C = el(`<div class="cap"><small>${k}</small>${v}</div>`, { left: '640px', top: '360px' }); fadeIn(C, a, .5, 16); fadeOut(C, b, .4, -8); });
+    const W = el(`<div class="cap"><small>Akeso</small>不是医疗建议，<br>是一天的节奏。</div>`, { left: '640px', top: '360px' }); fadeIn(W, 2.9, .5, 16); fadeOut(W, 3.9, .3, -8);
+    endCard('Akeso', '决赛', '入围', 'FINALIST · ICON UNSW × LYRA · 2026', 10.0);
+  }
+}
+
+if (P === 'adaptiq') {
+  document.documentElement.style.setProperty('--c', '#6366F1');
+  if (MODE === 'still') {
+    const A = el(win(SH + 'ad-review.png', 940, 520, 'adaptiq · 报告中心'), { left: '70px', top: '130px', opacity: 1 });
+    const B = el(phone([SH + 'ad-parent.png'], 290), { left: '830px', top: '170px', opacity: 1, transform: 'rotate(3deg)' });
+  } else {
+    const H = el(`<div class="eyebrow">Adaptiq · AI 教学 SaaS</div><div class="hl" style="margin-top:30px;font-family:'Noto Serif SC',serif;font-weight:600;font-size:72px;line-height:1.25">AI 起草，<br>教师定稿。</div><div class="zh" style="margin-top:28px">报告不再从零手写，发出去的每个字都经过老师。</div>`, { left: '110px', top: '230px' });
+    fadeIn(H, .25, .8, 26); fadeOut(H, 2.3, .5);
+    const A = el(win(SH + 'ad-review-ai.png', 1020, 560, 'adaptiq · 报告中心 / 草稿箱'), { left: '90px', top: '150px' });
+    tw(A, 'o', [[2.4, 0], [3.1, 1], [7.0, 1], [7.4, 1]], 'out'); tw(A, 's', [[2.4, .95], [3.2, 1]], 'out');
+    const A2 = el(win(SH + 'ad-review.png', 1020, 560, 'adaptiq · 报告中心 / 草稿箱'), { left: '90px', top: '150px' });
+    tw(A2, 'o', [[4.4, 0], [5.0, 1], [9.4, 1], [9.9, 0]], 'io'); tw(A, 'o', [[5.0, 1], [5.1, 0]], 'o');
+    const k1 = el(`<div class="chip">DeepSeek 解析 4 类课件 → <b>预填草稿</b></div>`, { left: '120px', top: '740px' }); fadeIn(k1, 3.3, .5, 12); fadeOut(k1, 4.6, .35, 0);
+    const k2 = el(`<div class="chip">教师逐句修改 · <b>只有确认后的版本</b>能发给家长</div>`, { left: '120px', top: '740px' }); fadeIn(k2, 5.1, .5, 12); fadeOut(k2, 7.5, .35, 0);
+    const ai2 = A2.querySelector('img'); ai2.classList.add('a'); ai2.style.transformOrigin = '40% 28%';
+    tw(ai2, 'o', [[0, 1], [12, 1]]); tw(ai2, 's', [[5.1, 1], [5.9, 1.38], [6.3, 1.38], [6.8, 1]], 'io');
+    const R = el(`<div class="ring" style="width:116px;height:46px"></div>`, { left: '983px', top: '199px' });
+    tw(R, 'o', [[6.85, 0], [7.0, .95], [7.6, 0]], 'o'); tw(R, 's', [[6.85, .92], [7.6, 1.3]], 'out');
+    const Ph = el(phone([SH + 'ad-parent.png'], 300), { left: '790px', top: '120px' });
+    tw(Ph, 'o', [[7.5, 0], [8.1, 1], [9.4, 1], [9.9, 0]], 'out'); tw(Ph, 'x', [[7.5, 140], [8.3, 0]], 'out'); tw(Ph, 'r', [[7.5, 6], [8.3, 3]], 'out');
+    tw(A2, 'x', [[7.5, 0], [8.3, -60]], 'io');
+    const k3 = el(`<div class="chip">家长端：三级掌握程度 · <b>已收到</b> / 想和老师聊聊</div>`, { left: '120px', top: '740px' }); fadeIn(k3, 8.2, .5, 12); fadeOut(k3, 9.4, .35, 0);
+    endCard('Adaptiq', '机构', '交付', '已交付国内教育机构使用 · 团队交付，本人参与 · 2026', 10.0);
+  }
+}
+window.ready = document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }))));
+seek(MODE === 'still' ? 0 : 0);
+</script></body></html>

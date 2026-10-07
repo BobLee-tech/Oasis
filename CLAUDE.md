@@ -8,7 +8,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ## 架构(src/, 共约 5700 行)
 - [App.tsx](src/App.tsx) — 根组件:视图切换(AnimatePresence 交叉溶解 + RippleBloom 涟漪转场)、日夜主题、终端暗门(按 `` ` `` 或 2.5s 内连点右上角时钟 5 次唤起登录终端)、深夜低语、点击涟漪、访客模拟开关。
-- 视图(AppView):`welcome`(OasisGarden 入场页) / `garden`(OasisGallery 博客) / `soundscape`(OasisResonance 音乐播放器) / `orchard`(OasisOrchard 知识星图) / `lights`(OasisLights 友链灯笼)。底部 OasisDock 切换。
+- 视图(AppView):`welcome`(OasisGarden 入场页) / `garden`(OasisGallery 博客) / `soundscape`(OasisResonance 音乐播放器) / `orchard`(OasisOrchard 知识星图) / `lights`(OasisLights 友链灯笼) / `atelier`(OasisAtelier 工坊:简历三件作品的册页,数据在 `src/data/projects.ts`,规矩见 `atelier/atelier.css` 文件头)。底部 OasisDock 切换。
 - [lib/route.ts](src/lib/route.ts) — 极轻 hash 路由:`#/garden|resonance|constellation|lanterns`,garden 支持 `#/garden/<postId>`。注意 URL 段与内部 view 名不同(orchard↔constellation, soundscape↔resonance)。
 - [lib/supabase.ts](src/lib/supabase.ts) — 客户端,需 `.env.local` 里 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`。
 
@@ -31,7 +31,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。
 
 ## Supabase
-- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/garden_artworks.sql](supabase/garden_artworks.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
+- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
 
 ## 音频流程(详见 docs/audio-hosting.md)
 加歌用 `npm run song -- <文件|文件夹>`([scripts/post-song.mjs](scripts/post-song.mjs)):归档到 `public/audio/`(不部署) → 转 AAC 256k 到 `dist-audio/`(gitignored) → rclone 传 `oasis-r2:oasis-audio` → curl 校验 `audio.boblee.dev` 可访问 → 打印 PLAYLIST 代码行(`color`/`lyric` **故意留空**手填)。批量重转用 `scripts/transcode-audio.sh`;线上设 `VITE_AUDIO_BASE`。脚本总览见 [scripts/README.md](scripts/README.md)。

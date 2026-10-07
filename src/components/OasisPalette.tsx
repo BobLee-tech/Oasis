@@ -23,7 +23,7 @@ const VIEW_META: Record<PaletteView, { label: string; icon: string }> = {
   soundscape: { label: '共鸣 · Soundscape', icon: '🎧' },
   orchard: { label: '星图 · Orchard', icon: '🪐' },
   lights: { label: '灯火 · Lanterns', icon: '🏮' },
-  atelier: { label: '绘阁 · Atelier', icon: '🖼️' },
+  atelier: { label: '工坊 · Atelier', icon: '🪵' },
 };
 
 interface PostHit { kind: 'post'; id: string; title: string; color: string; snippet: string }

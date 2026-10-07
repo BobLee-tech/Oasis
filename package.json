@@ -10,7 +10,6 @@
     "preview": "vite preview",
     "backup": "node scripts/export-posts.mjs",
     "img": "node scripts/post-image.mjs",
-    "art": "node scripts/post-artwork.mjs",
     "song": "node scripts/post-song.mjs",
     "lyric": "node scripts/post-lyrics.mjs",
     "lyric:identity": "node scripts/build-track-identity.mjs",

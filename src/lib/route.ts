@@ -19,12 +19,12 @@ const SEG_TO_VIEW: Record<string, AppView> = {
   atelier: 'atelier',
 };
 
-// 支持「场所内单条目直达」的 view（garden 的文章 / constellation 的选中星 / atelier 的画作）
+// 支持「场所内单条目直达」的 view（garden 的文章 / constellation 的选中星 / atelier 工坊的项目页）
 const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'orchard', 'atelier']);
 
 export interface Route {
   view: AppView;        // 'welcome' 表示无有效路由（首页入场）
-  itemId?: string;      // garden/orchard 的文章 id 或 atelier 画作 id，仅 ITEM_VIEWS 内的场所有意义
+  itemId?: string;      // garden/orchard 的文章 id 或 atelier 项目 id，仅 ITEM_VIEWS 内的场所有意义
 }
 
 export const parseHash = (hash: string): Route => {

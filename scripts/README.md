@@ -6,7 +6,6 @@
 | 命令 | 干什么 | 产物落点 |
 |---|---|---|
 | `npm run img` | 截图 → webp → R2 → Markdown 图片语法 | `r2:oasis-picture` → `img.boblee.dev` |
-| `npm run art -- <图>` | 画作 → thumb/full 两档 webp → R2 → 「+ 装裱」表单字段 | `r2:oasis-picture/art/` → `img.boblee.dev/art` |
 | `npm run song -- <音频\|文件夹>` | 音频 → 归档 + AAC 转码 → R2 → PLAYLIST 代码行 | `oasis-r2:oasis-audio` → `audio.boblee.dev` |
 | `npm run lyric -- --track <id>` | 本地/LRCLIB/网易云同步歌词 → 校验 → 双语合并 → R2 | `oasis-r2:oasis-audio/lyrics` |
 | `npm run lyric:identity` | ffprobe 音频标签 → 可审计曲目身份清单 | `lyrics-config/tracks.identity.json` |
@@ -38,7 +37,7 @@ npm run lyric:translate -- --track y_18_03 \
   --reuse-reviewed-from y_20_04                      # 同词版本复用审校译文
 ```
 
-嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名（`art` 就是这么来的）：
+嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名：
 
 ```zsh
 alias song='node /Users/nai/Developer/Oasis/scripts/post-song.mjs'

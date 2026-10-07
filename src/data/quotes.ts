@@ -66,7 +66,7 @@ export const NIGHT_REMINDERS = [
   '这么晚还不睡，早点休息～'
 ];
 
-// 🎐 初音语录：深夜低语在本地有 miku 标签的公开收藏时，配一张画作一并浮现
+// 🎐 初音语录：与 NIGHT_REMINDERS 同池，深夜低语随机抽一句（绘阁画作已撤，不再配图）
 export const MIKU_WHISPERS = [
   '39 的方向，永远有光',
   '有些声音，隔着屏幕也能陪你到天亮',

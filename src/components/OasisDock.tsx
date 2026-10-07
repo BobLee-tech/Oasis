@@ -55,9 +55,10 @@ const GardenIcon = () => (
 
 const AtelierIcon = () => (
   <svg {...svgProps}>
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-    <circle cx="8.6" cy="9.6" r="1.45" fill="currentColor" stroke="none" />
-    <path d="m4.6 16.9 4.4-4.9 4 4.5 2.6-3 3.9 4.2" />
+    {/* 工坊：一方印章 */}
+    <path d="M9.6 13.6v-3a2.4 2.4 0 1 1 4.8 0v3" />
+    <rect x="4.5" y="13.6" width="15" height="4.6" rx="1.6" />
+    <path d="M6.5 21h11" />
   </svg>
 );
 
@@ -73,7 +74,7 @@ const DOCK_ITEMS: DockItem[] = [
   { view: 'soundscape', label: 'Resonance', shortLabel: '共鸣', icon: <ResonanceIcon /> },
   { view: 'orchard', label: 'Constellation', shortLabel: '星图', icon: <ConstellationIcon /> },
   { view: 'garden', label: 'Garden', shortLabel: '花园', icon: <GardenIcon /> },
-  { view: 'atelier', label: 'Atelier', shortLabel: '绘阁', icon: <AtelierIcon /> },
+  { view: 'atelier', label: 'Atelier', shortLabel: '工坊', icon: <AtelierIcon /> },
   { view: 'lights', label: 'Lanterns', shortLabel: '灯火', icon: <LanternIcon /> },
 ];
 

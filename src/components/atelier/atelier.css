@@ -1,0 +1,450 @@
+/* 🪵 工坊 Atelier · 册页
+   每件作品是一本摊开的册页：左画心（绫边 + 隔水 + 画心），右题跋，逐开左右对调。
+   设计语言是印刷品，不是 App：
+   · 控件不用药丸、图标砖、光晕、悬停浮起的卡片。按钮是一行字加一道细墨线；出处用中文序号和目录引线；
+     决策用批注的「按」；分工条是带「图一」题注的插图；决策卡是档案式双线表；标注用〔〕。
+   · 圆角最多 2px；颜色只有墨、朱（夜里换樱粉）与各件主色，主色只出现在画面里。
+   材质（全部 CC0，原图在 The Met Open Access；处理成去色、高通、无缝平铺的灰度图，用混合模式随昼夜换色）：
+   · xuan-fiber.webp   倪瓒《虞山林壑图》留白处的纸纤维与帘纹（Met 1973.120.8）
+   · ling-song.webp    宋金《童子缠枝花纹绫》残片的斜纹与暗花（Met 39708，馆藏著录即 silk twill damask / ling）
+   · ling-cloud.webp   清《云纹缎》残片（Met 69815），做封面册板
+   · inkpad-specks.webp 同幅画上乾隆「鉴赏」印的漏墨小斑（只取小斑，不取字口），做印章的印泥质感
+   规矩（与星图同一种做法）：
+   · 字号只有五档 44 / 18 / 15 / 13 / 11；中文一律衬线，等宽字体只留给日期、域名与英文（JetBrains Mono 无 CJK 字形）。
+   · 动画只动 opacity / transform；滚动编排走 CSS 滚动时间线，Firefox 等不支持处静止；reduced-motion 全关。
+   · 纸纹只在 md+ 显示（移动端性能）。
+   · 全部规则挂在 .atl 下：根视图与项目页（portal 到 body）各自带 .atl。 */
+
+.atl {
+  --page: #FCF9F2;
+  --page-edge: #E4DCCB;
+  --silk: #E3DCCB;
+  --cover: #5D6E72;
+  --geshui: #D6CCB5;
+  --sheet: #FFFDF8;
+  --ink: #1F2733;
+  --ink-2: #4A5463;
+  --ink-3: #858E9B;
+  --rule: rgba(31, 39, 51, .12);
+  --rule-2: rgba(31, 39, 51, .07);
+  --rule-strong: rgba(31, 39, 51, .38);
+  --teal: #39C5BB;
+  --teal-ink: #0E8C85;
+  --sakura-ink: #B4476B;
+  --seal: #B23A2C;
+  --seal-ink: #FFF4EC;
+  --scrim: rgba(250, 248, 243, .84);
+  --wash-a: rgba(57, 197, 187, .08);
+  --wash-b: rgba(255, 183, 197, .10);
+  --tex-op: .9;
+  --silk-blend: soft-light;
+  --fold-dark: rgba(60, 45, 20, .10);
+  --fold-light: rgba(255, 255, 255, .55);
+  --ink-filter: grayscale(1) sepia(.32) contrast(.9) brightness(1.04);
+  --shadow: rgba(40, 30, 10, .42);
+  --peb-hi: #FFFFFF; --peb: #F4EDE7; --peb-lo: #DCCDC4;
+  --jade-hi: #D2F7F2; --jade: #39C5BB; --jade-lo: #0B7F78;
+  --stone-hi: #F6F3EC; --stone-mid: #CFC8BA; --stone-lo: #A39C8F;
+  --stone-line: rgba(31, 39, 51, .42); --stone-shadow: rgba(60, 45, 20, .16);
+
+  --f-display: "EB Garamond", "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  --f-body: "EB Garamond", "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "LXGW WenKai Screen", serif;
+  --f-hand: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif;
+  --f-seal: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "LXGW WenKai Screen", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-d: 44px; --fs-l: 18px; --fs-b: 15px; --fs-s: 13px; --fs-x: 11px; --trk-cjk: .14em;
+  --e-out: cubic-bezier(.16, 1, .3, 1);
+
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--fs-b);
+  line-height: 1.8;
+  text-autospace: normal;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  transition: color 1.2s;
+}
+.dark .atl {
+  --page: #121A2B; --page-edge: #1E283C; --silk: #1F2940; --cover: #222C42;
+  --geshui: #2A3550; --sheet: #0F1628;
+  --ink: #E4E8EF; --ink-2: #A5AFBF; --ink-3: #6C7789;
+  --rule: rgba(255, 255, 255, .11); --rule-2: rgba(255, 255, 255, .06); --rule-strong: rgba(255, 255, 255, .3);
+  --teal-ink: #66DED5; --sakura-ink: #FFB7C5; --seal: #FFB7C5; --seal-ink: #0A0F1D;
+  --scrim: rgba(10, 15, 29, .84);
+  --wash-a: rgba(57, 197, 187, .05); --wash-b: rgba(167, 139, 250, .05);
+  --tex-op: .5; --silk-blend: overlay;
+  --fold-dark: rgba(0, 0, 0, .35); --fold-light: rgba(255, 255, 255, .04);
+  --ink-filter: grayscale(1) brightness(.72) contrast(1.08); --shadow: rgba(0, 0, 0, .7);
+  --peb-hi: #5A6276; --peb: #343C50; --peb-lo: #222939; --jade-hi: #C4F6F1; --jade-lo: #0F6E69;
+  --stone-hi: #5C6579; --stone-mid: #3B4357; --stone-lo: #283043; --stone-line: rgba(255, 255, 255, .32); --stone-shadow: rgba(0, 0, 0, .4);
+}
+
+.atl button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; text-align: inherit; }
+.atl a { color: inherit; }
+.atl p, .atl figure { margin: 0; }
+.atl :focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; border-radius: 1px; }
+.atl .num { font-family: var(--f-mono); font-size: 12px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+
+/* —— 材质：真实纸纤维（灰度高通图，overlay 混合 → 昼夜都只加纹理不改底色）—— */
+.atl .tex-paper {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  opacity: var(--tex-op); mix-blend-mode: overlay;
+  background: url("/textures/xuan-fiber.webp") 0 0 / 380px 380px repeat;
+}
+@media (max-width: 767px) { .atl .tex-paper { display: none; } }
+
+/* ====== 舞台 ====== */
+.atl-stage {
+  scroll-timeline: --atl-scroll block;
+  background:
+    radial-gradient(110% 70% at 12% 0%, var(--wash-a) 0%, transparent 60%),
+    radial-gradient(80% 60% at 92% 38%, var(--wash-b) 0%, transparent 60%);
+}
+.atl .inner { position: relative; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+/* 封面：云纹缎裱的册板，左上贴纸题签 */
+.atl .masthead { display: grid; justify-items: center; gap: 22px; margin-bottom: 64px; }
+.atl .cover { position: relative; width: min(480px, 100%); aspect-ratio: 48 / 23; border-radius: 2px;
+  background: url("/textures/ling-cloud.webp") 0 0 / 550px 160px repeat, var(--cover);
+  background-blend-mode: soft-light;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), inset 0 0 0 4px rgba(255, 255, 255, .05),
+    0 1px 0 var(--page-edge), 0 3px 0 -1px var(--page), 0 4px 0 -1px var(--page-edge), 0 26px 44px -30px var(--shadow);
+  transition: background-color 1.2s; }
+.atl .tiqian { position: absolute; top: 20px; left: 26px; writing-mode: vertical-rl; padding: 16px 9px 14px; border-radius: 1px; background-color: var(--page);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .12), 0 2px 4px -2px rgba(0, 0, 0, .35); display: flex; align-items: center; gap: 10px; white-space: nowrap; transition: background-color 1.2s; }
+.atl .tiqian::before { content: ""; position: absolute; inset: 3px; border: 1px solid var(--rule); pointer-events: none; }
+.atl .tiqian b { position: relative; font-family: var(--f-hand); font-weight: 400; font-size: 28px; letter-spacing: .3em; line-height: 1; }
+.atl .tiqian span { position: relative; font-size: 11px; letter-spacing: .5em; color: var(--ink-3); }
+.atl .masthead .s { font-size: var(--fs-s); letter-spacing: .3em; color: var(--ink-3); padding-left: .3em; }
+
+/* 目录：序号、书名、引线、印、年月 */
+.atl .annals { max-width: 640px; margin: 0 auto 96px; }
+.atl .annals-h { margin: 0 0 14px; text-align: center; font-weight: 400; font-size: var(--fs-s); letter-spacing: 1em; padding-left: 1em; color: var(--ink-2); }
+.atl .annal { display: flex; align-items: baseline; gap: 14px; width: 100%; padding: 9px 0; }
+.atl .annal .ord { flex: none; font-size: var(--fs-s); letter-spacing: .12em; color: var(--seal); }
+.atl .annal .who { flex: none; min-width: 0; }
+.atl .annal .who b { font-family: var(--f-display); font-weight: 500; font-size: 20px; color: var(--ink); text-decoration: underline 1px transparent; text-underline-offset: 5px; transition: text-decoration-color .3s; }
+.atl .annal .who .v { margin-left: 10px; font-size: var(--fs-s); color: var(--ink-3); }
+.atl .annal .lead { flex: 1; min-width: 20px; border-bottom: 1px dotted var(--ink-3); opacity: .55; transform: translateY(-5px); }
+.atl .annal .what { flex: none; font-size: var(--fs-s); color: var(--ink-2); letter-spacing: .06em; }
+.atl .annal .when { flex: none; color: var(--ink-3); }
+.atl .annal:hover .who b { text-decoration-color: var(--seal); }
+
+/* ====== 册页 ====== */
+.atl .spread { position: relative; display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 120px; border-radius: 2px; background: var(--page);
+  box-shadow: 0 1px 0 var(--page-edge), 0 3px 0 -1px var(--page), 0 4px 0 -1px var(--page-edge), 0 6px 0 -2px var(--page), 0 7px 0 -2px var(--page-edge), 0 34px 64px -40px var(--shadow);
+  transition: background-color 1.2s; }
+.atl .spread::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 90px; transform: translateX(-50%); pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, var(--fold-dark) 46%, var(--fold-light) 50%, var(--fold-dark) 54%, transparent 100%); opacity: .9; }
+.atl .page { position: relative; padding: 46px 44px 40px; min-width: 0; }
+.atl .spread.flip .pg-art { order: 2; }
+
+/* 画心 + 绫边 + 隔水：绫是真实的宋代斜纹暗花绫，随主题色染 */
+.atl .pg-art { display: grid; align-content: center; gap: 12px; }
+.atl .mount { position: relative; display: block; width: 100%; padding: 22px; border-radius: 1px; overflow: hidden; cursor: zoom-in;
+  background: url("/textures/ling-song.webp") 0 0 / 360px 360px repeat, var(--silk);
+  background-blend-mode: var(--silk-blend);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .07), 0 1px 0 var(--rule-2), 0 18px 30px -26px var(--shadow);
+  transition: background-color 1.2s; }
+/* 丝光：指针经过时一道斜光扫过绫面（绫的真实反光，不是按钮高光） */
+.atl .mount::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .22) 50%, transparent 60%); transform: translateX(-120%); }
+.atl .spread .mount:hover::after { transform: translateX(120%); transition: transform 1.4s cubic-bezier(.4, 0, .2, 1); }
+.atl .canvas { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--sheet); outline: 3px solid var(--geshui); }
+.atl .layer { position: absolute; inset: 0; }
+.atl .layer img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.atl .layer.ink { filter: var(--ink-filter); }
+/* 设色：先墨稿，色从画心中央透出，再铺满全幅（两层只动透明度，滤镜本身不做动画） */
+.atl .layer.core { opacity: 0; transition: opacity .8s ease-out; -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, #000 22%, transparent 58%); mask-image: radial-gradient(circle at 50% 50%, #000 0%, #000 22%, transparent 58%); }
+.atl .layer.full { opacity: 0; transition: opacity 1.3s ease-out .3s; }
+.atl .tinted .layer.core, .atl .tinted .layer.full { opacity: 1; }
+.atl .promo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+.atl .playing .promo { opacity: 1; }
+/* 图注 */
+.atl .mount-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: var(--fs-x); letter-spacing: .1em; color: var(--ink-3); padding: 0 1px; }
+.atl .cap-play { color: var(--ink-2); letter-spacing: .14em; border-bottom: 1px dotted var(--ink-3); padding-bottom: 1px; transition: color .3s, border-color .3s; }
+.atl .cap-play .num { margin-left: .6em; font-size: var(--fs-x); color: var(--ink-3); }
+.atl .cap-play:hover { color: var(--ink); border-bottom-style: solid; border-color: var(--ink); }
+
+/* 印痕：合册时印泥留在对页上的反向淡迹，凑近才看得见 */
+.atl .imprint { position: absolute; top: 40px; left: 44px; width: 58px; height: 58px; opacity: .07; transform: scaleX(-1) rotate(4deg); pointer-events: none; }
+.atl .imprint rect { fill: var(--seal); }
+.atl .imprint text { fill: var(--page); font-family: var(--f-seal); font-weight: 700; font-size: 19px; }
+
+/* 题跋 */
+.atl .pg-text { display: grid; gap: 22px; align-content: start; }
+.atl .ins-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.atl .eyebrow { display: flex; align-items: center; gap: 10px; font-size: var(--fs-x); letter-spacing: var(--trk-cjk); color: var(--ink-3); }
+.atl .eyebrow .ord { color: var(--seal); letter-spacing: .2em; }
+.atl .eyebrow i { width: 18px; height: 1px; background: var(--rule-strong); }
+.atl .ins-title { font-family: var(--f-display); font-weight: 500; font-size: var(--fs-d); line-height: 1; margin: 12px 0 0; letter-spacing: -.012em; font-variant-numeric: lining-nums; }
+.atl .ins-title button { text-decoration: underline 1px transparent; text-underline-offset: 7px; transition: text-decoration-color .3s; }
+.atl .ins-title button:hover { text-decoration-color: var(--rule-strong); }
+.atl .ins-line { font-size: var(--fs-l); line-height: 1.6; color: var(--ink); text-wrap: pretty; letter-spacing: .01em; }
+.atl .ins-top + .ins-line { margin-top: -2px; }
+.atl .award { font-size: var(--fs-s); line-height: 1.6; color: var(--ink-2); margin-top: -12px; text-wrap: pretty; }
+.atl .award b { color: var(--seal); font-weight: 600; }
+.atl .award .sep { margin: 0 .55em; color: var(--ink-3); }
+
+/* 印：噪声啃边 + 真实印泥的漏白小斑 */
+.atl .seal { width: 60px; height: 60px; flex: none; transform: rotate(-4deg); overflow: visible; }
+.atl .seal rect.bg { fill: var(--seal); }
+.atl .seal rect.edge { fill: none; stroke: var(--seal-ink); stroke-width: 1.4; opacity: .55; }
+.atl .seal text { fill: var(--seal-ink); font-family: var(--f-seal); font-weight: 700; font-size: 19px; }
+.atl .seal rect.skip, .atl .namechop rect.skip { fill: var(--page); stroke: none; }
+
+/* 展签：角色 / 团队 / 时间 / 介质 两两并排 */
+.atl dl.meta { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1.25fr); gap: 9px 14px; align-items: baseline; margin: 0; padding: 14px 0; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.atl dl.meta dt { font-size: var(--fs-x); letter-spacing: var(--trk-cjk); color: var(--ink-3); white-space: nowrap; }
+.atl dl.meta dd { margin: 0; font-size: var(--fs-s); line-height: 1.5; color: var(--ink); min-width: 0; }
+.atl dl.meta dd small { margin-left: .6em; font-size: var(--fs-x); letter-spacing: .08em; color: var(--ink-3); }
+
+/* —— 分工条：一幅插图，图下有「图一」题注；溪水穿过人 / 模型 / 规则三种石头 —— */
+.atl .stream { display: grid; gap: 16px; padding-top: 4px; }
+.atl .stream figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 0; padding-top: 10px; border-top: 1px solid var(--rule); font-size: var(--fs-x); letter-spacing: .08em; color: var(--ink-3); }
+.atl .stream figcaption .fig { color: var(--ink-2); margin-right: 1em; letter-spacing: .14em; }
+.atl .legend { display: flex; gap: 12px; align-items: center; margin-left: auto; font-size: var(--fs-x); letter-spacing: .08em; color: var(--ink-3); }
+.atl .legend > span { display: inline-flex; align-items: center; gap: 3px; }
+.atl .legend svg { width: 18px; height: 14px; display: block; }
+.atl .brook { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); container-type: inline-size; }
+.atl .water { position: absolute; top: 6px; height: 16px; left: calc(100% / var(--n) / 2); right: calc(100% / var(--n) / 2); border-radius: 8px; overflow: hidden; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--teal) 9%, transparent) 22%, color-mix(in srgb, var(--teal) 17%, transparent) 50%, color-mix(in srgb, var(--teal) 9%, transparent) 78%, transparent 100%); }
+.atl .bank { position: absolute; left: 0; right: 0; height: 3px; background: color-mix(in srgb, var(--ink) 20%, transparent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='3'%3E%3Cpath d='M0 1.5 Q7 .2 14 1.5 T28 1.5' fill='none' stroke='black' stroke-width='.9'/%3E%3C/svg%3E") repeat-x 0 0 / 28px 3px;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='3'%3E%3Cpath d='M0 1.5 Q7 .2 14 1.5 T28 1.5' fill='none' stroke='black' stroke-width='.9'/%3E%3C/svg%3E") repeat-x 0 0 / 28px 3px; }
+.atl .bank.t { top: 0; }
+.atl .bank.b { bottom: 0; transform: scaleX(-1); }
+.atl .ripple { position: absolute; inset: 3px 0; background: color-mix(in srgb, var(--teal) 55%, transparent); opacity: .5;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='10'%3E%3Cpath d='M4 3.2q5 1.6 10 0M24 6.6q6 1.6 12 0M15 8.4q3 .9 6 0' fill='none' stroke='black' stroke-width='.7' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x 0 0 / 46px 10px;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='10'%3E%3Cpath d='M4 3.2q5 1.6 10 0M24 6.6q6 1.6 12 0M15 8.4q3 .9 6 0' fill='none' stroke='black' stroke-width='.7' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x 0 0 / 46px 10px; }
+.atl .thread { position: absolute; top: 14px; height: 1px; left: calc(100% / var(--n) / 2); right: calc(100% / var(--n) / 2); pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--teal) 15%, transparent), color-mix(in srgb, var(--teal) 55%, transparent) 20%, color-mix(in srgb, var(--teal) 55%, transparent) 80%, color-mix(in srgb, var(--teal) 15%, transparent)); }
+/* 一粒光沿溪走一遍：只走一次 */
+.atl .spark { position: absolute; top: 10.5px; left: calc(100% / var(--n) / 2); width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: radial-gradient(circle, #fff 0 30%, var(--teal) 70%); box-shadow: 0 0 12px 3px color-mix(in srgb, var(--teal) 60%, transparent); }
+.atl .flowing .spark { animation: atl-run 1.8s cubic-bezier(.45, .05, .4, 1) 1; }
+@keyframes atl-run { 0% { opacity: 0; transform: translateX(0); } 10% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; transform: translateX(calc(100cqw - 100cqw / var(--n))); } }
+.atl .stone { position: relative; display: grid; justify-items: center; gap: 7px; text-align: center; padding: 0 4px; }
+.atl .stone::before { content: ""; position: absolute; top: 4px; left: 50%; width: 52px; height: 20px; margin-left: -26px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--teal) 22%, transparent); pointer-events: none; }
+.atl .stone.k-m::before { display: none; }
+.atl .sym { width: 36px; height: 28px; display: block; position: relative; z-index: 1; overflow: visible; }
+.atl .stone .nm { font-size: var(--fs-s); line-height: 1.35; color: var(--ink); letter-spacing: .02em; }
+.atl .stone .sub { font-size: var(--fs-x); line-height: 1.45; letter-spacing: .04em; color: var(--ink-3); margin-top: -3px; }
+.atl .branch { display: flex; align-items: center; gap: 8px; margin-top: -2px; padding-left: calc((var(--at) - .5) * 100% / var(--n) - 3px); font-size: var(--fs-s); color: var(--ink-2); }
+.atl .branch .trib { width: 40px; height: 30px; flex: none; overflow: visible; }
+.atl .branch .trib .w { fill: none; stroke: color-mix(in srgb, var(--teal) 16%, transparent); stroke-width: 9; stroke-linecap: round; }
+.atl .branch .trib .c { fill: none; stroke: color-mix(in srgb, var(--teal) 50%, transparent); stroke-width: 1; }
+.atl .branch .sym.sm { width: 26px; height: 20px; flex: none; margin-top: 10px; }
+.atl .branch .why { font-size: var(--fs-x); letter-spacing: .1em; color: var(--ink-3); margin-top: 10px; }
+.atl .branch .nm { margin-top: 10px; }
+
+
+/* 「按」：批注里的按语标记，一枚小朱框 */
+.atl .decision { font-size: var(--fs-b); line-height: 1.8; text-wrap: pretty; color: var(--ink); }
+.atl .decision .an { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 10px; vertical-align: 1px; border: 1px solid var(--seal); border-radius: 1px; color: var(--seal); font-family: var(--f-seal); font-size: 12px; line-height: 1; }
+
+/* 出处：中文序号 · 名目 · 目录引线 · 去处 */
+.atl .links { display: grid; }
+.atl .lnk { display: grid; grid-template-columns: 1.4em auto minmax(16px, 1fr) minmax(0, auto) 1em; align-items: baseline; gap: 0 10px; padding: 6px 0; text-decoration: none; color: var(--ink); }
+.atl .lnk .no { font-size: var(--fs-s); color: var(--ink-3); }
+.atl .lnk .lb { font-size: var(--fs-s); letter-spacing: .04em; white-space: nowrap; text-decoration: underline 1px transparent; text-underline-offset: 4px; transition: text-decoration-color .3s; }
+.atl .lnk .live { font-style: normal; margin-left: .7em; font-size: var(--fs-x); letter-spacing: .1em; color: var(--teal-ink); }
+.atl .lnk .lead { border-bottom: 1px dotted var(--ink-3); opacity: .5; transform: translateY(-4px); }
+.atl .lnk .nt { font-family: var(--f-mono); font-size: var(--fs-x); letter-spacing: .01em; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atl .lnk.mute .nt { font-family: var(--f-body); letter-spacing: .06em; }
+.atl .lnk .ext { font-size: var(--fs-s); color: var(--ink-3); transition: transform .4s var(--e-out), color .3s; }
+.atl a.lnk:hover .lb { text-decoration-color: var(--ink); }
+.atl a.lnk:hover .ext { transform: translate(2px, -2px); color: var(--ink); }
+
+/* 题跋下款：「展开全页」一行字 + 竖排落款 + 闲章 */
+.atl .ins-foot { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 2px; }
+.atl .go-page { display: inline-flex; align-items: baseline; gap: .7em; padding: 6px 0 5px; font-size: var(--fs-b); letter-spacing: .26em; color: var(--ink); border-bottom: 1px solid var(--ink); transition: color .3s, border-color .3s; }
+.atl .go-page .arw { font-family: var(--f-display); letter-spacing: 0; transition: transform .45s var(--e-out); }
+.atl .go-page:hover { color: var(--seal); border-color: var(--seal); }
+.atl .go-page:hover .arw { transform: translateX(5px); }
+.atl .kuan { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
+.atl .kuan p { writing-mode: vertical-rl; font-family: var(--f-hand); font-size: 13px; letter-spacing: .34em; color: var(--ink-2); line-height: 1.3; }
+.atl .namechop { width: 24px; height: 24px; }
+.atl .namechop rect:not(.skip) { fill: none; stroke: var(--seal); stroke-width: 1.6; }
+.atl .namechop text { fill: var(--seal); font-family: var(--f-seal); font-weight: 700; font-size: 9.5px; }
+
+.atl .coda { text-align: center; margin: -48px auto 72px; font-size: var(--fs-s); letter-spacing: .14em; color: var(--ink-3); }
+.atl .coda a { color: var(--ink-2); text-decoration: underline 1px var(--rule-strong); text-underline-offset: 4px; }
+.atl .coda a:hover { color: var(--ink); text-decoration-color: var(--ink); }
+
+/* 书签：随滚动点亮当前这一开，书签线的填充就是整页进度 */
+.atl .rail { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); z-index: 5; display: grid; gap: 22px; padding: 6px 0; }
+.atl .rail-line { position: absolute; right: 4px; top: 0; bottom: 0; width: 1px; background: var(--rule); }
+.atl .rail-line i { position: absolute; inset: 0; background: var(--seal); opacity: .5; transform-origin: 50% 0; transform: scaleY(0); }
+.atl .rail button { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 12px; height: 10px; }
+.atl .rail b { width: 9px; height: 9px; border-radius: 1.5px; box-shadow: inset 0 0 0 1px var(--ink-3); background: var(--page); transition: background-color .4s, box-shadow .4s, transform .5s cubic-bezier(.3, 1.4, .5, 1); }
+.atl .rail span { position: absolute; right: 22px; white-space: nowrap; font-size: 11px; letter-spacing: .14em; color: var(--ink-2); opacity: 0; transform: translateX(6px); transition: opacity .35s, transform .45s var(--e-out); pointer-events: none; }
+.atl .rail button.on b { background: var(--seal); box-shadow: none; transform: rotate(-6deg) scale(1.25); }
+.atl .rail button.on span, .atl .rail button:hover span, .atl .rail button:focus-visible span { opacity: 1; transform: none; }
+@media (max-width: 1199px) { .atl .rail { display: none; } }
+
+/* ====== L1 项目页 ====== */
+.atl.overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: start center; overflow-y: auto; overscroll-behavior: contain; padding: 56px 20px 80px; }
+.atl .scrim { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: atl-fade .45s ease both; }
+.atl .sheet { position: relative; width: 100%; max-width: 800px; padding: 40px 46px 44px; display: grid; gap: 30px; }
+.atl .sheet-bg { position: absolute; inset: 0; border-radius: 2px; background: var(--page); box-shadow: 0 1px 0 var(--page-edge), 0 40px 90px -50px var(--shadow); overflow: hidden; animation: atl-fade .45s ease both; }
+.atl .sheet > :not(.sheet-bg) { position: relative; animation: atl-rise .6s var(--e-out) both; animation-delay: calc(var(--d, 0ms) + 120ms); }
+/* 从册页点开：画面由 FLIP 接管，其余内容等画面飞到位再浮出 */
+.atl .sheet.flying > :not(.sheet-bg) { animation-delay: calc(var(--d, 0ms) + 260ms); }
+.atl .sheet.flying > .sheet-paint { animation: none; }
+.atl .sheet-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.atl .sheet-bar .nav { display: flex; align-items: baseline; gap: 18px; }
+.atl .tx { font-size: var(--fs-s); letter-spacing: .14em; color: var(--ink-2); padding: 2px 0; border-bottom: 1px solid transparent; transition: color .3s, border-color .3s; }
+.atl .tx:hover { color: var(--ink); border-color: var(--ink); }
+.atl .nav-sep { width: 1px; height: 12px; background: var(--rule-strong); align-self: center; }
+.atl .sheet-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.atl .sheet-head h2 { font-family: var(--f-display); font-weight: 500; font-size: 52px; line-height: 1.05; letter-spacing: -.015em; margin: 6px 0 12px; }
+.atl .sheet-head .award { margin-top: 8px; }
+.atl .sealbox { position: relative; flex: none; }
+.atl .sealbox::after { content: ""; position: absolute; inset: 6px; border-radius: 4px; border: 2px solid var(--seal); opacity: 0; pointer-events: none; }
+.atl .sheet .seal { width: 74px; height: 74px; animation: atl-stamp .5s .45s cubic-bezier(.3, 1.4, .5, 1) both; }
+.atl .sheet .mount { cursor: default; }
+/* 小签条：放映 / 暂停；画心底边一道朱色放映进度 */
+.atl .vbar { position: absolute; left: 22px; right: 22px; bottom: 22px; height: 2px; z-index: 3; background: var(--seal); transform-origin: 0 50%; transform: scaleX(0); pointer-events: none; }
+.atl .vctl { position: absolute; right: 30px; bottom: 32px; z-index: 3; display: inline-flex; align-items: baseline; gap: .8em; padding: 5px 10px 4px; border-radius: 1px;
+  background: color-mix(in srgb, var(--page) 92%, transparent); box-shadow: 0 0 0 1px var(--rule-strong);
+  font-size: var(--fs-s); letter-spacing: .16em; color: var(--ink); transition: background-color .3s; }
+.atl .vctl .num { font-size: var(--fs-x); color: var(--ink-3); letter-spacing: 0; }
+.atl .vctl:hover { background: var(--page); }
+.atl .sheet .promo { opacity: 1; }
+/* 小节：壹 问题 ———— */
+.atl .sec { display: grid; gap: 12px; }
+.atl .sec h3, .atl .links h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 400; font-size: var(--fs-x); letter-spacing: .24em; color: var(--ink-2); }
+.atl .sec h3::after, .atl .links h3::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.atl .sec h3 .no, .atl .links h3 .no { font-size: var(--fs-s); letter-spacing: 0; color: var(--seal); }
+.atl .links h3 { margin-bottom: 8px; }
+.atl .sec > p { font-size: var(--fs-b); line-height: 1.9; max-width: 40em; text-wrap: pretty; }
+.atl .sec ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.atl .sec li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 12px; font-size: var(--fs-b); line-height: 1.85; }
+.atl .sec li b { font-weight: 600; font-size: var(--fs-s); letter-spacing: .06em; color: var(--ink-2); padding-top: 2px; }
+.atl .sec li span { min-width: 0; }
+/* 决策：档案式双线表 */
+.atl .adr { display: grid; gap: 6px; padding: 12px 0 4px; border-top: 3px double var(--rule-strong); border-bottom: 1px solid var(--rule-strong); }
+.atl .adr .h { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding-bottom: 6px; }
+.atl .adr .h b { font-weight: 600; font-size: var(--fs-b); }
+.atl .adr dl { margin: 0; display: grid; grid-template-columns: 3.4em 1fr; }
+.atl .adr dt, .atl .adr dd { padding: 8px 0; border-top: 1px solid var(--rule); }
+.atl .adr dt { font-size: var(--fs-x); letter-spacing: .3em; color: var(--ink-3); padding-top: 11px; }
+.atl .adr dd { margin: 0; font-size: 14px; line-height: 1.75; color: var(--ink-2); }
+.atl .flag { font-size: var(--fs-x); letter-spacing: .04em; color: var(--ink-3); white-space: nowrap; }
+.atl .flag.warn { color: var(--sakura-ink); }
+.atl .sheet .ins-foot { align-items: flex-end; }
+.atl .sheet .ins-foot .links { flex: 1; }
+
+.atl.overlay.closing .scrim { animation: atl-fade-out .32s ease both; }
+.atl.overlay.closing .sheet { animation: atl-sink .32s cubic-bezier(.4, 0, 1, 1) both; }
+
+@keyframes atl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes atl-fade-out { to { opacity: 0; } }
+@keyframes atl-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes atl-sink { to { opacity: 0; transform: translateY(18px) scale(.985); } }
+@keyframes atl-stamp { 0% { opacity: 0; transform: rotate(-12deg) scale(1.35); } 70% { opacity: 1; transform: rotate(-3deg) scale(.96); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+
+/* ====== 窄屏 ====== */
+@media (max-width: 900px) {
+  .atl { --fs-d: 38px; --fs-l: 17px; }
+  .atl .spread { grid-template-columns: 1fr; }
+  .atl .spread.flip .pg-art { order: 0; }
+  .atl .spread::after, .atl .imprint { display: none; }
+  .atl .page { padding: 28px 22px 26px; }
+  .atl .mount { padding: 16px; }
+  .atl .vbar { left: 16px; right: 16px; bottom: 16px; }
+  .atl .vctl { right: 22px; bottom: 24px; }
+  .atl .sheet { padding: 28px 22px 32px; }
+  .atl .sheet-head h2 { font-size: 40px; }
+  .atl .sec li { grid-template-columns: 1fr; gap: 2px; }
+  .atl.overlay { padding: 24px 12px 64px; }
+}
+@media (max-width: 560px) {
+  .atl dl.meta { grid-template-columns: auto minmax(0, 1fr); }
+  .atl .tiqian { top: 14px; left: 18px; }
+  .atl .annal .who .v, .atl .annal .when { display: none; }
+  .atl .legend { margin-left: 0; width: 100%; }
+  .atl .lnk { grid-template-columns: 1.4em auto minmax(12px, 1fr) 1em; }
+  .atl .lnk .nt { grid-column: 2 / -1; grid-row: 2; }
+  .atl .sheet-bar .nav { gap: 12px; }
+  /* 枯流竖排 */
+  .atl .brook { grid-template-columns: 1fr; gap: 14px; }
+  .atl .water { top: 10px; bottom: 10px; left: 8px; right: auto; width: 14px; height: auto; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--teal) 15%, transparent) 50%, transparent); }
+  .atl .bank, .atl .ripple, .atl .spark, .atl .stone::before { display: none; }
+  .atl .thread { top: 10px; bottom: 10px; left: 15px; right: auto; width: 1px; height: auto; }
+  .atl .stone { grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; justify-items: start; align-items: center; text-align: left; padding: 0; }
+  .atl .stone .sym { grid-row: 1 / 3; width: 30px; height: 24px; justify-self: center; }
+  .atl .stone .sub { margin-top: 0; }
+  .atl .branch { padding-left: 30px; flex-wrap: wrap; }
+  .atl .ins-foot { flex-direction: row; align-items: flex-end; }
+  .atl .sheet .ins-foot { flex-direction: column; align-items: stretch; }
+  .atl .sheet .kuan { flex-direction: row; justify-content: flex-end; }
+  .atl .sheet .kuan p { writing-mode: horizontal-tb; letter-spacing: .14em; }
+}
+
+/* ====== 动效：进场 + 滚动编排 ====== */
+@media (prefers-reduced-motion: no-preference) {
+  /* 题签像挂上去一样轻轻一荡，年表逐行滑入 */
+  .atl .tiqian { transform-origin: 50% 0; animation: atl-hang 1s cubic-bezier(.2, .9, .25, 1.15) both; }
+  .atl .cover { animation: atl-rise .9s var(--e-out) both; }
+  .atl .masthead .s { animation: atl-rise .7s .35s var(--e-out) both; }
+  .atl .annal { animation: atl-slide-in .7s var(--e-out) both; }
+  .atl .annal:nth-of-type(1) { animation-delay: .45s; }
+  .atl .annal:nth-of-type(2) { animation-delay: .53s; }
+  .atl .annal:nth-of-type(3) { animation-delay: .61s; }
+  .atl .sheet .sealbox::after { animation: atl-ink-ring .9s .62s var(--e-out) both; }
+  @keyframes atl-hang { from { opacity: 0; transform: translateY(-10px) rotate(1.6deg); } 55% { opacity: 1; transform: translateY(2px) rotate(-.9deg); } 80% { transform: rotate(.3deg); } to { opacity: 1; transform: none; } }
+  @keyframes atl-slide-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+  @keyframes atl-ink-ring { from { opacity: .55; transform: scale(.7); } to { opacity: 0; transform: scale(1.7); } }
+
+  /* 滚动时间线：每开套一层 .leaf-slot 当时间线（被动画元素自己当时间线会自激），动画进度 = 滚动进度，往回拨就倒放 */
+  @supports (animation-timeline: view()) {
+    .atl .leaf-slot { view-timeline: --atl-leaf block; }
+
+    /* 整开：从案上抬起放平 → 停留 → 后仰退远 */
+    .atl .spread { transform-origin: 50% 100%; animation: atl-leaf-life linear both; animation-timeline: --atl-leaf; }
+    @keyframes atl-leaf-life {
+      entry 0%  { opacity: 0;  transform: perspective(1800px) translateY(80px) rotateX(18deg) scale(.95); }
+      entry 75% { opacity: 1;  transform: perspective(1800px) translateY(0) rotateX(0deg) scale(1); }
+      exit 25%  { opacity: 1;  transform: perspective(1800px) translateY(0) rotateX(0deg) scale(1); }
+      exit 100% { opacity: .2; transform: perspective(1800px) translateY(-50px) rotateX(-9deg) scale(.95); }
+    }
+
+    /* 先看画：画心先浮出（动画挂在 .pg-art 外层，避免 fill 覆盖 .mount 的 hover 位移） */
+    .atl .spread .pg-art { animation: atl-rise-y linear both; animation-timeline: --atl-leaf; animation-range: entry 10% entry 50%; }
+
+    /* 再读字：题跋逐行 */
+    .atl .pg-text > * { animation: atl-rise-y linear both; animation-timeline: --atl-leaf; animation-range: entry calc(25% + var(--i, 0) * 7%) entry calc(50% + var(--i, 0) * 7%); }
+    .atl .pg-text > :nth-child(2) { --i: 1; }
+    .atl .pg-text > :nth-child(3) { --i: 1.5; }
+    .atl .pg-text > :nth-child(4) { --i: 2.5; }
+    .atl .pg-text > :nth-child(5) { --i: 3.5; }
+    .atl .pg-text > :nth-child(6) { --i: 4.5; }
+    .atl .pg-text > :nth-child(n + 7) { --i: 5; }
+
+    /* 溪水从左流到右，石头一颗颗落位 */
+    .atl .spread .water, .atl .spread .thread { transform-origin: 0 50%; animation: atl-flow-in linear both; animation-timeline: --atl-leaf; animation-range: entry 45% entry 75%; }
+    .atl .spread .stone { animation: atl-stone-drop linear both; animation-timeline: --atl-leaf; animation-range: entry calc(50% + var(--j, 0) * 7%) entry calc(65% + var(--j, 0) * 7%); }
+    .atl .spread .branch { animation: atl-fade linear both; animation-timeline: --atl-leaf; animation-range: entry 70% entry 90%; }
+
+    /* 最后盖印：印章落下、对页浮出印痕、落款显出 */
+    .atl .spread .ins-top .seal { animation: atl-stamp-scrub linear both; animation-timeline: --atl-leaf; animation-range: entry 55% entry 80%; }
+    .atl .spread .imprint { animation: atl-imprint-in linear both; animation-timeline: --atl-leaf; animation-range: entry 75% entry 95%; }
+    .atl .spread .kuan { animation: atl-kuan-in linear both; animation-timeline: --atl-leaf; animation-range: entry 70% entry 100%; }
+
+    /* 书签线：整页滚动进度 */
+    .atl .rail-line i { animation: atl-rail-fill linear both; animation-timeline: --atl-scroll; }
+
+    @keyframes atl-rise-y { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    @keyframes atl-flow-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes atl-stone-drop { from { opacity: 0; transform: translateY(-12px) scale(.75); } to { opacity: 1; transform: none; } }
+    @keyframes atl-stamp-scrub { 0% { opacity: 0; transform: rotate(-16deg) scale(1.6); } 70% { opacity: 1; transform: rotate(-3deg) scale(.95); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+    @keyframes atl-imprint-in { from { opacity: 0; } to { opacity: .07; } }
+    @keyframes atl-kuan-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+    @keyframes atl-rail-fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atl *, .atl *::before, .atl *::after, .atl.overlay * { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; transition-delay: 0ms !important; }
+}
