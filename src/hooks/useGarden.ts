@@ -118,6 +118,10 @@ const readCache = (): BlogPost[] | null => {
 // 🔒 草稿全文不落盘：登出后 / 借用设备时，localStorage 缓存不该还留着没发布的文字。
 //   draft 被整条剔除（下次加载先短暂看不到草稿，直到 fetchCloud 回来即刻补上，admin 体验上无感）；
 //   unlisted 本就允许匿名凭 token 读到，缓存无妨。
+/** 🎐 只读窥一眼本地缓存（给 Miku 的事实黑板用）：不订阅、不发请求，所以不会多出一条 Supabase 实时连接。
+ *  缓存本就不含草稿；调用方若要「推荐给访客」，还应再滤掉 unlisted。 */
+export const peekCachedPosts = (): BlogPost[] => readCache() ?? [];
+
 const writeCache = (posts: BlogPost[]) => {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(posts.filter(p => p.status !== 'draft'))); } catch { /* 容量/隐私模式失败可忽略 */ }
 };

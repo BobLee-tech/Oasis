@@ -14,6 +14,9 @@ interface CoreModelLike {
   getDrawableVertexIndices: (index: number) => Int16Array | Uint16Array | number[];
   getDrawableRenderOrders: () => Int32Array | number[];
   getDrawableOpacity: (index: number) => number;
+  getParameterIndex: (id: string) => number;
+  getParameterMinimumValue: (index: number) => number;
+  getParameterMaximumValue: (index: number) => number;
 }
 
 // internalModel 的类型层没声明 getDrawableVertices（返回像素空间顶点，和 getDrawableBounds/
@@ -49,11 +52,22 @@ const pointInMesh = (px: number, py: number, verts: Float32Array, tris: ArrayLik
   return false;
 };
 
+/** 姿态层参数：视线三级弹簧 + 冲量 + 抚摸跟手，全部是「这一帧叠加多少」的快照值。 */
+export type PoseParam =
+  | 'ParamAngleX' | 'ParamAngleY' | 'ParamAngleZ'
+  | 'ParamBodyAngleX' | 'ParamBodyAngleY' | 'ParamBodyAngleZ'
+  | 'ParamEyeBallX' | 'ParamEyeBallY';
+
 export interface MikuStageHandle {
-  /** 视线跟随：传入的是屏幕坐标（clientX/clientY），内部换算成画布局部坐标 */
-  focus: (clientX: number, clientY: number, instant?: boolean) => void;
-  /** 自主看向某处，不依赖真实鼠标——用于触屏设备的自发左右张望 */
-  focusNormalized: (x: number, y: number, instant?: boolean) => void;
+  /** 姿态层：写在 saveParameters 之后、physics 之前（顶替库自带的 updateFocus 那一格）——
+   *  ① 每帧随 loadParameters 自动还原，叠加永不累积；② 头发物理读得到，转头时马尾会自己甩。 */
+  setPose: (pose: Partial<Record<PoseParam, number>>) => void;
+  /** 物理之后的叠加层：头发参数是物理输出，物理之前写会被覆盖。拽马尾的「橡皮筋」写在这里。 */
+  setPostPhysics: (params: Record<string, number>) => void;
+  /** 脸部中心的屏幕坐标与脸半径（px），供视线换算与冲量方向使用；模型未就绪时为 null。 */
+  headAnchor: () => { x: number; y: number; r: number } | null;
+  /** 参数的取值范围；不存在或模型未就绪时为 null。拽马尾按各段旋转参数自己的量程缩放，不写死角度。 */
+  paramRange: (id: string) => [number, number] | null;
   /** priority 默认 NORMAL(2)，优先于自动待机；传 3(FORCE) 可打断另一段正在播放的 NORMAL 动作（例如摸醒正在打瞌睡的她） */
   playMotion: (group: string, index?: number, priority?: number) => void;
   /** 叠加在动作曲线之上（addParameterValueById）：调用方每帧传入「当前想叠加多少」的快照值，
@@ -85,6 +99,8 @@ export interface MikuStageHandle {
   /** 把当前画面截一张头像：裁切区域用「舞台尺寸的分数」表达（不是像素），换模型/换挂坠尺寸都不必
    *  跟着改调用方的数字。失败（画布还没起来）就回 null，调用方原样保留上一张或占位图形即可。 */
   captureFace: (opts: { size: number; topFrac: number; sideFrac: number; offsetXFrac?: number }) => string | null;
+  /** 顿帧（hitstop）：模型定格 ms 毫秒再继续——里程碑星屑炸开前的那一下「停顿」，让爆发有重量。 */
+  freeze: (ms: number) => void;
 }
 
 interface Live2DStageProps {
@@ -111,6 +127,10 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
   // 在 afterMotionUpdate 钩子里统一发生（见下方 effect），这里只负责记账，不直接碰 coreModel
   const offsetsRef = useRef(new Map<string, { value: number; mode: 'add' | 'override'; floor: number }>());
   const yieldRef = useRef(1);
+  const poseRef = useRef<Partial<Record<PoseParam, number>>>({});
+  const postPhysicsRef = useRef<Record<string, number>>({});
+  // 脸部包围盒（模型像素空间），加载时由 D_FACE_* drawable 求并集一次
+  const faceRef = useRef<{ cx: number; cy: number; r: number } | null>(null);
   // captureFace 要用到 PIXI.Rectangle 和当前舞台的像素尺寸；用 ref 存而不是直接闭包 props，
   // 是因为 useImperativeHandle 的 deps 是 []（见下方），闭包只会捕获首次渲染的 width/height，
   // 尺寸变化（触屏/桌面切换断点）时读它俩会读到过期值——ref 每次渲染都重新赋值，不存在这个问题
@@ -125,15 +145,34 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
   useEffect(() => { reduceMotionRef.current = reduceMotion; }, [reduceMotion]);
 
   useImperativeHandle(ref, () => ({
-    focus: (clientX, clientY, instant) => {
+    setPose: (pose) => { poseRef.current = pose; },
+    setPostPhysics: (params) => { postPhysicsRef.current = params; },
+    headAnchor: () => {
       const model = modelRef.current;
       const canvas = appRef.current?.view as HTMLCanvasElement | undefined;
-      if (!model || !canvas) return;
+      const PIXI = pixiRef.current;
+      const face = faceRef.current;
+      if (!model || !canvas || !PIXI || !face) return null;
+      // toModelPosition 的逆：模型像素 → internalModel.localTransform → worldTransform → 画布 CSS px
+      const toCanvas = (mx: number, my: number) => {
+        const p = new PIXI.Point(mx, my);
+        model.internalModel.localTransform.apply(p, p);
+        model.transform.worldTransform.apply(p, p);
+        return p;
+      };
+      const c = toCanvas(face.cx, face.cy);
+      const edge = toCanvas(face.cx + face.r, face.cy);
       const rect = canvas.getBoundingClientRect();
-      model.focus(clientX - rect.left, clientY - rect.top, instant);
+      // 收放缩放动画期间画布的 CSS 尺寸与渲染尺寸不同，按实际比例换算
+      const k = rect.width / sizeRef.current.width;
+      return { x: rect.left + c.x * k, y: rect.top + c.y * k, r: Math.hypot(edge.x - c.x, edge.y - c.y) * k };
     },
-    focusNormalized: (x, y, instant) => {
-      modelRef.current?.internalModel.focusController.focus(x, y, instant);
+    paramRange: (id) => {
+      const core = modelRef.current?.internalModel.coreModel as unknown as CoreModelLike | undefined;
+      if (!core) return null;
+      const index = core.getParameterIndex(id);
+      if (index < 0) return null;
+      return [core.getParameterMinimumValue(index), core.getParameterMaximumValue(index)];
     },
     playMotion: (group, index, priority) => {
       void modelRef.current?.motion(group, index, priority ?? 2);
@@ -194,6 +233,15 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       ctx.drawImage(src, 0, 0, size, size);
       return out.toDataURL('image/png');
     },
+    freeze: (ms) => {
+      const app = appRef.current;
+      if (!app || !app.ticker.started) return;
+      app.ticker.stop();
+      window.setTimeout(() => {
+        // 定格期间可能已经被收起/切到后台：只在仍该运行时恢复
+        if (appRef.current === app && !pausedRef.current && !reduceMotionRef.current && !document.hidden) app.ticker.start();
+      }, ms);
+    },
   }), []);
 
   useEffect(() => {
@@ -233,6 +281,27 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       }
     };
 
+    // 姿态层：顶替库自带 updateFocus 的位置（saveParameters 之后、physics 之前）
+    const applyPose = () => {
+      const core = model?.internalModel.coreModel as unknown as CoreModelLike | undefined;
+      if (!core) return;
+      const pose = poseRef.current;
+      for (const id in pose) {
+        const v = pose[id as PoseParam];
+        if (v) core.addParameterValueById(id, v);
+      }
+    };
+    // 物理之后、model.update 之前：只叠加头发等物理输出参数，同样随 loadParameters 每帧还原
+    const applyPostPhysics = () => {
+      const core = model?.internalModel.coreModel as unknown as CoreModelLike | undefined;
+      if (!core) return;
+      const params = postPhysicsRef.current;
+      for (const id in params) {
+        const v = params[id];
+        if (v) core.addParameterValueById(id, v);
+      }
+    };
+
     (async () => {
       try {
         const { PIXI, Live2DModel: ModelCtor, MotionPreloadStrategy } = await loadLive2DRuntime();
@@ -264,7 +333,26 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
         // 动作走；框架自带的独立正弦眨眼定时器只会在上述空窗帧里越俎代庖，直接关掉切断这个来源。
         // eyeBlink 只声明在 Cubism4InternalModel 上，Live2DModel 的 internalModel 字段类型层默认
         // 停在更泛化的基类，这里窄化一下类型才能拿到它——运行时就是同一个对象，不是真的转型
-        (model.internalModel as Cubism4InternalModel).eyeBlink = undefined;
+        const internal = model.internalModel as Cubism4InternalModel;
+        internal.eyeBlink = undefined;
+        // 库内置 CubismBreath 在 AngleX 上有 ±7.5°（peak 15 × weight 0.5）的慢摆，和 BreathEngine 叠成两层，
+        // 头一直在大幅晃、细节被淹没；呼吸只留 BreathEngine 一层。
+        internal.breath.setParameters([]);
+        // 库的 updateFocus 把同一个 focus 值同时乘给眼球/头/身体，三者锁死同步到位；
+        // 换成姿态层，由 brain/gaze 的三级弹簧决定「眼先到、头跟上、身体最慢」。
+        internal.updateFocus = applyPose;
+
+        // 脸部中心与半径：D_FACE_* 包围盒并集，用于把屏幕坐标换算成「相对她的脸」
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const id of internal.getDrawableIDs()) {
+          if (!id.startsWith('D_FACE')) continue;
+          const b = internal.getDrawableBounds(internal.getDrawableIndex(id));
+          minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+          maxX = Math.max(maxX, b.x + b.width); maxY = Math.max(maxY, b.y + b.height);
+        }
+        faceRef.current = Number.isFinite(minX)
+          ? { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, r: Math.max(maxX - minX, maxY - minY) / 2 }
+          : { cx: internal.originalWidth / 2, cy: internal.originalHeight * 0.14, r: internal.originalWidth * 0.12 };
 
         const virtualHeight = currentSize.height * modelHeightRatioRef.current;
         const scale = virtualHeight / model.internalModel.originalHeight;
@@ -278,6 +366,7 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
         app.ticker.maxFPS = 30;
         modelRef.current = model;
         model.internalModel.on('afterMotionUpdate', applyOffsets);
+        model.internalModel.on('beforeModelUpdate', applyPostPhysics);
 
         // 仅开发环境:挂个调试口子到 window，方便控制台里读 drawable 列表 / 手动 setParam 找动作关键帧，
         // 生产构建里 import.meta.env.DEV 会被静态裁掉，零成本
@@ -305,6 +394,8 @@ export const Live2DStage = forwardRef<MikuStageHandle, Live2DStageProps>(functio
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
       model?.internalModel.off('afterMotionUpdate', applyOffsets);
+      model?.internalModel.off('beforeModelUpdate', applyPostPhysics);
+      faceRef.current = null;
       model?.destroy();
       app?.destroy(true, { children: true });
       modelRef.current = null;

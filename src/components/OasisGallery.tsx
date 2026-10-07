@@ -14,7 +14,7 @@ import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
 import { DAILY_QUOTES } from '../data/quotes';
 import { getVisitorAlias, setVisitorAlias } from '../lib/visitor';
-import { emitMikuSignal } from '../lib/mikuSignal';
+import { countWords, emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
 import { tagKey, buildTagCanonicalMap } from '../lib/tags';
 import { AURA_COLORS } from '../lib/aura';
@@ -194,12 +194,22 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 🎐 给 Miku 递个信号：编辑器/阅读舱开关时她换一套语气——只在状态真正翻转时发一次，
   // 不用 useIsPresent 那条退场兜底也会跟着触发（isEditing/activePost 本身就会被它置空）
   useEffect(() => { emitMikuSignal({ type: isEditing ? 'editor-open' : 'editor-close' }); }, [isEditing]);
-  useEffect(() => { emitMikuSignal({ type: activePost ? 'reading-open' : 'reading-close' }); }, [activePost]);
+  useEffect(() => {
+    emitMikuSignal(activePost
+      ? { type: 'reading-open', post: { id: activePost.id, title: activePost.title, category: activePost.type, series: activePost.series, words: countWords(activePost.content) } }
+      : { type: 'reading-close' });
+  }, [activePost]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editTagList, setEditTagList] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [editContent, setEditContent] = useState('');
+  // 🎐 写作字数递给 Miku（停笔 1.5s 后发一次，不随每次按键刷）：500/1000/2000 字时她点头、偶尔说一句
+  useEffect(() => {
+    if (!isEditing) return;
+    const timer = window.setTimeout(() => emitMikuSignal({ type: 'editor-progress', words: countWords(editContent) }), 1500);
+    return () => window.clearTimeout(timer);
+  }, [editContent, isEditing]);
   const [editColor, setEditColor] = useState('#39C5BB');
   const [editType, setEditType] = useState<string>('thought');
   // 📚 合集：可空的连载归属；发布栏上方的元信息抽屉里填写
@@ -1165,7 +1175,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     setIsEditing(false);
     // 存草稿不值得庆祝，只有真正公开出去的才道贺
     if (editStatus !== 'draft') {
-      emitMikuSignal({ type: 'published' });
+      emitMikuSignal({ type: 'published', id: editingId ?? undefined, title: editTitle.trim() || undefined });
       emitRipple(origin ?? { x: window.innerWidth - 96, y: window.innerHeight - 64 });
     }
   };

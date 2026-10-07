@@ -9,9 +9,11 @@ import { OasisMiku } from './OasisMiku';
 interface OasisBottomChromeProps {
   currentView: AppView;
   onViewChange: (view: AppView, origin?: { x: number; y: number }) => void;
+  /** 站主在场（访客预览时为 false）：Miku 对站主与访客是两种关系 */
+  isOwner?: boolean;
 }
 
-export const OasisBottomChrome = ({ currentView, onViewChange }: OasisBottomChromeProps) => {
+export const OasisBottomChrome = ({ currentView, onViewChange, isOwner = false }: OasisBottomChromeProps) => {
   const reduceMotion = !!useReducedMotion();
   const dockRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +51,7 @@ export const OasisBottomChrome = ({ currentView, onViewChange }: OasisBottomChro
           aria-label="Miku 伴侣"
           className="pointer-events-auto absolute left-full ml-1.5 md:ml-2.5 top-1/2 -translate-y-1/2 max-[359px]:left-auto max-[359px]:right-0 max-[359px]:top-0 max-[359px]:ml-0 max-[359px]:-translate-y-[calc(100%+0.4rem)]"
         >
-          <OasisMiku view={currentView} />
+          <OasisMiku view={currentView} isOwner={isOwner} />
         </aside>
       </div>
     </motion.div>

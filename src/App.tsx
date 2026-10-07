@@ -467,7 +467,7 @@ function App() {
                 );
               })()}
               {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
-              <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} />
+              <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} isOwner={effectiveIsAdmin} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,0 +1,3652 @@
+{
+ "version": 1,
+ "generatedBy": "scripts/analyze-tracks.mjs",
+ "weights": {
+  "loudness": 0.35,
+  "onsets": 0.25,
+  "centroid": 0.2,
+  "tempo": 0.2
+ },
+ "tracks": {
+  "y_17_01": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.42,
+   "contrast": 0.936,
+   "bpm": 107.5,
+   "bpmNetease": 157,
+   "sections": [
+    [
+     51000,
+     72000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.092,
+    "onsets": 0.991,
+    "centroid": 0.055,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -14.9,
+    "lra": 15.6,
+    "centroid": 662,
+    "onsetRate": 3.513,
+    "bpm": 107.5,
+    "durationSec": 94
+   }
+  },
+  "y_17_02": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.821,
+   "contrast": 0.298,
+   "bpm": 107.5,
+   "bpmNetease": 79,
+   "sections": [
+    [
+     98000,
+     108500
+    ],
+    [
+     120500,
+     130500
+    ],
+    [
+     147500,
+     161500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.894,
+    "onsets": 0.789,
+    "centroid": 0.908,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -6.3,
+    "lra": 6,
+    "centroid": 1725,
+    "onsetRate": 3.048,
+    "bpm": 107.5,
+    "durationSec": 188
+   }
+  },
+  "y_17_03": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.734,
+   "contrast": 0.661,
+   "bpm": 180,
+   "bpmNetease": 180,
+   "sections": [
+    [
+     61500,
+     77000
+    ],
+    [
+     197000,
+     217500
+    ],
+    [
+     221000,
+     229000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.711,
+    "onsets": 0.486,
+    "centroid": 0.817,
+    "tempo": 1
+   },
+   "raw": {
+    "lufs": -7.3,
+    "lra": 9.3,
+    "centroid": 1668,
+    "onsetRate": 2.718,
+    "bpm": 180,
+    "durationSec": 242
+   }
+  },
+  "y_17_04": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.674,
+   "contrast": 0.128,
+   "bpm": 80.5,
+   "bpmNetease": 160,
+   "sections": [
+    [
+     5110,
+     11780
+    ],
+    [
+     65370,
+     71710
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.83,
+    "onsets": 0.716,
+    "centroid": 0.954,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -6.5,
+    "lra": 3.9,
+    "centroid": 1777,
+    "onsetRate": 2.89,
+    "bpm": 80.5,
+    "durationSec": 259
+   }
+  },
+  "y_17_05": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.202,
+   "contrast": 0.784,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     55500,
+     73500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.147,
+    "onsets": 0.101,
+    "centroid": 0.128,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -12.2,
+    "lra": 11.1,
+    "centroid": 747,
+    "onsetRate": 2.164,
+    "bpm": 99.5,
+    "durationSec": 91
+   }
+  },
+  "y_17_06": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.417,
+   "contrast": 0.853,
+   "bpm": 80.5,
+   "bpmNetease": 120,
+   "sections": [
+    [
+     87000,
+     100500
+    ],
+    [
+     165500,
+     196000
+    ],
+    [
+     255500,
+     276000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.431,
+    "onsets": 0.56,
+    "centroid": 0.56,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -8.5,
+    "lra": 12.4,
+    "centroid": 1487,
+    "onsetRate": 2.758,
+    "bpm": 80.5,
+    "durationSec": 303
+   }
+  },
+  "y_17_07": {
+   "album": "夏草が邪魔をする",
+   "arousal": 0.259,
+   "contrast": 0.564,
+   "bpm": 86,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     79050,
+     96010
+    ],
+    [
+     245570,
+     262610
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.216,
+    "onsets": 0.367,
+    "centroid": 0.257,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -10.1,
+    "lra": 8.5,
+    "centroid": 1208,
+    "onsetRate": 2.53,
+    "bpm": 86,
+    "durationSec": 315
+   }
+  },
+  "y_18_01": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.127,
+   "contrast": 0.798,
+   "bpm": 92.5,
+   "bpmNetease": 139,
+   "percentiles": {
+    "loudness": 0.037,
+    "onsets": 0.11,
+    "centroid": 0.064,
+    "tempo": 0.367
+   },
+   "raw": {
+    "lufs": -16.9,
+    "lra": 11.2,
+    "centroid": 672,
+    "onsetRate": 2.172,
+    "bpm": 92.5,
+    "durationSec": 79
+   }
+  },
+  "y_18_02": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.722,
+   "contrast": 0.537,
+   "bpm": 95.5,
+   "bpmNetease": 94,
+   "sections": [
+    [
+     55500,
+     66500
+    ],
+    [
+     113000,
+     124500
+    ],
+    [
+     199000,
+     215500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.862,
+    "onsets": 0.697,
+    "centroid": 0.826,
+    "tempo": 0.404
+   },
+   "raw": {
+    "lufs": -6.4,
+    "lra": 8.1,
+    "centroid": 1674,
+    "onsetRate": 2.869,
+    "bpm": 95.5,
+    "durationSec": 234
+   }
+  },
+  "y_18_03": {
+   "album": "盗作",
+   "arousal": 0.725,
+   "contrast": 0.193,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     42150,
+     52940
+    ],
+    [
+     171690,
+     182200
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "spring",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.83,
+    "onsets": 0.862,
+    "centroid": 0.798,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -6.5,
+    "lra": 4.7,
+    "centroid": 1637,
+    "onsetRate": 3.134,
+    "bpm": 89,
+    "durationSec": 217
+   }
+  },
+  "y_18_04": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.631,
+   "contrast": 0.596,
+   "bpm": 86,
+   "bpmNetease": 169,
+   "sections": [
+    [
+     36250,
+     41820
+    ],
+    [
+     160360,
+     165910
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.656,
+    "onsets": 0.734,
+    "centroid": 0.89,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -7.5,
+    "lra": 8.8,
+    "centroid": 1690,
+    "onsetRate": 2.945,
+    "bpm": 86,
+    "durationSec": 223
+   }
+  },
+  "y_18_05": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.228,
+   "contrast": 0.647,
+   "bpm": 107.5,
+   "bpmNetease": 79,
+   "sections": [
+    [
+     35500,
+     46000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.165,
+    "onsets": 0.037,
+    "centroid": 0.156,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -11.6,
+    "lra": 9.2,
+    "centroid": 897,
+    "onsetRate": 1.912,
+    "bpm": 107.5,
+    "durationSec": 75
+   }
+  },
+  "y_18_06": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.808,
+   "contrast": 0.312,
+   "bpm": 96,
+   "bpmNetease": 97,
+   "sections": [
+    [
+     78000,
+     99000
+    ],
+    [
+     147500,
+     167000
+    ],
+    [
+     219000,
+     245000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.862,
+    "onsets": 0.908,
+    "centroid": 0.963,
+    "tempo": 0.431
+   },
+   "raw": {
+    "lufs": -6.4,
+    "lra": 6.2,
+    "centroid": 1784,
+    "onsetRate": 3.195,
+    "bpm": 96,
+    "durationSec": 281
+   }
+  },
+  "y_18_07": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.527,
+   "contrast": 0.257,
+   "bpm": 70,
+   "bpmNetease": 139,
+   "sections": [
+    [
+     55740,
+     62300
+    ],
+    [
+     165040,
+     172090
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.624,
+    "onsets": 0.477,
+    "centroid": 0.927,
+    "tempo": 0.018
+   },
+   "raw": {
+    "lufs": -7.6,
+    "lra": 5.7,
+    "centroid": 1735,
+    "onsetRate": 2.715,
+    "bpm": 70,
+    "durationSec": 199
+   }
+  },
+  "y_18_08": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.496,
+   "contrast": 0.142,
+   "bpm": 89,
+   "bpmNetease": 90,
+   "sections": [
+    [
+     73520,
+     89380
+    ],
+    [
+     228160,
+     243880
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.518,
+    "onsets": 0.725,
+    "centroid": 0.367,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -7.9,
+    "lra": 4.1,
+    "centroid": 1338,
+    "onsetRate": 2.906,
+    "bpm": 89,
+    "durationSec": 301
+   }
+  },
+  "y_18_09": {
+   "album": "負け犬にアンコールはいらない",
+   "arousal": 0.247,
+   "contrast": 0.725,
+   "bpm": 136,
+   "bpmNetease": 67,
+   "sections": [
+    [
+     45500,
+     53500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.064,
+    "onsets": 0.174,
+    "centroid": 0.028,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -16.4,
+    "lra": 10.4,
+    "centroid": 614,
+    "onsetRate": 2.285,
+    "bpm": 136,
+    "durationSec": 116
+   }
+  },
+  "y_19_01": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.169,
+   "contrast": 0.881,
+   "bpm": 92.5,
+   "bpmNetease": 139,
+   "percentiles": {
+    "loudness": 0.119,
+    "onsets": 0.128,
+    "centroid": 0.11,
+    "tempo": 0.367
+   },
+   "raw": {
+    "lufs": -14,
+    "lra": 13,
+    "centroid": 721,
+    "onsetRate": 2.199,
+    "bpm": 92.5,
+    "durationSec": 114
+   }
+  },
+  "y_19_02": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.678,
+   "contrast": 0.454,
+   "bpm": 103.5,
+   "bpmNetease": 105,
+   "sections": [
+    [
+     66000,
+     84000
+    ],
+    [
+     133000,
+     148500
+    ],
+    [
+     177000,
+     200500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.688,
+    "onsets": 0.587,
+    "centroid": 0.862,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -7.4,
+    "lra": 7.3,
+    "centroid": 1683,
+    "onsetRate": 2.778,
+    "bpm": 103.5,
+    "durationSec": 246
+   }
+  },
+  "y_19_03": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.66,
+   "contrast": 0.564,
+   "bpm": 112,
+   "bpmNetease": 110,
+   "sections": [
+    [
+     78430,
+     87440
+    ],
+    [
+     237390,
+     246410
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.587,
+    "onsets": 0.651,
+    "centroid": 0.761,
+    "tempo": 0.697
+   },
+   "raw": {
+    "lufs": -7.7,
+    "lra": 8.5,
+    "centroid": 1605,
+    "onsetRate": 2.828,
+    "bpm": 112,
+    "durationSec": 276
+   }
+  },
+  "y_19_04": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.668,
+   "contrast": 0.619,
+   "bpm": 117.5,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     63490,
+     68810
+    ],
+    [
+     72940,
+     78060
+    ],
+    [
+     128660,
+     134310
+    ],
+    [
+     138390,
+     143390
+    ],
+    [
+     200860,
+     206120
+    ],
+    [
+     210150,
+     215540
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.404,
+    "onsets": 0.817,
+    "centroid": 0.881,
+    "tempo": 0.734
+   },
+   "raw": {
+    "lufs": -8.6,
+    "lra": 8.9,
+    "centroid": 1688,
+    "onsetRate": 3.081,
+    "bpm": 117.5,
+    "durationSec": 247
+   }
+  },
+  "y_19_05": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.155,
+   "contrast": 0.89,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     27000,
+     35000
+    ],
+    [
+     38500,
+     47000
+    ],
+    [
+     58000,
+     66000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.073,
+    "onsets": 0.183,
+    "centroid": 0.119,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -15.5,
+    "lra": 13.2,
+    "centroid": 722,
+    "onsetRate": 2.298,
+    "bpm": 89,
+    "durationSec": 99
+   }
+  },
+  "y_19_06": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.648,
+   "contrast": 0.298,
+   "bpm": 95.5,
+   "bpmNetease": 94,
+   "sections": [
+    [
+     65720,
+     73660
+    ],
+    [
+     210830,
+     218640
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.546,
+    "onsets": 0.807,
+    "centroid": 0.872,
+    "tempo": 0.404
+   },
+   "raw": {
+    "lufs": -7.8,
+    "lra": 6,
+    "centroid": 1686,
+    "onsetRate": 3.063,
+    "bpm": 95.5,
+    "durationSec": 254
+   }
+  },
+  "y_19_07": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.318,
+   "contrast": 0.807,
+   "bpm": 80.5,
+   "bpmNetease": 80,
+   "sections": [
+    [
+     51500,
+     69000
+    ],
+    [
+     126500,
+     143000
+    ],
+    [
+     187000,
+     205000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.486,
+    "onsets": 0.193,
+    "centroid": 0.431,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -8.1,
+    "lra": 11.3,
+    "centroid": 1417,
+    "onsetRate": 2.341,
+    "bpm": 80.5,
+    "durationSec": 238
+   }
+  },
+  "y_19_08": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.62,
+   "contrast": 0.381,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     43470,
+     48620
+    ],
+    [
+     140420,
+     146000
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.587,
+    "onsets": 0.752,
+    "centroid": 0.835,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -7.7,
+    "lra": 6.9,
+    "centroid": 1677,
+    "onsetRate": 2.962,
+    "bpm": 89,
+    "durationSec": 185
+   }
+  },
+  "y_19_09": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.57,
+   "contrast": 0.55,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     3500,
+     21500
+    ],
+    [
+     157000,
+     170500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.587,
+    "onsets": 0.683,
+    "centroid": 0.67,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -7.7,
+    "lra": 8.3,
+    "centroid": 1524,
+    "onsetRate": 2.868,
+    "bpm": 89,
+    "durationSec": 224
+   }
+  },
+  "y_19_10": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.07,
+   "contrast": 0.596,
+   "bpm": 81,
+   "bpmNetease": 78,
+   "sections": [
+    [
+     68500,
+     76500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.11,
+    "onsets": 0,
+    "centroid": 0.046,
+    "tempo": 0.11
+   },
+   "raw": {
+    "lufs": -14.6,
+    "lra": 8.8,
+    "centroid": 630,
+    "onsetRate": 1.539,
+    "bpm": 81,
+    "durationSec": 148
+   }
+  },
+  "y_19_11": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.39,
+   "contrast": 0.596,
+   "bpm": 112,
+   "bpmNetease": 110,
+   "sections": [
+    [
+     95000,
+     116000
+    ],
+    [
+     164000,
+     180000
+    ],
+    [
+     235500,
+     249500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.289,
+    "onsets": 0.413,
+    "centroid": 0.229,
+    "tempo": 0.697
+   },
+   "raw": {
+    "lufs": -9.3,
+    "lra": 8.8,
+    "centroid": 1077,
+    "onsetRate": 2.596,
+    "bpm": 112,
+    "durationSec": 300
+   }
+  },
+  "y_19_12": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.366,
+   "contrast": 0.784,
+   "bpm": 129,
+   "bpmNetease": 130,
+   "sections": [
+    [
+     4890,
+     34700
+    ],
+    [
+     102810,
+     132300
+    ],
+    [
+     202530,
+     220460
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.202,
+    "onsets": 0.239,
+    "centroid": 0.376,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -10.3,
+    "lra": 11.1,
+    "centroid": 1347,
+    "onsetRate": 2.38,
+    "bpm": 129,
+    "durationSec": 220
+   }
+  },
+  "y_19_13": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.122,
+   "contrast": 1,
+   "bpm": 86,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     41500,
+     49500
+    ],
+    [
+     100500,
+     133000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.083,
+    "onsets": 0.147,
+    "centroid": 0.083,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -15,
+    "lra": 23.5,
+    "centroid": 685,
+    "onsetRate": 2.265,
+    "bpm": 86,
+    "durationSec": 170
+   }
+  },
+  "y_19_14": {
+   "album": "だから僕は音楽を辞めた",
+   "arousal": 0.534,
+   "contrast": 0.358,
+   "bpm": 123,
+   "bpmNetease": 125,
+   "sections": [
+    [
+     58500,
+     72000
+    ],
+    [
+     119500,
+     132500
+    ],
+    [
+     186000,
+     197000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.431,
+    "onsets": 0.642,
+    "centroid": 0.349,
+    "tempo": 0.766
+   },
+   "raw": {
+    "lufs": -8.5,
+    "lra": 6.6,
+    "centroid": 1303,
+    "onsetRate": 2.8,
+    "bpm": 123,
+    "durationSec": 243
+   }
+  },
+  "y_19e_01": {
+   "album": "エルマ",
+   "arousal": 0.079,
+   "contrast": 0.972,
+   "bpm": 86.5,
+   "bpmNetease": 150,
+   "sections": [
+    [
+     83500,
+     99500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.055,
+    "onsets": 0.018,
+    "centroid": 0.037,
+    "tempo": 0.239
+   },
+   "raw": {
+    "lufs": -16.5,
+    "lra": 16.8,
+    "centroid": 615,
+    "onsetRate": 1.805,
+    "bpm": 86.5,
+    "durationSec": 116
+   }
+  },
+  "y_19e_02": {
+   "album": "エルマ",
+   "arousal": 0.151,
+   "contrast": 0.959,
+   "bpm": 80.5,
+   "bpmNetease": 79,
+   "sections": [
+    [
+     53900,
+     75830
+    ],
+    [
+     225170,
+     244870
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.193,
+    "onsets": 0.119,
+    "centroid": 0.202,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -10.5,
+    "lra": 16.7,
+    "centroid": 1019,
+    "onsetRate": 2.191,
+    "bpm": 80.5,
+    "durationSec": 272
+   }
+  },
+  "y_19e_03": {
+   "album": "エルマ",
+   "arousal": 0.728,
+   "contrast": 0.321,
+   "bpm": 112,
+   "bpmNetease": 54,
+   "sections": [
+    [
+     56500,
+     72000
+    ],
+    [
+     121500,
+     138500
+    ],
+    [
+     163500,
+     177000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.743,
+    "onsets": 0.761,
+    "centroid": 0.688,
+    "tempo": 0.697
+   },
+   "raw": {
+    "lufs": -7.1,
+    "lra": 6.3,
+    "centroid": 1541,
+    "onsetRate": 3.003,
+    "bpm": 112,
+    "durationSec": 199
+   }
+  },
+  "y_19e_04": {
+   "album": "エルマ",
+   "arousal": 0.459,
+   "contrast": 0.335,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     90960,
+     97550
+    ],
+    [
+     151030,
+     157590
+    ],
+    [
+     215850,
+     222320
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.349,
+    "onsets": 0.624,
+    "centroid": 0.404,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -8.8,
+    "lra": 6.4,
+    "centroid": 1364,
+    "onsetRate": 2.786,
+    "bpm": 99.5,
+    "durationSec": 270
+   }
+  },
+  "y_19e_05": {
+   "album": "エルマ",
+   "arousal": 0.139,
+   "contrast": 0.927,
+   "bpm": 80.5,
+   "bpmNetease": 80,
+   "percentiles": {
+    "loudness": 0.128,
+    "onsets": 0.321,
+    "centroid": 0,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -12.8,
+    "lra": 15.1,
+    "centroid": 496,
+    "onsetRate": 2.464,
+    "bpm": 80.5,
+    "durationSec": 110
+   }
+  },
+  "y_19e_06": {
+   "album": "エルマ",
+   "arousal": 0.421,
+   "contrast": 0.817,
+   "bpm": 92.5,
+   "bpmNetease": 92,
+   "sections": [
+    [
+     58500,
+     70500
+    ],
+    [
+     127000,
+     141500
+    ],
+    [
+     182500,
+     204000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "dusk",
+   "percentiles": {
+    "loudness": 0.349,
+    "onsets": 0.661,
+    "centroid": 0.303,
+    "tempo": 0.367
+   },
+   "raw": {
+    "lufs": -8.8,
+    "lra": 11.4,
+    "centroid": 1272,
+    "onsetRate": 2.848,
+    "bpm": 92.5,
+    "durationSec": 232
+   }
+  },
+  "y_19e_07": {
+   "album": "エルマ",
+   "arousal": 0.388,
+   "contrast": 0.284,
+   "bpm": 103.5,
+   "bpmNetease": 104,
+   "sections": [
+    [
+     83180,
+     107290
+    ],
+    [
+     195210,
+     206940
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.303,
+    "onsets": 0.505,
+    "centroid": 0.193,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -9.2,
+    "lra": 5.9,
+    "centroid": 994,
+    "onsetRate": 2.744,
+    "bpm": 103.5,
+    "durationSec": 223
+   }
+  },
+  "y_19e_08": {
+   "album": "エルマ",
+   "arousal": 0.562,
+   "contrast": 0.734,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     54000,
+     63500
+    ],
+    [
+     114500,
+     122500
+    ],
+    [
+     154500,
+     169500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.463,
+    "onsets": 0.798,
+    "centroid": 0.5,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -8.2,
+    "lra": 10.5,
+    "centroid": 1443,
+    "onsetRate": 3.058,
+    "bpm": 99.5,
+    "durationSec": 207
+   }
+  },
+  "y_19e_09": {
+   "album": "エルマ",
+   "arousal": 0.647,
+   "contrast": 0.427,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     61500,
+     81500
+    ],
+    [
+     131500,
+     151000
+    ],
+    [
+     217000,
+     237500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.688,
+    "onsets": 0.872,
+    "centroid": 0.44,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -7.4,
+    "lra": 7.2,
+    "centroid": 1420,
+    "onsetRate": 3.154,
+    "bpm": 99.5,
+    "durationSec": 264
+   }
+  },
+  "y_19e_10": {
+   "album": "エルマ",
+   "arousal": 0.077,
+   "contrast": 0.679,
+   "bpm": 80.5,
+   "bpmNetease": 80,
+   "sections": [
+    [
+     40000,
+     50000
+    ],
+    [
+     56000,
+     65500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.156,
+    "onsets": 0.028,
+    "centroid": 0.009,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -12.1,
+    "lra": 9.9,
+    "centroid": 556,
+    "onsetRate": 1.807,
+    "bpm": 80.5,
+    "durationSec": 120
+   }
+  },
+  "y_19e_11": {
+   "album": "エルマ",
+   "arousal": 0.392,
+   "contrast": 0.399,
+   "bpm": 108,
+   "bpmNetease": 108,
+   "sections": [
+    [
+     53760,
+     69230
+    ],
+    [
+     217220,
+     232900
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "morning",
+   "percentiles": {
+    "loudness": 0.266,
+    "onsets": 0.404,
+    "centroid": 0.312,
+    "tempo": 0.679
+   },
+   "raw": {
+    "lufs": -9.6,
+    "lra": 7,
+    "centroid": 1277,
+    "onsetRate": 2.593,
+    "bpm": 108,
+    "durationSec": 289
+   }
+  },
+  "y_19e_12": {
+   "album": "エルマ",
+   "arousal": 0.318,
+   "contrast": 0.743,
+   "bpm": 83.5,
+   "bpmNetease": 124,
+   "sections": [
+    [
+     47860,
+     56370
+    ],
+    [
+     178300,
+     186730
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.431,
+    "onsets": 0.358,
+    "centroid": 0.248,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -8.5,
+    "lra": 10.6,
+    "centroid": 1207,
+    "onsetRate": 2.528,
+    "bpm": 83.5,
+    "durationSec": 213
+   }
+  },
+  "y_19e_13": {
+   "album": "エルマ",
+   "arousal": 0.234,
+   "contrast": 0.5,
+   "bpm": 136,
+   "bpmNetease": 60,
+   "sections": [
+    [
+     70000,
+     81000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.009,
+    "onsets": 0.165,
+    "centroid": 0.073,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -19,
+    "lra": 7.8,
+    "centroid": 677,
+    "onsetRate": 2.282,
+    "bpm": 136,
+    "durationSec": 145
+   }
+  },
+  "y_19e_14": {
+   "album": "エルマ",
+   "arousal": 0.348,
+   "contrast": 0.899,
+   "bpm": 80.5,
+   "bpmNetease": 80,
+   "sections": [
+    [
+     38360,
+     49940
+    ],
+    [
+     183790,
+     195300
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.463,
+    "onsets": 0.257,
+    "centroid": 0.541,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -8.2,
+    "lra": 13.8,
+    "centroid": 1469,
+    "onsetRate": 2.389,
+    "bpm": 80.5,
+    "durationSec": 241
+   }
+  },
+  "y_20_01": {
+   "album": "盗作",
+   "arousal": 0.261,
+   "contrast": 0.959,
+   "bpm": 143.5,
+   "bpmNetease": 153,
+   "sections": [
+    [
+     21500,
+     34000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.046,
+    "onsets": 0.156,
+    "centroid": 0.096,
+    "tempo": 0.931
+   },
+   "raw": {
+    "lufs": -16.7,
+    "lra": 16.7,
+    "centroid": 691,
+    "onsetRate": 2.266,
+    "bpm": 143.5,
+    "durationSec": 72
+   }
+  },
+  "y_20_02": {
+   "album": "盗作",
+   "arousal": 0.63,
+   "contrast": 0.349,
+   "bpm": 129,
+   "bpmNetease": 130,
+   "sections": [
+    [
+     59500,
+     76000
+    ],
+    [
+     128500,
+     145500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.381,
+    "onsets": 0.78,
+    "centroid": 0.706,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -8.7,
+    "lra": 6.5,
+    "centroid": 1558,
+    "onsetRate": 3.041,
+    "bpm": 129,
+    "durationSec": 163
+   }
+  },
+  "y_20_03": {
+   "album": "盗作",
+   "arousal": 0.576,
+   "contrast": 0.142,
+   "bpm": 95.5,
+   "bpmNetease": 95,
+   "sections": [
+    [
+     98500,
+     110000
+    ],
+    [
+     112500,
+     123500
+    ],
+    [
+     178000,
+     187000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "spring",
+   "percentiles": {
+    "loudness": 0.789,
+    "onsets": 0.459,
+    "centroid": 0.523,
+    "tempo": 0.404
+   },
+   "raw": {
+    "lufs": -6.8,
+    "lra": 4.1,
+    "centroid": 1459,
+    "onsetRate": 2.679,
+    "bpm": 95.5,
+    "durationSec": 218
+   }
+  },
+  "y_20_04": {
+   "album": "盗作",
+   "arousal": 0.671,
+   "contrast": 0.22,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     42250,
+     52790
+    ],
+    [
+     171550,
+     182010
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "spring",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.807,
+    "onsets": 0.844,
+    "centroid": 0.587,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -6.6,
+    "lra": 5.2,
+    "centroid": 1493,
+    "onsetRate": 3.116,
+    "bpm": 89,
+    "durationSec": 216
+   }
+  },
+  "y_20_05": {
+   "album": "盗作",
+   "arousal": 0.14,
+   "contrast": 0.757,
+   "bpm": 60,
+   "bpmNetease": 60,
+   "sections": [
+    [
+     19500,
+     35000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.101,
+    "onsets": 0.28,
+    "centroid": 0.174,
+    "tempo": 0
+   },
+   "raw": {
+    "lufs": -14.7,
+    "lra": 10.7,
+    "centroid": 982,
+    "onsetRate": 2.402,
+    "bpm": 60,
+    "durationSec": 76
+   }
+  },
+  "y_20_06": {
+   "album": "盗作",
+   "arousal": 0.661,
+   "contrast": 0.11,
+   "bpm": 95.5,
+   "bpmNetease": 95,
+   "sections": [
+    [
+     55580,
+     64840
+    ],
+    [
+     191940,
+     198230
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.761,
+    "onsets": 0.853,
+    "centroid": 0.5,
+    "tempo": 0.404
+   },
+   "raw": {
+    "lufs": -7,
+    "lra": 3.7,
+    "centroid": 1443,
+    "onsetRate": 3.13,
+    "bpm": 95.5,
+    "durationSec": 217
+   }
+  },
+  "y_20_07": {
+   "album": "盗作",
+   "arousal": 0.411,
+   "contrast": 0.174,
+   "bpm": 83.5,
+   "bpmNetease": 125,
+   "sections": [
+    [
+     400,
+     9010
+    ],
+    [
+     77080,
+     85720
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "spring",
+   "percentiles": {
+    "loudness": 0.587,
+    "onsets": 0.495,
+    "centroid": 0.266,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -7.7,
+    "lra": 4.5,
+    "centroid": 1245,
+    "onsetRate": 2.737,
+    "bpm": 83.5,
+    "durationSec": 334
+   }
+  },
+  "y_20_08": {
+   "album": "盗作",
+   "arousal": 0.059,
+   "contrast": 0.872,
+   "bpm": 80.5,
+   "bpmNetease": 80,
+   "sections": [
+    [
+     58000,
+     84000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.028,
+    "onsets": 0.064,
+    "centroid": 0.096,
+    "tempo": 0.069
+   },
+   "raw": {
+    "lufs": -17.2,
+    "lra": 12.9,
+    "centroid": 691,
+    "onsetRate": 2.1,
+    "bpm": 80.5,
+    "durationSec": 109
+   }
+  },
+  "y_20_09": {
+   "album": "盗作",
+   "arousal": 0.559,
+   "contrast": 0.578,
+   "bpm": 99.5,
+   "bpmNetease": 99,
+   "sections": [
+    [
+     47720,
+     73950
+    ],
+    [
+     205940,
+     213490
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.546,
+    "onsets": 0.633,
+    "centroid": 0.55,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -7.8,
+    "lra": 8.6,
+    "centroid": 1472,
+    "onsetRate": 2.795,
+    "bpm": 99.5,
+    "durationSec": 239
+   }
+  },
+  "y_20_10": {
+   "album": "盗作",
+   "arousal": 0.655,
+   "contrast": 0.688,
+   "bpm": 99.5,
+   "bpmNetease": 99,
+   "sections": [
+    [
+     57000,
+     77500
+    ],
+    [
+     129500,
+     148000
+    ],
+    [
+     206000,
+     223000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "dusk",
+   "percentiles": {
+    "loudness": 0.656,
+    "onsets": 0.963,
+    "centroid": 0.422,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -7.5,
+    "lra": 10,
+    "centroid": 1410,
+    "onsetRate": 3.345,
+    "bpm": 99.5,
+    "durationSec": 254
+   }
+  },
+  "y_20_11": {
+   "album": "盗作",
+   "arousal": 0.273,
+   "contrast": 0.468,
+   "bpm": 103.5,
+   "bpmNetease": 105,
+   "sections": [
+    [
+     119012,
+     176481
+    ],
+    [
+     212278,
+     236026
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.183,
+    "onsets": 0.248,
+    "centroid": 0.147,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -10.8,
+    "lra": 7.4,
+    "centroid": 894,
+    "onsetRate": 2.383,
+    "bpm": 103.5,
+    "durationSec": 289
+   }
+  },
+  "y_20_12": {
+   "album": "盗作",
+   "arousal": 0.181,
+   "contrast": 0.835,
+   "bpm": 136,
+   "bpmNetease": 136,
+   "sections": [
+    [
+     49000,
+     57500
+    ],
+    [
+     67000,
+     76500
+    ],
+    [
+     81000,
+     89000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0,
+    "onsets": 0.009,
+    "centroid": 0.018,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -19.4,
+    "lra": 12.2,
+    "centroid": 591,
+    "onsetRate": 1.769,
+    "bpm": 136,
+    "durationSec": 141
+   }
+  },
+  "y_20_13": {
+   "album": "盗作",
+   "arousal": 0.405,
+   "contrast": 0.982,
+   "bpm": 86,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     47880,
+     72660
+    ],
+    [
+     163980,
+     187320
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "dusk",
+   "percentiles": {
+    "loudness": 0.546,
+    "onsets": 0.422,
+    "centroid": 0.339,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -7.8,
+    "lra": 17.2,
+    "centroid": 1296,
+    "onsetRate": 2.615,
+    "bpm": 86,
+    "durationSec": 203
+   }
+  },
+  "y_20_14": {
+   "album": "盗作",
+   "arousal": 0.397,
+   "contrast": 0.917,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     960,
+     11630
+    ],
+    [
+     227680,
+     240660
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.624,
+    "onsets": 0.22,
+    "centroid": 0.321,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -7.6,
+    "lra": 15,
+    "centroid": 1282,
+    "onsetRate": 2.368,
+    "bpm": 89,
+    "durationSec": 241
+   }
+  },
+  "y_23_01": {
+   "album": "幻燈",
+   "arousal": 0.36,
+   "contrast": 0.381,
+   "bpm": 117.5,
+   "bpmNetease": 120,
+   "sections": [
+    [
+     67500,
+     82060
+    ],
+    [
+     215430,
+     230010
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.229,
+    "onsets": 0.312,
+    "centroid": 0.275,
+    "tempo": 0.734
+   },
+   "raw": {
+    "lufs": -9.9,
+    "lra": 6.9,
+    "centroid": 1261,
+    "onsetRate": 2.451,
+    "bpm": 117.5,
+    "durationSec": 250
+   }
+  },
+  "y_23_02": {
+   "album": "幻燈",
+   "arousal": 0.386,
+   "contrast": 0.427,
+   "bpm": 95.5,
+   "sections": [
+    [
+     76180,
+     86120
+    ],
+    [
+     217810,
+     227750
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.243,
+    "onsets": 0.596,
+    "centroid": 0.358,
+    "tempo": 0.404
+   },
+   "raw": {
+    "lufs": -9.8,
+    "lra": 7.2,
+    "centroid": 1332,
+    "onsetRate": 2.78,
+    "bpm": 95.5,
+    "durationSec": 273
+   }
+  },
+  "y_23_03": {
+   "album": "幻燈",
+   "arousal": 0.297,
+   "contrast": 0.835,
+   "bpm": 86,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     36400,
+     55280
+    ],
+    [
+     185800,
+     204430
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.289,
+    "onsets": 0.431,
+    "centroid": 0.239,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -9.3,
+    "lra": 12.2,
+    "centroid": 1188,
+    "onsetRate": 2.629,
+    "bpm": 86,
+    "durationSec": 248
+   }
+  },
+  "y_23_04": {
+   "album": "幻燈",
+   "arousal": 0.326,
+   "contrast": 0.427,
+   "bpm": 117.5,
+   "sections": [
+    [
+     137000,
+     146500
+    ],
+    [
+     205500,
+     213500
+    ],
+    [
+     222000,
+     235500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.243,
+    "onsets": 0.202,
+    "centroid": 0.22,
+    "tempo": 0.734
+   },
+   "raw": {
+    "lufs": -9.8,
+    "lra": 7.2,
+    "centroid": 1070,
+    "onsetRate": 2.345,
+    "bpm": 117.5,
+    "durationSec": 266
+   }
+  },
+  "y_23_05": {
+   "album": "幻燈",
+   "arousal": 0.336,
+   "contrast": 0.257,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     30000,
+     39500
+    ],
+    [
+     40500,
+     48500
+    ],
+    [
+     169000,
+     177000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.317,
+    "onsets": 0.349,
+    "centroid": 0.394,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -8.9,
+    "lra": 5.7,
+    "centroid": 1360,
+    "onsetRate": 2.525,
+    "bpm": 89,
+    "durationSec": 210
+   }
+  },
+  "y_23_06": {
+   "album": "幻燈",
+   "arousal": 0.745,
+   "contrast": 0.518,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     75580,
+     95440
+    ],
+    [
+     207570,
+     220290
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.729,
+    "onsets": 0.936,
+    "centroid": 0.78,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -7.2,
+    "lra": 7.9,
+    "centroid": 1627,
+    "onsetRate": 3.276,
+    "bpm": 99.5,
+    "durationSec": 229
+   }
+  },
+  "y_23_07": {
+   "album": "幻燈",
+   "arousal": 0.511,
+   "contrast": 0.454,
+   "bpm": 129,
+   "bpmNetease": 130,
+   "sections": [
+    [
+     65710,
+     84520
+    ],
+    [
+     207840,
+     226640
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.381,
+    "onsets": 0.606,
+    "centroid": 0.33,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -8.7,
+    "lra": 7.3,
+    "centroid": 1287,
+    "onsetRate": 2.782,
+    "bpm": 129,
+    "durationSec": 255
+   }
+  },
+  "y_23_08": {
+   "album": "幻燈",
+   "arousal": 0.386,
+   "contrast": 0.862,
+   "bpm": 152,
+   "bpmNetease": 75,
+   "sections": [
+    [
+     39000,
+     47500
+    ],
+    [
+     102000,
+     114500
+    ],
+    [
+     203000,
+     220000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.349,
+    "onsets": 0.046,
+    "centroid": 0.284,
+    "tempo": 0.977
+   },
+   "raw": {
+    "lufs": -8.8,
+    "lra": 12.6,
+    "centroid": 1264,
+    "onsetRate": 2.019,
+    "bpm": 152,
+    "durationSec": 267
+   }
+  },
+  "y_23_09": {
+   "album": "幻燈",
+   "arousal": 0.369,
+   "contrast": 0.771,
+   "bpm": 144,
+   "bpmNetease": 72,
+   "sections": [
+    [
+     50910,
+     65940
+    ],
+    [
+     194310,
+     208100
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.317,
+    "onsets": 0.138,
+    "centroid": 0.165,
+    "tempo": 0.954
+   },
+   "raw": {
+    "lufs": -8.9,
+    "lra": 10.9,
+    "centroid": 981,
+    "onsetRate": 2.26,
+    "bpm": 144,
+    "durationSec": 253
+   }
+  },
+  "y_23_10": {
+   "album": "幻燈",
+   "arousal": 0.095,
+   "contrast": 0.67,
+   "bpm": 76,
+   "bpmNetease": 75,
+   "sections": [
+    [
+     1150,
+     28280
+    ],
+    [
+     53920,
+     81080
+    ],
+    [
+     106690,
+     159400
+    ],
+    [
+     186500,
+     211110
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.138,
+    "onsets": 0.055,
+    "centroid": 0.138,
+    "tempo": 0.028
+   },
+   "raw": {
+    "lufs": -12.7,
+    "lra": 9.4,
+    "centroid": 876,
+    "onsetRate": 2.031,
+    "bpm": 76,
+    "durationSec": 262
+   }
+  },
+  "a_01": {
+   "album": "夜明け前",
+   "arousal": 0.658,
+   "contrast": 0.757,
+   "bpm": 152,
+   "bpmNetease": 75,
+   "sections": [
+    [
+     56030,
+     107310
+    ],
+    [
+     160180,
+     196840
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "morning",
+   "percentiles": {
+    "loudness": 0.94,
+    "onsets": 0.073,
+    "centroid": 0.578,
+    "tempo": 0.977
+   },
+   "raw": {
+    "lufs": -6.1,
+    "lra": 10.7,
+    "centroid": 1492,
+    "onsetRate": 2.113,
+    "bpm": 152,
+    "durationSec": 332
+   }
+  },
+  "a_02": {
+   "album": "夜明け前",
+   "arousal": 0.544,
+   "contrast": 0.211,
+   "bpm": 99.5,
+   "bpmNetease": 101,
+   "sections": [
+    [
+     94580,
+     104320
+    ],
+    [
+     184830,
+     194400
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.78,
+    "onsets": 0.229,
+    "centroid": 0.569,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -6.9,
+    "lra": 5,
+    "centroid": 1490,
+    "onsetRate": 2.37,
+    "bpm": 99.5,
+    "durationSec": 229
+   }
+  },
+  "a_03": {
+   "album": "夜明け前",
+   "arousal": 0.722,
+   "contrast": 0.239,
+   "bpm": 107.5,
+   "bpmNetease": 107,
+   "sections": [
+    [
+     98000,
+     110930
+    ],
+    [
+     172610,
+     185480
+    ],
+    [
+     247190,
+     260090
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "spring",
+   "percentiles": {
+    "loudness": 0.986,
+    "onsets": 0.468,
+    "centroid": 0.651,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -5.1,
+    "lra": 5.6,
+    "centroid": 1519,
+    "onsetRate": 2.685,
+    "bpm": 107.5,
+    "durationSec": 290
+   }
+  },
+  "a_04": {
+   "album": "夜明け前",
+   "arousal": 0.708,
+   "contrast": 0.055,
+   "bpm": 99,
+   "bpmNetease": 133,
+   "sections": [
+    [
+     53370,
+     87460
+    ],
+    [
+     109400,
+     154860
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.986,
+    "onsets": 0.339,
+    "centroid": 0.945,
+    "tempo": 0.445
+   },
+   "raw": {
+    "lufs": -5.1,
+    "lra": 3,
+    "centroid": 1771,
+    "onsetRate": 2.506,
+    "bpm": 99,
+    "durationSec": 257
+   }
+  },
+  "a_05": {
+   "album": "夜明け前",
+   "arousal": 0.502,
+   "contrast": 0.477,
+   "bpm": 83.5,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     57540,
+     103830
+    ],
+    [
+     164440,
+     212210
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.711,
+    "onsets": 0.303,
+    "centroid": 0.743,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -7.3,
+    "lra": 7.5,
+    "centroid": 1600,
+    "onsetRate": 2.432,
+    "bpm": 83.5,
+    "durationSec": 354
+   }
+  },
+  "a_06": {
+   "album": "夜明け前",
+   "arousal": 0.506,
+   "contrast": 0.537,
+   "bpm": 103.5,
+   "bpmNetease": 102,
+   "sections": [
+    [
+     65610,
+     94154
+    ],
+    [
+     158826,
+     187251
+    ],
+    [
+     235877,
+     248578
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.624,
+    "onsets": 0.294,
+    "centroid": 0.482,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -7.6,
+    "lra": 8.1,
+    "centroid": 1442,
+    "onsetRate": 2.43,
+    "bpm": 103.5,
+    "durationSec": 274
+   }
+  },
+  "a_07": {
+   "album": "夜明け前",
+   "arousal": 0.545,
+   "contrast": 0.399,
+   "bpm": 143.5,
+   "bpmNetease": 69,
+   "sections": [
+    [
+     84820,
+     105990
+    ],
+    [
+     204950,
+     225950
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.729,
+    "onsets": 0.083,
+    "centroid": 0.413,
+    "tempo": 0.931
+   },
+   "raw": {
+    "lufs": -7.2,
+    "lra": 7,
+    "centroid": 1405,
+    "onsetRate": 2.12,
+    "bpm": 143.5,
+    "durationSec": 297
+   }
+  },
+  "a_08": {
+   "album": "季億の箱",
+   "arousal": 0.683,
+   "contrast": 0.028,
+   "bpm": 136,
+   "bpmNetease": 136,
+   "sections": [
+    [
+     87880,
+     102550
+    ],
+    [
+     148320,
+     162530
+    ],
+    [
+     176770,
+     190370
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.688,
+    "onsets": 0.835,
+    "centroid": 0.294,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -7.4,
+    "lra": 2.4,
+    "centroid": 1269,
+    "onsetRate": 3.115,
+    "bpm": 136,
+    "durationSec": 206
+   }
+  },
+  "a_09": {
+   "album": "季億の箱",
+   "arousal": 0.348,
+   "contrast": 0.647,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     82810,
+     126820
+    ],
+    [
+     168170,
+     216150
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.404,
+    "onsets": 0.28,
+    "centroid": 0.385,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -8.6,
+    "lra": 9.2,
+    "centroid": 1359,
+    "onsetRate": 2.402,
+    "bpm": 89,
+    "durationSec": 251
+   }
+  },
+  "a_10": {
+   "album": "季億の箱",
+   "arousal": 0.59,
+   "contrast": 0.335,
+   "bpm": 103.5,
+   "bpmNetease": 76,
+   "sections": [
+    [
+     67990,
+     86440
+    ],
+    [
+     143060,
+     161260
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "season": "summer",
+   "percentiles": {
+    "loudness": 0.761,
+    "onsets": 0.44,
+    "centroid": 0.482,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -7,
+    "lra": 6.4,
+    "centroid": 1442,
+    "onsetRate": 2.636,
+    "bpm": 103.5,
+    "durationSec": 239
+   }
+  },
+  "a_11": {
+   "album": "季億の箱",
+   "arousal": 0.664,
+   "contrast": 0.069,
+   "bpm": 103,
+   "bpmNetease": 101,
+   "sections": [
+    [
+     68100,
+     82500
+    ],
+    [
+     143270,
+     157880
+    ],
+    [
+     256630,
+     270670
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.94,
+    "onsets": 0.385,
+    "centroid": 0.642,
+    "tempo": 0.55
+   },
+   "raw": {
+    "lufs": -6.1,
+    "lra": 3.1,
+    "centroid": 1513,
+    "onsetRate": 2.552,
+    "bpm": 103,
+    "durationSec": 323
+   }
+  },
+  "m_01": {
+   "album": "初音ミクベスト ～impacts～",
+   "arousal": 0.669,
+   "contrast": 0.945,
+   "bpm": 83.5,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     113340,
+     135500
+    ],
+    [
+     250530,
+     272760
+    ],
+    [
+     296080,
+     318500
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 1,
+    "onsets": 0.67,
+    "centroid": 0.615,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -4.8,
+    "lra": 15.9,
+    "centroid": 1496,
+    "onsetRate": 2.855,
+    "bpm": 83.5,
+    "durationSec": 384
+   }
+  },
+  "m_02": {
+   "album": "初音ミクベスト ～impacts～",
+   "arousal": 0.419,
+   "contrast": 0.908,
+   "bpm": 83.5,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     113050,
+     135150
+    ],
+    [
+     250080,
+     272460
+    ],
+    [
+     296050,
+     318030
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.404,
+    "onsets": 0.394,
+    "centroid": 0.752,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -8.6,
+    "lra": 14.6,
+    "centroid": 1602,
+    "onsetRate": 2.561,
+    "bpm": 83.5,
+    "durationSec": 382
+   }
+  },
+  "m_03": {
+   "album": "ELATE",
+   "arousal": 0.52,
+   "contrast": 0.275,
+   "bpm": 64.5,
+   "bpmNetease": 132,
+   "sections": [
+    [
+     88500,
+     113500
+    ],
+    [
+     118000,
+     141500
+    ],
+    [
+     319500,
+     371500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.505,
+    "onsets": 0.954,
+    "centroid": 0.514,
+    "tempo": 0.009
+   },
+   "raw": {
+    "lufs": -8,
+    "lra": 5.8,
+    "centroid": 1451,
+    "onsetRate": 3.297,
+    "bpm": 64.5,
+    "durationSec": 517
+   }
+  },
+  "m_04": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.183,
+   "contrast": 0.202,
+   "bpm": 103.5,
+   "bpmNetease": 206,
+   "percentiles": {
+    "loudness": 0.018,
+    "onsets": 0.092,
+    "centroid": 0.183,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -18.1,
+    "lra": 4.9,
+    "centroid": 987,
+    "onsetRate": 2.123,
+    "bpm": 103.5,
+    "durationSec": 41
+   }
+  },
+  "m_05": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.614,
+   "contrast": 0.518,
+   "bpm": 99.5,
+   "bpmNetease": 100,
+   "sections": [
+    [
+     107440,
+     130240
+    ],
+    [
+     231970,
+     256730
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.656,
+    "onsets": 0.55,
+    "centroid": 0.734,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -7.5,
+    "lra": 7.9,
+    "centroid": 1588,
+    "onsetRate": 2.755,
+    "bpm": 99.5,
+    "durationSec": 304
+   }
+  },
+  "m_06": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.722,
+   "contrast": 0.046,
+   "bpm": 86,
+   "bpmNetease": 84,
+   "sections": [
+    [
+     14000,
+     25500
+    ],
+    [
+     88000,
+     98000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.862,
+    "onsets": 0.743,
+    "centroid": 0.972,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -6.4,
+    "lra": 2.8,
+    "centroid": 1790,
+    "onsetRate": 2.952,
+    "bpm": 86,
+    "durationSec": 260
+   }
+  },
+  "m_07": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.621,
+   "contrast": 0.037,
+   "bpm": 83.5,
+   "bpmNetease": 162,
+   "sections": [
+    [
+     60000,
+     79500
+    ],
+    [
+     200000,
+     214500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.761,
+    "onsets": 0.569,
+    "centroid": 0.917,
+    "tempo": 0.142
+   },
+   "raw": {
+    "lufs": -7,
+    "lra": 2.7,
+    "centroid": 1734,
+    "onsetRate": 2.767,
+    "bpm": 83.5,
+    "durationSec": 255
+   }
+  },
+  "m_08": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.51,
+   "contrast": 0.257,
+   "bpm": 107.5,
+   "bpmNetease": 107,
+   "sections": [
+    [
+     31500,
+     39500
+    ],
+    [
+     57500,
+     67000
+    ],
+    [
+     229500,
+     247000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.45,
+    "onsets": 0.532,
+    "centroid": 0.45,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -8.4,
+    "lra": 5.7,
+    "centroid": 1438,
+    "onsetRate": 2.753,
+    "bpm": 107.5,
+    "durationSec": 264
+   }
+  },
+  "m_09": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.468,
+   "contrast": 0.711,
+   "bpm": 152,
+   "bpmNetease": 75,
+   "sections": [
+    [
+     85500,
+     96000
+    ],
+    [
+     171000,
+     204000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.275,
+    "onsets": 0.33,
+    "centroid": 0.468,
+    "tempo": 0.977
+   },
+   "raw": {
+    "lufs": -9.5,
+    "lra": 10.2,
+    "centroid": 1441,
+    "onsetRate": 2.488,
+    "bpm": 152,
+    "durationSec": 237
+   }
+  },
+  "m_10": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.772,
+   "contrast": 0.991,
+   "bpm": 143.5,
+   "bpmNetease": 146,
+   "sections": [
+    [
+     67910,
+     94040
+    ],
+    [
+     120480,
+     140710
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.656,
+    "onsets": 1,
+    "centroid": 0.532,
+    "tempo": 0.931
+   },
+   "raw": {
+    "lufs": -7.5,
+    "lra": 18,
+    "centroid": 1464,
+    "onsetRate": 3.763,
+    "bpm": 143.5,
+    "durationSec": 165
+   }
+  },
+  "m_11": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.478,
+   "contrast": 0.367,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     79600,
+     101100
+    ],
+    [
+     176660,
+     191880
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.486,
+    "onsets": 0.514,
+    "centroid": 0.601,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -8.1,
+    "lra": 6.8,
+    "centroid": 1494,
+    "onsetRate": 2.746,
+    "bpm": 89,
+    "durationSec": 214
+   }
+  },
+  "m_12": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.833,
+   "contrast": 0,
+   "bpm": 152,
+   "bpmNetease": 75,
+   "sections": [
+    [
+     32340,
+     48380
+    ],
+    [
+     77060,
+     93100
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.894,
+    "onsets": 0.578,
+    "centroid": 0.899,
+    "tempo": 0.977
+   },
+   "raw": {
+    "lufs": -6.3,
+    "lra": 1.1,
+    "centroid": 1716,
+    "onsetRate": 2.774,
+    "bpm": 152,
+    "durationSec": 199
+   }
+  },
+  "m_13": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.614,
+   "contrast": 0.069,
+   "bpm": 129,
+   "bpmNetease": 127,
+   "percentiles": {
+    "loudness": 0.216,
+    "onsets": 0.982,
+    "centroid": 0.661,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -10.1,
+    "lra": 3.1,
+    "centroid": 1523,
+    "onsetRate": 3.414,
+    "bpm": 129,
+    "durationSec": 167
+   }
+  },
+  "m_14": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.705,
+   "contrast": 0.486,
+   "bpm": 143.5,
+   "bpmNetease": 142,
+   "sections": [
+    [
+     63500,
+     78500
+    ],
+    [
+     169000,
+     182000
+    ],
+    [
+     195500,
+     208000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.518,
+    "onsets": 0.771,
+    "centroid": 0.725,
+    "tempo": 0.931
+   },
+   "raw": {
+    "lufs": -7.9,
+    "lra": 7.6,
+    "centroid": 1566,
+    "onsetRate": 3.04,
+    "bpm": 143.5,
+    "durationSec": 273
+   }
+  },
+  "m_15": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.525,
+   "contrast": 0.009,
+   "bpm": 86,
+   "bpmNetease": 85,
+   "sections": [
+    [
+     70990,
+     80300
+    ],
+    [
+     187830,
+     197770
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "night",
+   "percentiles": {
+    "loudness": 0.546,
+    "onsets": 0.541,
+    "centroid": 0.789,
+    "tempo": 0.202
+   },
+   "raw": {
+    "lufs": -7.8,
+    "lra": 1.4,
+    "centroid": 1629,
+    "onsetRate": 2.754,
+    "bpm": 86,
+    "durationSec": 256
+   }
+  },
+  "m_16": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.294,
+   "contrast": 0.633,
+   "bpm": 89,
+   "bpmNetease": 88,
+   "sections": [
+    [
+     55940,
+     89200
+    ],
+    [
+     200420,
+     225260
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "time": "morning",
+   "percentiles": {
+    "loudness": 0.257,
+    "onsets": 0.211,
+    "centroid": 0.459,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -9.7,
+    "lra": 9,
+    "centroid": 1440,
+    "onsetRate": 2.348,
+    "bpm": 89,
+    "durationSec": 240
+   }
+  },
+  "m_17": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.752,
+   "contrast": 0.083,
+   "bpm": 123,
+   "sections": [
+    [
+     50,
+     15590
+    ],
+    [
+     15590,
+     47730
+    ],
+    [
+     92420,
+     107950
+    ],
+    [
+     107950,
+     154080
+    ],
+    [
+     230570,
+     246150
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.587,
+    "onsets": 0.826,
+    "centroid": 0.936,
+    "tempo": 0.766
+   },
+   "raw": {
+    "lufs": -7.7,
+    "lra": 3.3,
+    "centroid": 1766,
+    "onsetRate": 3.087,
+    "bpm": 123,
+    "durationSec": 299
+   }
+  },
+  "m_18": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.446,
+   "contrast": 0.835,
+   "bpm": 99,
+   "bpmNetease": 97,
+   "sections": [
+    [
+     116310,
+     156500
+    ],
+    [
+     256180,
+     280320
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.349,
+    "onsets": 0.266,
+    "centroid": 0.844,
+    "tempo": 0.445
+   },
+   "raw": {
+    "lufs": -8.8,
+    "lra": 12.2,
+    "centroid": 1679,
+    "onsetRate": 2.395,
+    "bpm": 99,
+    "durationSec": 334
+   }
+  },
+  "m_19": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.473,
+   "contrast": 0.427,
+   "bpm": 99.5,
+   "bpmNetease": 98,
+   "sections": [
+    [
+     113060,
+     123190
+    ],
+    [
+     225380,
+     235720
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.349,
+    "onsets": 0.523,
+    "centroid": 0.601,
+    "tempo": 0.5
+   },
+   "raw": {
+    "lufs": -8.8,
+    "lra": 7.2,
+    "centroid": 1494,
+    "onsetRate": 2.749,
+    "bpm": 99.5,
+    "durationSec": 333
+   }
+  },
+  "m_20": {
+   "album": "初音ミクベスト ～memories～",
+   "arousal": 0.417,
+   "contrast": 0.619,
+   "bpm": 129,
+   "bpmNetease": 127,
+   "sections": [
+    [
+     77500,
+     98000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.174,
+    "onsets": 0.615,
+    "centroid": 0.211,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -11,
+    "lra": 8.9,
+    "centroid": 1068,
+    "onsetRate": 2.785,
+    "bpm": 129,
+    "durationSec": 114
+   }
+  },
+  "m_21": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.895,
+   "contrast": 0.018,
+   "bpm": 136,
+   "bpmNetease": 137,
+   "sections": [
+    [
+     75500,
+     84500
+    ],
+    [
+     85500,
+     96000
+    ],
+    [
+     203000,
+     225500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.972,
+    "onsets": 0.945,
+    "centroid": 0.716,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -5.8,
+    "lra": 2.3,
+    "centroid": 1563,
+    "onsetRate": 3.289,
+    "bpm": 136,
+    "durationSec": 265
+   }
+  },
+  "m_22": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.756,
+   "contrast": 0.165,
+   "bpm": 117.5,
+   "bpmNetease": 120,
+   "sections": [
+    [
+     85530,
+     97680
+    ],
+    [
+     184590,
+     197270
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.894,
+    "onsets": 0.683,
+    "centroid": 0.624,
+    "tempo": 0.734
+   },
+   "raw": {
+    "lufs": -6.3,
+    "lra": 4.4,
+    "centroid": 1498,
+    "onsetRate": 2.868,
+    "bpm": 117.5,
+    "durationSec": 269
+   }
+  },
+  "m_23": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.713,
+   "contrast": 0.5,
+   "bpm": 129.5,
+   "bpmNetease": 133,
+   "sections": [
+    [
+     53720,
+     74360
+    ],
+    [
+     183090,
+     203240
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.83,
+    "onsets": 0.376,
+    "centroid": 0.807,
+    "tempo": 0.835
+   },
+   "raw": {
+    "lufs": -6.5,
+    "lra": 7.8,
+    "centroid": 1652,
+    "onsetRate": 2.536,
+    "bpm": 129.5,
+    "durationSec": 269
+   }
+  },
+  "m_24": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.801,
+   "contrast": 0.119,
+   "bpm": 136,
+   "bpmNetease": 136,
+   "sections": [
+    [
+     133500,
+     143000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.922,
+    "onsets": 0.706,
+    "centroid": 0.633,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -6.2,
+    "lra": 3.8,
+    "centroid": 1508,
+    "onsetRate": 2.882,
+    "bpm": 136,
+    "durationSec": 169
+   }
+  },
+  "m_25": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.688,
+   "contrast": 0.711,
+   "bpm": 117.5,
+   "bpmNetease": 120,
+   "sections": [
+    [
+     41000,
+     53000
+    ],
+    [
+     95500,
+     108000
+    ],
+    [
+     137000,
+     156000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.486,
+    "onsets": 0.927,
+    "centroid": 0.697,
+    "tempo": 0.734
+   },
+   "raw": {
+    "lufs": -8.1,
+    "lra": 10.2,
+    "centroid": 1555,
+    "onsetRate": 3.203,
+    "bpm": 117.5,
+    "durationSec": 182
+   }
+  },
+  "m_26": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.906,
+   "contrast": 0.096,
+   "bpm": 107.5,
+   "bpmNetease": 80,
+   "sections": [
+    [
+     54290,
+     65710
+    ],
+    [
+     160600,
+     172610
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.963,
+    "onsets": 0.972,
+    "centroid": 0.982,
+    "tempo": 0.647
+   },
+   "raw": {
+    "lufs": -5.9,
+    "lra": 3.4,
+    "centroid": 1799,
+    "onsetRate": 3.36,
+    "bpm": 107.5,
+    "durationSec": 217
+   }
+  },
+  "m_27": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.805,
+   "contrast": 0.156,
+   "bpm": 129,
+   "bpmNetease": 130,
+   "sections": [
+    [
+     80090,
+     87070
+    ],
+    [
+     153470,
+     160990
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.798,
+    "onsets": 0.917,
+    "centroid": 0.679,
+    "tempo": 0.803
+   },
+   "raw": {
+    "lufs": -6.7,
+    "lra": 4.2,
+    "centroid": 1540,
+    "onsetRate": 3.197,
+    "bpm": 129,
+    "durationSec": 288
+   }
+  },
+  "m_28": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.683,
+   "contrast": 0.697,
+   "bpm": 89,
+   "bpmNetease": 89,
+   "sections": [
+    [
+     45500,
+     53500
+    ],
+    [
+     150000,
+     173500
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.894,
+    "onsets": 0.45,
+    "centroid": 0.991,
+    "tempo": 0.298
+   },
+   "raw": {
+    "lufs": -6.3,
+    "lra": 10.1,
+    "centroid": 1815,
+    "onsetRate": 2.668,
+    "bpm": 89,
+    "durationSec": 183
+   }
+  },
+  "m_29": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.84,
+   "contrast": 0.096,
+   "bpm": 136,
+   "bpmNetease": 139,
+   "sections": [
+    [
+     118720,
+     133840
+    ],
+    [
+     188210,
+     206550
+    ]
+   ],
+   "sectionsSource": "lyrics",
+   "percentiles": {
+    "loudness": 0.83,
+    "onsets": 0.881,
+    "centroid": 0.771,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -6.5,
+    "lra": 3.4,
+    "centroid": 1618,
+    "onsetRate": 3.158,
+    "bpm": 136,
+    "durationSec": 224
+   }
+  },
+  "m_30": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.876,
+   "contrast": 0.229,
+   "bpm": 103.5,
+   "bpmNetease": 105,
+   "sections": [
+    [
+     62500,
+     71000
+    ],
+    [
+     134000,
+     159000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.954,
+    "onsets": 0.899,
+    "centroid": 1,
+    "tempo": 0.587
+   },
+   "raw": {
+    "lufs": -6,
+    "lra": 5.5,
+    "centroid": 1980,
+    "onsetRate": 3.19,
+    "bpm": 103.5,
+    "durationSec": 178
+   }
+  },
+  "m_31": {
+   "album": "DECO*27 VOCALOID COLLECTION 2008～2012",
+   "arousal": 0.891,
+   "contrast": 0.183,
+   "bpm": 136,
+   "bpmNetease": 137,
+   "sections": [
+    [
+     186500,
+     200500
+    ],
+    [
+     204500,
+     227500
+    ],
+    [
+     229000,
+     243000
+    ]
+   ],
+   "sectionsSource": "energy",
+   "percentiles": {
+    "loudness": 0.922,
+    "onsets": 0.89,
+    "centroid": 0.853,
+    "tempo": 0.876
+   },
+   "raw": {
+    "lufs": -6.2,
+    "lra": 4.6,
+    "centroid": 1682,
+    "onsetRate": 3.16,
+    "bpm": 136,
+    "durationSec": 266
+   }
+  }
+ }
+}

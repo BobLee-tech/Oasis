@@ -20,6 +20,12 @@ export class BlinkEngine {
     return MEDIAN_S * Math.exp(gaussian * SIGMA);
   }
 
+  /** 立刻眨一次（大幅转移视线时人常顺带眨眼）；正在眨就不打断。 */
+  trigger() {
+    if (this.phase !== 'idle') return;
+    this.wait = 0;
+  }
+
   update(dtSec: number): number {
     this.t += dtSec;
     switch (this.phase) {

@@ -11,6 +11,8 @@
     "backup": "node scripts/export-posts.mjs",
     "img": "node scripts/post-image.mjs",
     "song": "node scripts/post-song.mjs",
+    "song:analyze": "node scripts/analyze-tracks.mjs",
+    "song:calibrate": "node scripts/calibrate-arousal.mjs",
     "lyric": "node scripts/post-lyrics.mjs",
     "lyric:identity": "node scripts/build-track-identity.mjs",
     "lyric:translate": "node scripts/translate-lyrics.mjs",

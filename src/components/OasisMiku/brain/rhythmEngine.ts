@@ -95,7 +95,12 @@ export class RhythmEngine {
   private smoothedFreq = -1; // -1 = 未初始化，首帧直接取目标值，不必对着 0 慢慢爬升
   private driftT = 0;
 
-  update(dtSec: number, bass: number, profile: RhythmProfile): RhythmFrame {
+  /**
+   * opts.bpm：曲目档案里已知的速度（人标 > 网易云 > 离线估计）。有它就直接锁频，不再靠实时 onset 间隔去猜；
+   *           onset 仍用来软锁相位与触发强拍点头。
+   * opts.gain：摆幅增益（心境唤醒度 × 副歌系数，见 affect.rhythmGain），默认 1。
+   */
+  update(dtSec: number, bass: number, profile: RhythmProfile, opts: { bpm?: number; gain?: number } = {}): RhythmFrame {
     // ① AR 包络：起也不再快——0.4s 起、1.1s 收，幅度是「缓缓浮上来」而不是「一下子弹出来」，
     // 摆幅只吃这条平滑曲线，逐帧的 FFT 抖动到这一步就已经被滤掉了
     const tau = bass > this.env ? 0.4 : 1.1;
@@ -121,7 +126,9 @@ export class RhythmEngine {
     // ③ 频率恒定推进：有稳定 BPM 估计（60~190 区间内可信）就用它，否则退回档位默认频率——
     // 无论哪种，频率本身都不随瞬时能量抖动。但目标值本身会跳变（见 FREQ_SMOOTH_TAU 注释），
     // 所以先对目标频率做一层慢平滑，相位积分永远吃平滑后的值
-    const bpm = this.intervals.length ? 60000 / median(this.intervals) : 0;
+    let bpm = opts.bpm ?? (this.intervals.length ? 60000 / median(this.intervals) : 0);
+    // 已知速度落在可信区间外（如 200 的快歌）时按八度折回，而不是丢掉退回默认频率
+    if (opts.bpm) { while (bpm > 190) bpm /= 2; while (bpm < 60) bpm *= 2; }
     const targetFreq = bpm >= 60 && bpm <= 190 ? bpm / 60 / 4 : profile.freqDefault;
     if (this.smoothedFreq < 0) this.smoothedFreq = targetFreq;
     this.smoothedFreq += (targetFreq - this.smoothedFreq) * (1 - Math.exp(-dtSec / FREQ_SMOOTH_TAU));
@@ -138,7 +145,7 @@ export class RhythmEngine {
     this.driftT += dtSec;
     const drift = (Math.sin(this.driftT * Math.PI * 2 * DRIFT_FREQ_A) +
       Math.sin(this.driftT * Math.PI * 2 * DRIFT_FREQ_B + 1.7)) * 0.5;
-    const amp = profile.amp * this.env * (1 + drift * DRIFT_DEPTH);
+    const amp = profile.amp * (opts.gain ?? 1) * this.env * (1 + drift * DRIFT_DEPTH);
     const bodyLag = Math.PI * 2 * freq * 0.18; // 身体滞后头部 180ms，比第一版再拖一点，更松弛
     return {
       // 幂函数整形（见 SWAY_SHAPE_POWER）：多数时间贴近直立，只在相位靠近波峰前后才短促地摆出去，

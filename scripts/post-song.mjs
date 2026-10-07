@@ -250,6 +250,7 @@ const main = async () => {
   console.log(`\n📋 已复制到剪贴板。粘到 ${path.relative(PROJECT_ROOT, PLAYLIST_FILE)}${anchor >= 0 ? ` 第 ${anchor + 1} 行之后` : ''}（同专辑必须相邻，否则选碟台会拆成两个同名分组）`);
   console.log(`✍️  还差两笔——每首的 color（情绪色）与 excerpt（那一句），共 ${rows.length} 首：`);
   rows.forEach((r, i) => console.log(`     · ${ids[i]}  ${r.title}`));
+  console.log('🎚  粘好之后跑 npm run song:analyze——只分析新加的歌（Miku 的律动/副歌/季节读它）。');
   if (opts.dry) console.log('\n🌵 --dry 演练模式：没有落盘、没有转码、没有上传。');
 
   await copyToClipboard(snippet);

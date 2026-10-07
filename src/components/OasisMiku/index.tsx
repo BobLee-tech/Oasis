@@ -1,11 +1,13 @@
 // 🎐 OasisMiku：折叠入口固定停靠在 Dock 旁；只有展开后的她能在安全区域内移动并吸边。
 // 模型与 Pixi 运行时仍然只在展开时懒加载，折叠态保持零 WebGL 开销。
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { animate, AnimatePresence, motion, useDragControls, useMotionValue, useReducedMotion, type MotionValue } from 'framer-motion';
 import { Live2DStage, type MikuStageHandle } from './Live2DStage';
-import { MikuParticles, type MikuParticlesHandle } from './MikuParticles';
+import { ParticleCanvas, type ParticleCanvasHandle } from './particles/ParticleCanvas';
+import { revealTimeline } from './brain/speech';
 import { useMikuBrain, type Mood } from './useMikuBrain';
-import { useSoundscape, getEnergy, getSpectrum } from '../../hooks/useSoundscape';
+import { usePlayer, getEnergy, getSpectrum } from '../../hooks/useSoundscape';
 import { useCoarsePointer } from '../../hooks/useCoarsePointer';
 import { onMikuSignal } from '../../lib/mikuSignal';
 import type { AppView } from '../../types/auth';
@@ -16,6 +18,12 @@ const MOOD_BUBBLE_BORDER: Partial<Record<Mood, string>> = {
   shy: 'border-[#FFB7C5]/50 dark:border-[#FFB7C5]/30',
 };
 const DEFAULT_BUBBLE_BORDER = 'border-slate-300/45 dark:border-white/10';
+// 悬停头部时的「摸」光标：一只张开的手掌，描边与挂坠同一支笔触；热点在掌心
+const PAT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" fill="white" stroke="#0E8C85" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14V7.5a1.5 1.5 0 0 1 3 0V13m0-6.5V5.5a1.5 1.5 0 0 1 3 0V13m0-6a1.5 1.5 0 0 1 3 0v6.5m0-4a1.5 1.5 0 0 1 3 0V17a7 7 0 0 1-7 7h-1.2a6 6 0 0 1-4.6-2.2L5.6 18.6a1.6 1.6 0 0 1 2.4-2.1L9 17.6"/></svg>',
+)}") 14 14, pointer`;
+// 仅开发环境的心境调试面板（Alt+M）；生产构建里整块是死代码，连 chunk 都不会生成
+const MikuDebugPanel = import.meta.env.DEV ? lazy(() => import('./debug/MikuDebugPanel')) : null;
 const MODEL_URL = '/live2d/miku/miku_sample_t04.model3.json';
 const BERTH_KEY = 'oasis_miku_berth_v2';
 const LEGACY_SIDE_KEY = 'oasis_miku_docked_side_v1';
@@ -87,25 +95,51 @@ const PendantIcon = () => (
   </svg>
 );
 
+// 逐字出现：整句先按完整宽度排好版（未出现的字透明占位），气泡尺寸从第一帧起就不再跳；
+// 每个字自己 120ms 淡入。时间轴与口型共用 brain/speech，嘴动与出字对齐。
+const Typewriter = ({ text, instant }: { text: string; instant: boolean }) => {
+  const chars = Array.from(text);
+  const [shown, setShown] = useState(instant ? chars.length : 0);
+  useEffect(() => {
+    if (instant) return;
+    const timeline = revealTimeline(text);
+    const timers = timeline.map((at, i) => window.setTimeout(() => setShown(i + 1), at));
+    return () => timers.forEach(window.clearTimeout);
+  }, [text, instant]);
+  return (
+    <>
+      <span className="sr-only">{text}</span>
+      <span aria-hidden>
+        {chars.map((ch, i) => (
+          <span key={i} className="transition-opacity duration-150 ease-out" style={{ opacity: i < shown ? 1 : 0 }}>{ch}</span>
+        ))}
+      </span>
+    </>
+  );
+};
+
 interface SpeechBubbleProps {
   text: string;
+  textKey: number;
+  instant: boolean;
   moodBorder: string;
   side: DockSide;
   className?: string;
 }
 
-const SpeechBubble = ({ text, moodBorder, side, className = '' }: SpeechBubbleProps) => (
+// 只动 opacity/transform：气泡本身带 backdrop-blur，再叠一层 filter 动画会逼合成器逐帧重算模糊。
+const SpeechBubble = ({ text, textKey, instant, moodBorder, side, className = '' }: SpeechBubbleProps) => (
   <motion.div
-    initial={{ opacity: 0, y: 8, scale: 0.94, filter: 'blur(3px)' }}
-    animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-    exit={{ opacity: 0, y: -4, scale: 0.97, filter: 'blur(3px)' }}
+    initial={{ opacity: 0, y: 8, scale: 0.94 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -4, scale: 0.97 }}
     transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
     className={`absolute z-20 w-max max-w-[min(190px,calc(100vw-2rem))] md:max-w-[min(240px,calc(100vw-2rem))] text-[13px] rounded-2xl backdrop-blur-md bg-white/72 dark:bg-[#0E1424]/78 border shadow-[0_12px_32px_-20px_rgba(15,23,42,0.45)] px-4 py-2.5 transition-colors duration-500 ${
       side === 'left' ? 'left-0 rounded-bl-md origin-bottom-left' : 'right-0 rounded-br-md origin-bottom-right'
     } ${moodBorder} ${className}`}
   >
-    <span className="font-serif leading-[1.7] tracking-[0.02em] text-slate-600 dark:text-slate-200 text-balance">
-      {text}
+    <span role="status" className="font-serif leading-[1.7] tracking-[0.02em] text-slate-600 dark:text-slate-200 text-balance">
+      <Typewriter key={textKey} text={text} instant={instant} />
     </span>
     <span
       aria-hidden
@@ -116,9 +150,9 @@ const SpeechBubble = ({ text, moodBorder, side, className = '' }: SpeechBubblePr
   </motion.div>
 );
 
-export const OasisMiku = ({ view }: { view: AppView }) => {
+export const OasisMiku = ({ view, isOwner = false }: { view: AppView; isOwner?: boolean }) => {
   const stageRef = useRef<MikuStageHandle>(null);
-  const particlesRef = useRef<MikuParticlesHandle>(null);
+  const particlesRef = useRef<ParticleCanvasHandle>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageShellRef = useRef<HTMLDivElement>(null);
@@ -137,6 +171,12 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const [expanded, setExpanded] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
   // 舞台首次出现后常驻；收起只停摆，五分钟不用才真正释放。
   const [mounted, setMounted] = useState(() => sessionStorage.getItem('oasis_miku_expanded') === '1');
+  // 「睡着」晚于「收起」：退场动画播完才停 ticker，淡出途中她仍在呼吸，而不是定格在半个动作上。
+  const [stageAsleep, setStageAsleep] = useState(() => sessionStorage.getItem('oasis_miku_expanded') !== '1');
+  const expandedRef = useRef(expanded);
+  useEffect(() => { expandedRef.current = expanded; }, [expanded]);
+  // 由挂坠唤醒时从挂坠位置飞出；刷新页面恢复展开态时直接落位，不演出场。
+  const emergeRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [berth, setBerth] = useState<DockBerth>(initialBerth);
@@ -150,8 +190,9 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  const { isPlaying, currentTrack } = useSoundscape();
-  const { bubble, bubbleMood, handlePointerDown, handlePointerUp, handlePointerCancel } = useMikuBrain({
+  const isPlaying = usePlayer(s => s.isPlaying);
+  const currentTrack = usePlayer(s => s.track);
+  const { bubble, bubbleId, bubbleMood, hush, hoverZone, debugRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, carry, land } = useMikuBrain({
     stageRef,
     particlesRef,
     ready,
@@ -159,11 +200,15 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     isPlaying,
     trackId: currentTrack?.id,
     trackCategory: currentTrack?.category,
+    trackTitle: currentTrack?.title,
+    trackArtist: currentTrack?.artist,
+    trackColor: currentTrack?.color,
     getSpectrum,
     getEnergy,
     coarsePointer,
     reduceMotion: prefersReducedMotion,
-    paused: !expanded,
+    paused: stageAsleep,
+    isOwner,
   });
   const bubbleBorder = MOOD_BUBBLE_BORDER[bubbleMood] ?? DEFAULT_BUBBLE_BORDER;
   const bubbleSide = sideOf(berth);
@@ -172,6 +217,20 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
   useEffect(() => {
     sessionStorage.setItem('oasis_miku_expanded', expanded ? '1' : '0');
   }, [expanded]);
+
+  const [debugOpen, setDebugOpen] = useState(() => import.meta.env.DEV && sessionStorage.getItem('oasis_miku_debug') === '1');
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.altKey || event.code !== 'KeyM') return;
+      setDebugOpen((open) => {
+        sessionStorage.setItem('oasis_miku_debug', open ? '0' : '1');
+        return !open;
+      });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => { berthRef.current = berth; }, [berth]);
 
@@ -286,13 +345,14 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     const target = targets.get(selected);
     if (target) {
       const settle = (value: MotionValue<number>, next: number) => {
-        if (!positionedRef.current) { value.set(next); return; }
+        if (!positionedRef.current && !emergeRef.current) { value.set(next); return; }
         animate(value, next, prefersReducedMotion
           ? { type: 'tween' as const, duration: 0.01 }
           : { type: 'spring' as const, stiffness: 300, damping: 32, mass: 0.9 });
       };
       settle(x, target.x);
       settle(y, target.y);
+      emergeRef.current = false;
       if (selected !== berthRef.current) {
         berthRef.current = selected;
         setBerth(selected);
@@ -310,20 +370,16 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
     if (node) window.requestAnimationFrame(measureBerths);
   }, [measureBerths]);
 
+  // 收起时不在这里把 x/y 归零——那会让仍不透明的舞台一帧瞬移回挂坠上方；归位交给 collapse 的弹簧。
   useEffect(() => {
-    if (!expanded) {
-      x.set(0);
-      y.set(0);
-      return;
-    }
-
+    if (!expanded) return;
     const frame = window.requestAnimationFrame(measureBerths);
     window.addEventListener('resize', measureBerths);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', measureBerths);
     };
-  }, [expanded, measureBerths, x, y]);
+  }, [expanded, measureBerths]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -370,19 +426,26 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
       setMounted(true);
     }
     positionedRef.current = false;
+    emergeRef.current = true;
     setPositioned(false);
     setRetreated(false);
+    setStageAsleep(false);
     setExpanded(true);
   };
 
+  // 收起 = 缩回挂坠：位置弹回挂坠上方、同时缩小淡出，空间上连续；ticker 等退场播完再停（见 onAnimationComplete）。
   const collapse = () => {
     clearIdleTimer();
+    hush();
     positionedRef.current = false;
     setPositioned(false);
     setRetreated(false);
     setExpanded(false);
-    x.set(0);
-    y.set(0);
+    const home = prefersReducedMotion
+      ? { type: 'tween' as const, duration: 0.01 }
+      : { type: 'spring' as const, stiffness: 260, damping: 30, mass: 0.9 };
+    animate(x, 0, home);
+    animate(y, 0, home);
   };
 
   const dockToBerth = useCallback((nextBerth: DockBerth) => {
@@ -448,11 +511,17 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
 
   return (
     <div ref={hostRef} className="relative w-12 h-16 flex items-center justify-center select-none">
+      {MikuDebugPanel && debugOpen && expanded && (
+        // 祖先带 transform 会让 fixed 失效，传送到 body
+        createPortal(<Suspense fallback={null}><MikuDebugPanel source={debugRef} /></Suspense>, document.body)
+      )}
       <AnimatePresence>
         {!expanded && bubble && (
           <SpeechBubble
             key="miku-collapsed-bubble"
             text={bubble}
+            textKey={bubbleId}
+            instant={prefersReducedMotion}
             moodBorder={bubbleBorder}
             side="right"
             className="bottom-full mb-2.5"
@@ -512,16 +581,23 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
               draggingRef.current = true;
               restorePresence();
             }}
-            onDragEnd={settleAfterDrag}
-            animate={{ opacity: expanded && positioned ? 1 : 0, scale: expanded ? 1 : 0.9 }}
+            onDrag={(_, info) => carry(info.velocity.x)}
+            onDragEnd={() => {
+              land();
+              settleAfterDrag();
+            }}
+            animate={{ opacity: expanded && positioned ? 1 : 0, scale: expanded ? 1 : 0.6 }}
             transition={prefersReducedMotion
               ? { duration: 0.01 }
               : { type: 'spring', stiffness: 340, damping: 30 }}
-            className="absolute bottom-[calc(100%+0.7rem)] right-0 z-10 cursor-grab active:cursor-grabbing touch-none"
-            style={{ width: expandedW, height: expandedH, x, y, pointerEvents: expanded && positioned ? 'auto' : 'none' }}
+            onAnimationComplete={() => {
+              if (!expandedRef.current) setStageAsleep(true);
+            }}
+            className="absolute bottom-[calc(100%+0.7rem)] right-0 z-10 touch-none"
+            // 缩放原点落在挂坠方向：收起像缩回挂坠，唤醒像从挂坠里长出来
+            style={{ width: expandedW, height: expandedH, x, y, transformOrigin: '84% 100%', pointerEvents: expanded && positioned ? 'auto' : 'none' }}
             inert={!expanded}
             onPointerEnter={restorePresence}
-            title={profile.mobileBerths ? '左右拖动，让她换一边待着' : '拖动 Miku，松手后会停入最近的边缘泊位'}
           >
             <motion.div
               className="relative w-full h-full"
@@ -535,6 +611,8 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                   <SpeechBubble
                     key="miku-expanded-bubble"
                     text={bubble}
+                    textKey={bubbleId}
+                    instant={prefersReducedMotion}
                     moodBorder={bubbleBorder}
                     side={bubbleSide}
                     className="bottom-full mb-2"
@@ -549,7 +627,19 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                   restorePresence();
                   draggingRef.current = false;
                   if (!wrapRef.current) return;
+                  // 捕获指针：抚摸/拽马尾时手滑出画布也继续跟手，直到松开
+                  event.currentTarget.setPointerCapture(event.pointerId);
                   handlePointerDown(event.clientX, event.clientY, wrapRef.current.getBoundingClientRect());
+                }}
+                onPointerMove={(event) => {
+                  if (draggingRef.current) return;
+                  if (event.buttons === 0 && event.pointerType === 'mouse') {
+                    // 悬停：头上换成「摸」的手掌光标（命中测试节流在 brain 里）
+                    const zone = hoverZone(event.clientX, event.clientY);
+                    if (zone !== undefined) event.currentTarget.style.cursor = zone === 'head' ? PAT_CURSOR : zone ? 'pointer' : '';
+                    return;
+                  }
+                  handlePointerMove(event.clientX, event.clientY);
                 }}
                 onPointerUp={(event) => {
                   if (!draggingRef.current) handlePointerUp(event.clientX, event.clientY);
@@ -564,7 +654,7 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                     height={expandedH}
                     modelHeightRatio={profile.modelHeightRatio}
                     reduceMotion={prefersReducedMotion}
-                    paused={!expanded}
+                    paused={stageAsleep}
                     onReady={() => {
                       measureBerths();
                       setReady(true);
@@ -588,8 +678,10 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                 )}
               </div>
 
-              <MikuParticles
+              <ParticleCanvas
                 ref={particlesRef}
+                width={expandedW}
+                height={expandedH}
                 reduceMotion={prefersReducedMotion}
                 coarsePointer={coarsePointer}
               />
@@ -608,7 +700,11 @@ export const OasisMiku = ({ view }: { view: AppView }) => {
                   if (!dockWithKey(event.key)) return;
                   event.preventDefault();
                 }}
-                className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 w-11 h-11 rounded-full flex items-start justify-center pt-2 outline-none focus-visible:outline-2 focus-visible:outline-[#39C5BB] cursor-grab active:cursor-grabbing text-slate-400 hover:text-[#39C5BB] transition-colors"
+                // 握把放在与关闭键相对的上角：她的脸中心离舞台顶只有 ~25px，放正中会整个盖住脸，
+                // 点脸变成了抓握把——摸头「没反应」的又一个原因
+                className={`absolute -top-1 z-20 w-11 h-11 rounded-full flex items-start justify-center pt-2 outline-none focus-visible:outline-2 focus-visible:outline-[#39C5BB] cursor-grab active:cursor-grabbing text-slate-400 hover:text-[#39C5BB] transition-colors ${
+                  bubbleSide === 'right' ? '-right-1' : 'left-0'
+                }`}
               >
                 <span aria-hidden className="flex gap-1 opacity-45">
                   <span className="w-1 h-1 rounded-full bg-current" />

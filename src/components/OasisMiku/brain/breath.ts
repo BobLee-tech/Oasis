@@ -1,12 +1,14 @@
-// 🫁 呼吸：采用 Live2D CubismBreath 的互质周期，但把角度幅度压到动作曲线的 6%~8%。
+// 🫁 呼吸：采用 Live2D CubismBreath 的互质周期（互质 → 叠加后永不整齐重复）。
+// 库内置的那层 CubismBreath 已在 Live2DStage 里关掉（它在 AngleX 上有 ±7.5° 的慢摆，和这里叠成两层，
+// 头一直在晃），所以这里是唯一的呼吸源：幅度取内置版的约 1/3——看得出在呼吸，但不再「飘」。
 // 呼吸不会因 Tap/Flick 让位；人做手势时也不会暂停呼吸。
 import type { MikuStageHandle } from '../Live2DStage';
 
 const BREATH = [
-  { id: 'ParamAngleX', offset: 0, peak: 1.0, cycle: 6.5345, absolute: false },
-  { id: 'ParamAngleY', offset: 0, peak: 0.6, cycle: 3.5345, absolute: false },
-  { id: 'ParamAngleZ', offset: 0, peak: 0.7, cycle: 5.5345, absolute: false },
-  { id: 'ParamBodyAngleX', offset: 0, peak: 0.3, cycle: 15.5345, absolute: false },
+  { id: 'ParamAngleX', offset: 0, peak: 2.5, cycle: 6.5345, absolute: false },
+  { id: 'ParamAngleY', offset: 0, peak: 1.4, cycle: 3.5345, absolute: false },
+  { id: 'ParamAngleZ', offset: 0, peak: 1.8, cycle: 5.5345, absolute: false },
+  { id: 'ParamBodyAngleX', offset: 0, peak: 0.9, cycle: 15.5345, absolute: false },
   { id: 'ParamBreath', offset: 0.5, peak: 0.5, cycle: 3.2345, absolute: true },
 ] as const;
 
