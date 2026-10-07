@@ -1,5 +1,6 @@
 import type {
   LyricLine,
+  LyricReading,
   LyricsDocument,
   LyricsManifest,
   LyricsManifestEntry,
@@ -7,6 +8,8 @@ import type {
 } from '../types/music';
 
 const MAX_LINES = 2_000;
+const MAX_READINGS = 64;
+const KANA_ONLY = /^[\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u;
 const MAX_TEXT_LENGTH = 500;
 const MAX_TIMESTAMP_MS = 24 * 60 * 60 * 1_000;
 const TIMESTAMP = /\[(\d{1,3}):([0-5]\d)(?:[.:](\d{1,3}))?\]/g;
@@ -198,6 +201,21 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
           return { text, startMs: wordStart, endMs: wordEnd };
         })
       : undefined;
+    // 读音片段：surface 必须按顺序出现在原文里，kana 只能是假名；不合规的片段丢掉而不是整首拒收
+    const kana: LyricReading[] = [];
+    if (Array.isArray(raw.kana)) {
+      let cursor = 0;
+      for (const segment of raw.kana.slice(0, MAX_READINGS)) {
+        if (!isRecord(segment)) continue;
+        const surface = cleanText(String(segment.surface ?? '')).slice(0, 24);
+        const reading = cleanText(String(segment.kana ?? '')).slice(0, 48);
+        if (!surface || !KANA_ONLY.test(reading)) continue;
+        const at = ja.indexOf(surface, cursor);
+        if (at < 0) continue;
+        kana.push({ surface, kana: reading });
+        cursor = at + surface.length;
+      }
+    }
     const role =
       raw.role === 'backing' || raw.role === 'duet-left' || raw.role === 'duet-right'
         ? raw.role
@@ -211,6 +229,7 @@ export const validateLyricsDocument = (value: unknown, expectedTrackId: string):
       ...(zh ? { zh } : {}),
       ...(words?.length ? { words } : {}),
       ...(role ? { role } : {}),
+      ...(kana.length ? { kana } : {}),
     };
   });
 

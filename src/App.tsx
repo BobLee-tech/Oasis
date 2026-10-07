@@ -454,7 +454,7 @@ function App() {
                 );
                 return (
                   <AnimatePresence mode="wait">
-                    {appView === 'soundscape' && wrap('sound-space', <OasisResonance />)}
+                    {appView === 'soundscape' && wrap('sound-space', <OasisResonance isOwner={effectiveIsAdmin} />)}
                     {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
                     {appView === 'orchard' && wrap('orchard-space', <OasisOrchard
                       isAdmin={effectiveIsAdmin}

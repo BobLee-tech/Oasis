@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLyrics } from '../../hooks/useLyrics';
+import { getPlaybackTime, seek } from '../../hooks/useSoundscape';
 import type { LyricLanguage, Track } from '../../types/music';
 import { LyricField } from './LyricField';
 // 🅰️ Klee One：--font-ja 专用，只有 LyricRow 的 .lyric-ja 用到。124 条 @font-face 声明
@@ -12,9 +13,6 @@ interface LyricPanelProps {
   color: string;
   isPlaying: boolean;
   active: boolean;
-  currentTime: number;
-  seek: (seconds: number) => void;
-  getPlaybackTime: () => number;
   compact?: boolean;
 }
 
@@ -22,6 +20,15 @@ const preference = (): LyricLanguage => {
   if (typeof window === 'undefined') return 'bilingual';
   const stored = window.localStorage.getItem('oasis_lyric_language');
   return stored === 'ja' || stored === 'zh' ? stored : 'bilingual';
+};
+
+const furiganaPreference = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem('oasis_lyric_furigana') === '1';
+  } catch {
+    return false;
+  }
 };
 
 const LyricLoading: React.FC<{ color: string }> = ({ color }) => (
@@ -86,13 +93,23 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
   color,
   isPlaying,
   active,
-  currentTime,
-  seek,
-  getPlaybackTime,
   compact = false,
 }) => {
   const lyrics = useLyrics(track, active);
   const [language, setLanguage] = useState<LyricLanguage>(preference);
+  const [furigana, setFurigana] = useState(furiganaPreference);
+  const hasReadings = Boolean(lyrics.document?.lines.some(line => line.kana?.length));
+
+  const toggleFurigana = () => {
+    setFurigana(current => {
+      try {
+        window.localStorage.setItem('oasis_lyric_furigana', current ? '0' : '1');
+      } catch {
+        // 隐私模式下记不住也无妨
+      }
+      return !current;
+    });
+  };
 
   const chooseLanguage = (next: LyricLanguage) => {
     setLanguage(next);
@@ -127,6 +144,22 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
                 {lyrics.document.translator ? ` · 译：${lyrics.document.translator}` : ''}
                 {lyrics.document.translationStatus === 'machine' ? ' · 待校' : ''}
               </span>
+              {hasReadings && language !== 'zh' && (
+                <button
+                  type="button"
+                  onClick={toggleFurigana}
+                  aria-pressed={furigana}
+                  aria-label="注音"
+                  title="在汉字上方标出假名读音"
+                  className={`h-7 min-w-9 rounded-full px-2 font-mono text-[8px] tracking-wider backdrop-blur-sm transition-colors ${
+                    furigana
+                      ? 'bg-white/70 text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200'
+                      : 'bg-white/34 text-slate-400 dark:bg-white/[0.025] dark:text-slate-500'
+                  }`}
+                >
+                  注音
+                </button>
+              )}
               {lyrics.hasTranslation && (
                 <div
                   className="flex items-center rounded-full bg-white/34 p-0.5 backdrop-blur-sm dark:bg-white/[0.025]"
@@ -161,11 +194,11 @@ export const LyricPanel: React.FC<LyricPanelProps> = ({
               color={color}
               isPlaying={isPlaying}
               active={active}
-              currentTime={currentTime}
               seek={seek}
               getPlaybackTime={getPlaybackTime}
               compact={compact}
               language={lyrics.hasTranslation ? language : 'ja'}
+              furigana={furigana && hasReadings}
             />
           </motion.div>
         ) : lyrics.status === 'instrumental' ? (

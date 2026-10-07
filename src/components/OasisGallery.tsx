@@ -6,7 +6,7 @@ import { useGarden, filterVisible, makeExcerpt, type BlogPost, type Growth, type
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
-import { useSoundscape } from '../hooks/useSoundscape';
+import { PLAYLIST, switchTrack } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
 import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter } from './OasisReader';
 import { useHashRoute } from '../lib/route';
@@ -715,13 +715,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }
   }, [activePost]);
 
-  const { playlist, switchTrack } = useSoundscape();
   const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
   // 🌾 今日共鸣优先带上节气语录：随季节流转，每日在节气与手写箴言之间轮换
   const quotePool = useMemo(() => [termNoteOfDay(), ...DAILY_QUOTES], []);
   const solarTermName = useMemo(() => currentSolarTerm().name, []);
   const dailyQuote = useMemo(() => quotePool[dailyIndex % quotePool.length], [dailyIndex, quotePool]);
-  const dailyTrack = useMemo(() => playlist[dailyIndex % playlist.length], [dailyIndex, playlist]);
+  const dailyTrack = useMemo(() => PLAYLIST[dailyIndex % PLAYLIST.length], [dailyIndex]);
 
   // 上一篇文章 id：切走 / 关闭阅读舱前，把它停留的滚动位置存一笔最终进度，
   // 否则 400ms 防抖若还没触发就切走，最后一段阅读不会被记住。

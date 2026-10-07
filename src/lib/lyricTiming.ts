@@ -1,4 +1,5 @@
 import type { LyricLine } from '../types/music';
+import { readingTextOf, splitMora } from './kana';
 
 const MS_PER_MORA = 300;
 const TAIL_MS = 600;
@@ -34,7 +35,8 @@ export const sungMsOf = (line: LyricLine) => {
   const span = Math.max(MIN_SUNG_MS, line.endMs - line.startMs);
   const finalWord = line.words?.[line.words.length - 1];
   if (finalWord) return clamp(finalWord.endMs - line.startMs, MIN_SUNG_MS, span);
-  return clamp(moraCount(line.ja) * MS_PER_MORA + TAIL_MS, MIN_SUNG_MS, span);
+  // 有读音时按读音数音拍：「六畳間」是 ろくたたみま 6 拍，不是 3 个字
+  return clamp(moraCount(readingTextOf(line)) * MS_PER_MORA + TAIL_MS, MIN_SUNG_MS, span);
 };
 
 export const prepareTimedLines = (lines: LyricLine[]): TimedLyricLine[] =>
@@ -58,6 +60,8 @@ export const prepareTimedLines = (lines: LyricLine[]): TimedLyricLine[] =>
 /** 一行里的一个发音单元：假名/汉字各自成组，拉丁词整词不拆（否则会从单词中间断行）。 */
 export interface LyricBeat {
   text: string;
+  /** 汉字片段的假名读音（读音层）；口型按它逐拍取元音，时值按它的音拍数分配 */
+  reading?: string;
   /** 该单元在本行「已唱比例」上的起止，0–1 */
   from: number;
   to: number;
@@ -92,29 +96,51 @@ export const beatsOf = (value: LyricLine | string): LyricBeat[] => {
       to: clamp((word.endMs - line.startMs) / duration, 0, 1),
     }));
   }
-  const tokens: string[] = [];
+  // 读音片段的起点 → 片段：汉字串整体作为一个拍组（字形不能拆），时值 = 读音的音拍数
+  const readings = new Map<number, { surface: string; kana: string }>();
+  if (typeof value !== 'string' && value.kana?.length) {
+    let cursor = 0;
+    for (const segment of value.kana) {
+      const at = text.indexOf(segment.surface, cursor);
+      if (at < 0) continue;
+      readings.set(at, segment);
+      cursor = at + segment.surface.length;
+    }
+  }
+
+  const tokens: { text: string; reading?: string }[] = [];
   let latin = '';
-  for (const character of text) {
+  const flushLatin = () => {
+    if (latin) tokens.push({ text: latin });
+    latin = '';
+  };
+  for (let index = 0; index < text.length; ) {
+    const segment = readings.get(index);
+    if (segment) {
+      flushLatin();
+      tokens.push({ text: segment.surface, reading: segment.kana });
+      index += segment.surface.length;
+      continue;
+    }
+    const character = String.fromCodePoint(text.codePointAt(index) ?? 0);
+    index += character.length;
     if (LATIN.test(character)) {
       latin += character;
       continue;
     }
-    if (latin) {
-      tokens.push(latin);
-      latin = '';
-    }
-    tokens.push(character);
+    flushLatin();
+    tokens.push({ text: character });
   }
-  if (latin) tokens.push(latin);
+  flushLatin();
   if (!tokens.length) return [];
 
-  const weights = tokens.map(beatWeight);
+  const weights = tokens.map(token => (token.reading ? splitMora(token.reading).length : beatWeight(token.text)));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let accumulated = 0;
   return tokens.map((token, index) => {
     const from = accumulated / total;
     accumulated += weights[index];
-    return { text: token, from, to: accumulated / total };
+    return { text: token.text, ...(token.reading ? { reading: token.reading } : {}), from, to: accumulated / total };
   });
 };
 

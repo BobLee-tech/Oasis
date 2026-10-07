@@ -11,6 +11,7 @@ interface LyricRowProps {
   index: number;
   isCurrent: boolean;
   language: LyricLanguage;
+  furigana: boolean;
   compact: boolean;
   color: string;
   onChoose: (index: number) => void;
@@ -26,7 +27,7 @@ const round = (value: number) => Math.round(value * 1e4) / 1e4;
  * 结构与那些真正会变的内容。
  */
 const LyricRowView = forwardRef<HTMLButtonElement, LyricRowProps>(
-  ({ line, index, isCurrent, language, compact, color, onChoose }, ref) => {
+  ({ line, index, isCurrent, language, furigana, compact, color, onChoose }, ref) => {
     const beats = useMemo(() => beatsOf(line), [line]);
     const showJapanese = language !== 'zh' || !line.zh;
     const showTranslation = language === 'bilingual' && Boolean(line.zh);
@@ -72,7 +73,14 @@ const LyricRowView = forwardRef<HTMLButtonElement, LyricRowProps>(
                 className="lyric-beat"
                 style={{ '--a': round(beat.from), '--b': round(beat.to) } as LyricBeatStyle}
               >
-                {beat.text}
+                {furigana && beat.reading ? (
+                  <ruby>
+                    {beat.text}
+                    <rt className="lyric-rt">{beat.reading}</rt>
+                  </ruby>
+                ) : (
+                  beat.text
+                )}
               </span>
             ))}
           </span>

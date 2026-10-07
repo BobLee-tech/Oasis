@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getEnergy, setActiveLyric } from '../../hooks/useSoundscape';
+import { getEnergy, getPlayerSnapshot, setActiveLyric } from '../../hooks/useSoundscape';
 import { beatsOf, formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
 import { findActiveLine } from '../../lib/lyrics';
 import { useTicker } from '../../lib/ticker';
@@ -14,11 +14,12 @@ interface LyricFieldProps {
   color: string;
   isPlaying: boolean;
   active: boolean;
-  currentTime: number;
   seek: (seconds: number) => void;
   getPlaybackTime: () => number;
   compact: boolean;
   language: LyricLanguage;
+  /** 注音：汉字上方标假名读音（读音层）；切换会改变行高，词场随之重新量 */
+  furigana: boolean;
 }
 
 /** 焦点行停在词场高度的这个位置：上方留 42% 的已唱，下方留 58% 的将唱。 */
@@ -42,15 +43,15 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   color,
   isPlaying,
   active,
-  currentTime,
   seek,
   getPlaybackTime,
   compact,
   language,
+  furigana,
 }) => {
   const timedLines = useMemo(() => prepareTimedLines(lyrics.lines), [lyrics.lines]);
   const offsetMs = lyrics.offsetMs + (track.lyrics?.offsetMs ?? 0);
-  const initialIndex = findActiveLine(timedLines, currentTime * 1_000 - offsetMs);
+  const initialIndex = findActiveLine(timedLines, getPlaybackTime() * 1_000 - offsetMs);
 
   const [playbackIndex, setPlaybackIndex] = useState(initialIndex);
   const [following, setFollowing] = useState(true);
@@ -189,7 +190,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     if (trackRef.current) observer.observe(trackRef.current);
     void document.fonts?.ready.then(measure);
     return () => observer.disconnect();
-  }, [measure, applyFocus, applyPlayback, timedLines, language, compact, track.id]);
+  }, [measure, applyFocus, applyPlayback, timedLines, language, furigana, compact, track.id]);
 
   const nearestIndex = useCallback((y: number) => {
     const { tops, heights, fieldHeight } = measurementsRef.current;
@@ -278,12 +279,14 @@ export const LyricField: React.FC<LyricFieldProps> = ({
 
   useTicker(
     (now, dt) => {
+      // 换曲后这一页词场还在淡出：时钟已属于新曲，冻结在原地，别被新曲的 0 秒拽回顶部。
+      if (getPlayerSnapshot().track.id !== track.id) return;
       const spring = springRef.current;
       const gesture = gestureRef.current;
       const measurements = measurementsRef.current;
       const still = reducedMotion();
 
-      const playbackMs = (isPlaying ? getPlaybackTime() : currentTime) * 1_000 - offsetMs;
+      const playbackMs = getPlaybackTime() * 1_000 - offsetMs;
       const nextIndex = findActiveLine(timedLines, playbackMs);
       if (nextIndex !== playbackIndexRef.current) {
         playbackIndexRef.current = nextIndex;
@@ -585,24 +588,18 @@ export const LyricField: React.FC<LyricFieldProps> = ({
 
       <div ref={trackRef} className="absolute inset-x-0 top-0 transform-gpu px-1 pb-[42vh] pt-[12%]">
         <div ref={titleRef} className="mb-14 px-3 text-left">
-          <motion.h2
-            layoutId={compact ? undefined : 'track-title'}
-            layout="position"
-            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+          <h2
             className={`font-serif font-medium leading-[1.08] tracking-wide text-slate-800 dark:text-slate-50 ${
               compact ? 'text-[2rem]' : 'text-[2.45rem] xl:text-[3.15rem]'
             }`}
           >
             {track.title}
-          </motion.h2>
+          </h2>
           <p className="mt-3 font-mono text-[9px] tracking-[0.32em] uppercase text-slate-400 dark:text-slate-500">
             {track.artist}
           </p>
           {track.excerpt && (
-            <motion.p
-              layoutId={compact ? undefined : 'track-excerpt'}
-              layout="position"
-              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+            <p
               className={`mt-6 max-w-[92%] font-serif italic leading-loose tracking-wider text-slate-500 dark:text-slate-400 ${
                 compact ? 'text-sm' : 'text-base'
               }`}
@@ -610,7 +607,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
               <span style={{ color }}>“ </span>
               {track.excerpt}
               <span style={{ color }}> ”</span>
-            </motion.p>
+            </p>
           )}
         </div>
 
@@ -625,6 +622,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
               index={index}
               isCurrent={index === playbackIndex}
               language={language}
+              furigana={furigana}
               compact={compact}
               color={color}
               onChoose={chooseLine}

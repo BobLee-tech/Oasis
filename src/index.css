@@ -118,6 +118,39 @@ body {
     contain-intrinsic-size: auto 3.5rem;
 }
 
+/* 🎨 情绪色只由一个注册过的变量过渡：共鸣页根节点写 --mood，子元素一律 var(--mood)，
+   不再给十几个元素各挂一条 transition-colors。注册后浏览器才知道它是颜色、才能插值。 */
+@property --mood {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #39C5BB;
+}
+.oasis-mood {
+    transition: --mood 1450ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .oasis-mood { transition: none; }
+}
+
+/* 🎚️ 在播律动条：只动 transform，不动 height（不触发布局）。 */
+@keyframes oasis-eq {
+    0%, 100% { transform: scaleY(0.28); }
+    50% { transform: scaleY(1); }
+}
+.oasis-eq > span {
+    height: 100%;
+    transform: scaleY(0.62);
+    transform-origin: bottom;
+}
+.oasis-eq[data-live='true'] > span {
+    animation: oasis-eq 0.7s ease-in-out infinite;
+}
+.oasis-eq[data-live='true'] > span:nth-child(2) { animation-delay: 0.2s; }
+.oasis-eq[data-live='true'] > span:nth-child(3) { animation-delay: 0.4s; }
+@media (prefers-reduced-motion: reduce) {
+    .oasis-eq[data-live='true'] > span { animation: none; }
+}
+
 /* ⌨️ 统一键盘焦点环：仅在键盘导航时出现，不打扰鼠标用户 */
 @layer base {
     :focus-visible {
@@ -386,6 +419,14 @@ body {
         var(--accent-ink) calc(var(--t) * 100%),
         var(--lyric-ink) calc((1 - var(--t)) * 100%)
     );
+}
+
+/* 注音：读音小字跟着所在拍子一起被点亮（继承 .lyric-beat 的颜色），只是更淡、更小 */
+.lyric-rt {
+    font-size: .42em;
+    letter-spacing: .04em;
+    opacity: .72;
+    user-select: none;
 }
 
 /* 当前字只用可读墨色推进；发光交给文字背后的独立衬光，避免每帧重绘字形阴影。 */

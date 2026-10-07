@@ -16,7 +16,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - [useGarden.ts](src/hooks/useGarden.ts) — 博客文章。Supabase `garden_posts` 表为权威源 + localStorage(`oasis_garden_posts`)缓存兜底;实时订阅表变更;云端失败静默回落本地。API:`{ posts, plantSeed, updateSeed, uprootSeed }`(均支持可选 `series` 参数)。BlogPost 含 `series?`(合集名);合集内序号不存库,按 createdAt 在合集内推导(OasisGallery 的 `chapterOf`)。
 - [useCategories.tsx](src/hooks/useCategories.tsx) — 自定义分类,`garden_categories` 表,同样 localStorage 兜底。
 - [useAuth.ts](src/hooks/useAuth.ts) — Supabase Auth;`isAdmin` = 有 session。getSession 有 3s 超时兜底(受限浏览器 navigator.locks 会卡死)。
-- [useSoundscape.ts](src/hooks/useSoundscape.ts)(495 行) — 音乐核心:内嵌 82 首曲库 `PLAYLIST`(Yorushika/Atarayo/Miku,含歌词与情绪色);全局单例 `<audio>`;`resolveAudioUrl()` 在设置了 `VITE_AUDIO_BASE` 时把 `/audio/...flac` 改写为 R2 上的 `.m4a`,否则回退 `public/audio/` 原始文件(本地开发)。
+- [useSoundscape.ts](src/hooks/useSoundscape.ts) — 音乐核心:内嵌 110 首曲库 `PLAYLIST`(Yorushika/Atarayo/Miku,含情绪色);全局单例 `<audio>`;`resolveAudioUrl()` 在设置了 `VITE_AUDIO_BASE` 时把 `/audio/...flac` 改写为 R2 上的 `.m4a`,否则回退 `public/audio/` 原始文件(本地开发)。**没有 `useSoundscape()` hook 了**:命令(`switchTrack`/`togglePlay`/`seek`…)是直接 import 的模块函数;状态用 `usePlayer(selector)` 按需订阅(selector 只能返回原始值或已有对象);进度不进 React,用 `getPlaybackTime()` + ticker 写 DOM。`isPlaying` 是播放意图,命令当帧改。音乐页的交互四规矩见 [OasisResonance.tsx](src/components/OasisResonance.tsx) 文件头与 [docs/music-design.md](docs/music-design.md);开发环境下 `window.__uiProbe.run(fn)` 可逐帧检查瞬移/错位。
 - [useAutoTheme.ts](src/hooks/useAutoTheme.ts) — auto/light/dark 三态,auto 按时间;dark 通过 `document.documentElement.classList` 切换。
 - useDiary / usePostResonance — 日记回声与文章共鸣(点赞类)。
 
@@ -32,6 +32,12 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ## Supabase
 - 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
+
+## 曲目档案与工坊(详见 docs/music-design.md)
+- `music-data/tracks/<id>.json`(进 git):顶层是站主写的(intro / note / mood / relations / lyrics.outroMs / lyrics.readings),`sources.*` 是导入层(`npm run music:netease`、工坊网页导入)。专辑叙事与心境默认在 `music-data/albums/<slug>.json`(原 lyrics-config/albums 已迁入,translate-lyrics 改读这里)。
+- `npm run music:build`(prebuild)合并成 `src/data/trackProfiles.generated.json`,前端经 `src/lib/trackProfile.ts` 按需加载;曲目卡 `resonance/LinerNotes.tsx`。notePrivate 构建期就不写 note。Miku 的 `trackMoodData.ts` 也读这份生成文件,**不要再 glob 原始档案**(会把导入记录与私密 note 打进公开 chunk)。
+- 曲目工坊 `/__studio`:只在 `npm run dev` 下存在(`scripts/music-studio/`,前端 `src/dev/studio/`)。改了 `scripts/music-studio/api.mjs` 或它引用的 `scripts/lib/*` 要重启开发服务器(Node 模块缓存)。
+- 歌词读音层:`scripts/lib/kana.mjs`(行内注音 > 网易云罗马音 > kuromoji),发布 JSON 的 `LyricLine.kana`;五道闸在 `scripts/lib/lyrics-gate.mjs`,`post-lyrics` 强制版本/洁净闸。
 
 ## 音频流程(详见 docs/audio-hosting.md)
 加歌用 `npm run song -- <文件|文件夹>`([scripts/post-song.mjs](scripts/post-song.mjs)):归档到 `public/audio/`(不部署) → 转 AAC 256k 到 `dist-audio/`(gitignored) → rclone 传 `oasis-r2:oasis-audio` → curl 校验 `audio.boblee.dev` 可访问 → 打印 PLAYLIST 代码行(`color`/`lyric` **故意留空**手填)。批量重转用 `scripts/transcode-audio.sh`;线上设 `VITE_AUDIO_BASE`。脚本总览见 [scripts/README.md](scripts/README.md)。

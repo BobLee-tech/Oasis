@@ -56,6 +56,27 @@ describe('lyric timing model', () => {
   });
 
   describe('beatsOf', () => {
+    it('gives a kanji with a reading one beat per mora of its reading', () => {
+      const beats = beatsOf({ ...line('嘘をついた', 0, 4_000), kana: [{ surface: '嘘', kana: 'うそ' }] });
+      expect(beats.map(b => b.text)).toEqual(['嘘', 'を', 'つ', 'い', 'た']);
+      expect(beats[0].reading).toBe('うそ');
+      // 嘘 = 2 拍，其余各 1 拍，共 6 拍
+      expect(beats[0].to).toBeCloseTo(2 / 6);
+      expect(beats[1].from).toBeCloseTo(2 / 6);
+    });
+
+    it('keeps multi-kanji surfaces whole and counts yōon as one mora', () => {
+      const beats = beatsOf({ ...line('六畳間で', 0, 4_000), kana: [{ surface: '六畳間', kana: 'ろくじょうま' }] });
+      expect(beats.map(b => b.text)).toEqual(['六畳間', 'で']);
+      expect(beats[0].to).toBeCloseTo(5 / 6);
+    });
+
+    it('counts sung length from the reading', () => {
+      const plain = sungMsOf(line('三節', 0, 20_000));
+      const read = sungMsOf({ ...line('三節', 0, 20_000), kana: [{ surface: '三節', kana: 'さんふし' }] });
+      expect(read).toBeGreaterThan(plain);
+    });
+
     it('weights kanji above small kana and keeps latin words whole', () => {
       expect(beatsOf('ゅAbc').map(b => b.text)).toEqual(['ゅ', 'Abc']);
       expect(beatsOf('朝 目が覚めて').map(b => b.text)).toEqual(

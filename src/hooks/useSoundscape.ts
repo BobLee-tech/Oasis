@@ -1,5 +1,5 @@
 // src/hooks/useSoundscape.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { Track } from '../types/music';
 
 // 💽 极致高保真本地黑胶曲库（歌词正文由独立清单按需加载）
@@ -409,12 +409,9 @@ export const getSpectrum = (bars: number): number[] => {
   return spectrumOut;
 };
 
-/** 歌词/可视化专用的只读精确时钟；调用方不得持有或修改全局 audio。 */
-export const getPlaybackTime = () => globalAudio.currentTime || globalCurrentTime;
-
 // 🎤 当前歌词行供底部 Chrome 上的 Miku 命令式读取；写入方只在换行/进出间奏时更新。
 export interface ActiveLyric {
-  beats: { text: string; from: number; to: number }[];
+  beats: { text: string; reading?: string; from: number; to: number }[];
   /** 本行已唱比例 0–1，在读取时按精确音频时钟求值。 */
   progress: () => number;
 }
@@ -422,13 +419,104 @@ let activeLyric: ActiveLyric | null = null;
 export const setActiveLyric = (value: ActiveLyric | null) => { activeLyric = value; };
 export const getActiveLyric = (): ActiveLyric | null => activeLyric;
 
+// ================= 🎛️ 播放器状态：命令 + 按需订阅 =================
+// 界面只订阅自己用到的字段（usePlayer(selector)），进度这类每帧都在变的量不进 React，
+// 由 ticker 读 getPlaybackTime() 直接写 DOM。这样播放中整页不再每秒重渲染。
+//
+// isPlaying 表示「播放意图」：命令当帧就改它并通知界面（规矩 1：100ms 内给反馈），
+// 音量淡入淡出在后台跟上；媒体事件只用来对账（例如浏览器拦截了自动播放）。
+
+export interface PlayerSnapshot {
+  track: Track;
+  isPlaying: boolean;
+  volume: number;
+  playMode: PlayMode;
+  duration: number;
+}
+
+let snapshot: PlayerSnapshot = {
+  track: globalCurrentTrack,
+  isPlaying: globalIsPlaying,
+  volume: globalVolume,
+  playMode: globalPlayMode,
+  duration: globalDuration,
+};
+
 const listeners = new Set<() => void>();
-const notifyListeners = () => listeners.forEach(fn => fn());
+const notifyListeners = () => {
+  if (
+    snapshot.track === globalCurrentTrack &&
+    snapshot.isPlaying === globalIsPlaying &&
+    snapshot.volume === globalVolume &&
+    snapshot.playMode === globalPlayMode &&
+    snapshot.duration === globalDuration
+  ) return;
+  snapshot = {
+    track: globalCurrentTrack,
+    isPlaying: globalIsPlaying,
+    volume: globalVolume,
+    playMode: globalPlayMode,
+    duration: globalDuration,
+  };
+  listeners.forEach(fn => fn());
+};
+
+const subscribePlayer = (fn: () => void) => {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+};
+export const getPlayerSnapshot = () => snapshot;
+
+/**
+ * 只在选中的值变化时重渲染。selector 必须返回原始值或已有对象（如 s.track），
+ * 不能每次新建对象，否则 useSyncExternalStore 会判定为一直在变。
+ */
+export const usePlayer = <T,>(selector: (state: PlayerSnapshot) => T): T =>
+  useSyncExternalStore(subscribePlayer, () => selector(snapshot), () => selector(snapshot));
+
+// 🔀 换源期间（旧曲淡出、新曲尚未加载）媒体元素还挂着旧曲的进度。
+//    这段时间对外一律报 0，歌词和进度条不会闪回旧曲的时间。
+let switching = false;
+
+/** 歌词/可视化专用的只读精确时钟；调用方不得持有或修改全局 audio。 */
+export const getPlaybackTime = () => (switching ? 0 : globalAudio.currentTime || globalCurrentTime);
 
 globalAudio.loop = (globalPlayMode as string) === 'loop';
 
 globalAudio.addEventListener('play', () => { globalIsPlaying = true; notifyListeners(); });
-globalAudio.addEventListener('pause', () => { globalIsPlaying = false; notifyListeners(); });
+globalAudio.addEventListener('pause', () => {
+  // 换源会让媒体元素先触发一次 pause；那不是用户的意图，不改界面。
+  if (switching) return;
+  globalIsPlaying = false;
+  notifyListeners();
+});
+
+const loadSource = (t: Track) => {
+  globalAudio.src = resolveAudioUrl(t.url);
+  globalAudio.setAttribute('data-track-id', t.id);
+  globalAudio.load();
+};
+
+/** 换曲的界面状态：当帧切到新曲目，进度与时长清零，等新曲 loadedmetadata 再补时长。 */
+const showTrack = (t: Track) => {
+  globalCurrentTrack = t;
+  globalCurrentTime = 0;
+  globalDuration = 0;
+  notifyListeners();
+};
+
+const startPlayback = (fadeInMs: number, label: string) => {
+  globalAudio.play().then(() => {
+    switching = false;
+    ensureAnalyser();
+    if (fadeInMs > 0) fadeVolume(globalVolume, fadeInMs);
+  }).catch(e => {
+    switching = false;
+    globalIsPlaying = false;
+    notifyListeners();
+    console.warn(label, e);
+  });
+};
 
 // 🎼 统一的「切到相邻曲目」逻辑，供 ended 自动续播与上一首/下一首手动操作复用
 const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
@@ -446,14 +534,11 @@ const advanceTrack = (direction: 1 | -1 = 1, respectLoop = false) => {
   }
 
   const nextTrack = PLAYLIST[nextIndex];
-  globalCurrentTrack = nextTrack;
-  globalAudio.src = resolveAudioUrl(nextTrack.url);
-  globalAudio.setAttribute('data-track-id', nextTrack.id);
-  globalCurrentTime = 0;
-
-  globalAudio.load();
-  globalAudio.play().then(() => ensureAnalyser()).catch(e => console.warn("Auto-next play error", e));
-  notifyListeners();
+  switching = true;
+  globalIsPlaying = true;
+  showTrack(nextTrack);
+  loadSource(nextTrack);
+  startPlayback(0, 'Auto-next play error');
 };
 
 globalAudio.addEventListener('ended', () => {
@@ -461,29 +546,18 @@ globalAudio.addEventListener('ended', () => {
   advanceTrack(1);
 });
 
-// ⏱️ timeupdate 以整秒为粒度通知：进度显示只精确到秒，无谓的高频通知只会
-// 让订阅组件（尤其移动端）反复重渲染。
-let lastNotifiedSecond = -1;
 globalAudio.addEventListener('timeupdate', () => {
-  globalCurrentTime = globalAudio.currentTime;
-  const sec = Math.floor(globalCurrentTime);
-  if (sec !== lastNotifiedSecond) {
-    lastNotifiedSecond = sec;
-    notifyListeners();
-  }
+  if (!switching) globalCurrentTime = globalAudio.currentTime;
 });
 globalAudio.addEventListener('loadedmetadata', () => {
   globalDuration = globalAudio.duration || 0;
   notifyListeners();
 });
 
-// 🎵 入场 BGM：只依赖模块级全局状态，独立导出。App 等只需触发播放的组件
-// 直接 import 使用，无需订阅播放器状态（避免整棵应用树跟着 timeupdate 重渲染）。
+// 🎵 入场 BGM：只依赖模块级全局状态，独立导出。
 export const playBGM = (targetVolume = 0.4, fadeDuration = 2500) => {
   if (globalAudio.getAttribute('data-track-id') !== globalCurrentTrack.id) {
-    globalAudio.src = resolveAudioUrl(globalCurrentTrack.url);
-    globalAudio.setAttribute('data-track-id', globalCurrentTrack.id);
-    globalAudio.load();
+    loadSource(globalCurrentTrack);
   }
 
   cancelFade();
@@ -508,164 +582,130 @@ export const playBGM = (targetVolume = 0.4, fadeDuration = 2500) => {
   }).catch(e => console.warn("> Autoplay intercepted", e));
 };
 
-export const useSoundscape = () => {
-  const [track, setTrack] = useState<Track>(globalCurrentTrack);
-  const [isPlaying, setIsPlaying] = useState(globalIsPlaying);
-  const [volume, setVolume] = useState(globalVolume);
-  const [playMode, setPlayMode] = useState<PlayMode>(globalPlayMode);
-  const [currentTime, setCurrentTime] = useState(globalCurrentTime);
-  const [duration, setDuration] = useState(globalDuration);
+// ——— 命令：模块级稳定函数，组件直接 import，不需要订阅状态 ———
 
-  useEffect(() => {
-    const updateState = () => {
-      setTrack(globalCurrentTrack);
-      setIsPlaying(globalIsPlaying);
-      setVolume(globalVolume);
-      setPlayMode(globalPlayMode);
-      setCurrentTime(globalCurrentTime);
-      setDuration(globalDuration);
-    };
-    listeners.add(updateState);
-    return () => { listeners.delete(updateState); };
-  }, []);
+/** 用户主动换曲时的淡出：短到不像在等，又足够避开咔哒声。自动续播不走这里。 */
+const USER_SWITCH_FADE_MS = 180;
+const PAUSE_FADE_MS = 650;
 
-  const playTrack = useCallback((t: Track) => {
-    cancelFade();
+// ⏳ 淡出结束后要做的事（换源 / 真正暂停）单独排期，不挂在音量缓动的回调上：
+//    否则淡出途中调一下音量（changeVolume 会取消缓动）就会把这件事一起丢掉。
+let pendingAction: number | null = null;
+const cancelPending = () => {
+  if (pendingAction !== null) {
+    window.clearTimeout(pendingAction);
+    pendingAction = null;
+  }
+};
+const afterFade = (ms: number, action: () => void) => {
+  cancelPending();
+  pendingAction = window.setTimeout(() => {
+    pendingAction = null;
+    action();
+  }, ms);
+};
 
-    if (globalAudio.getAttribute('data-track-id') !== t.id) {
-      globalAudio.src = resolveAudioUrl(t.url);
-      globalAudio.setAttribute('data-track-id', t.id);
-      globalCurrentTrack = t;
-      globalAudio.load();
-      notifyListeners();
-    }
+export const playTrack = (t: Track) => {
+  cancelFade();
+  cancelPending();
+  globalIsPlaying = true;
 
-    setAudioVolume(0);
-    globalAudio.play().then(() => {
-      ensureAnalyser();
-      fadeVolume(globalVolume, 900); // 🌅 落针淡入
-    }).catch(e => console.warn("Play error (Path mismatch or Codec):", e));
-  }, []);
-
-  const pauseTrack = useCallback(() => {
-    // 🌇 抬针淡出后再真正暂停，避免突兀的咔哒断音
-    fadeVolume(0, 650, () => globalAudio.pause());
-  }, []);
-
-  const togglePlay = useCallback(() => {
-    if (globalIsPlaying) {
-        pauseTrack();
-    } else {
-        playTrack(globalCurrentTrack);
-    }
-  }, [pauseTrack, playTrack]);
-
-  const switchTrack = useCallback((t: Track) => {
-    if (t.id === globalCurrentTrack.id) {
-        if (!globalIsPlaying) playTrack(t); 
-        return;
-    }
-
-    cancelFade();
-
-    if (globalIsPlaying) {
-      const startTime = performance.now();
-      const initialVolume = globalAudio.volume;
-
-      const fadeOut = (currentTime: number) => {
-        const progress = Math.min((currentTime - startTime) / 800, 1);
-        setAudioVolume(initialVolume * (1 - progress));
-        
-        if (progress < 1) {
-          currentFade = requestAnimationFrame(fadeOut);
-        } else {
-          globalAudio.pause();
-          
-          globalCurrentTrack = t;
-          globalAudio.src = resolveAudioUrl(t.url);
-          globalAudio.setAttribute('data-track-id', t.id);
-          globalAudio.load();
-          notifyListeners();
-          
-          globalAudio.play().then(() => ensureAnalyser()).catch(e => console.warn("Play error", e));
-
-          const startInTime = performance.now();
-          const targetVol = globalVolume;
-          const fadeIn = (inTime: number) => {
-            const inProgress = Math.min((inTime - startInTime) / 1000, 1);
-            setAudioVolume(targetVol * Math.pow(inProgress, 2));
-            if (inProgress < 1) {
-                currentFade = requestAnimationFrame(fadeIn);
-            }
-          };
-          currentFade = requestAnimationFrame(fadeIn);
-        }
-      };
-      currentFade = requestAnimationFrame(fadeOut);
-    } else {
-      globalCurrentTrack = t;
-      globalAudio.src = resolveAudioUrl(t.url);
-      globalAudio.setAttribute('data-track-id', t.id);
-      globalAudio.load();
-      notifyListeners();
-    }
-  }, [playTrack]);
-
-  const changeVolume = useCallback((val: number) => {
-    cancelFade(); // 用户手动调音量时，立刻终止进行中的淡入淡出，避免被覆盖
-    globalVolume = val;
-    setAudioVolume(val);
+  if (globalAudio.getAttribute('data-track-id') !== t.id) {
+    showTrack(t);
+    loadSource(t);
+  } else {
     notifyListeners();
-  }, []);
+  }
 
-  const seek = useCallback((time: number) => {
-    if (!isFinite(time)) return;
-    globalAudio.currentTime = time;
-    globalCurrentTime = time;
-    notifyListeners();
-  }, []);
+  setAudioVolume(0);
+  startPlayback(900, 'Play error (Path mismatch or Codec):'); // 🌅 落针淡入
+};
 
-  const playNext = useCallback(() => {
+export const pauseTrack = () => {
+  // 界面当帧就显示「已暂停」；抬针淡出后再真正暂停，避免突兀的咔哒断音
+  globalIsPlaying = false;
+  notifyListeners();
+  if (switching) {
+    // 换曲的淡出还没结束就暂停：直接换好源停住，下次播放从新曲开头开始。
     cancelFade();
-    setAudioVolume(globalVolume);
-    advanceTrack(1);
-  }, []);
+    cancelPending();
+    switching = false;
+    loadSource(globalCurrentTrack);
+    return;
+  }
+  fadeVolume(0, PAUSE_FADE_MS);
+  afterFade(PAUSE_FADE_MS, () => globalAudio.pause());
+};
 
-  const playPrev = useCallback(() => {
-    cancelFade();
-    // 播放超过 3 秒时，上一首先回到本曲开头（符合主流播放器直觉）
-    if (globalAudio.currentTime > 3) {
-      seek(0);
-      if (!globalIsPlaying) playTrack(globalCurrentTrack);
-      return;
-    }
-    setAudioVolume(globalVolume);
-    advanceTrack(-1);
-  }, [seek, playTrack]);
+export const togglePlay = () => {
+  if (globalIsPlaying) pauseTrack();
+  else playTrack(globalCurrentTrack);
+};
 
-  const togglePlayMode = useCallback(() => {
-    const modes: PlayMode[] = ['loop', 'sequence', 'shuffle'];
-    const nextMode = modes[(modes.indexOf(globalPlayMode) + 1) % modes.length];
-    
-    globalPlayMode = nextMode;
-    globalAudio.loop = nextMode === 'loop'; 
-    notifyListeners();
-  }, []);
+export const switchTrack = (t: Track) => {
+  if (t.id === globalCurrentTrack.id) {
+    if (!globalIsPlaying) playTrack(t);
+    return;
+  }
 
-  return { 
-    currentTrack: track,
-    isPlaying,
-    volume,
-    playMode,
-    currentTime,
-    duration,
-    togglePlay,
-    switchTrack,
-    changeVolume,
-    togglePlayMode,
-    seek,
-    playNext,
-    playPrev,
-    playlist: PLAYLIST
-  };
+  cancelFade();
+  cancelPending();
+
+  if (!globalIsPlaying) {
+    switching = false;
+    showTrack(t);
+    loadSource(t);
+    return;
+  }
+
+  // 界面先换（规矩 1），声音在后台短淡出后换源，再淡入。
+  switching = true;
+  showTrack(t);
+  fadeVolume(0, USER_SWITCH_FADE_MS);
+  afterFade(USER_SWITCH_FADE_MS, () => {
+    loadSource(t);
+    startPlayback(900, 'Play error');
+  });
+};
+
+export const changeVolume = (val: number) => {
+  cancelFade(); // 用户手动调音量时，立刻终止进行中的淡入淡出，避免被覆盖
+  globalVolume = val;
+  setAudioVolume(val);
+  notifyListeners();
+};
+
+export const seek = (time: number) => {
+  if (!isFinite(time)) return;
+  globalAudio.currentTime = time;
+  globalCurrentTime = time;
+};
+
+export const playNext = () => {
+  cancelFade();
+  cancelPending();
+  setAudioVolume(globalVolume);
+  advanceTrack(1);
+};
+
+export const playPrev = () => {
+  cancelFade();
+  cancelPending();
+  // 播放超过 3 秒时，上一首先回到本曲开头（符合主流播放器直觉）
+  if (getPlaybackTime() > 3) {
+    seek(0);
+    if (!globalIsPlaying) playTrack(globalCurrentTrack);
+    return;
+  }
+  setAudioVolume(globalVolume);
+  advanceTrack(-1);
+};
+
+export const togglePlayMode = () => {
+  const modes: PlayMode[] = ['loop', 'sequence', 'shuffle'];
+  const nextMode = modes[(modes.indexOf(globalPlayMode) + 1) % modes.length];
+
+  globalPlayMode = nextMode;
+  globalAudio.loop = nextMode === 'loop';
+  notifyListeners();
 };

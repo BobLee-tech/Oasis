@@ -17,6 +17,11 @@ import 'lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css'
 import './index.css'
 import App from './App.tsx'
 
+// 🔬 逐帧瞬移探针：只在开发环境挂到 window.__uiProbe，构建产物里没有它。
+if (import.meta.env.DEV) {
+  void import('./dev/uiProbe').then(({ installUiProbe }) => installUiProbe())
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
