@@ -112,7 +112,7 @@ describe('汇总与容量预算', () => {
     }
     expect((storage.map.get(MEMORY_KEY) ?? '').length * 2).toBeLessThanOrEqual(MEMORY_BUDGET_BYTES);
     expect(store.pinned()).toHaveLength(1);
-  });
+  }, 30_000); // 4000 次写入：平时约 1.5s，机器负载高时会超过默认的 5s
 });
 
 describe('反思与记忆事实', () => {

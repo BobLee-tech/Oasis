@@ -20,7 +20,7 @@ const fullFacts = () => {
     lastSession: { endedAt: 0, endedAtHour: 2, trackId: 'm_01', trackTitle: 't', readingId: 'p', readingTitle: '春', readingProgress: 0.4 },
     topTrackThisWeek: { id: 'm_01', plays: 5 }, usualHour: 21, lateNightsThisWeek: 3, anniversary: 100, pinnedToday: null, playsToday: () => 3,
   };
-  const mood = { feel: 'sad', valence: -0.5, provenance: { feel: 'manual', valence: 'manual' }, note: 'n', noteVisitor: 'nv', season: 'summer' } as unknown as ResolvedTrackMood;
+  const mood = { feel: 'sad', valence: -0.5, arousal: 0.5, time: 'night', provenance: { feel: 'manual', valence: 'manual' }, note: 'n', noteVisitor: 'nv', season: 'summer' } as unknown as ResolvedTrackMood;
   const owner = buildFacts({
     now: new Date(), owner: true, view: 'garden', playing: true,
     track: { id: 'm_01', title: 't', artist: 'a', category: 'Miku' },
@@ -86,6 +86,37 @@ describe('口吻', () => {
   it('模板里不硬写称呼词（必须走 {呼，} / {，呼} 槽位）', () => {
     for (const { rule, line } of lines) {
       for (const term of RESERVED_TERMS) expect(line.includes(term), `${rule.id}: ${line}`).toBe(false);
+    }
+  });
+
+  // P7：AI 味的高频信号，给出上限当回归防线（数值是 2026-10-08 的现状留了一点余量）
+  const ratio = (re: RegExp) => lines.filter(l => re.test(l.line)).length / lines.length;
+  it('「好像」「陪」各 ≤ 5%；「……」≤ 5%', () => {
+    expect(ratio(/好像/)).toBeLessThanOrEqual(0.05);
+    expect(ratio(/陪/)).toBeLessThanOrEqual(0.05);
+    expect(ratio(/……/)).toBeLessThanOrEqual(0.05);
+  });
+
+  it('括号里的舞台说明 ≤ 2%；「我很喜欢 / 我很开心」这类自述感受 ≤ 2%（不解释自己的感受）', () => {
+    expect(ratio(/（/)).toBeLessThanOrEqual(0.02);
+    expect(ratio(/我(很|也|最|挺)?(喜欢|开心|高兴|难过|安心)/)).toBeLessThanOrEqual(0.02);
+  });
+
+  // P7（2026-10-08）：这些上限防的是「用滥」，不是禁止文艺——适当的意象和文学美感是要的。
+  // 用户反馈过：删成简约无感反而更差；问题在于同一种腔调堆得太多。
+  it('不用滥同一种腔调：比喻「像…」≤ 10%，「适合…」≤ 4%，以「这首」开头 ≤ 15%', () => {
+    expect(ratio(/像/)).toBeLessThanOrEqual(0.1);
+    expect(ratio(/适合/)).toBeLessThanOrEqual(0.04);
+    expect(ratio(/^这首/)).toBeLessThanOrEqual(0.15);
+  });
+
+  it('像说话不像写字：至少 15% 的句子带语气词或叹词（上限仍是句尾 ≤ 30%）', () => {
+    expect(ratio(/[呢哦呀啦嘛吧啊哈诶欸嗯唔哇喂咦～~]/)).toBeGreaterThanOrEqual(0.15);
+  });
+
+  it('访客台词里「他说」只能用来转述他写过的 note，不替他编话', () => {
+    for (const rule of MIKU_RULES.filter(r => r.who !== 'owner')) {
+      for (const line of rule.say) if (line.includes('他说')) expect(line.includes('{noteForVisitor}'), `${rule.id}: ${line}`).toBe(true);
     }
   });
 

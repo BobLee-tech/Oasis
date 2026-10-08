@@ -11,7 +11,7 @@ import type { MemoryFacts } from '../../../lib/mikuMemory';
 import type { Feel, ResolvedTrackMood } from '../../../lib/trackMood';
 import type { TrackFacts } from '../../../lib/trackProfile';
 import { currentPeriod, isLateNight, type DayPeriod } from '../../../lib/timeContext';
-import { currentSolarTerm, daysIntoTerm, termNoteOfDay } from '../../../lib/solarTerms';
+import { currentSeason, currentSolarTerm, daysIntoTerm, termNoteOfDay } from '../../../lib/solarTerms';
 import { isLunarDate } from '../../../lib/lunar';
 import type { EmotionKind } from './affect';
 
@@ -56,6 +56,7 @@ const RELATION_PHRASE: Record<string, string> = {
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
+const SEASON_CN: Record<string, string> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
 const DAY = 86_400_000;
 
 /** 亲密度档位：拍头次数与相处天数取较高者（A7：避免只靠拍头刷亲密度）；访客上限 2。 */
@@ -115,6 +116,8 @@ export const buildFacts = (input: FactsInput) => {
     /** 交节当天 */
     termDay: into === 0,
     termNote: termNoteOfDay(now),
+    /** 此刻的季节（按四立）：「春 / 夏 / 秋 / 冬」 */
+    nowSeasonName: SEASON_CN[currentSeason(now)],
 
     // 关系
     owner,
@@ -141,6 +144,14 @@ export const buildFacts = (input: FactsInput) => {
     /** feel 是人标或专辑默认（不是 VA 猜的）：按 feel 说话的规则只在有把握时说 */
     feelSure: !!mood && (mood.provenance.feel === 'manual' || mood.provenance.feel === 'album'),
     season: input.playing ? mood?.season : undefined,
+    seasonName: input.playing && mood?.season ? SEASON_CN[mood.season] : undefined,
+    /** 歌的季节意象与此刻的季节一致 / 不一致（没有季节意象时两者都为 false） */
+    seasonMatch: !!(input.playing && mood?.season && mood.season === currentSeason(now)),
+    seasonMismatch: !!(input.playing && mood?.season && mood.season !== currentSeason(now)),
+    /** 歌适合的时段（季语表算出来的 morning / dusk / night） */
+    trackTime: input.playing ? mood?.time : undefined,
+    /** 曲目唤醒度 0..1：离线分析算的（有曲库内百分位依据），没标注 feel 时也能用 */
+    trackArousal: input.playing ? mood?.arousal : undefined,
     inChorus: input.chorus === 'in',
     playsToday: owner && input.playing && input.track && input.memory ? input.memory.playsToday(input.track.id) : undefined,
 

@@ -94,3 +94,62 @@ describe('MikuVoice', () => {
     for (const t of texts) expect(t.includes('秘密')).toBe(false);
   });
 });
+
+describe('P7 第一批：每组都够得着', () => {
+  const track = { id: 't', title: '歌', artist: 'a', category: 'Yorushika' };
+  const mood = (extra: Record<string, unknown>) => ({
+    arousal: 0.5, valence: 0, feel: 'peaceful', sections: [], contrast: 0.5,
+    provenance: { arousal: 'auto', valence: 'default', feel: 'default', bpm: 'default', sections: 'default', contrast: 'auto', season: 'default', time: 'default' },
+    ...extra,
+  }) as unknown as NonNullable<FactsInput['mood']>;
+  /** 多试几次（每次换一个随机数），收集命中过的规则 id */
+  const hits = (voice: MikuVoice, event: Parameters<MikuVoice['speak']>[0], inp: Omit<FactsInput, 'owner' | 'memory'>) => {
+    const ids = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const line = voice.speak(event, inp, { now: NIGHT.getTime() + i * 3_600_000, force: true, rng: () => (i * 0.137) % 1 });
+      if (line) ids.add(line.rule.id);
+    }
+    return ids;
+  };
+
+  it('标过「哀伤」的歌：站主听到安慰场域的那组', () => {
+    const { voice } = make();
+    voice.setOwner(true);
+    const ids = hits(voice, 'track-change', input({ playing: true, track, mood: mood({ feel: 'sad', valence: -0.6, provenance: { feel: 'manual', valence: 'manual' } }) }));
+    expect(ids.has('p7.feel.sad.owner')).toBe(true);
+  });
+
+  it('没标 feel 的燃歌：按离线唤醒度兜底', () => {
+    const { voice } = make();
+    const ids = hits(voice, 'track-change', input({ playing: true, track, mood: mood({ arousal: 0.9 }) }));
+    expect(ids.has('p7.arousal.high')).toBe(true);
+    expect([...ids].some(id => id.startsWith('p7.feel.'))).toBe(false);
+  });
+
+  it('冬天听夏天的歌：季节不一致的那句', () => {
+    const { voice } = make();
+    const winter = new Date(2026, 0, 10, 21, 0);
+    const ids = hits(voice, 'track-change', input({ now: winter, playing: true, track, mood: mood({ season: 'summer' }) }));
+    expect(ids.has('p7.season.mismatch')).toBe(true);
+  });
+
+  it('站主摸头：亲昵场域，熟了以后会叫「宝贝」', () => {
+    const { voice } = make();
+    voice.setOwner(true);
+    const texts = new Set<string>();
+    // 固定种子的伪随机：结果可复现，不靠运气
+    let seed = 42;
+    const rng = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let i = 0; i < 80; i++) {
+      const line = voice.speak('stroke', input({ zone: 'head', patsTotal: 60 }), { now: NIGHT.getTime() + i * 3_600_000, force: true, rng });
+      if (line) texts.add(line.text);
+    }
+    expect([...texts].some(t => t.includes('宝贝'))).toBe(true);
+  });
+
+  it('第一次来的访客：招待的那句', () => {
+    const { voice } = make();
+    const ids = hits(voice, 'greet', input({ posts: [] }));
+    expect(ids.has('p7.host.first')).toBe(true);
+  });
+});
