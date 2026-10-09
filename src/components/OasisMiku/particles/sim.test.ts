@@ -9,7 +9,7 @@ const seeded = (seed: number) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-const KINDS: EmitKind[] = ['ripple', 'dust', 'hearts', 'notes', 'burst', 'petals', 'zzz', 'motes-up', 'motes-down', 'sparks', 'bloom', 'firefly', 'snow'];
+const KINDS: EmitKind[] = ['ripple', 'dust', 'hearts', 'notes', 'burst', 'petals', 'zzz', 'motes-up', 'motes-down', 'sparks', 'bloom', 'firefly', 'snow', 'rain', 'bubbles'];
 
 describe('ParticlePool', () => {
   it('寿命到了自动回收，计数归零', () => {

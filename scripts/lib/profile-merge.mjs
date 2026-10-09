@@ -3,27 +3,15 @@
 // 只读进 git 的东西（music-data/、tracks.identity.json、PLAYLIST），所以 Vercel 上的 prebuild
 // 也能跑；歌词正文与 lyrics-src/ 缓存一概不碰。工坊与 build-profiles.mjs 共用。
 
-export const FEELS = ['tender', 'nostalgic', 'sad', 'peaceful', 'joyful', 'tense', 'wonder'];
-export const FEEL_LABELS = {
-  tender: '温柔', nostalgic: '怀念', sad: '哀伤', peaceful: '宁静', joyful: '雀跃', tense: '紧绷', wonder: '奇妙',
-};
+import {
+  checkMood, dominantFeel, feelsOfLayer, nearestFeel, normalizeArc, normalizeImagery, overallValenceOfLayer,
+} from './mood-core.mjs';
+
+// 情绪的维度、标签与推导在 mood-core.mjs（前端 trackMood.ts 共用同一份）
+export { FEELS, FEEL_LABELS, nearestFeel } from './mood-core.mjs';
 export const RELATION_KINDS = ['reply', 'sequel', 'sameStory', 'sameLyrics'];
 export const NOTE_MAX = 40;
 export const INTRO_MAX = 120;
-
-// Miku A2.4：VA 最近邻
-const FEEL_VA = {
-  joyful: [0.7, 0.6], tense: [-0.4, 0.6], wonder: [0.4, 0.3], tender: [0.5, -0.3],
-  peaceful: [0.3, -0.6], nostalgic: [-0.1, -0.3], sad: [-0.6, -0.4],
-};
-export const nearestFeel = (valence, arousal) => {
-  let best = null;
-  for (const [feel, [v, a]] of Object.entries(FEEL_VA)) {
-    const distance = (v - valence) ** 2 + (a - arousal) ** 2;
-    if (!best || distance < best.distance) best = { feel, distance };
-  }
-  return best.feel;
-};
 
 // 导入来源的优先级（同一字段多个来源都有时取靠前的）
 const IMPORT_ORDER = ['netease', 'vocadb', 'musicbrainz', 'web'];
@@ -126,7 +114,10 @@ export const mergeProfile = (profile, identity, album, auto = {}) => {
   };
   const manualMood = profile.mood ?? {};
   const albumMood = album?.moodDefaults ?? {};
-  moodPick('valence', [[manualMood.valence, 'manual'], [auto.valence, 'auto'], [albumMood.valence, 'album']]);
+  // 效价：一层写了 valence 用它，只写了词 / 曲分量时取平均（docs/song-emotion-design.md §2.2）
+  moodPick('valence', [[overallValenceOfLayer(manualMood), 'manual'], [auto.valence, 'auto'], [overallValenceOfLayer(albumMood), 'album']]);
+  moodPick('lyricValence', [[manualMood.lyricValence, 'manual'], [albumMood.lyricValence, 'album']]);
+  moodPick('soundValence', [[manualMood.soundValence, 'manual'], [albumMood.soundValence, 'album']]);
   moodPick('arousal', [[manualMood.arousal, 'manual'], [auto.arousal, 'auto'], [albumMood.arousal, 'album']]);
   // bpm：人标 > 网易云 > 自动（与 Miku 的 trackMood.ts 同一顺序）
   moodPick('bpm', [[manualMood.bpm, 'manual'], [profile.sources?.netease?.bpm ?? auto.bpmNetease, 'netease'], [auto.bpm, 'auto']]);
@@ -134,10 +125,24 @@ export const mergeProfile = (profile, identity, album, auto = {}) => {
   moodPick('contrast', [[manualMood.contrast, 'manual'], [auto.contrast, 'auto']]);
   moodPick('season', [[manualMood.season, 'manual'], [auto.season, 'auto']]);
   moodPick('time', [[manualMood.time, 'manual'], [auto.time, 'auto']]);
-  moodPick('feel', [[manualMood.feel, 'manual'], [albumMood.feel, 'album']]);
-  if (!mood.feel && typeof mood.valence === 'number' && typeof mood.arousal === 'number') {
+  // 情绪向量：整层替换，不跨层混合（人标写了 feels 就完全不看专辑的）；旧的单个 feel 读作 { feel: 3 }
+  moodPick('feels', [[feelsOfLayer(manualMood), 'manual'], [feelsOfLayer(albumMood), 'album']]);
+  if (mood.feels) {
+    mood.feel = dominantFeel(mood.feels);
+    moodSource.feel = moodSource.feels;
+  } else if (typeof mood.valence === 'number' && typeof mood.arousal === 'number') {
     mood.feel = nearestFeel(mood.valence, mood.arousal);
     moodSource.feel = 'va';
+  }
+  moodPick('arc', [[normalizeArc(manualMood.arc), 'manual']]);
+  // 意象：人标 > 歌题与歌词计出来的（analyze-tracks.mjs，与季语同一套计分）；人标写了空数组 = 「这首没有意象」，压住自动的
+  if (Array.isArray(manualMood.imagery)) {
+    mood.imagery = normalizeImagery(manualMood.imagery) ?? [];
+    moodSource.imagery = 'manual';
+  } else moodPick('imagery', [[normalizeImagery(auto.imagery ? [auto.imagery] : undefined), 'auto']]);
+  if (manualMood.sure === false) {
+    mood.sure = false;
+    moodSource.sure = 'manual';
   }
   if (present(mood)) {
     out.mood = mood;
@@ -158,9 +163,8 @@ export const validateProfile = (profile, knownIds) => {
   if (len(profile.noteVisitor) > NOTE_MAX) problems.push(`${profile.id}：noteVisitor 超过 ${NOTE_MAX} 字`);
   if (len(profile.intro) > INTRO_MAX) problems.push(`${profile.id}：intro ${len(profile.intro)} 字，超过 ${INTRO_MAX}`);
   const mood = profile.mood ?? {};
-  if (mood.valence !== undefined && !(mood.valence >= -1 && mood.valence <= 1)) problems.push(`${profile.id}：valence 应在 -1..1`);
+  problems.push(...checkMood(mood, profile.id).problems);
   if (mood.arousal !== undefined && !(mood.arousal >= 0 && mood.arousal <= 1)) problems.push(`${profile.id}：arousal 应在 0..1`);
-  if (mood.feel !== undefined && !FEELS.includes(mood.feel)) problems.push(`${profile.id}：未知 feel「${mood.feel}」`);
   for (const rel of profile.relations ?? []) {
     if (!RELATION_KINDS.includes(rel?.kind)) problems.push(`${profile.id}：未知关联类型「${rel?.kind}」`);
     if (!knownIds.has(rel?.to)) problems.push(`${profile.id}：关联曲「${rel?.to}」不在曲库里`);
@@ -179,3 +183,12 @@ export const validateProfile = (profile, knownIds) => {
   }
   return problems;
 };
+
+/** 不拦构建的提示（比如 feels 超过 3 维非零）：曲目档案与专辑默认。 */
+export const moodWarnings = (profiles, albums = []) => [
+  ...profiles.flatMap(profile => checkMood(profile.mood, profile.id).warnings),
+  ...albums.flatMap(album => checkMood(album.moodDefaults, `专辑 ${album.slug}`).warnings),
+];
+
+/** 专辑默认（moodDefaults）的校验：与曲目档案同一套情绪规矩。 */
+export const validateAlbumMood = album => checkMood(album.moodDefaults, `专辑 ${album.slug}`).problems;

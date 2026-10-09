@@ -10,10 +10,12 @@ import type { ParticleCanvasHandle } from './particles/ParticleCanvas';
 import type { EmitContext, EmitKind } from './particles/sim';
 import { revealDuration, speakingOpen, utter, type Utterance } from './brain/speech';
 import {
-  Affect, faceFor, gazeBiasY, particleCooldown, particleForFeel, rhythmGain, RHYTHM_BY_FEEL, timeTarget,
-  type EmotionKind,
+  ARC_TURN_MIN, Affect, beatNodAffinity, blendRhythm, faceFor, gazeBiasY, imageryParticle, particleCooldown, particleForFeel,
+  rhythmGain, sampleTone, soundLift, timeTarget, toneDistance, toneTarget, type EmotionKind, type Tone,
 } from './brain/affect';
-import { chorusState, getTrackMood, loadTrackMoods, type ResolvedTrackMood } from '../../lib/trackMood';
+import {
+  chorusState, getTrackMood, loadTrackMoods, moodNow, segmentAt, type Feels, type ResolvedTrackMood, type SegmentNow,
+} from '../../lib/trackMood';
 import type { AppView } from '../../types/auth';
 import type { MusicCategory } from '../../types/music';
 import { isLateNight } from '../../lib/timeContext';
@@ -29,10 +31,12 @@ import { GazeController, gazeFromPoint } from './brain/gaze';
 import { ImpulseLayer, TILT_SIGN } from './brain/impulse';
 import { GestureTracker, type GestureState, type TouchZone } from './brain/gesture';
 import { PAIN_THRESHOLD, TwintailPull, type TailSide } from './brain/twintail';
-import { getActiveLyric, getPlaybackTime } from '../../hooks/useSoundscape';
+import { getActiveLyric, getPlaybackTime, getPlayerSnapshot } from '../../hooks/useSoundscape';
 import { useTicker } from '../../lib/ticker';
 import { MikuVoice, type VoiceLine } from './brain/voice';
 import { CareScheduler, isReturn } from './brain/care';
+import { FINISHED_RATIO, SessionListening, type ListeningState, type Resonance } from './brain/resonance';
+import { forgetTrackFelt, getTrackFelt, loadTrackFelt } from '../../lib/trackFelt';
 import type { MikuEvent } from './brain/dialogue';
 import type { FactsInput } from './brain/facts';
 import { peekCachedPosts, type BlogPost } from '../../hooks/useGarden';
@@ -135,13 +139,29 @@ const VISITOR_CARE = ['care-sedentary'] as const;
 export interface MikuDebugSnapshot {
   m: { v: number; a: number };
   target: { v: number; a: number };
+  /** 情绪色调（10 维，0..1） */
+  tone: Tone;
   emotion: { kind: EmotionKind; intensity: number } | null;
   arousal01: number;
   owner: boolean;
   trackId?: string;
   mood?: ResolvedTrackMood;
   chorus: 'in' | 'soon' | null;
+  /** 此刻在哪一段，以及这一段命中的弧线增量（P3） */
+  segment: SegmentNow | null;
+  arc: ReturnType<typeof moodNow>['arc'];
+  /** 叠上弧线后此刻的情绪向量 */
+  feelsNow?: Feels;
+  /** 心境点读的词效价 / 身体读的曲效价（都已叠上弧线） */
+  faceValence?: number;
+  soundValence?: number;
   rhythmGain: number;
+  /** 共鸣系数与陪伴（P5）：r、是否陪着、本会话的听歌倾向、连续听完的低落歌 */
+  resonance: Resonance;
+  lean?: string;
+  lowStreak: number;
+  /** 站主标的「这首让我怎样」 */
+  felt?: Feels;
   zone: string | null;
   /** 上一句话：命中规则、得分、称呼场域与原因 */
   line: VoiceLine['debug'] & { text: string } | null;
@@ -194,6 +214,8 @@ export const useMikuBrain = ({
   const chorusRef = useRef<{ state: 'in' | 'soon' | null; gain: CriticalSpring; prep: CriticalSpring }>({
     state: null, gain: new CriticalSpring(1), prep: new CriticalSpring(0),
   });
+  // 段落（P3）：此刻在哪一段、这一段的情绪向量；换段时比较前后两段的色调目标，转得够多就发 arc-turn
+  const segmentRef = useRef<{ trackId?: string; seg: SegmentNow | null; feels?: Feels }>({ seg: null });
   const ownerRef = useRef(isOwner);
   // 台词、称呼与记忆（brain/voice）：关系一变就换记忆适配器，访客既不写也读不到站主的记忆
   const [voice] = useState(() => new MikuVoice());
@@ -250,6 +272,7 @@ export const useMikuBrain = ({
   const noteTimerRef = useRef(2600);
   const beatHighRef = useRef(false);
   const seasonTimerRef = useRef(9000);
+  const farLookTimerRef = useRef(25000);
   // 抚摸留下的光尘：手每走 18px 落一粒
   const dustPathRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0, movedAt: 0 });
@@ -262,8 +285,11 @@ export const useMikuBrain = ({
   const editingRef = useRef<{ words: number; openedAt: number; mark: number } | null>(null);
   const publishedRef = useRef<{ id?: string; title?: string } | null>(null);
   const prevTrackRef = useRef<string | undefined>(undefined);
-  // 听歌记账：当前曲目在播放状态下累计了多久（≥ 30s 记一次 listen，切走时不足 30s 记 skip）
-  const listenRef = useRef<{ id?: string; ms: number; logged: boolean }>({ ms: 0, logged: false });
+  // 听歌记账：当前曲目在播放状态下累计了多久（≥ 30s 记一次 listen，切走时不足 30s 记 skip）；
+  // durMs 是曲长、pos 是上一帧的进度——单曲循环时进度从尾巴跳回开头，也算听完一遍
+  const listenRef = useRef<{ id?: string; ms: number; logged: boolean; durMs: number; pos: number }>({ ms: 0, logged: false, durMs: 0, pos: 0 });
+  // 陪伴（brain/resonance）：本次会话往哪边听、连续听完了几首低落的歌，决定她跟着歌走多少（只为站主记）
+  const [listening] = useState(() => new SessionListening());
   const postsRef = useRef<{ at: number; posts: BlogPost[] }>({ at: -Infinity, posts: [] });
   const trackRef = useRef({ trackId, trackTitle, trackArtist, trackCategory, isPlaying, view });
   useEffect(() => {
@@ -362,6 +388,7 @@ export const useMikuBrain = ({
       trackFacts: t.trackId ? trackFacts(t.trackId, prevTrackRef.current) : undefined,
       mood: getTrackMood(t.trackId),
       chorus: chorusRef.current.state,
+      segment: segmentRef.current.seg,
       titleOf,
       reading: reading ? { ...reading, progress: getReadProgress(reading.id) } : null,
       editing: editingRef.current,
@@ -371,9 +398,12 @@ export const useMikuBrain = ({
       patsTotal,
       patsToday,
       affect: { v: affect.m.v, a: affect.m.a, emotion: affect.emotion?.kind ?? null },
+      // 站主私密：felt 与听歌倾向只在站主模式下给（facts 那一层还会再拦一道）
+      felt: ownerRef.current ? getTrackFelt(t.trackId) : undefined,
+      sessionLean: ownerRef.current ? listening.sessionLean : undefined,
       ...extra,
     };
-  }, [affect]);
+  }, [affect, listening]);
 
   /**
    * 说一句：事实 → 规则 → 话量 → 称呼（brain/voice）。规则可以顺带指定表情与粒子。
@@ -553,6 +583,8 @@ export const useMikuBrain = ({
           readingId: reading?.id,
           readingTitle: reading?.title,
           readingProgress: reading ? getReadProgress(reading.id) : undefined,
+          // 听歌倾向只在本机记忆里，30 分钟内回来（含刷新）接着算
+          listening: listening.snapshot(),
         },
       });
     };
@@ -560,6 +592,7 @@ export const useMikuBrain = ({
       if (document.hidden) { hiddenAt = Date.now(); end(); return; }
       if (hiddenAt !== null && Date.now() - hiddenAt >= 30 * 60_000) {
         ended = false;
+        listening.reset();
         voice.remember({ kind: 'session-start', data: { view: trackRef.current.view } });
       } else {
         ended = false; // 短暂切走：撤销不了已写的结束，但之后的结束仍会再记一次，反思时取最后一个
@@ -573,7 +606,23 @@ export const useMikuBrain = ({
       document.removeEventListener('visibilitychange', onVisibility);
       end();
     };
-  }, [ready, isOwner, voice]);
+  }, [ready, isOwner, voice, listening]);
+
+  // 站主模式：拉一次 felt（Supabase，仅园丁可读），并从 30 分钟内的上一次会话快照里接上听歌倾向；
+  // 离开站主模式（登出、访客预览）就把 felt 的内存副本清掉。回到前台时过期了（10 分钟）再拉——工坊里刚标的能跟上
+  useEffect(() => {
+    if (!isOwner) {
+      forgetTrackFelt();
+      listening.reset();
+      return;
+    }
+    void loadTrackFelt(true);
+    const recent = voice.store.query({ kinds: ['session-end'], since: Date.now() - 30 * 60_000 }).at(-1);
+    listening.restore(recent?.data?.listening as ListeningState | undefined);
+    const onVisibility = () => { if (!document.hidden) void loadTrackFelt(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [isOwner, voice, listening]);
 
   // 离开一阵子后回来：短暂切走标签页看一眼不值得欢迎，离开够久（60s+）才算「回来了」
   useEffect(() => {
@@ -654,33 +703,74 @@ export const useMikuBrain = ({
         }
       }
       const liveEnergy = getEnergy();
-      // 情感模型：时间基线 + 正在放的歌（档案心境与实时能量按 0.7/0.3 混合）把心境点慢慢拉过去
+      // 情感模型：时间基线 + 正在放的歌（档案心境与实时能量按 0.7/0.3 混合）把心境点慢慢拉过去。
+      // 歌的心境随段落走：整首底色 ⊕ 当前段的弧线（trackMood.moodNow）；心境点只吃词的效价，
+      // 曲的效价留给下面的律动与粒子（词曲分治，docs/song-emotion-design.md §3.4）
       const mood = isPlaying ? getTrackMood(trackId) : undefined;
       trackMoodRef.current = mood;
+      const playMs = getPlaybackTime() * 1000;
+      const segment = mood ? segmentAt(mood.segments, playMs) : null;
+      const songNow = mood ? moodNow(mood, segment) : null;
       const clock = new Date();
-      affect.step(dtSec, {
+      // 共鸣系数（§3.5）：缺省 0.65；站主深夜连着听完几首低落的歌，她不再跟着沉，而是往温柔那边靠
+      const resonance = listening.resonance({ owner: ownerRef.current, lateNight: isLateNight(clock) });
+      const affectInput = {
         hour: clock.getHours() + clock.getMinutes() / 60,
         owner: ownerRef.current,
-        music: isPlaying ? { valence: mood?.valence ?? 0.1, arousal: mood?.arousal ?? 0.5 } : null,
+        music: isPlaying ? { valence: songNow?.faceValence ?? 0.1, arousal: songNow?.arousal ?? 0.5, feels: songNow?.feels } : null,
         liveEnergy: Math.min(1, (liveEnergy.low + liveEnergy.mid) / 2),
-      });
+        resonance,
+      };
+      affect.step(dtSec, affectInput);
+      const soundValence = songNow?.soundValence ?? affect.m.v;
       const arousal = affect.arousal01;
-      // 听歌记账（只为站主）：播放态下累计时长，≥ 30s 记一次 listen；换歌时不足 30s 记 skip
+      const tone = affect.tone;
+      // 听歌记账（只为站主）：播放态下累计时长，≥ 30s 记一次 listen；换歌时不足 30s 记 skip。
+      // 一遍结束（换歌，或单曲循环从尾巴跳回开头）时，把这一遍交给听歌倾向（§3.8）
       const listen = listenRef.current;
-      if (listen.id !== trackId) {
-        if (listen.id && !listen.logged && listen.ms > 3000) voice.remember({ kind: 'skip', data: { trackId: listen.id } });
-        listenRef.current = { id: trackId, ms: 0, logged: false };
-      } else if (isPlaying && trackId && !listen.logged) {
+      const looped = listen.id === trackId && isPlaying && listen.durMs > 0 && listen.pos > listen.durMs - 4000 && playMs < 4000;
+      if (listen.id !== trackId || looped) {
+        if (listen.id && listen.ms > 3000) {
+          if (!listen.logged) voice.remember({ kind: 'skip', data: { trackId: listen.id } });
+          if (ownerRef.current) {
+            const passMood = getTrackMood(listen.id);
+            // 只认写出来的情绪向量（人标或专辑）：VA 猜的那一维不代表他在听什么
+            const written = passMood && (passMood.provenance.feels === 'manual' || passMood.provenance.feels === 'album');
+            listening.record({
+              feels: written ? passMood.feels : undefined,
+              felt: getTrackFelt(listen.id),
+              ratio: listen.durMs > 0 ? listen.ms / listen.durMs : listen.logged ? FINISHED_RATIO : 0,
+              skipped: !listen.logged,
+            });
+          }
+        }
+        listenRef.current = { id: trackId, ms: 0, logged: false, durMs: looped ? listen.durMs : 0, pos: playMs };
+      } else if (isPlaying && trackId) {
+        listen.pos = playMs;
+        const seconds = getPlayerSnapshot().duration;
+        if (seconds > 0) listen.durMs = seconds * 1000;
         listen.ms += dt;
-        if (listen.ms >= 30_000) {
+        if (!listen.logged && listen.ms >= 30_000) {
           listen.logged = true;
           voice.remember({ kind: 'listen', data: { trackId }, tags: [trackCategory ?? '', mood?.feel ?? ''].filter(Boolean) });
         }
       }
       const lazy = target === autoTargetRef.current;
+      // 怀念：自主张望时偶尔往上方远处望一会儿（20–40s 一次、1.5s，概率随怀念的浓度）
+      farLookTimerRef.current -= dt;
+      if (farLookTimerRef.current <= 0) {
+        farLookTimerRef.current = 20000 + Math.random() * 20000;
+        if (lazy && !reacting && Math.random() < tone.nostalgic * 1.4) {
+          autoTargetRef.current = { x: (Math.random() - 0.5) * 0.6, y: 0.4 + Math.random() * 0.15 };
+          lookTimerRef.current = 1500;
+        }
+      }
       // 低效价时视线基线略向下（只作用于自主张望，看你时不低头）
       const gazeTarget = lazy ? { x: target.x, y: target.y + gazeBiasY(affect.m) } : target;
-      const gazePose = gaze.update(dtSec, { target: gazeTarget, arousal, lazy, calm: !!readingRef.current || !!editingRef.current });
+      // 空灵：微扫视变稀、眨眼变慢；不安：微扫视变密；温柔：眨眼略慢
+      const saccadeScale = 1 + tone.transcendence - 0.4 * tone.tense;
+      blinkRef.current.waitScale = 1 + 0.6 * tone.transcendence + 0.25 * tone.tender;
+      const gazePose = gaze.update(dtSec, { target: gazeTarget, arousal, lazy, calm: !!readingRef.current || !!editingRef.current, saccadeScale });
 
       if (noticeRef.current) {
         noticeRef.current = false;
@@ -736,13 +826,14 @@ export const useMikuBrain = ({
         // 抚摸：头顶顺着手走的方向歪（≤6°）、微微低头迎着手（≤2.5°）；马尾：头被带过去 ≤2.5°
         ParamAngleZ: (leanX * 6 + tug * 2.5) * TILT_SIGN,
         ParamAngleX: leanX * 3 + tug * 1.2,
-        ParamAngleY: leanY * 3 - (holdHead ? 2.5 * depth : 0) - Math.abs(tug) * 1,
+        // 不甘：下巴微抬（≤2°）
+        ParamAngleY: leanY * 3 - (holdHead ? 2.5 * depth : 0) - Math.abs(tug) * 1 + 2 * tone.defiant,
         ParamBodyAngleZ: leanX * 1.2 * TILT_SIGN,
       });
       stage.setPose(pose);
 
       // 眨眼 × 冲量眯眼 × 被摸时渐渐眯起；以较低 floor 让专门的闭眼演出仍可接管
-      const face = faceFor(affect.m, affect.emotion);
+      const face = faceFor(affect.m, affect.emotion, tone);
       const v = valsRef.current;
       v.eyeOpen += (face.eyeOpen - v.eyeOpen) * rate;
       // 副歌预备：眼睛微微睁大、眉毛轻扬（prep 0..1，副歌前 1.2s 升起，进副歌后 2s 内落回）
@@ -775,7 +866,7 @@ export const useMikuBrain = ({
       );
       stage.overrideParam('ParamMouthOpenY', lip.open);
 
-      // 面部 = VA 四角预设的双线性插值 ⊕ 情绪叠加（affect.faceFor）；这里只负责按帧平滑逼近
+      // 面部 = VA 四角预设的双线性插值 ⊕ 情绪色调偏移 ⊕ 情绪叠加（affect.faceFor）；这里只负责按帧平滑逼近
       v.eyeSmile += (face.eyeSmile - v.eyeSmile) * rate;
       v.cheek += (face.cheek - v.cheek) * rate;
       stage.overrideParam('ParamEyeLSmile', v.eyeSmile, EMOTION_YIELD_FLOOR);
@@ -802,20 +893,32 @@ export const useMikuBrain = ({
       // 音乐律动：包络与振荡器分离的节拍引擎（见 rhythmEngine.ts）——摆幅只吃平滑后的能量包络，
       // 不吃逐帧抖动的原始频谱值；频率恒定推进，检测到鼓点时只是「软推」相位而不是硬切。
       // 叠加（而非取代）在 Idle/Tap 等动作片段自己的曲线之上，交给头发物理去接住这份节拍感
-      // 风格由 feel 决定（档案没加载时退回按歌手分类）；周期锁曲目 bpm；摆幅 = 唤醒度 × 副歌系数（A3/A9.4）
+      // 风格按情绪色调的权重混合（档案没加载时退回按歌手分类）；周期锁曲目 bpm；摆幅 = 唤醒度 × 副歌系数（A3/A9.4）
       const bass = isPlaying ? (spectrum[0] ?? 0) : 0;
-      const nextChorus = isPlaying && mood ? chorusState(mood.sections, getPlaybackTime() * 1000) : null;
+      // 换段：前后两段的色调目标差得够多（弧线写了这一段多了什么）才算「情绪转了」，交给台词与粒子规则（P4 写规则）。
+      // 同一首里才比；换歌、刚开始播放都只记下不发
+      const segState = segmentRef.current;
+      const segFeels = isPlaying ? songNow?.feels : undefined;
+      let arcTurned = false;
+      if (segState.trackId === trackId && segment && segState.seg && segment.index !== segState.seg.index && segFeels && segState.feels) {
+        arcTurned = toneDistance(toneTarget(segState.feels), toneTarget(segFeels)) > ARC_TURN_MIN;
+      }
+      segmentRef.current = { trackId: isPlaying ? trackId : undefined, seg: segment, feels: segFeels };
+      const arcSpoke = arcTurned && !reacting && speak('arc-turn');
+      const nextChorus = isPlaying && mood ? chorusState(mood.sections, playMs) : null;
       if (nextChorus === 'in' && chorus.state !== 'in' && !reacting) {
-        // 副歌首拍：一次小绽放（对比越大越盛）+ 轻点一下头
+        // 副歌首拍：一次小绽放（对比越大越盛）+ 轻点一下头；情绪转向那一下已经回应过了，这里就不再开口
         emit('bloom', null, { energy: 0.4 + 0.6 * (mood?.contrast ?? 0.5), color: trackCategory === 'Miku' ? undefined : trackColor });
         impulseRef.current.nod(1.2);
+        if (!arcSpoke) speak('chorus');
       }
       chorus.state = nextChorus;
       chorus.prep.step(nextChorus === 'soon' ? 1 : 0, nextChorus === 'soon' ? 0.25 : 0.6, dtSec);
-      const gainGoal = isPlaying ? rhythmGain(arousal, nextChorus === 'in', mood?.contrast ?? 0.5) : 1;
+      // 摆幅跟曲的明暗走（词曲分治）：曲亮的歌晃得开一点
+      const gainGoal = isPlaying ? rhythmGain(arousal, nextChorus === 'in', mood?.contrast ?? 0.5) * soundLift(soundValence) : 1;
       // 进副歌约 0.3s 放大到位，出副歌 2s 内缓回
       chorus.gain.step(gainGoal, gainGoal > chorus.gain.x ? 0.3 : 0.6, dtSec);
-      const style = mood ? RHYTHM_BY_FEEL[mood.feel] : profileForCategory(trackCategory);
+      const style = (mood && blendRhythm(tone)) || profileForCategory(trackCategory);
       const rhythm = rhythmRef.current.update(dtSec, bass, style, { bpm: mood?.bpm, gain: chorus.gain.x });
       stage.addParam('ParamAngleZ', rhythm.headZ);
       stage.addParam('ParamBodyAngleZ', rhythm.bodyZ);
@@ -841,27 +944,33 @@ export const useMikuBrain = ({
       beatHighRef.current = liveEnergy.beat > 0.45;
       if (isPlaying && beatEdge) {
         const own = trackCategory === 'Miku';
-        // 强拍点头：只在雀跃/奇妙的歌里，一次很小的冲量
-        if (mood && (mood.feel === 'joyful' || mood.feel === 'wonder') && liveEnergy.beat > 0.75 && !reacting) impulseRef.current.nod(0.7);
+        // 强拍点头：雀跃 / 奇妙 / 燃占上风的歌里，一次很小的冲量
+        if (mood && beatNodAffinity(tone) > 0.4 && liveEnergy.beat > 0.75 && !reacting) impulseRef.current.nod(0.7);
         if (noteTimerRef.current <= 0 && (own || Math.random() < 0.4)) {
-          noteTimerRef.current = particleCooldown(arousal) * 1000 * (0.8 + Math.random() * 0.4);
-          const kind = mood ? particleForFeel(mood.feel, own) : own ? 'notes' : 'motes-up';
-          emit(kind, null, { count: 1, energy: arousal, valence: affect.m.v, color: own ? undefined : trackColor });
+          noteTimerRef.current = (particleCooldown(arousal) / soundLift(soundValence)) * 1000 * (0.8 + Math.random() * 0.4);
+          // 种类按情绪色调的权重抽：混合情绪的歌，粒子也是混着的
+          const feel = mood ? sampleTone(tone, Math.random()) : null;
+          const kind = feel ? particleForFeel(feel, own) : own ? 'notes' : 'motes-up';
+          // 色温跟曲（词曲分治）：曲调明亮的歌，光点偏暖
+          emit(kind, null, { count: 1, energy: arousal, valence: soundValence, color: own ? undefined : trackColor });
         }
       }
 
       // 季节夜：不放歌的夜里偶尔一点季节的小东西——夏夜萤光、春天樱瓣、冬天雪尘（秋天留白）。
-      // 曲目档案里的 season（P3）接进来以后，播放中也会按歌的季节意象出现。
+      // 播放中：歌的意象（雨丝、海的气泡、花瓣、月下萤火、雪）优先，没有可画的意象再按歌的季节。
       seasonTimerRef.current -= dt;
       if (seasonTimerRef.current <= 0) {
-        seasonTimerRef.current = 7000 + Math.random() * 6000;
+        const imageryKind = isPlaying ? imageryParticle(mood?.imagery) : null;
+        // 意象比季节勤一点：一场雨隔十秒落一丝，看不出是雨
+        seasonTimerRef.current = imageryKind ? 4500 + Math.random() * 3500 : 7000 + Math.random() * 6000;
         const hour = clock.getHours();
         const night = hour >= 19 || hour < 5;
         // 播放中跟歌的季节意象走（档案 season）；不放歌时只在夜里、跟着真实节气走
         const season = isPlaying ? mood?.season : night ? currentSeason() : undefined;
-        if (season && !reacting && !document.hidden) {
-          const kind: EmitKind | null = season === 'summer' ? (night ? 'firefly' : null) : season === 'spring' ? 'petals' : season === 'winter' ? 'snow' : null;
-          if (kind) emit(kind, null, { count: 1 });
+        if ((imageryKind || season) && !reacting && !document.hidden) {
+          const kind: EmitKind | null = imageryKind
+            ?? (season === 'summer' ? (night ? 'firefly' : null) : season === 'spring' ? 'petals' : season === 'winter' ? 'snow' : null);
+          if (kind) emit(kind, null, kind === 'rain' || kind === 'bubbles' ? {} : { count: 1 });
         }
       }
 
@@ -893,18 +1002,18 @@ export const useMikuBrain = ({
 
       if (import.meta.env.DEV) {
         debugRef.current = {
-          m: { ...affect.m }, target: affect.target({
-            hour: clock.getHours() + clock.getMinutes() / 60, owner: ownerRef.current,
-            music: isPlaying ? { valence: mood?.valence ?? 0.1, arousal: mood?.arousal ?? 0.5 } : null,
-            liveEnergy: Math.min(1, (liveEnergy.low + liveEnergy.mid) / 2),
-          }),
+          m: { ...affect.m }, tone: { ...affect.tone }, target: affect.target(affectInput),
           emotion: affect.emotion ? { ...affect.emotion } : null,
           arousal01: arousal, owner: ownerRef.current, trackId: isPlaying ? trackId : undefined, mood,
-          chorus: chorus.state, rhythmGain: chorus.gain.x, zone: touch ? `${touch.kind}·${touch.zone}` : null,
+          chorus: chorus.state, segment, arc: songNow?.arc ?? null,
+          feelsNow: songNow?.feels, faceValence: songNow?.faceValence, soundValence: songNow?.soundValence,
+          rhythmGain: chorus.gain.x, zone: touch ? `${touch.kind}·${touch.zone}` : null,
+          resonance, lean: listening.sessionLean, lowStreak: listening.lowStreak,
+          felt: ownerRef.current ? getTrackFelt(trackId) : undefined,
           line: lastLineRef.current,
         };
       }
-  }, [isPlaying, trackId, trackCategory, trackColor, getSpectrum, getEnergy, stageRef, coarsePointer, speak, triggerMood, headAnchor, gaze, emit, affect, voice]);
+  }, [isPlaying, trackId, trackCategory, trackColor, getSpectrum, getEnergy, stageRef, coarsePointer, speak, triggerMood, headAnchor, gaze, emit, affect, voice, listening]);
 
   // 并入全站唯一 ticker：隐藏页暂停、触屏 30fps、能量采样顺序都由同一处保证。
   useTicker(animateMiku, ready && !reduceMotion && !paused);
@@ -1016,6 +1125,7 @@ export const useMikuBrain = ({
       if (zone === 'head') {
         const next = patCount();
         affect.nudge(0.06);
+        affect.nudgeTone('tender', 0.1);
         voice.remember({ kind: 'pat', data: { gesture: 'stroke' } });
         speak('stroke', { zone }, 3800);
         afterPat(next);
@@ -1052,6 +1162,7 @@ export const useMikuBrain = ({
     const next = zone === 'head' ? patCount() : 0;
     if (zone === 'head') {
       affect.nudge(0.04);
+      affect.nudgeTone('tender', 0.1);
       voice.remember({ kind: 'pat', data: { gesture: 'tap' } });
       emit('hearts', null, { count: 3 });
     } else if (zone === 'twintail') {

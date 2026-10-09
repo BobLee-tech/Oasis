@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  analyzeSpectrum, arousalFromRaw, chorusFromEnergy, chorusFromLyrics, estimateBpm, fitArousalWeights,
-  onsetRate, percentileRanks, seasonOf, spearman, timeOf,
+  analyzeSpectrum, arousalFromRaw, chorusFromEnergy, chorusFromLyrics, estimateBpm, fitArousalWeights, imageryOf,
+  onsetRate, percentileRanks, seasonOf, segmentsFromLyrics, segmentsFromSections, spearman, timeOf,
 } from './track-features.mjs';
 
 const SR = 11025;
@@ -71,6 +71,62 @@ describe('chorusFromLyrics', () => {
 
   it('只有单行重复不算副歌', () => {
     expect(chorusFromLyrics([line(0, 'あ'), line(4, 'い'), line(8, 'あ'), line(12, 'う')])).toBeNull();
+  });
+});
+
+describe('段落', () => {
+  const line = (t, text) => ({ startMs: t * 1000, endMs: t * 1000 + 4000, ja: text });
+  const labels = segments => segments.map(([at, from]) => `${at}@${from / 1000}`).join(' ');
+  const CHORUS = ['サビ1', 'サビ2', 'サビ3'];
+  const chorusAt = t => CHORUS.map((text, i) => line(t + 4 * i, text));
+
+  it('前奏 / 主歌 / 预副歌 / 副歌 / C メロ / 尾声，首尾相接', () => {
+    const lines = [
+      line(10, 'A1'), line(14, 'A2'), line(18, 'B1'), line(22, 'B2'), ...chorusAt(26),
+      line(38, 'A3'), line(42, 'A4'), line(46, 'B3'), line(50, 'B4'), ...chorusAt(54),
+      line(66, 'C1'), line(70, 'C2'), ...chorusAt(74),
+      line(86, 'おわり'),
+    ];
+    const segments = segmentsFromLyrics(lines, 100_000);
+    expect(labels(segments)).toBe('intro@0 verse@10 pre@18 chorus@26 verse@38 pre@46 chorus@54 bridge@66 chorus@74 outro@86');
+    // 首尾相接：每段的 to 就是下一段的 from，最后一段止于整首时长
+    segments.slice(1).forEach((seg, i) => expect(seg[1]).toBe(segments[i][2]));
+    expect(segments.at(-1)[2]).toBe(100_000);
+  });
+
+  it('副歌之间不到 4 行时不拆预副歌；两次副歌紧挨着也是两次', () => {
+    const lines = [line(0, 'A1'), line(4, 'A2'), ...chorusAt(8), ...chorusAt(20), line(32, 'A3')];
+    expect(labels(segmentsFromLyrics(lines, 40_000))).toBe('verse@0 chorus@8 chorus@20 outro@32');
+  });
+
+  it('副歌只出现两次时，中间那段是主歌而不是 C メロ；最后一次副歌后有尾奏就单独成段', () => {
+    const lines = [line(0, 'A1'), ...chorusAt(4), line(16, 'A2'), ...chorusAt(20)];
+    expect(labels(segmentsFromLyrics(lines, 60_000))).toBe('verse@0 chorus@4 verse@16 chorus@20 outro@32');
+  });
+
+  it('没有重复块：前奏 + 一整段主歌 + 尾奏', () => {
+    expect(labels(segmentsFromLyrics([line(5, 'あ'), line(9, 'い')], 30_000))).toBe('intro@0 verse@5 outro@13');
+    expect(segmentsFromLyrics([], 30_000)).toBeNull();
+  });
+
+  it('只有能量法副歌：开头 intro，副歌之间 verse，最后 outro', () => {
+    expect(labels(segmentsFromSections([[30_000, 50_000], [80_000, 100_000]], 120_000))).toBe('intro@0 chorus@30 verse@50 chorus@80 outro@100');
+    expect(segmentsFromSections([], 120_000)).toBeNull();
+  });
+});
+
+describe('imageryOf', () => {
+  it('歌题命中权重 3，与季语同一套门槛', () => {
+    expect(imageryOf('六月は雨上がりの街を書く', '').imagery).toBe('rain');
+    expect(imageryOf('', '海').imagery).toBeNull();
+  });
+  it('「花火」不是花，「八月」「月曜」不是月', () => {
+    expect(imageryOf('', '花火 花火 花火').imagery).toBeNull();
+    expect(imageryOf('八月', '月曜 八月 十一月').imagery).toBeNull();
+    expect(imageryOf('月に吠える', '').imagery).toBe('moon');
+  });
+  it('混杂时不标', () => {
+    expect(imageryOf('', '雨 雨 海 海 花').imagery).toBeNull();
   });
 });
 

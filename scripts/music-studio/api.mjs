@@ -29,7 +29,7 @@ import { pairLyrics, parseLyricResponse } from '../lib/sources/netease.mjs';
 import { compareLyricVersions } from '../lib/lyrics-compare.mjs';
 import { sourceHashOf, stampLrc } from '../lib/lrc-parse.mjs';
 import { listAlbums, listProfiles, profilePath, readProfile, writeAlbum, writeProfile } from '../lib/track-profile.mjs';
-import { FEELS, INTRO_MAX, NOTE_MAX, RELATION_KINDS, mergeProfile, validateProfile } from '../lib/profile-merge.mjs';
+import { FEELS, INTRO_MAX, NOTE_MAX, RELATION_KINDS, mergeProfile, validateAlbumMood, validateProfile } from '../lib/profile-merge.mjs';
 import { parsePlaylist, readIdentityConfig } from '../lib/track-identity.mjs';
 import { searchVocadb } from '../lib/sources/vocadb.mjs';
 import { searchWikipedia } from '../lib/sources/wikipedia.mjs';
@@ -121,15 +121,19 @@ const readNeteaseTags = async (id, songId) => {
   return [];
 };
 
-// 草稿（sources.draft，网络资料整理出的初稿）里还没被你采纳、而你自己也还没写的字段
-const DRAFT_FIELDS = ['intro', 'valence', 'feel'];
+// 草稿（sources.draft，网络资料整理出的初稿）里还没被你采纳、而你自己也还没写的字段。
+// 情绪草稿（docs/song-emotion-design.md §4）：feels 向量与词 / 曲效价；旧草稿只有单个 feel，采纳时读作 { feel: 3 }。
+const DRAFT_FIELDS = ['intro', 'valence', 'lyricValence', 'soundValence', 'feels', 'imagery'];
+const draftValue = (draft, field) => (field === 'feels' ? draft.feels ?? (draft.feel ? { [draft.feel]: 3 } : undefined) : draft[field]);
+const moodHas = (mood, field) => (field === 'feels' ? mood?.feels !== undefined || mood?.feel !== undefined : mood?.[field] !== undefined);
 const pendingDraftFields = profile => {
   const draft = profile.sources?.draft;
   if (!draft) return [];
   return DRAFT_FIELDS.filter(field => {
-    if (draft[field] === undefined || draft[field] === '') return false;
+    const value = draftValue(draft, field);
+    if (value === undefined || value === '') return false;
     if (field === 'intro') return !profile.intro;
-    return profile.mood?.[field] === undefined;
+    return !moodHas(profile.mood, field);
   });
 };
 
@@ -138,12 +142,14 @@ const acceptDraft = async (id, fields = DRAFT_FIELDS) => {
   const profile = await readProfile(id);
   const draft = profile.sources?.draft;
   if (!draft) return { accepted: [] };
-  const pending = pendingDraftFields(profile).filter(field => fields.includes(field));
+  // 兼容旧调用方传 'feel'
+  const wanted = fields.map(field => (field === 'feel' ? 'feels' : field));
+  const pending = pendingDraftFields(profile).filter(field => wanted.includes(field));
   if (!pending.length) return { accepted: [] };
   const next = { ...profile, mood: { ...profile.mood } };
   for (const field of pending) {
     if (field === 'intro') next.intro = draft.intro;
-    else next.mood[field] = draft[field];
+    else next.mood[field] = draftValue(draft, field);
   }
   next.sources = { ...profile.sources, draft: { ...draft, acceptedAt: new Date().toISOString().slice(0, 10) } };
   await writeProfile(next);
@@ -151,12 +157,22 @@ const acceptDraft = async (id, fields = DRAFT_FIELDS) => {
   return { accepted: pending };
 };
 
+// 专辑默认可写的情绪字段（docs/song-emotion-design.md §2.2）；arc / imagery 是逐曲的，草稿的 basis / refs 等说明也不进
+const ALBUM_MOOD_KEYS = ['valence', 'lyricValence', 'soundValence', 'feel', 'feels'];
+const pickAlbumMood = (mood = {}) => {
+  const picked = Object.fromEntries(ALBUM_MOOD_KEYS.filter(key => mood?.[key] !== undefined && mood?.[key] !== null).map(key => [key, mood[key]]));
+  return Object.keys(picked).length ? picked : undefined;
+};
+
 const completeness = (merged, kind) => ({
   credits: Boolean(merged.credits),
   titleAlt: Boolean(merged.titleAlt),
   intro: Boolean(merged.intro),
   note: Boolean(merged.note || merged.notePrivate),
-  feel: Boolean(merged.mood?.feel),
+  // 心境：情绪向量是写出来的（你或专辑默认），不算 VA 猜的
+  feel: ['manual', 'album'].includes(merged.provenance['mood.feels']),
+  /** 这一首你亲手标过情绪（⌘⏎「下一首没标的」按它找） */
+  feelsMine: merged.provenance['mood.feels'] === 'manual',
   valence: typeof merged.mood?.valence === 'number',
   sections: kind === 'instrumental' || Boolean(merged.mood?.sections),
 });
@@ -228,6 +244,11 @@ route('GET', /^\/track\/([^/]+)$/, async ([id]) => {
     profile,
     merged,
     album,
+    // 自动层的唤醒度（情绪板显示「自动值」；你覆盖过时 merged 里看不到它）
+    autoArousal: context.features[id]?.arousal ?? null,
+    // 自动层的段落与意象（docs/song-emotion-design.md §13）：标注页的段落条与意象 chip 用
+    autoSegments: context.features[id]?.segments ?? null,
+    autoImagery: context.features[id]?.imagery ?? null,
     lyrics: current ? { document: current, gate: checkLyrics(current, gateContext) } : null,
     netease,
     neteaseTags: profile.ncmId ? await readNeteaseTags(id, profile.ncmId) : [],
@@ -271,7 +292,7 @@ route('POST', /^\/album\/([^/]+)\/draft\/accept$/, async ([slug]) => {
   if (!album) throw new HttpError(404, `没有专辑 ${slug}`);
   let albumAccepted = false;
   if (album.moodDraft && !album.moodDefaults) {
-    await writeAlbum({ ...album, moodDefaults: { valence: album.moodDraft.valence, feel: album.moodDraft.feel } });
+    await writeAlbum({ ...album, moodDefaults: pickAlbumMood(album.moodDraft) });
     touch(path.join(PROJECT_ROOT, 'music-data/albums', `${slug}.json`));
     albumAccepted = true;
   }
@@ -291,10 +312,9 @@ route('POST', /^\/album\/([^/]+)$/, async ([slug], body) => {
   const next = { ...album };
   if ('story' in body) next.story = String(body.story ?? '').trim() || undefined;
   if ('moodDefaults' in body) {
-    const mood = body.moodDefaults ?? {};
-    if (mood.valence !== undefined && !(mood.valence >= -1 && mood.valence <= 1)) throw new HttpError(400, 'valence 应在 -1..1');
-    if (mood.feel !== undefined && !FEELS.includes(mood.feel)) throw new HttpError(400, `未知 feel ${mood.feel}`);
-    next.moodDefaults = { valence: mood.valence, feel: mood.feel };
+    next.moodDefaults = pickAlbumMood(body.moodDefaults);
+    const problems = validateAlbumMood(next);
+    if (problems.length) throw new HttpError(400, problems.join('\n'));
   }
   const written = await writeAlbum(next);
   touch(path.join(PROJECT_ROOT, 'music-data/albums', `${slug}.json`));

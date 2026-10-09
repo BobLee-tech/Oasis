@@ -9,6 +9,8 @@
 //   由 trackMood.ts（以及音乐页的 music:build）按 人标 > 导入 > 自动 > 专辑默认 > 缺省 合并。
 //
 //   默认只分析产物里还没有的曲目；传 id 只分析这些；--all 全部重算。
+//   只靠歌词的量（歌词法副歌、段落、季语、意象、时段）每次都对全体重算，不用解码音频——补了歌词以后
+//   直接 `npm run song:analyze` 就会刷新。
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -17,7 +19,7 @@ import os from 'node:os';
 import { parsePlaylist } from './lib/track-identity.mjs';
 import {
   analyzeSpectrum, arousalFromRaw, chorusFromEnergy, chorusFromLyrics, DEFAULT_AROUSAL_WEIGHTS, estimateBpm,
-  median, onsetRate, round3, seasonOf, spearman, timeOf,
+  imageryOf, median, onsetRate, round3, seasonOf, segmentsFromLyrics, segmentsFromSections, spearman, timeOf,
 } from './lib/track-features.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -80,7 +82,6 @@ const analyzeOne = async track => {
   // 谱质心只统计有声的帧（静音帧的质心是噪声），取中位数
   const rmsGate = median([...rms]) * 0.25;
   const voiced = [...centroid].filter((_, i) => rms[i] > rmsGate);
-  const lyricText = lines.map(l => `${l.ja ?? ''} ${l.text ?? ''}`).join('\n');
   const fromLyrics = chorusFromLyrics(lines);
   const sections = fromLyrics ?? chorusFromEnergy(rms, hopSec);
   return {
@@ -94,8 +95,6 @@ const analyzeOne = async track => {
     },
     sections: sections ?? undefined,
     sectionsSource: fromLyrics ? 'lyrics' : sections ? 'energy' : undefined,
-    season: seasonOf(track.title, lyricText).season ?? undefined,
-    lyricText,
   };
 };
 
@@ -125,13 +124,10 @@ const main = async () => {
   console.log(`分析 ${targets.length} / ${playlist.length} 首（权重 ${JSON.stringify(weights)}）`);
 
   const fresh = {};
-  const lyricTexts = {};
   let done = 0;
   await pool(targets, Math.max(1, Math.min(4, os.cpus().length - 1)), async track => {
     try {
-      const { lyricText, ...result } = await analyzeOne(track);
-      fresh[track.id] = result;
-      lyricTexts[track.id] = lyricText;
+      fresh[track.id] = await analyzeOne(track);
     } catch (error) {
       console.warn(`  ✗ ${track.id} ${track.title}：${error.message}`);
     }
@@ -155,7 +151,21 @@ const main = async () => {
     entry.contrast = scored[i].contrast;
     entry.percentiles = scored[i].percentiles;
     const track = playlist.find(t => t.id === id);
-    const text = lyricTexts[id] ?? (await lyricsOf(id)).map(l => `${l.ja ?? ''} ${l.text ?? ''}`).join('\n');
+    const lines = await lyricsOf(id);
+    const text = lines.map(l => `${l.ja ?? ''} ${l.text ?? ''}`).join('\n');
+    // 歌词法的副歌优先于能量法（歌词是后来补的也认）；段落跟着副歌走（docs/song-emotion-design.md §2.2）
+    const lyricChorus = chorusFromLyrics(lines);
+    if (lyricChorus) {
+      entry.sections = lyricChorus;
+      entry.sectionsSource = 'lyrics';
+    }
+    const durationMs = (entry.raw.durationSec ?? 0) * 1000 || undefined;
+    entry.segments = (lyricChorus ? segmentsFromLyrics(lines, durationMs) : null)
+      ?? segmentsFromSections(entry.sections, durationMs)
+      ?? (lines.length ? segmentsFromLyrics(lines, durationMs) : null)
+      ?? undefined;
+    entry.season = seasonOf(track.title, text).season ?? undefined;
+    entry.imagery = imageryOf(track.title, text).imagery ?? undefined;
     entry.time = timeOf(track.title, text, entry.arousal).time ?? undefined;
     entry.bpm = entry.raw.bpm ?? undefined;
     // 导入层的两个事实顺带带出（运行时就不必打包整份档案原始 JSON）：网易云 BPM 与专辑名。
@@ -170,8 +180,8 @@ const main = async () => {
     generatedBy: 'scripts/analyze-tracks.mjs',
     weights,
     tracks: Object.fromEntries(order.map(id => {
-      const { arousal, contrast, bpm, bpmNetease, album, sections, sectionsSource, season, time, percentiles, raw } = merged[id];
-      return [id, JSON.parse(JSON.stringify({ album, arousal, contrast, bpm, bpmNetease, sections, sectionsSource, season, time, percentiles, raw }))];
+      const { arousal, contrast, bpm, bpmNetease, album, sections, sectionsSource, segments, season, imagery, time, percentiles, raw } = merged[id];
+      return [id, JSON.parse(JSON.stringify({ album, arousal, contrast, bpm, bpmNetease, sections, sectionsSource, segments, season, imagery, time, percentiles, raw }))];
     })),
   };
   await writeFile(OUT_FILE, `${JSON.stringify(out, null, 1)}\n`, 'utf8');
@@ -183,6 +193,9 @@ const main = async () => {
   const seasons = entries.reduce((acc, e) => (e.season ? { ...acc, [e.season]: (acc[e.season] ?? 0) + 1 } : acc), {});
   console.log(`\n写出 ${path.relative(ROOT, OUT_FILE)}：${entries.length} 首`);
   console.log(`  副歌：歌词法 ${withLyricChorus}/${withLyrics}（有歌词的）· 能量法补 ${entries.filter(e => e.sectionsSource === 'energy').length} · 无 ${entries.filter(e => !e.sections).length}`);
+  const labels = entries.flatMap(e => (e.segments ?? []).map(seg => seg[0])).reduce((acc, at) => ({ ...acc, [at]: (acc[at] ?? 0) + 1 }), {});
+  console.log(`  段落：${entries.filter(e => e.segments).length} 首 ${JSON.stringify(labels)}`);
+  console.log(`  意象：${JSON.stringify(entries.reduce((acc, e) => (e.imagery ? { ...acc, [e.imagery]: (acc[e.imagery] ?? 0) + 1 } : acc), {}))}`);
   console.log(`  季节：${JSON.stringify(seasons)}  时段：${JSON.stringify(entries.reduce((a, e) => (e.time ? { ...a, [e.time]: (a[e.time] ?? 0) + 1 } : a), {}))}`);
 
   const pairs = [];

@@ -69,9 +69,11 @@ export class MikuVoice {
     if (!sel) return null;
     const priority = sel.rule.priority ?? DEFAULT_PRIORITY[event];
     const ctx = { owner: this.owner, reading: !!facts.reading, editing: !!facts.editing };
-    if (!opts.force && !this.governor.allow(priority, now, ctx)) return null;
+    // 只用表情 / 粒子回应（say 为空）不算开口：不受话量调控，也不占话量（眼睛亮一下不该让下一句话等 90 秒）
+    const silent = !sel.template;
+    if (!opts.force && !silent && !this.governor.allow(priority, now, ctx)) return null;
     commit(sel, facts, this.dialogue, now);
-    this.governor.commit(priority, now);
+    if (!silent) this.governor.commit(priority, now);
     const choice = sel.template
       ? chooseAddress(sel.template, {
         event,

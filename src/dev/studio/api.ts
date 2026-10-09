@@ -1,4 +1,5 @@
 // 工坊前端 ↔ scripts/music-studio/api.mjs。类型只描述工坊用到的那部分。
+import type { ArcStep, Feel, Feels, Imagery, SectionLabel } from '../../../scripts/lib/mood-core.mjs';
 import type { LyricLine, LyricsDocument } from '../../types/music';
 
 export type GateName = 'version' | 'clean' | 'translation' | 'reading' | 'listened';
@@ -20,10 +21,9 @@ export interface Credits {
   vocal?: string[];
 }
 
-export type Feel = 'tender' | 'nostalgic' | 'sad' | 'peaceful' | 'joyful' | 'tense' | 'wonder';
-export const FEEL_LABELS: Record<Feel, string> = {
-  tender: '温柔', nostalgic: '怀念', sad: '哀伤', peaceful: '宁静', joyful: '雀跃', tense: '紧绷', wonder: '奇妙',
-};
+// 情绪维度与标签：与构建脚本同一份（docs/song-emotion-design.md §2）
+export { FEEL_LABELS } from '../../../scripts/lib/mood-core.mjs';
+export type { ArcStep, Feel, Feels, Imagery, SectionLabel } from '../../../scripts/lib/mood-core.mjs';
 export type RelationKind = 'reply' | 'sequel' | 'sameStory' | 'sameLyrics';
 export const RELATION_LABELS: Record<RelationKind, string> = {
   reply: '回信', sequel: '续篇', sameStory: '同一个故事', sameLyrics: '同一份词',
@@ -31,8 +31,14 @@ export const RELATION_LABELS: Record<RelationKind, string> = {
 
 export interface Mood {
   valence?: number;
+  lyricValence?: number;
+  soundValence?: number;
   arousal?: number;
   feel?: Feel;
+  feels?: Feels;
+  arc?: ArcStep[];
+  imagery?: Imagery[];
+  sure?: boolean;
   bpm?: number;
   sections?: [number, number][];
   season?: string;
@@ -52,7 +58,13 @@ export interface Ref {
 export interface Draft {
   intro?: string;
   valence?: number;
+  lyricValence?: number;
+  soundValence?: number;
+  /** 旧草稿：单个感受（采纳时读作 { feel: 3 }） */
   feel?: Feel;
+  feels?: Feels;
+  imagery?: Imagery[];
+  arc?: ArcStep[];
   /** 一句话依据：为什么是这个心境 */
   basis?: string;
   confidence?: 'high' | 'medium' | 'low';
@@ -131,18 +143,27 @@ export interface LibraryRow {
   kind: 'lyrics' | 'missing' | 'instrumental';
   gates: Record<GateName, boolean> | null;
   translationStatus?: string;
-  have: Record<'credits' | 'titleAlt' | 'intro' | 'note' | 'feel' | 'valence' | 'sections', boolean>;
+  have: Record<'credits' | 'titleAlt' | 'intro' | 'note' | 'feel' | 'feelsMine' | 'valence' | 'sections', boolean>;
   draftPending: boolean;
   ncm: boolean;
   url: string;
+}
+
+/** 专辑默认可写的情绪字段（arc / imagery 是逐曲的） */
+export interface AlbumMood {
+  valence?: number;
+  lyricValence?: number;
+  soundValence?: number;
+  feel?: Feel;
+  feels?: Feels;
 }
 
 export interface AlbumInfo {
   slug: string;
   album: string;
   story?: string;
-  moodDefaults?: { valence?: number; feel?: Feel } | null;
-  moodDraft?: { valence?: number; feel?: Feel; basis?: string } | null;
+  moodDefaults?: AlbumMood | null;
+  moodDraft?: (AlbumMood & { basis?: string }) | null;
 }
 
 export interface Library {
@@ -179,6 +200,10 @@ export interface TrackDetail {
   profile: Profile;
   merged: Merged;
   album: AlbumInfo | null;
+  autoArousal: number | null;
+  /** 自动段落 [标签, fromMs, toMs]（npm run song:analyze 产出） */
+  autoSegments: [SectionLabel, number, number][] | null;
+  autoImagery: Imagery | null;
   lyrics: { document: LyricsDocument; gate: { gates: Record<GateName, GateResult>; blocked: GateName[]; credits: Credits } } | null;
   netease: { songId: number; lines: PairedLine[]; transUser?: string; lyricUser?: string; compare: Compare } | null;
   neteaseTags: string[];
@@ -211,7 +236,7 @@ export const api = {
   /** null = 删掉这个字段（回落到导入值/专辑默认） */
   saveProfile: (id: string, patch: { [K in keyof Profile]?: Profile[K] | null }) =>
     call<{ profile: Profile }>('POST', `/track/${encodeURIComponent(id)}/profile`, patch),
-  acceptDraft: (id: string, fields?: ('intro' | 'valence' | 'feel')[]) =>
+  acceptDraft: (id: string, fields?: ('intro' | 'valence' | 'lyricValence' | 'soundValence' | 'feels' | 'imagery')[]) =>
     call<{ accepted: string[] }>('POST', `/track/${encodeURIComponent(id)}/draft/accept`, { fields }),
   acceptAlbumDrafts: (slug: string) =>
     call<{ albumAccepted: boolean; tracks: Record<string, string[]> }>('POST', `/album/${encodeURIComponent(slug)}/draft/accept`),

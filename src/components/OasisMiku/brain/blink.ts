@@ -8,6 +8,8 @@ const SIGMA = 0.55;
 const DOUBLE_BLINK_P = 0.12;
 
 export class BlinkEngine {
+  /** 间隔缩放：>1 眨得更慢（空灵、温柔的歌里由情绪色调调大） */
+  waitScale = 1;
   private wait = 1.2;
   private phase: 'idle' | 'closing' | 'closed' | 'opening' = 'idle';
   private t = 0;
@@ -17,7 +19,7 @@ export class BlinkEngine {
     const u = Math.max(1e-6, Math.random());
     const v = Math.random();
     const gaussian = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    return MEDIAN_S * Math.exp(gaussian * SIGMA);
+    return MEDIAN_S * this.waitScale * Math.exp(gaussian * SIGMA);
   }
 
   /** 立刻眨一次（大幅转移视线时人常顺带眨眼）；正在眨就不打断。 */

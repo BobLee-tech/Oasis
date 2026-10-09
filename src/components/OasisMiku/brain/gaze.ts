@@ -32,6 +32,8 @@ export interface GazeInput {
   calm?: boolean;
   /** 自主张望：三级弹簧整体放慢 */
   lazy?: boolean;
+  /** 微扫视间隔缩放：>1 更稀（空灵），<1 更密（不安）；缺省 1 */
+  saccadeScale?: number;
 }
 
 export class GazeController {
@@ -59,7 +61,7 @@ export class GazeController {
 
     this.saccadeTimer -= dt;
     if (this.saccadeTimer <= 0) {
-      const base = input.calm ? 3.2 : 2.5 - 1.6 * clamp01(arousal);
+      const base = (input.calm ? 3.2 : 2.5 - 1.6 * clamp01(arousal)) * (input.saccadeScale ?? 1);
       this.saccadeTimer = base * (0.35 + Math.random() * 0.9);
       const amp = 0.03 + Math.random() * 0.05;
       const angle = Math.random() * Math.PI * 2;

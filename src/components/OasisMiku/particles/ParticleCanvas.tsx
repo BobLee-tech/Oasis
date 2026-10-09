@@ -17,7 +17,7 @@ export interface ParticleCanvasHandle {
 const PAD = { top: 76, side: 52, bottom: 28 };
 
 // 触屏只发一半：屏幕窄，别喧宾夺主；涟漪与单颗反馈不减
-const HALVABLE = new Set<EmitKind>(['hearts', 'notes', 'burst', 'bloom', 'petals', 'sparks', 'dust']);
+const HALVABLE = new Set<EmitKind>(['hearts', 'notes', 'burst', 'bloom', 'petals', 'sparks', 'dust', 'rain', 'bubbles']);
 
 interface Props {
   width: number;

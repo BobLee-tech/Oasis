@@ -13,7 +13,7 @@ import type { EmotionKind } from './affect';
 import type { EmitKind } from '../particles/sim';
 
 export type MikuEvent =
-  | 'greet' | 'return' | 'view' | 'track-change' | 'chorus' | 'idle'
+  | 'greet' | 'return' | 'view' | 'track-change' | 'chorus' | 'arc-turn' | 'idle'
   | 'reading-open' | 'reading-idle' | 'editor-open' | 'write-milestone' | 'published'
   | 'tap' | 'hold' | 'stroke' | 'swipe' | 'pull' | 'combo'
   | 'doze' | 'copy' | 'milestone' | 'rare' | 'recall'
@@ -51,7 +51,7 @@ export interface Rule {
 }
 
 export const DEFAULT_PRIORITY: Record<MikuEvent, Priority> = {
-  greet: 'response', return: 'response', view: 'ambient', 'track-change': 'response', chorus: 'ambient', idle: 'ambient',
+  greet: 'response', return: 'response', view: 'ambient', 'track-change': 'response', chorus: 'ambient', 'arc-turn': 'ambient', idle: 'ambient',
   'reading-open': 'response', 'reading-idle': 'ambient', 'editor-open': 'response', 'write-milestone': 'care', published: 'response',
   tap: 'response', hold: 'response', stroke: 'response', swipe: 'response', pull: 'response', combo: 'response',
   doze: 'ambient', copy: 'ambient', milestone: 'response', rare: 'response', recall: 'recall',

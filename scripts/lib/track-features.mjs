@@ -191,9 +191,9 @@ const normalizeLine = text => String(text ?? '')
 
 /**
  * 歌词法（A2.6①）：找连续 ≥2 行、整块出现 ≥2 次的重复块；出现次数 × 块长最大者记为副歌
- * （并列取更长的块），每次出现取 [首行 startMs, 末行 endMs]。思路即 RefraiD：副歌是被重复的段落。
+ * （并列取更长的块）。思路即 RefraiD：副歌是被重复的段落。返回可用的行、各次出现的首行下标与块长。
  */
-export const chorusFromLyrics = lines => {
+const chorusBlocks = lines => {
   const usable = lines.filter(l => Number.isFinite(l.startMs) && Number.isFinite(l.endMs));
   const norm = usable.map(l => normalizeLine(l.ja ?? l.text ?? l.zh));
   const n = norm.length;
@@ -223,8 +223,111 @@ export const chorusFromLyrics = lines => {
     const score = starts.length * len;
     if (!best || score > best.score || (score === best.score && len > best.len)) best = { score, len, starts };
   }
-  if (!best) return null;
-  return best.starts.map(s => [usable[s].startMs, usable[s + best.len - 1].endMs]);
+  return best ? { usable, norm, len: best.len, starts: best.starts } : null;
+};
+
+/** 每次出现取 [首行 startMs, 末行 endMs]。 */
+export const chorusFromLyrics = lines => {
+  const found = chorusBlocks(lines);
+  if (!found) return null;
+  return found.starts.map(s => [found.usable[s].startMs, found.usable[s + found.len - 1].endMs]);
+};
+
+// ───────────────────────── 段落 ─────────────────────────
+//
+// 段落标签（docs/song-emotion-design.md §2.2，P3）：把整首切成首尾相接的 [标签, fromMs, toMs]，
+// 给曲目档案的 arc（「这一段多了什么」）找到「此刻是哪一段」。
+//   intro  —— 第一句歌词之前（≥ 1.5s 才算）
+//   chorus —— 副歌（歌词重复块；没有歌词时是能量法的高能段）
+//   pre    —— 副歌前的 2 行（前面这段至少 4 行才拆，不然整段都是 verse）
+//   bridge —— 副歌出现 ≥ 3 次时，最后一次副歌前那段（J-pop 的 C メロ）
+//   outro  —— 最后一次副歌之后的一切（含尾奏）
+//   verse  —— 其余
+// 段与段首尾相接：每段的 to 就是下一段的 from，所以间奏归前一段。
+
+const INTRO_MIN_MS = 1500;
+const TAIL_MIN_MS = 3000;
+const PRE_LINES = 2;
+
+/**
+ * 把 [标签, from] 序列收成首尾相接的 [标签, from, to]：相邻同标签并成一段——副歌除外，
+ * 两次副歌紧挨着（中间没有别的歌词）也是两次（chorus#2 要认得出来）。
+ */
+const closeSegments = (marks, end) => {
+  if (marks.length) marks[0][1] = 0;
+  const out = [];
+  for (const [at, from] of marks) {
+    // 同一时刻后到的标签覆盖先到的（零长度的段不留）
+    while (out.length && out[out.length - 1][1] >= from) out.pop();
+    const last = out[out.length - 1];
+    if (last && last[0] === at && at !== 'chorus') continue;
+    out.push([at, from, from]);
+  }
+  out.forEach((seg, i) => { seg[2] = i + 1 < out.length ? out[i + 1][1] : Math.max(seg[1] + 1, end); });
+  return out.length ? out : null;
+};
+
+/**
+ * 歌词 → 段落。没有可用歌词时返回 null（交给 segmentsFromSections）。
+ * @param lines       歌词行（startMs / endMs / ja）
+ * @param durationMs  整首时长；不知道时最后一段止于最后一句
+ */
+export const segmentsFromLyrics = (lines, durationMs) => {
+  // 副歌与 chorusFromLyrics 同一次检出（空行照样参与），保证段落里的 chorus 与 sections 对得上
+  const found = chorusBlocks(lines);
+  const usable = found?.usable ?? lines.filter(l => Number.isFinite(l.startMs) && Number.isFinite(l.endMs));
+  const sung = usable.filter(l => normalizeLine(l.ja ?? l.text ?? l.zh));
+  if (!sung.length) return null;
+  const end = Math.max(durationMs ?? 0, sung[sung.length - 1].endMs);
+  const marks = [];
+  if (sung[0].startMs >= INTRO_MIN_MS) marks.push(['intro', 0]);
+  if (!found) {
+    marks.push(['verse', sung[0].startMs]);
+    if (end - sung[sung.length - 1].endMs >= TAIL_MIN_MS) marks.push(['outro', sung[sung.length - 1].endMs]);
+    return closeSegments(marks, end);
+  }
+  const { starts, len, norm } = found;
+  // 段从这一行起的第一句有字的歌词开始（空行不定段界）
+  const lineAt = i => {
+    let k = i;
+    while (k < usable.length - 1 && !norm[k]) k++;
+    return usable[k].startMs;
+  };
+  // 副歌之间的空档：[from, to) 行
+  const gap = (from, to, isBridge) => {
+    const count = to - from;
+    if (count <= 0) return;
+    if (isBridge) { marks.push(['bridge', lineAt(from)]); return; }
+    if (count >= PRE_LINES + 2) {
+      marks.push(['verse', lineAt(from)]);
+      marks.push(['pre', lineAt(to - PRE_LINES)]);
+    } else marks.push(['verse', lineAt(from)]);
+  };
+  let cursor = 0;
+  starts.forEach((start, k) => {
+    gap(cursor, start, starts.length >= 3 && k === starts.length - 1 && k > 0);
+    marks.push(['chorus', lineAt(start)]);
+    cursor = start + len;
+  });
+  const lastChorusEnd = usable[cursor - 1].endMs;
+  if (cursor < usable.length) marks.push(['outro', lineAt(cursor)]);
+  else if (end - lastChorusEnd >= TAIL_MIN_MS) marks.push(['outro', lastChorusEnd]);
+  return closeSegments(marks, end);
+};
+
+/** 只有副歌区段（能量法或人标）时：副歌之外，开头是 intro、中间是 verse、最后是 outro。 */
+export const segmentsFromSections = (sections, durationMs) => {
+  if (!sections?.length) return null;
+  const sorted = [...sections].sort((a, b) => a[0] - b[0]);
+  const end = Math.max(durationMs ?? 0, sorted[sorted.length - 1][1]);
+  const marks = [];
+  if (sorted[0][0] > 0) marks.push(['intro', 0]);
+  sorted.forEach(([from, to], k) => {
+    marks.push(['chorus', from]);
+    const next = sorted[k + 1]?.[0] ?? end;
+    if (next - to >= TAIL_MIN_MS || (k === sorted.length - 1 && end - to > 0)) marks.push([k === sorted.length - 1 ? 'outro' : 'verse', to]);
+  });
+  return closeSegments(marks, end);
 };
 
 /** 能量法（A2.6②）：0.5s RMS → 4s 平滑 → 高于 75 百分位且持续 ≥ 8s 的段 → 平均能量最高的 2–3 段。 */
@@ -286,6 +389,38 @@ export const seasonOf = (title, lyricText) => {
   if (total < 3) return { season: null, scores };
   const [top, value] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
   return { season: value / total >= 0.6 ? top : null, scores };
+};
+
+// 意象（docs/song-emotion-design.md §3.6）：与季语同一套计分。每个意象都有读它的模块——
+// 雨 / 海 / 花 / 月 / 雪 给 Miku 的粒子，信只给台词。not 里是含这个字却不是这个意象的词，命中先扣掉。
+export const IMAGERY_WORDS = {
+  rain: { words: ['雨', '傘'], not: [] },
+  sea: { words: ['海', '波', '渚', '潮', '浜', '水平線'], not: ['電波', '波長'] },
+  flower: { words: ['花', '咲'], not: ['花火'] },
+  moon: {
+    words: ['月'],
+    not: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月',
+      '今月', '先月', '来月', '毎月', '年月', '月曜', '月日', '正月', 'ヶ月', 'か月', 'カ月', '歳月'],
+  },
+  snow: { words: ['雪'], not: [] },
+  letter: { words: ['手紙', '便箋', '拝啓', '封筒', 'ラブレター', '敬具'], not: [] },
+};
+
+// 先把 not 里的词（长的先）从文本里挖掉，再数 words
+const imageryHits = (text, { words, not }) => {
+  let rest = text;
+  for (const w of [...not].sort((a, b) => b.length - a.length)) rest = rest.split(w).join('\u0000');
+  return countHits(rest, words);
+};
+
+/** 得分 = 3 × 歌题命中 + 1 × 歌词命中；总分 ≥ 3 且最高者占比 ≥ 0.6 才标（宁可不标，不要标错）。 */
+export const imageryOf = (title, lyricText) => {
+  const scores = Object.fromEntries(Object.entries(IMAGERY_WORDS).map(([key, table]) =>
+    [key, 3 * imageryHits(title, table) + imageryHits(lyricText, table)]));
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  if (total < 3) return { imagery: null, scores };
+  const [top, value] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return { imagery: value / total >= 0.6 ? top : null, scores };
 };
 
 export const TIME_WORDS = {

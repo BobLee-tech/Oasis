@@ -20,24 +20,34 @@ const fullFacts = () => {
     lastSession: { endedAt: 0, endedAtHour: 2, trackId: 'm_01', trackTitle: 't', readingId: 'p', readingTitle: '春', readingProgress: 0.4 },
     topTrackThisWeek: { id: 'm_01', plays: 5 }, usualHour: 21, lateNightsThisWeek: 3, anniversary: 100, pinnedToday: null, playsToday: () => 3,
   };
-  const mood = { feel: 'sad', valence: -0.5, arousal: 0.5, time: 'night', provenance: { feel: 'manual', valence: 'manual' }, note: 'n', noteVisitor: 'nv', season: 'summer' } as unknown as ResolvedTrackMood;
+  const mood = {
+    feel: 'sad', valence: -0.5, arousal: 0.5, time: 'night', provenance: { feel: 'manual', valence: 'manual', feels: 'manual' }, note: 'n', noteVisitor: 'nv', season: 'summer',
+    // P4：每个情绪维都有值，'feels.x' 这类条件路径才能被检查到
+    feels: { tender: 2, nostalgic: 2, sad: 2, peaceful: 2, joyful: 2, tense: 2, wonder: 2, power: 2, transcendence: 2, defiant: 2 },
+    blend: 'setsunai', lyricValence: -0.6, soundValence: 0.4, split: true, sure: true, imagery: ['rain'],
+    arc: [], segments: [['chorus', 0, 10000]],
+  } as unknown as ResolvedTrackMood;
   const owner = buildFacts({
     now: new Date(), owner: true, view: 'garden', playing: true,
     track: { id: 'm_01', title: 't', artist: 'a', category: 'Miku' },
     trackFacts: { titleAlt: 'ta', composer: 'c', album: 'al', year: 2020, introFirst: 'i', note: 'n', noteForVisitor: 'nv', relationToPrev: { kind: 'reply', to: 'm_02' } },
-    titleOf: () => 'x', mood, chorus: 'in',
+    titleOf: () => 'x', mood, chorus: 'in', segment: { at: 'chorus', n: 1, index: 0 },
     reading: { id: 'p', title: '春', category: 'thought', series: 's', words: 4000, openedAt: Date.now() - 1_800_000, progress: 0.4 },
     editing: { words: 2000, openedAt: Date.now() - 4_000_000 }, published: { title: '春' },
     posts: [post], zone: 'head', gesture: 'tap', awayMinutes: 130, careRepeat: 1, combo: 0, patsTotal: 100, patsToday: 3, memory,
     affect: { v: 0, a: 0, emotion: 'pained' },
+    felt: { tender: 2, nostalgic: 2, sad: 2, peaceful: 2, joyful: 2, tense: 2, wonder: 2, power: 2, transcendence: 2, defiant: 2 },
+    sessionLean: 'sad',
   });
   return { owner, visitor: buildFacts({ ...{
     now: new Date(), owner: false, visitorAlias: '阿树', view: 'garden' as const, playing: true,
     track: { id: 'm_01', title: 't', artist: 'a', category: 'Miku' },
-    trackFacts: { titleAlt: 'ta', note: 'n', noteForVisitor: 'nv' }, mood,
+    trackFacts: { titleAlt: 'ta', note: 'n', noteForVisitor: 'nv' }, mood, segment: { at: 'chorus' as const, n: 1, index: 0 },
     reading: { id: 'p', title: '春', category: 'thought', words: 100, openedAt: 0, progress: 0.2 },
     editing: { words: 2000, openedAt: 0 }, posts: [post], combo: 0, patsTotal: 100, patsToday: 0, memory,
     affect: { v: 0, a: 0, emotion: null },
+    // 就算调用方误传了，访客的事实里也不该有
+    felt: { peaceful: 3 }, sessionLean: 'sad' as const,
   } }) };
 };
 
@@ -175,6 +185,54 @@ describe('访客隐私', () => {
       combo: 0, patsTotal: 0, patsToday: 0, memory: null, affect: { v: 0, a: 0, emotion: null },
     });
     expect(facts.latestPost?.title).toBe('公开的');
+  });
+});
+
+describe('多维情绪（P4）', () => {
+  it('按情绪开口的规则都带 feelSure: true（草稿与 VA 猜的只驱动身体，不驱动台词）', () => {
+    const emotional = MIKU_RULES.filter(r => Object.keys(r.when ?? {}).some(path => /^(feel|feels|blend|split|splitWay)(\.|$)/.test(path)));
+    expect(emotional.length).toBeGreaterThan(20);
+    for (const rule of emotional) {
+      // 「没标 feel 的歌」那组反过来写 feelSure: false
+      expect(rule.when!.feelSure === true || (rule.when!.feelSure === false && !rule.when!.feel), rule.id).toBe(true);
+    }
+  });
+
+  it('每种复合情绪与新三维，站主和访客都有话说', () => {
+    for (const blend of ['setsunai', 'release', 'fired', 'youth', 'hollow', 'smolder']) {
+      expect(MIKU_RULES.some(r => r.when?.blend === blend && r.who !== 'visitor'), `${blend} 站主`).toBe(true);
+      expect(MIKU_RULES.some(r => r.when?.blend === blend && r.who !== 'owner' && r.on === 'track-change'), `${blend} 访客`).toBe(true);
+    }
+    for (const feel of ['power', 'transcendence', 'defiant']) {
+      expect(MIKU_RULES.some(r => r.when?.feel === feel && r.who === 'owner'), feel).toBe(true);
+      expect(MIKU_RULES.some(r => r.when?.feel === feel && r.who === 'visitor'), feel).toBe(true);
+    }
+  });
+});
+
+describe('陪伴（P5）', () => {
+  const OWNER_ONLY_PATH = /^(felt|sessionLean)(\.|$)/;
+  it('felt / sessionLean 只能出现在 who: owner 的规则里', () => {
+    const using = MIKU_RULES.filter(r =>
+      [...Object.keys(r.when ?? {}), ...r.say.flatMap(slotsOf), ...(r.onceKey ? slotsOf(r.onceKey) : [])].some(p => OWNER_ONLY_PATH.test(p)));
+    expect(using.length).toBeGreaterThan(0);
+    for (const rule of using) expect(rule.who, rule.id).toBe('owner');
+  });
+
+  it('访客的事实里没有 felt 与听歌倾向；站主有', () => {
+    const { owner, visitor } = fullFacts();
+    expect(visitor.felt).toBeUndefined();
+    expect(visitor.sessionLean).toBeUndefined();
+    expect(owner.felt?.peaceful).toBe(2);
+    expect(owner.sessionLean).toBe('sad');
+  });
+
+  it('听歌倾向不念出来：台词里没有曲数、没有维度名', () => {
+    for (const rule of MIKU_RULES.filter(r => 'sessionLean' in (r.when ?? {}))) {
+      for (const line of rule.say) {
+        expect(/\d|几首|哀伤|不甘|难过的歌/.test(line), `${rule.id}: ${line}`).toBe(false);
+      }
+    }
   });
 });
 

@@ -92,6 +92,39 @@ const draw = (ctx: CanvasRenderingContext2D, shape: SpriteShape, color: string) 
       ctx.fill();
       break;
     }
+    case 'streak': {
+      // 雨丝：竖直细线，上淡下实（雨滴在下端）。精灵按 32 画、落到屏幕上约 14px，线宽按缩放后 ≈1.3px 取
+      const g = ctx.createLinearGradient(0, 3, 0, BASE - 3);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(1, 'rgba(255,255,255,1)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(BASE / 2, 3);
+      ctx.lineTo(BASE / 2, BASE - 3);
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, BASE, BASE);
+      ctx.globalCompositeOperation = 'source-over';
+      break;
+    }
+    case 'bubble': {
+      // 气泡：细圈 + 左上一点高光，里面是空的
+      const c = BASE / 2;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(c, c, c - 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.12;
+      ctx.fill();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(c - 4.5, c - 4.5, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
     case 'z':
       ctx.font = `italic 26px Georgia, 'Times New Roman', serif`;
       ctx.textAlign = 'center';

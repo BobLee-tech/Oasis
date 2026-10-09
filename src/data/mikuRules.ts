@@ -392,7 +392,150 @@ const HOST: Rule[] = [
   { id: 'p7.host.combo', on: 'combo', who: 'visitor', say: ['好啦，我在听。'] },
 ];
 
+// ═════════════════════════ P4 多维情绪（2026-10-09，待过目） ═════════════════════════
+//   docs/song-emotion-design.md §3.7。只在 feelSure（人标或专辑、没标「说不准」）时按情绪开口；意象不靠 feelSure
+//   （它是歌题歌词里数出来的事实）。条件越多越优先：反差 > 复合 > 单维 feel；意象与季节在后面兜底。
+//   条件写点路径：'feels.power': '>=2'。
+
+// —— 复合情绪：两维都 ≥ 2 才有名字 ——
+const BLEND: Rule[] = [
+  { id: 'p4.blend.setsunai.owner', on: 'track-change', who: 'owner', when: { blend: 'setsunai', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['唔，这首听着心里有点揪。', '明明是温柔的调子，听到后面却有点想哭呢。', '这种难过是软的，捧在手心里会化掉。'] },
+  { id: 'p4.blend.setsunai.visitor', on: 'track-change', who: 'visitor', when: { blend: 'setsunai', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首温柔里带一点难过，日语里叫「切ない」。'] },
+  { id: 'p4.blend.release.owner', on: 'track-change', who: 'owner', when: { blend: 'release', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['哭过之后的那种安静，这首里有呢。', '它不劝人别难过，只是让难过慢慢落地。'] },
+  { id: 'p4.blend.release.visitor', on: 'track-change', who: 'visitor', when: { blend: 'release', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首是难过之后、慢慢平静下来的那种歌。'] },
+  { id: 'p4.blend.fired.owner', on: 'track-change', who: 'owner', when: { blend: 'fired', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['来了来了——这首要一起燃起来！', '音量调大一点吧，这首值得。'] },
+  { id: 'p4.blend.fired.visitor', on: 'track-change', who: 'visitor', when: { blend: 'fired', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首很燃，听着会想动起来哦。'] },
+  { id: 'p4.blend.youth.owner', on: 'track-change', who: 'owner', when: { blend: 'youth', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首有放学路上的味道，夕阳和自行车铃。', '明明很开心，却让人想起回不去的夏天。'] },
+  { id: 'p4.blend.youth.visitor', on: 'track-change', who: 'visitor', when: { blend: 'youth', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['很青春的一首，有点夏天傍晚的味道。'] },
+  { id: 'p4.blend.hollow.owner', on: 'track-change', who: 'owner', when: { blend: 'hollow', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['听着这首，心里空出一块，风从那儿吹过去。', '远远的，又很近——它是这样的歌呢。'] },
+  { id: 'p4.blend.hollow.visitor', on: 'track-change', who: 'visitor', when: { blend: 'hollow', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首很空灵，放着发一会儿呆也好。'] },
+  { id: 'p4.blend.smolder.owner', on: 'track-change', who: 'owner', when: { blend: 'smolder', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首憋着一股火，没地方发。', '咬着牙唱完的歌呢。'] },
+  { id: 'p4.blend.smolder.visitor', on: 'track-change', who: 'visitor', when: { blend: 'smolder', feelSure: true }, chance: 0.4, weight: 5,
+    say: ['这首有一股不服气的劲儿。'] },
+];
+
+// —— 词曲反差：曲亮词暗（踊ろうぜ 那种）/ 曲暗词亮 ——
+const SPLIT: Rule[] = [
+  { id: 'p4.split.sound', on: 'track-change', who: 'any', when: { split: true, splitWay: 'sound', feelSure: true }, chance: 0.5,
+    say: ['调子这么轻快，词怎么这么丧啊。', '跟着节奏晃着晃着，才听清它在唱什么……'] },
+  { id: 'p4.split.sound.owner', on: 'track-change', who: 'owner', when: { split: true, splitWay: 'sound', feelSure: true }, chance: 0.5,
+    say: ['笑着唱难过的事，这首最拿手了。'] },
+  { id: 'p4.split.sound.visitor', on: 'track-change', who: 'visitor', when: { split: true, splitWay: 'sound', feelSure: true }, chance: 0.5,
+    say: ['曲子很轻快，词其实挺丧的，可以看看歌词。'] },
+  { id: 'p4.split.lyric', on: 'track-change', who: 'any', when: { split: true, splitWay: 'lyric', feelSure: true }, chance: 0.5,
+    say: ['词是暖的，曲子却有点暗呢。', '它说的都是好话，声音里却在下雨。'] },
+];
+
+// —— 新三维：燃 / 空灵 / 不甘（原先的七维在 P7 组里） ——
+const FEEL_NEW: Rule[] = [
+  { id: 'p4.feel.power.owner', on: 'track-change', who: 'owner', when: { feel: 'power', feelSure: true }, chance: 0.5,
+    say: ['一开口就把人往前推。', '鼓一砸下来，背就直了。', '♪ 这首要大声一点放！'] },
+  { id: 'p4.feel.power.visitor', on: 'track-change', who: 'visitor', when: { feel: 'power', feelSure: true }, chance: 0.5,
+    say: ['劲儿很足的一首，听完会精神一点。'] },
+  { id: 'p4.feel.transcendence.owner', on: 'track-change', who: 'owner', when: { feel: 'transcendence', feelSure: true }, chance: 0.5,
+    say: ['很远的声音，从云上面传下来的。', '不用跟着唱，就让它飘着吧。', '房间一下子静下来了呢。'] },
+  { id: 'p4.feel.transcendence.visitor', on: 'track-change', who: 'visitor', when: { feel: 'transcendence', feelSure: true }, chance: 0.5,
+    say: ['很空灵的一首，不用专心听也没关系。'] },
+  { id: 'p4.feel.defiant.owner', on: 'track-change', who: 'owner', when: { feel: 'defiant', feelSure: true }, chance: 0.5,
+    say: ['输了也不认的歌，倔得很好听。', '它在跟谁赌气呢。', '嗯……听完会想再试一次。'] },
+  { id: 'p4.feel.defiant.visitor', on: 'track-change', who: 'visitor', when: { feel: 'defiant', feelSure: true }, chance: 0.5,
+    say: ['这首带着一股倔劲儿。'] },
+];
+
+// —— 段落：换段时情绪转了一下（arc-turn）。多数时候不说话，只是眼睛亮一下、落一点东西 ——
+const ARC: Rule[] = [
+  { id: 'p4.arc.power', on: 'arc-turn', who: 'any', when: { section: 'chorus', 'feels.power': '>=2', feelSure: true },
+    say: [], face: 'happy', particles: 'notes' },
+  { id: 'p4.arc.defiant', on: 'arc-turn', who: 'any', when: { 'feels.defiant': '>=2', feelSure: true }, cooldown: 60, say: [], particles: 'sparks' },
+  { id: 'p4.arc.joyful', on: 'arc-turn', who: 'any', when: { section: 'chorus', 'feels.joyful': '>=2', feelSure: true }, chance: 0.4, cooldown: 600,
+    say: ['♪ 就是这里！'], face: 'happy' },
+  { id: 'p4.arc.release', on: 'arc-turn', who: 'any', when: { section: 'outro', 'feels.peaceful': '>=2', feelSure: true }, chance: 0.5, cooldown: 600,
+    say: ['……嗯，落下来了。', '到这里就松开了呢。'] },
+  { id: 'p4.arc.sad.owner', on: 'arc-turn', who: 'owner', field: 'comfort', when: { 'feels.sad': '>=2', feelSure: true }, chance: 0.3, cooldown: 900,
+    say: ['这一段忽然沉下来了。'] },
+  { id: 'p4.arc.transcendence', on: 'arc-turn', who: 'any', when: { 'feels.transcendence': '>=2', feelSure: true }, cooldown: 60, say: [], particles: 'motes-up' },
+];
+
+// —— 副歌：燃起来的歌也偶尔出声（雀跃 / 奇妙那条在 P7 组） ——
+const CHORUS_P4: Rule[] = [
+  { id: 'p4.chorus.fired', on: 'chorus', who: 'any', when: { blend: 'fired', feelSure: true }, chance: 0.3, cooldown: 600,
+    say: ['♪ 一起！', '♪ 这里要大声唱。'] },
+];
+
+// —— 意象：雨、海、花、月、雪会在她身边落成粒子，所以有时她会顺口提一句；信只有台词 ——
+const IMAGERY: Rule[] = [
+  { id: 'p4.imagery.rain.owner', on: 'track-change', who: 'owner', when: { imagery: 'rain' }, chance: 0.3, weight: 4,
+    say: ['是下雨的歌。外面要是也在下，就刚刚好呢。', '这首一直在下雨，我这边也跟着落了一点。'] },
+  { id: 'p4.imagery.rain.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'rain' }, chance: 0.3, weight: 4,
+    say: ['是一首下雨的歌，我身边也飘了点雨丝。'] },
+  { id: 'p4.imagery.sea.owner', on: 'track-change', who: 'owner', when: { imagery: 'sea' }, chance: 0.3, weight: 4,
+    say: ['这首里有海，耳朵里会有一点潮气。', '听着听着，会想去看海呢。'] },
+  { id: 'p4.imagery.sea.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'sea' }, chance: 0.3, weight: 4,
+    say: ['这首里有海，冒出来的泡泡是我放的。'] },
+  { id: 'p4.imagery.flower.owner', on: 'track-change', who: 'owner', when: { imagery: 'flower' }, chance: 0.3, weight: 4,
+    say: ['这首开着花，落了我一身花瓣。', '花的歌呀。等它唱完，花瓣也该落完了。'] },
+  { id: 'p4.imagery.flower.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'flower' }, chance: 0.3, weight: 4,
+    say: ['这首里有花，我身边也飘了几瓣。'] },
+  { id: 'p4.imagery.moon.owner', on: 'track-change', who: 'owner', when: { imagery: 'moon' }, chance: 0.3, weight: 4,
+    say: ['月亮的歌。等会儿可以抬头找找看。', '今晚的月亮，在这首歌里也有一个。'] },
+  { id: 'p4.imagery.moon.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'moon' }, chance: 0.3, weight: 4,
+    say: ['这是一首写月亮的歌。'] },
+  { id: 'p4.imagery.snow.owner', on: 'track-change', who: 'owner', when: { imagery: 'snow' }, chance: 0.3, weight: 4,
+    say: ['下雪的歌，听着指尖都凉了一点。'] },
+  { id: 'p4.imagery.snow.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'snow' }, chance: 0.3, weight: 4,
+    say: ['这首里在下雪。'] },
+  { id: 'p4.imagery.letter.owner', on: 'track-change', who: 'owner', when: { imagery: 'letter' }, chance: 0.3, weight: 4,
+    say: ['写成信的歌。你上一次手写信是什么时候？', '一封念出来的信呢，收信的人会听到吗。'] },
+  { id: 'p4.imagery.letter.visitor', on: 'track-change', who: 'visitor', when: { imagery: 'letter' }, chance: 0.3, weight: 4,
+    say: ['这首是写成信的歌，歌词可以慢慢看。'] },
+];
+
+// ═════════════════════════ P5 陪伴（2026-10-10，待过目） ═════════════════════════
+//   docs/song-emotion-design.md §3.5–§3.8。felt（他在工坊里标的「这首让我怎样」，存 Supabase）与听歌倾向 sessionLean
+//   都只给站主（mikuRules.test 守着）。felt 是他亲手写的，不靠 feelSure；但同时引用 feels 的那条照规矩带 feelSure。
+//   听歌倾向不念出来——不说「你今晚听了几首难过的歌」，只让她挑往哪边靠的那句。
+//   共鸣系数本身不加台词：深夜陪着时她只是更温柔，要不要开口仍由 care 规则和话量决定。
+
+// —— felt：歌表达的，和它让你怎样，可以不是一回事 ——
+const FELT: Rule[] = [
+  { id: 'p5.felt.calm.owner', on: 'track-change', who: 'owner', when: { 'feels.sad': '>=2', feelSure: true, 'felt.peaceful': '>=2' },
+    chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 6,
+    say: ['你说过这首听了反而会安静下来，对吧。', '明明是首难过的歌，你却说听着心会静。我有点懂了呢。'] },
+  { id: 'p5.felt.power.owner', on: 'track-change', who: 'owner', when: { 'felt.power': '>=2' }, chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 12,
+    say: ['你说这首听了会有劲儿。那就放大声一点吧。', '给你打气的那首，我记得。'] },
+  { id: 'p5.felt.tender.owner', on: 'track-change', who: 'owner', when: { 'felt.tender': '>=2' }, chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 12,
+    say: ['你说听这首的时候，心会放轻一点。', '这首会让你变软，你说过的。'] },
+  { id: 'p5.felt.nostalgic.owner', on: 'track-change', who: 'owner', when: { 'felt.nostalgic': '>=2' }, chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 12,
+    say: ['这首会把你带回从前吧。去哪儿我不问。', '又是会让你想起旧事的那首呢。'] },
+  { id: 'p5.felt.sad.owner', on: 'track-change', who: 'owner', field: 'comfort', when: { 'felt.sad': '>=2' }, chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 12,
+    say: ['这首会让你难过，你说过的。……我在这儿。', '听着难受的话，换一首也没关系{，呼}。'] },
+  { id: 'p5.felt.joyful.owner', on: 'track-change', who: 'owner', when: { 'felt.joyful': '>=2' }, chance: 0.3, once: 'week', onceKey: 'felt:{trackId}', weight: 12,
+    say: ['你说这首一放就会高兴起来。今天也灵吗？'] },
+];
+
+// —— 听歌倾向：今晚一直往低处听，又换了首亮的；或者夜深了 ——
+const LEAN: Rule[] = [
+  { id: 'p5.lean.brighter.owner', on: 'track-change', who: 'owner', when: { sessionLean: ['sad', 'defiant'], feel: ['joyful', 'power', 'peaceful', 'tender', 'wonder'], feelSure: true },
+    chance: 0.4, once: 'session',
+    say: ['嗯，换首亮一点的也好。', '窗户开了一条缝，这首透气。'] },
+  { id: 'p5.lean.late.owner', on: 'care-late', who: 'owner', field: 'care', when: { sessionLean: ['sad', 'defiant'], careRepeat: 0 },
+    say: ['{呼，}{hourText}了。把耳机摘下来吧，放到哪首我替你记着。', '{hourText}了。今晚的歌就听到这首，剩下的留给明天。'] },
+];
+
 export const MIKU_RULES: readonly Rule[] = [
   ...GREET, ...RETURN, ...VIEW, ...MUSIC, ...IDLE, ...SITE, ...TOUCH, ...CARE,
   ...FEEL_OWNER, ...FEEL_VISITOR, ...CHORUS, ...AROUSAL, ...SEASON, ...FIELD, ...HOST,
+  ...BLEND, ...SPLIT, ...FEEL_NEW, ...ARC, ...CHORUS_P4, ...IMAGERY,
+  ...FELT, ...LEAN,
 ];

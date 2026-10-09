@@ -152,4 +152,16 @@ describe('P7 第一批：每组都够得着', () => {
     const ids = hits(voice, 'greet', input({ posts: [] }));
     expect(ids.has('p7.host.first')).toBe(true);
   });
+
+  it('只用表情 / 粒子回应的规则不占话量：眼睛亮过之后，紧接着那句闲聊照样能说', () => {
+    const rules = [
+      { id: 'glow', on: 'arc-turn' as const, who: 'any' as const, say: [], face: 'happy' as const },
+      { id: 'talk', on: 'idle' as const, who: 'any' as const, say: ['在呢。'] },
+    ];
+    const voice = new MikuVoice(rules, { ownerStore: () => make().store });
+    const t0 = NIGHT.getTime();
+    expect(voice.speak('arc-turn', input(), { now: t0 })?.text).toBe('');
+    expect(voice.speak('arc-turn', input(), { now: t0 + 1000 })?.rule.id).toBe('glow');
+    expect(voice.speak('idle', input(), { now: t0 + 2000 })?.text).toBe('在呢。');
+  });
 });

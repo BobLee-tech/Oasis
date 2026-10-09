@@ -14,7 +14,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parsePlaylist } from './lib/track-identity.mjs';
 import { listAlbums, listProfiles } from './lib/track-profile.mjs';
-import { mergeProfile, validateProfile } from './lib/profile-merge.mjs';
+import { mergeProfile, moodWarnings, validateAlbumMood, validateProfile } from './lib/profile-merge.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(PROJECT_ROOT, 'src/hooks/useSoundscape.ts');
@@ -38,6 +38,7 @@ const main = async () => {
   }
 
   const problems = profiles.flatMap(profile => validateProfile(profile, knownIds));
+  problems.push(...albums.flatMap(validateAlbumMood));
   const identityDrift = playlist.filter(track => !identity[track.id]).map(track => `${track.id}：tracks.identity.json 里没有（先跑 npm run lyric:identity）`);
   problems.push(...identityDrift);
   if (problems.length) {
@@ -82,6 +83,7 @@ const main = async () => {
     `🗂  曲目档案 ${playlist.length} 首 → ${path.relative(PROJECT_ROOT, OUTPUT_FILE)}（${(text.length / 1024).toFixed(1)} KB${previous === text ? '，无变化' : ''}）`,
   );
   console.log(`   署名 ${count('credits')} · 译名 ${count('titleAlt')} · 介绍 ${count('intro')} · 一句话 ${count('note')} · 心境 ${count('mood')} · 关联 ${count('relations')}`);
+  for (const warning of moodWarnings(profiles, albums)) console.log(`   ⚠ ${warning}`);
   if (missing.length) console.log(`   ⚠ 还没有档案文件（npm run music:netease 可生成）：${missing.join(', ')}`);
 };
 

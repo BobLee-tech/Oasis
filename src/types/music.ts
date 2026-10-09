@@ -90,7 +90,9 @@ export interface LyricsManifest {
 
 // ── 曲目档案（docs/music-design.md A3）：scripts/build-profiles.mjs 生成，src/lib/trackProfile.ts 按需加载 ──
 
-export type TrackFeel = 'tender' | 'nostalgic' | 'sad' | 'peaceful' | 'joyful' | 'tense' | 'wonder';
+// 情绪维度与 scripts/lib/mood-core.mjs 同一份（docs/song-emotion-design.md §2）
+export type { Feel as TrackFeel, Feels as TrackFeels, ArcStep as TrackArcStep, Imagery as TrackImagery } from '../../scripts/lib/mood-core.mjs';
+import type { ArcStep, Feel, Feels, Imagery } from '../../scripts/lib/mood-core.mjs';
 export type TrackRelationKind = 'reply' | 'sequel' | 'sameStory' | 'sameLyrics';
 
 export interface TrackCredits {
@@ -102,8 +104,16 @@ export interface TrackCredits {
 
 export interface TrackProfileMood {
   valence?: number;
+  lyricValence?: number;
+  soundValence?: number;
   arousal?: number;
-  feel?: TrackFeel;
+  /** 由 feels 派生（最强的一维），或 VA 最近邻（出处 va） */
+  feel?: Feel;
+  feels?: Feels;
+  arc?: ArcStep[];
+  imagery?: Imagery[];
+  /** 只在「说不准」时出现，值为 false */
+  sure?: false;
   bpm?: number;
   /** 副歌段落 [startMs, endMs] */
   sections?: [number, number][];

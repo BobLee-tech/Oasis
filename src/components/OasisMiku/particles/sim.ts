@@ -6,7 +6,7 @@
 //   摆动是位置上的正弦偏移（不进速度），所以不会因为帧率不同积出不同轨迹。
 //   透明度走「快显、慢隐」：fadeIn 内线性升到 1，最后 fadeOut 比例内按 smoothstep 溶掉。
 
-export type SpriteShape = 'heart' | 'note' | 'star' | 'petal' | 'ring' | 'glow' | 'z' | 'flake';
+export type SpriteShape = 'heart' | 'note' | 'star' | 'petal' | 'ring' | 'glow' | 'z' | 'flake' | 'streak' | 'bubble';
 
 export interface Particle {
   alive: boolean;
@@ -155,7 +155,7 @@ export interface EmitContext {
 
 export type EmitKind =
   | 'ripple' | 'dust' | 'hearts' | 'notes' | 'burst' | 'petals' | 'zzz'
-  | 'motes-up' | 'motes-down' | 'sparks' | 'bloom' | 'firefly' | 'snow';
+  | 'motes-up' | 'motes-down' | 'sparks' | 'bloom' | 'firefly' | 'snow' | 'rain' | 'bubbles';
 
 /** 每种发射 → 一组出生参数。纯函数，rng 可注入。 */
 export const recipe = (kind: EmitKind, c: EmitContext, rng: Rng = Math.random): Spawn[] => {
@@ -273,6 +273,26 @@ export const recipe = (kind: EmitKind, c: EmitContext, rng: Rng = Math.random): 
         vx: range(rng, -6, 6), vy: -range(rng, 2, 7), drag: 0.05,
         life: range(rng, 4, 6), size0: 7, size1: 5, sizeCurve: 'linear' as const,
         wobA: range(rng, 6, 12), wobF: range(rng, 0.12, 0.25), wobP: rng() * 6.28, fadeIn: 0.3, fadeOut: 0.4, alpha: 0.85, priority: 0,
+      }));
+    case 'rain': {
+      // 雨丝（歌的意象，§3.6）：头顶上方斜着落下的细线，快、淡、短命；精灵是竖线，按速度方向转过去
+      const slant = range(rng, -14, -6);
+      return Array.from({ length: n ?? 4 }, () => {
+        const vy = range(rng, 95, 130);
+        return {
+          shape: 'streak' as const, color: '#A5CFE0', x: c.x + range(rng, -2.6, 2.6) * r, y: c.y - r * range(rng, 1.6, 2.6),
+          vx: slant, vy, life: range(rng, 0.8, 1.1), size0: range(rng, 13, 17), size1: range(rng, 11, 14), sizeCurve: 'linear' as const,
+          rot: Math.atan2(-slant, vy), fadeIn: 0.12, fadeOut: 0.4, alpha: 0.7, priority: 0,
+        };
+      });
+    }
+    case 'bubbles':
+      // 气泡（海）：从胸前慢慢浮起、左右轻摆，越升越大一点
+      return Array.from({ length: n ?? 2 }, () => ({
+        shape: 'bubble' as const, color: '#8EDDD6', x: c.x + range(rng, -1.8, 1.8) * r, y: c.y + range(rng, 0.8, 2) * r,
+        vx: range(rng, -2, 2), vy: -range(rng, 14, 22), drag: 0.05,
+        life: range(rng, 2.8, 3.8), size0: range(rng, 4, 6), size1: range(rng, 7, 10), sizeCurve: 'linear' as const,
+        wobA: range(rng, 3, 6), wobF: range(rng, 0.4, 0.7), wobP: rng() * 6.28, fadeIn: 0.15, fadeOut: 0.3, alpha: 0.75, priority: 0,
       }));
     case 'snow':
       return Array.from({ length: n ?? 1 }, () => ({

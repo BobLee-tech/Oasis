@@ -8,7 +8,7 @@ import type { AppView } from '../../../types/auth';
 import type { BlogPost } from '../../../hooks/useGarden';
 import type { MikuReadingPost } from '../../../lib/mikuSignal';
 import type { MemoryFacts } from '../../../lib/mikuMemory';
-import type { Feel, ResolvedTrackMood } from '../../../lib/trackMood';
+import { IMAGERY_LABELS, moodNow, type BlendId, type Feel, type Feels, type ResolvedTrackMood, type SegmentNow } from '../../../lib/trackMood';
 import type { TrackFacts } from '../../../lib/trackProfile';
 import { currentPeriod, isLateNight, type DayPeriod } from '../../../lib/timeContext';
 import { currentSeason, currentSolarTerm, daysIntoTerm, termNoteOfDay } from '../../../lib/solarTerms';
@@ -25,6 +25,8 @@ export interface FactsInput {
   trackFacts?: TrackFacts;
   mood?: ResolvedTrackMood;
   chorus?: 'in' | 'soon' | null;
+  /** 此刻在歌的哪一段（段落标签 + 第几次，docs/song-emotion-design.md §2.2） */
+  segment?: SegmentNow | null;
   /** 曲目 id → 标题（「这周你听了 N 遍《…》」要把记忆里的 id 翻成名字） */
   titleOf?: (id: string) => string | undefined;
   reading?: (MikuReadingPost & { openedAt: number; progress: number }) | null;
@@ -42,6 +44,10 @@ export interface FactsInput {
   patsToday: number;
   memory: MemoryFacts | null;
   affect: { v: number; a: number; emotion: EmotionKind | null };
+  /** 站主标的「这首让我怎样」（Supabase track_felt，§6）；访客永远拿不到 */
+  felt?: Feels;
+  /** 本次会话的听歌倾向（brain/resonance.ts，§3.8）：不念出来，只让她选往哪边靠的那句 */
+  sessionLean?: Feel;
 }
 
 const CN_HOUR = ['零', '一', '两', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
@@ -59,6 +65,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const SEASON_CN: Record<string, string> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
 const DAY = 86_400_000;
 
+const isWritten = (source: string | undefined) => source === 'manual' || source === 'album';
+const writtenValence = (mood: ResolvedTrackMood) =>
+  isWritten(mood.provenance.lyricValence) ? mood.lyricValence : isWritten(mood.provenance.valence) ? mood.valence : undefined;
+
 /** 亲密度档位：拍头次数与相处天数取较高者（A7：避免只靠拍头刷亲密度）；访客上限 2。 */
 export const intimacyOf = (patsTotal: number, daysTogether: number, owner: boolean): 0 | 1 | 2 | 3 => {
   const byPats = patsTotal >= 100 ? 3 : patsTotal >= 50 ? 2 : patsTotal >= 20 ? 1 : 0;
@@ -75,6 +85,8 @@ export const buildFacts = (input: FactsInput) => {
   const mood = input.mood;
   const tf = input.trackFacts;
   const memory = owner ? input.memory : null;
+  const feelSure = !!mood && mood.sure !== false && (mood.provenance.feel === 'manual' || mood.provenance.feel === 'album');
+  const songNow = mood ? moodNow(mood, input.segment ?? null) : undefined;
 
   // 文章：访客只看公开发布的（unlisted 是「知道链接才能读」，不主动推荐）；草稿本就不在缓存里
   const listed = input.posts.filter(p => p.status === 'published').sort((a, b) => b.createdAt - a.createdAt);
@@ -139,10 +151,28 @@ export const buildFacts = (input: FactsInput) => {
     noteForVisitor: input.playing && !owner && !mood?.notePrivate ? tf?.noteForVisitor ?? mood?.noteVisitor ?? mood?.note : undefined,
     relation: input.playing ? relation : undefined,
     feel: input.playing ? (mood?.feel as Feel | undefined) : undefined,
-    /** 曲目效价：只在人标或专辑默认时给（缺省的 +0.15 是猜的，不该据此判断「低落的歌」） */
-    trackValence: input.playing && mood && (mood.provenance.valence === 'manual' || mood.provenance.valence === 'album') ? mood.valence : undefined,
-    /** feel 是人标或专辑默认（不是 VA 猜的）：按 feel 说话的规则只在有把握时说 */
-    feelSure: !!mood && (mood.provenance.feel === 'manual' || mood.provenance.feel === 'album'),
+    /**
+     * 曲目效价：只在人标或专辑默认时给（缺省的 +0.15 是猜的，不该据此判断「低落的歌」）。
+     * 台词的正负向跟词走（§3.4）：写了词的效价就用它，否则用整体。
+     */
+    trackValence: input.playing && mood ? writtenValence(mood) : undefined,
+    /** feel 是人标或专辑默认（不是 VA 猜的），且你没标「说不准」：按 feel 说话的规则只在有把握时说 */
+    feelSure,
+    /**
+     * 情绪向量（docs/song-emotion-design.md §3.7）：只在 feelSure 时给，已叠上当前段的弧线。
+     * 规则写 'feels.sad': '>=2'——没写的维取不到值，比较一律不成立。
+     */
+    feels: feelSure && input.playing ? songNow?.feels : undefined,
+    /** 复合情绪（切ない、释然…）：只认写出来的向量，且 feelSure */
+    blend: feelSure && input.playing ? (mood?.blend as BlendId | undefined) : undefined,
+    /** 词曲反差：两个效价拉开 ≥ 0.6；splitWay 说哪边亮（sound = 曲亮词暗） */
+    split: !!(input.playing && mood?.split),
+    splitWay: input.playing && mood?.split ? (mood.soundValence > mood.lyricValence ? 'sound' : 'lyric') : undefined,
+    /** 此刻在哪一段：intro / verse / pre / chorus / bridge / outro */
+    section: input.playing ? input.segment?.at : undefined,
+    /** 歌的意象（人标或歌题歌词计出来的）：第一个与它的中文名，给「是下雨的歌」这类规则 */
+    imagery: input.playing ? mood?.imagery?.[0] : undefined,
+    imageryName: input.playing && mood?.imagery?.[0] ? IMAGERY_LABELS[mood.imagery[0]] : undefined,
     season: input.playing ? mood?.season : undefined,
     seasonName: input.playing && mood?.season ? SEASON_CN[mood.season] : undefined,
     /** 歌的季节意象与此刻的季节一致 / 不一致（没有季节意象时两者都为 false） */
@@ -154,6 +184,13 @@ export const buildFacts = (input: FactsInput) => {
     trackArousal: input.playing ? mood?.arousal : undefined,
     inChorus: input.chorus === 'in',
     playsToday: owner && input.playing && input.track && input.memory ? input.memory.playsToday(input.track.id) : undefined,
+    /**
+     * 站主标的「这首让我怎样」（§6）：与 feels 分开——悲伤的歌可以让他平静。只给站主，且是他亲手写的，不靠 feelSure。
+     * 规则写 'felt.peaceful': '>=2'。
+     */
+    felt: owner && input.playing ? input.felt : undefined,
+    /** 本次会话往哪边听（§3.8）：只给站主；规则只拿它挑往哪边靠的话，不把它念出来 */
+    sessionLean: owner ? input.sessionLean : undefined,
 
     // 站点
     view: input.view,

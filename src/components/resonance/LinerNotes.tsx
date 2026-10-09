@@ -10,11 +10,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { PLAYLIST, switchTrack } from '../../hooks/useSoundscape';
 import { MOTION } from '../../lib/motion';
 import { useTrackProfile } from '../../lib/trackProfile';
-import type { Track, TrackCredits, TrackFeel, TrackRelationKind } from '../../types/music';
+import { BLENDS, FEELS, FEEL_LABELS, blendOf, isSplit } from '../../../scripts/lib/mood-core.mjs';
+import type { TrackProfile } from '../../types/music';
+import type { Track, TrackCredits, TrackRelationKind } from '../../types/music';
 
-const FEEL_WORD: Record<TrackFeel, string> = {
-  tender: '温柔', nostalgic: '怀念', sad: '哀伤', peaceful: '宁静', joyful: '雀跃', tense: '紧绷', wonder: '奇妙',
-};
 const SEASON_WORD = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' } as const;
 const TIME_WORD = { morning: '清晨', dusk: '黄昏', night: '夜' } as const;
 const RELATION_WORD: Record<TrackRelationKind, string> = {
@@ -57,12 +56,32 @@ const Rule = () => (
   />
 );
 
+// 感受词（docs/song-emotion-design.md §5）：有复合情绪就说复合名（切ない、释然…，只在你没标「说不准」时），
+// 否则说强度 ≥ 2 的前两维；都没有时退回最强的一维。VA 猜的不说。
+const feelWordOf = (profile: TrackProfile | null | undefined) => {
+  const mood = profile?.mood;
+  if (!mood?.feel || profile!.provenance['mood.feel'] === 'va') return '';
+  const feels = mood.feels;
+  const blend = mood.sure !== false ? blendOf(feels) : undefined;
+  if (blend) return BLENDS.find(item => item.id === blend)!.label;
+  const strong = FEELS.filter(feel => (feels?.[feel] ?? 0) >= 2).sort((a, b) => feels![b]! - feels![a]!).slice(0, 2);
+  return strong.length ? strong.map(feel => FEEL_LABELS[feel]).join('而') : FEEL_LABELS[mood.feel];
+};
+
+/** 词和曲的明暗拉开时加一个小标（两个分量都得是写出来的） */
+const splitWordOf = (profile: TrackProfile | null | undefined) => {
+  const mood = profile?.mood;
+  if (!mood || !isSplit(mood.lyricValence, mood.soundValence)) return '';
+  return mood.soundValence! > mood.lyricValence! ? '曲亮词暗' : '曲暗词亮';
+};
+
 const NotesBody: React.FC<{ track: Track; isOwner: boolean }> = ({ track, isOwner }) => {
   const profile = useTrackProfile(track.id);
   const credits = creditRows(profile?.credits);
   const note = isOwner ? profile?.note : profile?.noteVisitor ?? profile?.note;
   const feelWords = [
-    profile?.mood?.feel && profile.provenance['mood.feel'] !== 'va' ? FEEL_WORD[profile.mood.feel] : '',
+    feelWordOf(profile),
+    splitWordOf(profile),
     profile?.mood?.season ? SEASON_WORD[profile.mood.season] : '',
     profile?.mood?.time && profile.provenance['mood.time'] === 'manual' ? TIME_WORD[profile.mood.time] : '',
   ].filter(Boolean);
