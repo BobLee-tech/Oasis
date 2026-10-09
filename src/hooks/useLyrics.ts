@@ -20,8 +20,11 @@ const MAX_JSON_BYTES = 2 * 1024 * 1024;
 const encodeKey = (key: string) => key.split('/').map(encodeURIComponent).join('/');
 
 const fetchJson = async (url: string, signal?: AbortSignal) => {
+  // R2 不回 Cache-Control,浏览器会按 Last-Modified 启发式缓存好几天,
+  // 重新发布后还读旧 manifest;no-cache 让每次都带 ETag 回源校验(没变只回 304)。
   const response = await fetch(url, {
     signal,
+    cache: 'no-cache',
     credentials: 'omit',
     referrerPolicy: 'strict-origin-when-cross-origin',
   });
