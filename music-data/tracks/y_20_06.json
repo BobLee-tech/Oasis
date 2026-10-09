@@ -28,10 +28,14 @@
     "draft": {
       "intro": "借用《银翼杀手》与《仿生人会梦见电子羊吗？》的造词：无人的剧场里看着电影，心以外都是假的，连神明也是作品——我们都是复制品。",
       "valence": -0.3,
-      "feel": "tense",
-      "confidence": "high",
-      "basis": "出处见你的专辑注记。",
-      "draftedAt": "2026-10-07"
+      "feels": {
+        "tense": 2,
+        "transcendence": 1,
+        "wonder": 1
+      },
+      "confidence": "medium",
+      "basis": "「心以外都是假的」：不是愤怒，是抽离的不安。 原依据：出处见你的专辑注记。",
+      "draftedAt": "2026-10-08"
     }
   }
 }

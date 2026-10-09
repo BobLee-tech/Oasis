@@ -20,7 +20,11 @@
   ],
   "moodDefaults": {
     "valence": 0.5,
-    "feel": "joyful"
+    "feels": {
+      "tender": 1,
+      "nostalgic": 2,
+      "joyful": 1
+    }
   },
   "moodDraft": {
     "valence": -0.2,

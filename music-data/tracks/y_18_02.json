@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "同名曲是一份败犬的自白：不想长大，却已经学会了假笑。倒数五、四、三、二之后的那声嚎叫，既是自嘲，也是仍想发出声音的方式。",
-      "valence": -0.3,
-      "feel": "tense",
+      "lyricValence": -0.4,
+      "soundValence": 0.3,
+      "feels": {
+        "defiant": 3,
+        "power": 2
+      },
       "confidence": "high",
-      "basis": "歌词连续拆解漂亮话；「败犬的远吠」双关（你的专辑注记）。",
+      "basis": "拆漂亮话的自嘲，但那声嚎叫是往外冲的；乐队编制明亮。 原依据：歌词连续拆解漂亮话；「败犬的远吠」双关（你的专辑注记）。",
       "refs": [
         {
           "title": "Wikipedia · 負け犬にアンコールはいらない",
           "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

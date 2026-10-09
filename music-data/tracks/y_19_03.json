@@ -24,17 +24,25 @@
     },
     "draft": {
       "intro": "第一次翘掉打工，在八月的月光下骑车穿过东伏见与小平。「人生若能死在二十七岁，摇滚就救了我」——n-buna 在采访里说，这是在讲「27 俱乐部」。",
-      "valence": -0.5,
-      "feel": "tense",
+      "lyricValence": -0.6,
+      "soundValence": 0.1,
+      "feels": {
+        "defiant": 2,
+        "power": 2,
+        "nostalgic": 1
+      },
+      "imagery": [
+        "moon"
+      ],
       "confidence": "high",
-      "basis": "烦躁、自弃的歌词；27 俱乐部出处见 Wikipedia。",
+      "basis": "烦躁自弃，却是骑车穿过八月夜里的速度感；月光是意象。 原依据：烦躁、自弃的歌词；27 俱乐部出处见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 27クラブ",
           "url": "https://ja.wikipedia.org/wiki/27クラブ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

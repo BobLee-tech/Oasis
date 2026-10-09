@@ -31,16 +31,20 @@
     "draft": {
       "intro": "专辑同名曲，也是艾米故事的终点：青春无聊透顶，要是没做音乐就好了。真理、爱、世界、人生都无所谓——放下钢琴，却改不掉敲桌面的习惯。",
       "valence": -0.6,
-      "feel": "tense",
+      "feels": {
+        "defiant": 3,
+        "sad": 2,
+        "power": 1
+      },
       "confidence": "high",
-      "basis": "愤怒与自我否定最集中的一首；同名曲串流破亿（Wikipedia）。",
+      "basis": "愤怒与自我否定的总爆发，也是故事的终点。 原依据：愤怒与自我否定最集中的一首；同名曲串流破亿（Wikipedia）。",
       "refs": [
         {
           "title": "Wikipedia · だから僕は音楽を辞めた",
           "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

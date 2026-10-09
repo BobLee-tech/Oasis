@@ -27,11 +27,16 @@
     },
     "draft": {
       "intro": "嘲笑当初选择音乐的自己，想抹掉曾经炫耀过的吉他，却还是邀你一起跳舞到天亮。自暴自弃里，带着一点豁出去的轻快。",
-      "valence": -0.3,
-      "feel": "tense",
+      "lyricValence": -0.5,
+      "soundValence": 0.4,
+      "feels": {
+        "defiant": 2,
+        "joyful": 2,
+        "sad": 1
+      },
       "confidence": "medium",
-      "basis": "歌词自嘲与放弃；曲风轻快。",
-      "draftedAt": "2026-10-07"
+      "basis": "歌词自嘲与放弃，曲风轻快：典型的曲亮词暗。",
+      "draftedAt": "2026-10-08"
     }
   }
 }

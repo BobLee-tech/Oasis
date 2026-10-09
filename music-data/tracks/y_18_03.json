@@ -27,17 +27,22 @@
     },
     "draft": {
       "intro": "攥着一颗炸弹在街上游荡，想把青春、房间、那个夏天都炸掉；可谁也没看他一眼，他又悄悄把炸弹收了起来。两年后在《盗作》里重录。",
-      "valence": -0.4,
-      "feel": "tense",
+      "lyricValence": -0.5,
+      "soundValence": 0.2,
+      "feels": {
+        "defiant": 2,
+        "tense": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "破坏冲动与无人注视的落空；重录见 Wikipedia。",
+      "basis": "想炸掉一切的冲动，最后没人看见的落空。 原依据：破坏冲动与无人注视的落空；重录见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 負け犬にアンコールはいらない",
           "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

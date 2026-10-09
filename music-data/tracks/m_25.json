@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "「如果你有耳朵，就能让你听这首歌。」可爱的电子音色唱着病态的单恋：被你讨厌的话，就杀了我吧。DECO*27 2009 年 9 月作。",
-      "valence": -0.7,
-      "feel": "tense",
+      "lyricValence": -0.8,
+      "soundValence": 0.2,
+      "feels": {
+        "tense": 3,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "歌词；VocaDB 标签 lyrical dissonance。",
+      "basis": "VocaDB 标签 lyrical dissonance：可爱的电子音色唱病态单恋。 原依据：歌词；VocaDB 标签 lyrical dissonance。",
       "refs": [
         {
           "title": "VocaDB · 罪と罰",
           "url": "https://vocadb.net/S/8478"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

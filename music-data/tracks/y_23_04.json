@@ -26,10 +26,17 @@
     "draft": {
       "intro": "向萩原朔太郎的同名诗集致意：对着路边的月影狂吠，一个人在夜市里游荡，「这家伙又懂我什么」。孤独里带着一点兽性的放任。",
       "valence": -0.2,
-      "feel": "tense",
+      "feels": {
+        "defiant": 2,
+        "power": 1,
+        "sad": 1
+      },
+      "imagery": [
+        "moon"
+      ],
       "confidence": "high",
-      "basis": "出处见你的专辑注记。",
-      "draftedAt": "2026-10-07"
+      "basis": "对着月影狂吠的孤独与放任。 原依据：出处见你的专辑注记。",
+      "draftedAt": "2026-10-08"
     }
   }
 }

@@ -6,7 +6,11 @@
   "note": "为纪念今年的晚夏和你，我想弹奏一首钢琴。",
   "mood": {
     "valence": -0.2,
-    "feel": "nostalgic"
+    "feels": {
+      "nostalgic": 2,
+      "peaceful": 2,
+      "transcendence": 2
+    }
   },
   "sources": {
     "netease": {

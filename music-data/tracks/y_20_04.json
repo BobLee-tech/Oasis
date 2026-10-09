@@ -27,17 +27,22 @@
     },
     "draft": {
       "intro": "2018 年旧作的重录，歌词一字未改：攥着炸弹，想把一切炸掉。放进《盗作》之后，它成了整张专辑破坏冲动的源头。",
-      "valence": -0.4,
-      "feel": "tense",
+      "lyricValence": -0.5,
+      "soundValence": 0.2,
+      "feels": {
+        "defiant": 2,
+        "tense": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "重录与定位见 Wikipedia 与你的专辑注记。",
+      "basis": "同 2018 版：破坏冲动与落空。 原依据：重录与定位见 Wikipedia 与你的专辑注记。",
       "refs": [
         {
           "title": "Wikipedia · 盗作 (アルバム)",
           "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

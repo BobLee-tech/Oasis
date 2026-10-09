@@ -28,16 +28,20 @@
     "draft": {
       "intro": "「开始做音乐的契机是什么来着？好像是父亲的那张唱片。」因为永不满足而创作，因为欠缺而写歌，渴望毁灭的自白，是整张专辑的中心。",
       "valence": -0.5,
-      "feel": "tense",
+      "feels": {
+        "defiant": 3,
+        "tense": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "定位见你的专辑注记；曾用于《最终幻想 勇气启示录》广告（英文 Wikipedia）。",
+      "basis": "渴望毁灭的自白，整张专辑的中心。 原依据：定位见你的专辑注记；曾用于《最终幻想 勇气启示录》广告（英文 Wikipedia）。",
       "refs": [
         {
           "title": "Wikipedia · Plagiarism (Yorushika album)",
           "url": "https://en.wikipedia.org/wiki/Plagiarism_(Yorushika_album)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }

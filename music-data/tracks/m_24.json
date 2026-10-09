@@ -26,17 +26,22 @@
     },
     "draft": {
       "intro": "DECO*27 2009 年 7 月的作品，题名「心坏峰会」。快节奏的流行朋克底下，是阴暗的内心冲突；也是他早期破百万播放的歌之一。",
-      "valence": -0.6,
-      "feel": "tense",
+      "lyricValence": -0.6,
+      "soundValence": 0.2,
+      "feels": {
+        "tense": 2,
+        "defiant": 2,
+        "power": 1
+      },
       "confidence": "medium",
-      "basis": "VocaDB 标签 dark / inner conflict；本地尚无歌词可核。",
+      "basis": "快节奏流行朋克包着阴暗的内心冲突：曲是冲的，词是坏掉的。 原依据：VocaDB 标签 dark / inner conflict；本地尚无歌词可核。",
       "refs": [
         {
           "title": "VocaDB · 心壊サミット",
           "url": "https://vocadb.net/S/8474"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-08"
     }
   }
 }
