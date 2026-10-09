@@ -9,12 +9,12 @@ export interface FriendLink {
 
 // ⚠️ 以下为占位示例，请替换为真实的邻居们；数组为空时整个「邻家灯火」小节自动隐藏
 export const FRIENDS: FriendLink[] = [
-    // {
-    //   name: "Evan Lin",
-    //   url: "https://evanlin.site/projects/",
-    //   desc: "UNSW Builder",
-    //   color: "#39C5BB",
-    // },
+  {
+    name: "Evan Lin",
+    url: "https://evanlin.site/",
+    desc: "UNSW Builder",
+    color: "#39C5BB",
+  },
   {
     name: "Waiting for you",
     url: "https://example.org",

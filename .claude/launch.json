@@ -13,6 +13,19 @@
         "--strictPort"
       ],
       "port": 5182
+    },
+    {
+      "name": "oasis-dev-2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5190",
+        "--strictPort"
+      ],
+      "port": 5190
     }
   ]
 }
