@@ -311,14 +311,27 @@ body {
     width: 100%;
 }
 
-[data-oasis-transition="on"] .resonance-light-root {
-    opacity: 0 !important;
+/* 光场不进转场闸门：它和页面同一次淡入，不再在闸门打开后二次亮起（进场是延续，不是开场） */
+
+/* ✦ 内页首访提示：贴纸荡两圈情绪色细环（OasisResonance） */
+@keyframes notes-hint-ring {
+    from { transform: scale(1); opacity: .9; }
+    to { transform: scale(2.3); opacity: 0; }
+}
+
+.notes-hint-ring {
+    opacity: 0;
+    animation: notes-hint-ring 1.6s cubic-bezier(.16, 1, .3, 1) 2 both;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .resonance-light-color,
     .resonance-light-root {
         transition: none;
+    }
+
+    .notes-hint-ring {
+        animation: none;
     }
 }
 

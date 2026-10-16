@@ -12,10 +12,14 @@ const EASE: [number, number, number, number] = [0.33, 0, 0.2, 1];
 // 视图交叉溶解：纯 opacity，绝不在层级上做任何 transform（scale/translate）。
 // 任何作用于整层的缩放都会让其中的文字被非整数倍率渲染、到位时归位 → 产生「较小位移」抖动。
 // 去掉 scale 后，文字全程零位移，转场的视觉趣味交给落点的水波承担。
+//
+// custom = 正在前往的场所。音乐页是常来常往的地方，音乐在你进来之前就在放——进场是延续，不需要仪式：
+// 前往音乐页时，旧场所 200ms 退场、音乐页 280ms 入场（docs/music-stage-redesign-demo.html §四）。
+const QUICK_VIEWS = new Set(['soundscape']);
 export const layerVariants: Variants = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.6, ease: EASE } },
-  exit: { opacity: 0, transition: { duration: 0.5, ease: EASE } },
+  animate: (to?: string) => ({ opacity: 1, transition: { duration: QUICK_VIEWS.has(to ?? '') ? 0.28 : 0.6, ease: EASE } }),
+  exit: (to?: string) => ({ opacity: 0, transition: { duration: QUICK_VIEWS.has(to ?? '') ? 0.2 : 0.5, ease: EASE } }),
 };
 
 // 降级：尊重 prefers-reduced-motion，退回不含缩放的快速淡入淡出。

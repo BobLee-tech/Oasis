@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
 import { useGarden, filterVisible } from './hooks/useGarden';
-import { playBGM } from './hooks/useSoundscape';
+import { playBGM, getPlayerSnapshot } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
@@ -173,9 +173,10 @@ const OasisHUD = ({ showClock, onClockTap }: { showClock: boolean; onClockTap?: 
 // 🌫️ 单层视图容器：先退场再入场（AnimatePresence mode="wait"），避免新旧两个重量级场所
 // 同时挂载导致内容重叠、争抢主线程；底层 OasisBackground 常驻，退场期间露出的是禅境底色而非闪白。
 // 只动 opacity + 极轻 scale（合成器层），永不触发整屏重绘，因此丝滑无抖动。
-const ViewLayer = ({ reduce, children }: { reduce: boolean; children: ReactNode }) => (
+const ViewLayer = ({ reduce, view, children }: { reduce: boolean; view: AppView; children: ReactNode }) => (
   <motion.div
     className="absolute inset-0 flex items-center justify-center"
+    custom={view}
     variants={reduce ? reducedLayerVariants : layerVariants}
     initial="initial" animate="animate" exit="exit"
   >
@@ -209,23 +210,33 @@ const PlaceSkeleton = () => {
 
 // 🫫 水波涟漪：落点处一圈圈细环渐次荡开，如雨滴落水般轻盈舒缓；中心仅一抹弥散柔光衬底。
 // 仅 transform scale + opacity（合成器友好），细环带微模糊柔边，airy 不厚重、无廉价硬环。
-const RippleBloom = ({ origin }: { origin: RippleOrigin }) => {
+// 前往音乐页时只荡一圈、用正在放的那首歌的颜色——告诉你走进的是这首歌，而不是又一次开场。
+//   颜色在这道涟漪挂载时取一次（每次切换 key 都换，所以是那一刻的曲目）。
+const RippleBloom = ({ origin, view }: { origin: RippleOrigin; view: AppView }) => {
+  const [tint] = useState(() => (view === 'soundscape' ? getPlayerSnapshot().track.color : undefined));
   const anchor = { left: origin.x, top: origin.y, x: '-50%', y: '-50%' } as const;
   // 三圈错峰荡开的涟漪：渐次延迟 + 渐淡，营造水面一圈圈舒展、缓缓平息的层次。
-  const rings = [
-    { color: 'rgba(57,197,187,0.42)', w: 1.5, to: 5.4, op: 0.7, delay: 0, dur: 1.6 },
-    { color: 'rgba(57,197,187,0.30)', w: 1.2, to: 4.6, op: 0.55, delay: 0.18, dur: 1.7 },
-    { color: 'rgba(255,183,197,0.34)', w: 1.2, to: 3.9, op: 0.5, delay: 0.36, dur: 1.8 },
-  ];
+  const rings = tint
+    ? [{ color: `color-mix(in srgb, ${tint} 55%, transparent)`, w: 1.5, to: 5.4, op: 0.6, delay: 0, dur: 0.9 }]
+    : [
+      { color: 'rgba(57,197,187,0.42)', w: 1.5, to: 5.4, op: 0.7, delay: 0, dur: 1.6 },
+      { color: 'rgba(57,197,187,0.30)', w: 1.2, to: 4.6, op: 0.55, delay: 0.18, dur: 1.7 },
+      { color: 'rgba(255,183,197,0.34)', w: 1.2, to: 3.9, op: 0.5, delay: 0.36, dur: 1.8 },
+    ];
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 z-[39]">
       {/* 中心弥散柔光：轻轻衬底，不抢戏 */}
       <motion.span
         className="absolute rounded-full"
-        style={{ ...anchor, width: 360, height: 360, background: 'radial-gradient(circle, rgba(57,197,187,0.30) 0%, rgba(57,197,187,0.10) 44%, transparent 72%)', filter: 'blur(10px)' }}
+        style={{
+          ...anchor, width: 360, height: 360, filter: 'blur(10px)',
+          background: tint
+            ? `radial-gradient(circle, color-mix(in srgb, ${tint} 28%, transparent) 0%, color-mix(in srgb, ${tint} 9%, transparent) 44%, transparent 72%)`
+            : 'radial-gradient(circle, rgba(57,197,187,0.30) 0%, rgba(57,197,187,0.10) 44%, transparent 72%)',
+        }}
         initial={{ scale: 0.3, opacity: 0 }}
         animate={{ scale: 2.2, opacity: [0, 0.55, 0] }}
-        transition={{ duration: 1.5, ease: BLOOM_EASE, times: [0, 0.14, 1] }}
+        transition={{ duration: tint ? 0.9 : 1.5, ease: BLOOM_EASE, times: [0, 0.14, 1] }}
       />
       {/* 渐次荡开的涟漪细环 */}
       {rings.map((r, i) => (
@@ -281,8 +292,8 @@ function App() {
     setWaveKey(k => k + 1);
     setTransitioning(true);
     if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
-    // 0.5s 退场 + 0.6s 入场，再留一点懒加载余量。
-    transitionTimer.current = window.setTimeout(() => setTransitioning(false), 1250);
+    // 0.5s 退场 + 0.6s 入场，再留一点懒加载余量；音乐页是 0.2s + 0.28s（lib/transitions.ts）。
+    transitionTimer.current = window.setTimeout(() => setTransitioning(false), view === 'soundscape' ? 650 : 1250);
     setAppView(view);
     navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
   };
@@ -448,12 +459,12 @@ function App() {
                 // 新场所层先完成入场动画、露出骨架，chunk 到位后骨架原地换成真内容——
                 // 涟漪转场落在这层「已经在场」的骨架上，而不是 fallback={null} 留下的空白。
                 const wrap = (key: string, node: ReactNode) => (
-                  <ViewLayer key={key} reduce={reduce}>
+                  <ViewLayer key={key} reduce={reduce} view={appView}>
                     <Suspense fallback={<PlaceSkeleton />}>{node}</Suspense>
                   </ViewLayer>
                 );
                 return (
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence mode="wait" custom={appView}>
                     {appView === 'soundscape' && wrap('sound-space', <OasisResonance isOwner={effectiveIsAdmin} />)}
                     {appView === 'garden' && wrap('garden-space', <OasisGallery isAdmin={effectiveIsAdmin} />)}
                     {appView === 'orchard' && wrap('orchard-space', <OasisOrchard
@@ -466,7 +477,7 @@ function App() {
                   </AnimatePresence>
                 );
               })()}
-              {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} />}
+              {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} view={appView} />}
               <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} isOwner={effectiveIsAdmin} />
             </motion.div>
           )}

@@ -179,6 +179,21 @@ const SleeveBody: React.FC<{ track: Track; isOwner: boolean; compact: boolean; o
       {titleBlock}
 
       <div className={compact ? 'mt-5' : 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-10 pr-2 pt-2 no-scrollbar'}>
+        {!compact && (
+          // 明面上的出口：书脊、Esc、点纸套空白处都能合上，但得有一个一眼看得见的
+          <button
+            type="button"
+            data-ripple
+            onClick={onClose}
+            className="mb-6 inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white/50 pl-2.5 pr-3 font-[family-name:var(--font-zh)] text-[12.5px] text-slate-500 outline-none transition-colors hover:border-[color:color-mix(in_srgb,var(--mood)_45%,transparent)] hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-[color:var(--mood)] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400 dark:hover:text-slate-100"
+          >
+            <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+              <path d="M7.5 2.5L4 6l3.5 3.5" />
+            </svg>
+            合上内页
+            <kbd className="ml-1 font-mono text-[10px] text-slate-400 dark:text-slate-500">Esc</kbd>
+          </button>
+        )}
         {meta.length > 0 && (
           <p data-ripple className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] tracking-[0.2em] text-slate-500 dark:text-slate-400">
             {meta.map((item, index) => (
@@ -261,7 +276,6 @@ const SleeveBody: React.FC<{ track: Track; isOwner: boolean; compact: boolean; o
 
         <div data-ripple className="mt-7 flex justify-between gap-4 font-mono text-[10px] tracking-[0.18em] text-slate-400/90 dark:text-slate-500">
           <span>{sources.length > 0 ? `资料：${sources.join(' · ')}` : ''}</span>
-          {!compact && <span>ESC 合上</span>}
         </div>
       </div>
 

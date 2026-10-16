@@ -241,6 +241,9 @@ export const RippleReveal: React.FC<RippleRevealProps> = ({
       s.motion.p = open ? 1 : 0;
       return;
     }
+    // 已经停在目标状态就什么都不做（开发模式 StrictMode 会把这个 effect 多跑一遍，
+    // 否则会对着空原点“合上”一次，在舞台中央溅一圈水）
+    if (!s.running && s.motion.p === (open ? 1 : 0)) return;
     window.clearTimeout(s.fadeTimer);
 
     if (plain) {
