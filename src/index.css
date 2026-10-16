@@ -322,10 +322,10 @@ body {
     }
 }
 
-/* 上缘收得快（已唱的干脆退场），下缘化得开（将唱的若隐若现） */
+/* 上缘收得快（已唱的干脆退场），下缘化得开（水下将唱的若隐若现） */
 .lyric-field {
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 74%, transparent 99%);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 74%, transparent 99%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 82%, transparent 99%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 82%, transparent 99%);
 }
 
 .lyric-row {
@@ -513,7 +513,8 @@ body {
 .lyric-focus-glow {
     height: 7.25rem;
     opacity: 0;
-    transform: translate3d(0, -50%, 0);
+    /* 当前句坐在水线上，光也抬到句子中间 */
+    transform: translate3d(0, calc(-50% - 2.3rem), 0);
     background: radial-gradient(
         ellipse 45% 48% at 27% 50%,
         color-mix(in srgb, var(--accent) 32%, transparent) 0%,
@@ -522,72 +523,51 @@ body {
     );
 }
 
-.lyric-focus-ripple {
-    position: absolute;
-    left: 4%;
-    top: 50%;
-    width: 10px;
-    height: 10px;
-    margin: -5px 0 0 -5px;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
-    opacity: 0;
-    animation: lyric-ripple 1400ms cubic-bezier(.22, .61, .36, 1);
-}
-
-@keyframes lyric-ripple {
-    from { opacity: .45; transform: scale(.3); }
-    to   { opacity: 0;   transform: scale(11); }
-}
-
-/* 水面线：只在浏览时浮现，给滑动一个可锚定的「此处」 */
+/* 水线：词场的地平线。常在；浏览时更亮，右端显示所指那句的时间 */
 .lyric-waterline {
-    opacity: 0;
+    opacity: .75;
     transform: translate3d(0, -50%, 0);
     transition: opacity 340ms ease-out;
 }
 
 .lyric-field[data-browsing="true"] .lyric-waterline { opacity: 1; }
 
-.lyric-waterline-rule {
+.lyric-waterclock {
+    opacity: 0;
+    transition: opacity 340ms ease-out;
+}
+
+.lyric-field[data-browsing="true"] .lyric-waterclock { opacity: 1; }
+
+.lyric-countdown {
+    color: color-mix(in oklab, var(--accent) 45%, #1e293b);
+    transition: opacity 300ms ease-out;
+}
+
+.dark .lyric-countdown { color: color-mix(in oklab, var(--accent) 80%, #f8fafc); }
+
+/* 水下：一块静止的水色层。将唱的句子从它底下滚过，模糊由它一处承担（替代逐行 filter，
+   滚动时只重算这一块）；左右羽化，不显出方框。手机只留水色。 */
+.lyric-water {
     background: linear-gradient(
-        to right,
-        transparent,
-        color-mix(in srgb, var(--accent) 45%, transparent) 22%,
-        color-mix(in srgb, var(--accent) 45%, transparent) 70%,
-        transparent
+        to bottom,
+        color-mix(in srgb, var(--accent) 9%, transparent),
+        color-mix(in srgb, var(--accent) 3%, transparent) 40%,
+        transparent 85%
     );
-}
-
-/* 间奏进度弧：pathLength=1 把周长归一化，dashoffset 直接吃 --g */
-.lyric-interlude-arc {
-    stroke: var(--accent);
-    stroke-dasharray: 1;
-    stroke-dashoffset: calc(1 - var(--g));
-}
-
-.lyric-interlude-core {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 5px;
-    height: 5px;
-    margin: -2.5px 0 0 -2.5px;
-    border-radius: 9999px;
-    background: var(--accent);
-    transform: scale(calc(.7 + var(--e) * .5));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 80%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 4%, #000 80%, transparent);
 }
 
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-    .lyric-row {
-        filter: blur(min(calc(var(--d) * .45px), 1.6px));
+    .lyric-water {
+        -webkit-backdrop-filter: blur(1.1px) saturate(1.05);
+        backdrop-filter: blur(1.1px) saturate(1.05);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .lyric-row[data-active="true"] .lyric-beat { text-shadow: none; }
-    .lyric-focus-ripple { display: none; }
     .lyric-row[data-active="true"] .lyric-translation {
         opacity: .76;
         transform: none;

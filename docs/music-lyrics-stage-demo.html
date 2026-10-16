@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>歌词近景</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Klee+One:wght@400;600&family=Noto+Serif+SC:wght@400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --mood: #F48FB1;
+  --page: #FAF8F3;
+  --ink: #1E293B; --ink2: #475569; --ink3: #94A3B8;
+  --hair: rgba(15, 23, 42, .09);
+  --glass: rgba(255, 255, 255, .5); --glass-b: rgba(255, 255, 255, .75);
+  --card: rgba(255, 255, 255, .62);
+  --pop: rgba(255, 255, 255, .92);
+  --shadow: 0 36px 90px rgba(0, 0, 0, .13);
+  --platter: linear-gradient(135deg, rgba(226,232,240,.75), rgba(203,213,225,.45) 50%, rgba(148,163,184,.4));
+  --serif: "EB Garamond", "Noto Serif SC", serif;
+  --mincho: "Shippori Mincho", "Klee One", "Noto Serif SC", serif;
+  --ja: "Klee One", "Shippori Mincho", serif;
+  --zh: "Noto Serif SC", "Songti SC", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0A0F1D; --ink: #E2E8F0; --ink2: #94A3B8; --ink3: #64748B;
+    --hair: rgba(255, 255, 255, .08); --glass: rgba(255, 255, 255, .04); --glass-b: rgba(255, 255, 255, .1);
+    --card: rgba(255, 255, 255, .035); --pop: rgba(17, 23, 40, .94);
+    --shadow: 0 36px 90px rgba(0, 0, 0, .6);
+    --platter: linear-gradient(135deg, rgba(255,255,255,.07), rgba(0,0,0,.3) 50%, rgba(0,0,0,.5));
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0A0F1D; --ink: #E2E8F0; --ink2: #94A3B8; --ink3: #64748B;
+  --hair: rgba(255, 255, 255, .08); --glass: rgba(255, 255, 255, .04); --glass-b: rgba(255, 255, 255, .1);
+  --card: rgba(255, 255, 255, .035); --pop: rgba(17, 23, 40, .94);
+  --shadow: 0 36px 90px rgba(0, 0, 0, .6);
+  --platter: linear-gradient(135deg, rgba(255,255,255,.07), rgba(0,0,0,.3) 50%, rgba(0,0,0,.5));
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-family: var(--zh); line-height: 1.75; -webkit-font-smoothing: antialiased; transition: background-color .4s, color .4s; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.page { max-width: 1240px; margin: 0 auto; padding: 56px 20px 120px; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .32em; color: var(--ink3); text-transform: uppercase; }
+h1 { font-family: var(--mincho); font-weight: 600; font-size: clamp(34px, 6vw, 56px); letter-spacing: .08em; margin: 14px 0 10px; line-height: 1.2; }
+h2.sec { font-family: var(--mincho); font-weight: 600; font-size: 26px; letter-spacing: .06em; margin: 80px 0 6px; }
+h2.sec small { font-family: var(--mono); font-size: 11px; letter-spacing: .3em; color: var(--ink3); font-weight: 400; margin-left: 14px; vertical-align: middle; }
+h3 { font-family: var(--mincho); font-size: 18px; font-weight: 600; letter-spacing: .05em; margin: 0 0 10px; }
+p { margin: 0 0 12px; }
+.lede { max-width: 780px; font-size: 16px; color: var(--ink2); }
+code { font-family: var(--mono); font-size: .88em; padding: 1px 5px; border-radius: 5px; background: var(--hair); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 22px 0 16px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hair); background: var(--card); font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--ink2); }
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--mood) 60%, transparent); background: color-mix(in srgb, var(--mood) 12%, transparent); }
+.seg { display: inline-flex; padding: 3px; border-radius: 999px; border: 1px solid var(--hair); background: var(--card); }
+.seg button { height: 28px; padding: 0 16px; border-radius: 999px; font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--ink2); }
+.seg button[aria-pressed="true"] { background: var(--mood); color: #fff; }
+.swatches { display: inline-flex; gap: 8px; padding: 0 6px; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; background: var(--c); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--hair); }
+.swatch[aria-pressed="true"] { border-color: var(--page); box-shadow: 0 0 0 2px var(--c); }
+.chip:focus-visible, .seg button:focus-visible, .swatch:focus-visible { outline: 2px solid var(--mood); outline-offset: 2px; }
+.hint { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--ink3); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-top: 22px; }
+.card { border: 1px solid var(--hair); background: var(--card); border-radius: 22px; padding: 22px 24px; }
+.card p, .card li { font-size: 14px; color: var(--ink2); }
+.card ul { margin: 0; padding-left: 1.1em; }
+.card li { margin-bottom: 6px; }
+.card li::marker { color: var(--mood); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+th { font-family: var(--mono); font-weight: 400; font-size: 10.5px; letter-spacing: .18em; color: var(--ink3); text-transform: uppercase; }
+td { color: var(--ink2); }
+td:first-child { color: var(--ink); }
+.tablewrap { overflow-x: auto; }
+
+/* ———————— 舞台 1200×720 ———————— */
+.stage-wrap { position: relative; width: 100%; border-radius: 28px; overflow: hidden; border: 1px solid var(--hair); background: var(--page); }
+.stage { position: absolute; left: 0; top: 0; width: 1200px; height: 720px; transform-origin: 0 0; overflow: hidden; }
+.glow { position: absolute; left: -160px; top: -60px; width: 820px; height: 820px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mood) 15%, transparent), transparent); pointer-events: none; }
+.chamber { position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 10px; letter-spacing: .5em; color: color-mix(in srgb, var(--ink3) 50%, transparent); }
+
+.left { position: absolute; left: 70px; top: 64px; width: 470px; height: 640px; z-index: 4; pointer-events: none; }
+.left > * { pointer-events: auto; }
+.plinth-bg { position: absolute; left: 0; top: 0; width: 470px; height: 414px; border-radius: 40px; background: var(--glass); border: 1px solid var(--glass-b); box-shadow: var(--shadow); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: opacity .6s cubic-bezier(.2,0,0,1), transform .6s cubic-bezier(.2,0,0,1); pointer-events: none; }
+.deck { position: absolute; left: 28px; top: 40px; width: 334px; height: 334px; transition: transform .7s cubic-bezier(.2,0,0,1); }
+.platter { position: absolute; inset: -15px; border-radius: 50%; background: var(--platter); border: 1px solid var(--glass-b); box-shadow: inset 0 2px 10px rgba(0,0,0,.18); transition: opacity .6s; }
+.disc { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: repeating-radial-gradient(circle at 50% 50%, #111 0px, #111 3px, #1b1b1f 4px, #111 5px); box-shadow: 0 18px 45px rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.08); cursor: pointer; }
+.disc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(45deg, rgba(255,255,255,.1), transparent 40%, transparent 60%, rgba(255,255,255,.05)); mix-blend-mode: overlay; }
+.label { position: absolute; left: 31%; top: 31%; width: 38%; height: 38%; border-radius: 50%; background: var(--mood); box-shadow: inset 0 0 18px rgba(0,0,0,.18); display: grid; place-items: center; }
+.label span { font-family: var(--mono); font-size: 7px; letter-spacing: .3em; color: rgba(255,255,255,.85); rotate: -12deg; }
+.label::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; translate: -50% -50%; border-radius: 50%; background: var(--page); }
+.arm { position: absolute; right: 42px; top: 54px; height: 256px; width: 8px; transform-origin: 50% 0; rotate: 21deg; z-index: 5; pointer-events: none; transition: opacity .4s, rotate 1s cubic-bezier(.3,1.4,.5,1); }
+.arm i { position: absolute; display: block; }
+.arm .pv { top: -18px; left: 50%; width: 40px; height: 40px; translate: -50% 0; border-radius: 50%; background: linear-gradient(135deg, #e2e8f0, #94a3b8); }
+.arm .rd { top: 0; left: 50%; translate: -50% 0; width: 4px; height: 88%; border-radius: 4px; background: linear-gradient(#cbd5e1, #e2e8f0, #cbd5e1); }
+.arm .hd { bottom: 0; left: 50%; translate: -50% 0; rotate: 14deg; width: 12px; height: 24px; border-radius: 3px; background: linear-gradient(#94a3b8, #475569); }
+.rpm { position: absolute; left: 330px; top: 380px; display: flex; gap: 9px; align-items: center; font-family: var(--mono); font-size: 8px; letter-spacing: .25em; color: var(--ink3); transition: opacity .4s; }
+.rpm i { width: 8px; height: 8px; border-radius: 50%; background: var(--mood); box-shadow: 0 0 8px var(--mood); }
+.transport { position: absolute; left: 0; top: 458px; width: 470px; display: grid; gap: 18px; }
+.prog { display: grid; gap: 8px; }
+.prog .bar { height: 3px; border-radius: 3px; background: var(--hair); overflow: hidden; cursor: pointer; }
+.prog .bar i { display: block; height: 100%; width: 0; background: var(--mood); }
+.prog .t { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink3); }
+.keys { display: flex; align-items: center; justify-content: space-between; padding: 12px 30px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-b); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.keys button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink2); }
+.keys .play { width: 56px; height: 56px; border-radius: 50%; background: var(--mood); color: #fff; box-shadow: 0 8px 25px color-mix(in srgb, var(--mood) 33%, transparent); }
+.keys svg { width: 18px; height: 18px; }
+
+/* 提案 · 歌词近景：唱片退到舞台边缘成为背景，唱臂与基座隐去；走带与切换条不动（规矩 2） */
+.v-new.p-lyrics .deck { transform: translate(-118px, 12px) scale(1.4); }
+.v-new.p-lyrics .plinth-bg { opacity: 0; transform: scale(.96); }
+.v-new.p-lyrics .platter { opacity: 0; }
+.v-new.p-lyrics .arm, .v-new.p-lyrics .rpm { opacity: 0; }
+
+.pill { position: absolute; left: 890px; top: 52px; translate: -50% 0; z-index: 6; display: inline-flex; padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-b); }
+.pill button { min-width: 80px; height: 32px; border-radius: 999px; font-family: var(--mono); font-size: 10px; letter-spacing: .24em; color: var(--ink2); }
+.pill button[aria-pressed="true"] { background: var(--mood); color: #fff; }
+
+/* 选碟面板（两版相同，简化） */
+.crate { position: absolute; left: 640px; top: 120px; width: 500px; text-align: center; transition: opacity .2s; }
+.crate h2 { font-family: var(--serif); font-weight: 400; font-size: 46px; margin: 30px 0 0; letter-spacing: .04em; }
+.crate .ar { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: .4em; color: var(--ink2); }
+.crate .rows { margin-top: 60px; text-align: left; }
+.crate .row { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; padding: 11px 8px; border-radius: 14px; font-family: var(--ja); font-size: 14px; }
+.crate .row.on { background: color-mix(in srgb, var(--mood) 9%, transparent); }
+.crate .row span:first-child, .crate .row span:last-child { font-family: var(--mono); font-size: 10px; color: var(--ink3); align-self: center; text-align: center; }
+
+/* ———————— 歌词面板 ———————— */
+.lyr { position: absolute; transition: opacity .2s; }
+.v-now .lyr { left: 640px; top: 104px; width: 500px; height: 600px; }
+.v-new .lyr { left: 476px; top: 100px; width: 660px; height: 604px; }
+.p-crate .lyr, .p-lyrics .crate { opacity: 0; pointer-events: none; }
+.p-lyrics .lyr, .p-crate .crate { opacity: 1; }
+
+.lhead { position: absolute; left: 12px; right: 4px; top: 0; height: 40px; display: none; align-items: center; justify-content: space-between; z-index: 8; }
+.v-new .lhead { display: flex; }
+.lhead .who { display: flex; align-items: baseline; gap: 14px; }
+.lhead .who b { font-family: var(--serif); font-weight: 400; font-size: 20px; letter-spacing: .05em; color: var(--ink); cursor: pointer; }
+.lhead .who span { font-family: var(--mono); font-size: 10px; letter-spacing: .3em; color: var(--ink3); }
+.aa { height: 32px; min-width: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--hair); background: var(--card); font-family: var(--serif); font-size: 15px; color: var(--ink2); display: inline-flex; align-items: center; gap: 8px; }
+.aa small { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--ink3); }
+.aa[aria-expanded="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--mood) 60%, transparent); }
+.pop { position: absolute; right: 4px; top: 44px; width: 250px; padding: 14px; border-radius: 18px; background: var(--pop); border: 1px solid var(--hair); box-shadow: 0 20px 50px rgba(0,0,0,.25); z-index: 9; display: grid; gap: 12px; opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .2s, transform .2s; backdrop-filter: blur(16px); }
+.pop.open { opacity: 1; transform: none; pointer-events: auto; }
+.pop .k { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--ink3); margin-bottom: 6px; }
+.pop .seg { width: 100%; }
+.pop .seg button { flex: 1; padding: 0; font-size: 12px; font-family: var(--zh); letter-spacing: .1em; }
+.switch { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink2); }
+.switch button { width: 38px; height: 22px; border-radius: 22px; background: var(--hair); position: relative; transition: background .2s; }
+.switch button::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+.switch button[aria-checked="true"] { background: var(--mood); }
+.switch button[aria-checked="true"]::after { transform: translateX(16px); }
+.pop .src { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--ink3); border-top: 1px solid var(--hair); padding-top: 10px; }
+
+/* 现状版的小工具条：照搬现在 7–8px 的尺寸 */
+.now-tools { position: absolute; right: 8px; top: 8px; z-index: 8; display: none; align-items: center; gap: 6px; }
+.v-now .now-tools { display: flex; }
+.now-tools span { font-family: var(--mono); font-size: 7px; letter-spacing: .2em; color: color-mix(in srgb, var(--ink3) 60%, transparent); }
+.now-tools button { height: 24px; min-width: 34px; padding: 0 7px; border-radius: 999px; font-family: var(--mono); font-size: 8px; color: var(--ink3); background: var(--card); }
+.now-tools button.on { color: var(--ink); background: rgba(255,255,255,.1); }
+
+.field { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; outline: none;
+  -webkit-mask-image: linear-gradient(transparent 0, #000 14%, #000 86%, transparent); mask-image: linear-gradient(transparent 0, #000 14%, #000 86%, transparent); }
+.v-now .field { top: 0; }
+.v-new .field { top: 48px; }
+.track { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.tblock { padding: 60px 12px 50px; }
+.v-new .tblock { display: none; }
+.tblock h2 { font-family: var(--serif); font-weight: 500; font-size: 44px; margin: 0; letter-spacing: .04em; line-height: 1.1; }
+.tblock p { margin-top: 12px; font-family: var(--mono); font-size: 9px; letter-spacing: .32em; color: var(--ink3); }
+.tblock q { display: block; margin-top: 22px; font-family: var(--ja); font-style: italic; color: var(--ink2); }
+
+.lrow { display: block; width: 100%; text-align: left; padding: 14px 12px; border-radius: 14px; transition: opacity .35s; cursor: pointer; }
+.lrow:hover { background: color-mix(in srgb, var(--mood) 6%, transparent); }
+.lja { display: block; font-family: var(--ja); font-weight: 600; font-size: 25px; line-height: 1.7; letter-spacing: .06em; }
+.v-new .lja { font-size: 28px; }
+.lzh { display: block; margin-top: 2px; font-family: var(--zh); font-size: 14px; letter-spacing: .12em; color: var(--ink3); transition: color .4s; }
+.lang-zh .lja { display: none; }
+.lang-zh .lzh { font-size: 24px; color: var(--ink); margin: 0; letter-spacing: .08em; }
+.lang-ja .lzh { display: none; }
+.no-ruby rt { display: none; }
+rt { font-family: var(--ja); font-size: .42em; letter-spacing: .05em; font-weight: 400; }
+
+.b { --t: clamp(0, calc((var(--p) - var(--a)) / (var(--b) - var(--a))), 1); color: color-mix(in oklab, var(--ink) calc(var(--t) * 100%), color-mix(in srgb, var(--ink) 34%, transparent)); }
+.lrow { --p: 0; }
+.lrow[data-d^="-"] { --p: 1; }
+.lrow[data-d="0"] .b { text-shadow: 0 0 calc(var(--t) * 18px) color-mix(in srgb, var(--mood) 45%, transparent); }
+.lrow[data-d="0"] .lzh { color: color-mix(in oklab, var(--mood) 45%, var(--ink)); }
+.lrow[data-d="-1"] { opacity: .5; } .lrow[data-d="-2"] { opacity: .3; } .lrow[data-d="-3"], .lrow[data-d="-far"] { opacity: .16; }
+.lrow[data-d="1"] { opacity: .78; } .lrow[data-d="2"] { opacity: .55; } .lrow[data-d="3"] { opacity: .38; } .lrow[data-d="far"] { opacity: .22; }
+.v-now .lrow[data-d="1"] { opacity: .5; }
+
+/* 水面：线下是“水里”，将唱的句子在水下，被唱到时穿过水线浮上来 */
+.water { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none; display: none;
+  backdrop-filter: blur(1.1px) saturate(1.05); -webkit-backdrop-filter: blur(1.1px) saturate(1.05);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--mood) 9%, transparent), color-mix(in srgb, var(--mood) 3%, transparent) 40%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 78%, transparent); mask-image: linear-gradient(to right, transparent, #000 4%, #000 78%, transparent); }
+.v-new .water { display: block; }
+.focusglow { position: absolute; left: -40px; right: 0; height: 160px; z-index: 0; pointer-events: none; display: none;
+  background: radial-gradient(ellipse 50% 50% at 30% 60%, color-mix(in srgb, var(--mood) 22%, transparent), transparent 70%); }
+.v-new .focusglow { display: block; }
+.wl { position: absolute; left: 0; right: 0; height: 40px; z-index: 4; pointer-events: none; }
+.wl svg { position: absolute; left: 0; top: 0; width: 100%; height: 40px; overflow: visible; }
+.wl .clock { position: absolute; right: 6px; top: -2px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--ink3); display: flex; gap: 12px; }
+.wl .clock em { font-style: normal; color: color-mix(in oklab, var(--mood) 70%, var(--ink)); opacity: 0; transition: opacity .3s; }
+.wl .clock em.on { opacity: 1; }
+.v-now .wl .clock { top: 4px; font-size: 8px; }
+
+/* 现状版的间奏圈：固定在词场 42% 处 */
+.ring { position: absolute; left: 50%; top: 42%; width: 44px; height: 44px; margin: -22px 0 0 -22px; z-index: 5; display: none; opacity: 0; transition: opacity .5s; }
+.v-now .ring { display: block; }
+.ring.on { opacity: 1; }
+.ring svg { width: 44px; height: 44px; rotate: -90deg; }
+.ring i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: var(--mood); }
+
+/* 手机示意 */
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; margin-top: 22px; justify-items: center; }
+.phone { width: 300px; height: 620px; border-radius: 44px; border: 1px solid var(--hair); background: var(--page); position: relative; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.25); }
+.phone .tag { position: absolute; left: 0; right: 0; bottom: -34px; text-align: center; }
+.phone-cap { text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: .2em; color: var(--ink3); margin-top: 12px; }
+.ph-top { position: absolute; left: 16px; right: 16px; top: 22px; height: 36px; display: flex; align-items: center; gap: 8px; }
+.ph-ic { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--hair); display: grid; place-items: center; font-size: 12px; color: var(--ink2); }
+.ph-auto { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--hair); font-family: var(--mono); font-size: 9px; letter-spacing: .2em; display: grid; place-items: center; color: var(--ink2); }
+.ph-clock { margin-left: auto; font-family: var(--mono); font-size: 9px; letter-spacing: .3em; color: var(--ink3); }
+.ph-seg { position: absolute; left: 50%; translate: -50% 0; display: flex; padding: 3px; border-radius: 999px; border: 1px solid var(--hair); background: var(--card); }
+.ph-seg span { width: 66px; height: 30px; display: grid; place-items: center; border-radius: 999px; font-size: 12px; color: var(--ink2); }
+.ph-seg span.on { background: var(--mood); color: #fff; }
+.ph-lines { position: absolute; left: 24px; right: 24px; }
+.ph-lines p { margin: 0 0 16px; font-family: var(--ja); font-weight: 600; font-size: 18px; letter-spacing: .05em; }
+.ph-lines small { display: block; font-family: var(--zh); font-weight: 400; font-size: 11px; color: var(--ink3); margin-top: 2px; }
+.ph-dock { position: absolute; left: 50%; bottom: 22px; translate: -50% 0; width: 200px; height: 52px; border-radius: 26px; border: 1px solid var(--hair); background: var(--card); }
+.overlap { outline: 2px dashed #ef4444; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="kicker">Oasis · 共鸣 · 设计提案 · 2026-10-10</div>
+  <h1>歌词近景</h1>
+  <p class="lede">“歌词 / 选碟”在代码注释里本来就是“同一舞台的两种观看距离”，但现在两种模式的版面几乎一样：唱机始终占着半个舞台。提案让镜头真的推近——唱片退到舞台边缘成为背景，歌词站到中央；沿用词场里已有的“水线”，把它变成整页的地平线：将唱的句子在水下，唱到时浮出水面，间奏时水线起伏、渐渐平静，平静了，下一句就来了。</p>
+
+  <h2 class="sec">演示<small>Now ⇄ Proposal</small></h2>
+  <div class="toolbar">
+    <span class="seg" role="group" aria-label="版本"><button type="button" id="vNow" aria-pressed="false">现在</button><button type="button" id="vNew" aria-pressed="true">提案</button></span>
+    <button class="chip" id="interBtn" type="button">跳到间奏</button>
+    <button class="chip" id="themeBtn" type="button">昼 / 夜</button>
+    <span class="swatches" id="swatches" role="group" aria-label="情绪色"></span>
+    <span class="hint">点“选碟 / 歌词”看镜头推拉 · 点任意一句跳转 · Aa 是阅读设置</span>
+  </div>
+
+  <div class="stage-wrap" id="stageWrap">
+    <div class="stage v-new p-lyrics" id="stage">
+      <div class="glow"></div>
+      <div class="chamber">RESONANCE CHAMBER</div>
+
+      <div class="crate" aria-hidden="true">
+        <h2 lang="ja">水底の灯</h2>
+        <div class="ar">OASIS DEMO</div>
+        <div class="rows">
+          <div class="row on"><span>▶</span><span lang="ja">水底の灯</span><span>0:45</span></div>
+          <div class="row"><span>02</span><span lang="ja">夏の輪郭</span><span>3:58</span></div>
+          <div class="row"><span>03</span><span lang="ja">透明な午後</span><span>4:12</span></div>
+          <div class="row"><span>04</span><span lang="ja">さよならの温度</span><span>4:40</span></div>
+        </div>
+      </div>
+
+      <section class="lyr" id="lyr" aria-label="歌词">
+        <div class="lhead">
+          <div class="who"><b lang="ja" title="翻开内页">水底の灯</b><span>OASIS DEMO</span></div>
+          <button class="aa" id="aaBtn" type="button" aria-expanded="false" aria-controls="pop">Aa <small id="aaState">日中 · 注音</small></button>
+        </div>
+        <div class="pop" id="pop" role="dialog" aria-label="歌词阅读设置">
+          <div><div class="k">语言</div><span class="seg" id="langSeg"><button type="button" data-l="ja" aria-pressed="false">日</button><button type="button" data-l="bi" aria-pressed="true">日 · 中</button><button type="button" data-l="zh" aria-pressed="false">中</button></span></div>
+          <div class="switch"><span>注音（汉字上标假名）</span><button type="button" role="switch" id="rubySw" aria-checked="true" aria-label="注音"></button></div>
+          <div class="src">词：示意自拟 · 译：站主 · 待校</div>
+        </div>
+        <div class="now-tools"><span>NETEASE · 译：站主 · 待校</span><button type="button" class="on">注音</button><button type="button">日</button><button type="button" class="on">日中</button><button type="button">中</button></div>
+
+        <div class="field" id="field" tabindex="0" aria-label="流动歌词">
+          <div class="focusglow" id="fglow"></div>
+          <div class="track" id="track">
+            <div class="tblock"><h2 lang="ja">水底の灯</h2><p>OASIS DEMO</p><q>“ 沈めた灯が まだ消えずにいる ”</q></div>
+          </div>
+          <div class="water" id="water"></div>
+          <div class="wl" id="wl">
+            <svg id="wlSvg" preserveAspectRatio="none">
+              <defs><linearGradient id="wlg" x1="0" x2="1"><stop offset="0" stop-color="var(--mood)" stop-opacity="0"/><stop offset=".15" stop-color="var(--mood)" stop-opacity=".55"/><stop offset=".85" stop-color="var(--mood)" stop-opacity=".35"/><stop offset="1" stop-color="var(--mood)" stop-opacity="0"/></linearGradient></defs>
+              <path id="wlPath" fill="none" stroke="url(#wlg)" stroke-width="1.2"/>
+            </svg>
+            <div class="clock"><em id="cd"></em><span id="clk">0:00</span></div>
+          </div>
+          <div class="ring" id="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" fill="none" stroke="var(--hair)" stroke-width="1"/><circle id="ringArc" cx="22" cy="22" r="19" fill="none" stroke="var(--mood)" stroke-width="1.5" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg><i></i></div>
+        </div>
+      </section>
+
+      <div class="left">
+        <div class="plinth-bg"></div>
+        <div class="deck" id="deck">
+          <div class="platter"></div>
+          <div class="disc" id="disc"><div class="label"><span>OASIS</span></div></div>
+        </div>
+        <div class="arm" id="arm"><i class="pv"></i><i class="rd"></i><i class="hd"></i></div>
+        <div class="rpm"><i></i>33⅓ RPM</div>
+        <div class="transport">
+          <div class="prog"><div class="bar" id="bar"><i id="barFill"></i></div><div class="t"><span id="tNow">0:00</span><span>0:45</span></div></div>
+          <div class="keys">
+            <button type="button" aria-label="模式"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+            <button type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4"/><rect x="5" y="4" width="2" height="16" rx="1"/></svg></button>
+            <button type="button" class="play" id="playBtn" aria-label="暂停"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"></svg></button>
+            <button type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20"/><rect x="17" y="4" width="2" height="16" rx="1"/></svg></button>
+            <button type="button" aria-label="氛围"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pill" id="pill"><button type="button" data-p="lyrics" aria-pressed="true">歌词</button><button type="button" data-p="crate" aria-pressed="false">选碟</button></div>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:10px">示意歌词为自拟，不是任何真实歌曲的歌词。演示里没有音频，时钟是模拟的。</p>
+
+  <h2 class="sec">改了什么<small>Changes</small></h2>
+  <div class="card">
+    <div class="tablewrap"><table>
+      <thead><tr><th>现在</th><th>提案</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td>歌词模式下唱机仍占左半舞台，唱臂、基座、转速灯都在</td><td>唱片放大 1.4 倍、退到舞台左缘只露一半，基座和唱臂淡出；歌词栏从 500px 加宽到 660px</td><td>听歌时歌词是主角。唱片仍在转、贴纸仍可点（内页入口），只是退成背景</td></tr>
+        <tr><td>注音、日/日中/中、来源三样挤在右上角，7–8px 字</td><td>收进一个 <b>Aa</b> 按钮，弹出设置；按钮上直接写当前状态（“日中 · 注音”）。最小字号 10px</td><td>设置是偶尔用的，状态却要一眼看到</td></tr>
+        <tr><td>间奏是一个浮在词场 42% 处的圆圈，和当前句同高，拖进度时会压在字上</td><td>间奏不再是独立元素：水线本身起伏，振幅随剩余时间衰减，水线右端写“还有 6″”。下一句在水下等着</td><td>结构上杜绝重叠；“水面渐平 = 快到了”比读一个弧更直觉</td></tr>
+        <tr><td>标题块在词场里，随歌词一起滚走</td><td>标题固定在栏头（点它翻开内页），词场只放歌词</td><td>滚到中段时也知道在听什么；与内页提案的入口一致</td></tr>
+        <tr><td>焦点在 42%，上下都是同样的淡化</td><td>焦点在 50%，线上清晰、线下是“水里”：轻微模糊 + 情绪色水色。句子被唱到时穿过水线浮上来；换句时水线上从句首荡出一道小波</td><td>把已有的水线、焦点光统一成一个空间隐喻；模糊来自一层静止的 backdrop-filter，歌词本身仍只动 transform</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>与四条规矩</h3>
+      <ul>
+        <li><b>控件不迁移</b>：走带、音量、歌词/选碟切换条在两种距离下位置完全不变；动的只有唱片（内容）和右栏宽度。</li>
+        <li><b>一个元素一套动画</b>：唱片推拉只用 CSS transition（transform 700ms，<code>move</code> 档位的曲线）；词场仍由 ticker 写 translateY；水线由 ticker 写 path。</li>
+        <li><b>最后一帧等于静止态</b>：推拉是两个静止版式之间的 transform 插值，中途切回会从当前值折返。</li>
+        <li><b>100ms 反馈</b>：切换条高亮当帧变，镜头跟上。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>性能</h3>
+      <ul>
+        <li>水下那层是<b>一块静止的</b> backdrop-filter（1.1px），歌词滚过时浏览器只重算这一块；手机端去掉模糊、只留水色。</li>
+        <li>水线是一条 ~110 个点的 SVG path，只在间奏和换句后 0.9 秒内每帧重写，其余时间是直线不重绘。</li>
+        <li>唱片放大用 transform，不改布局；沿用现有唱盘 ticker 的旋转。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>没有改的</h3>
+      <ul>
+        <li>逐拍点亮（<code>--p</code> / <code>--a</code> / <code>--b</code>）、译文渐起、对唱/和声的左右对齐、拖拽惯性与“回到此刻”，全部照旧。</li>
+        <li>选碟模式的大唱机与碟箱不动。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">手机顶部<small>Mobile header</small></h2>
+  <p class="lede">现在全站顶栏（搜索、AUTO、右上角时钟）和音乐页的“唱片 / 歌词 / 歌单”分段条在同一高度，时钟压在分段条右侧（红框）。提案：分段条下移到顶栏下方 12px，歌词段同样用水线版式。</p>
+  <div class="phones">
+    <div>
+      <div class="phone">
+        <div class="ph-top"><span class="ph-ic">⌕</span><span class="ph-auto">AUTO · ☾</span><span class="ph-clock overlap">02:09 · OASIS</span></div>
+        <div class="ph-seg overlap" style="top:36px"><span>唱片</span><span class="on">歌词</span><span>歌单</span></div>
+        <div class="ph-lines" style="top:170px;opacity:.9">
+          <p style="opacity:.35">広がる輪の向こうで<small>在扩散的涟漪那头</small></p>
+          <p>言葉にならないまま<small>话还没说出口</small></p>
+          <p style="opacity:.5">揺れる光を数えて<small>数着摇晃的光</small></p>
+        </div>
+        <div class="ph-dock"></div>
+      </div>
+      <div class="phone-cap">现在</div>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="ph-top"><span class="ph-ic">⌕</span><span class="ph-auto">AUTO · ☾</span><span class="ph-clock">02:09 · OASIS</span></div>
+        <div class="ph-seg" style="top:72px"><span>唱片</span><span class="on">歌词</span><span>歌单</span></div>
+        <div style="position:absolute;left:24px;right:24px;top:128px;display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:var(--serif);font-weight:400;font-size:17px" lang="ja">水底の灯</b><span class="aa" style="height:26px;font-size:13px">Aa</span></div>
+        <div class="ph-lines" style="top:200px">
+          <p style="opacity:.35">広がる輪の向こうで<small>在扩散的涟漪那头</small></p>
+          <p>言葉にならないまま<small style="color:color-mix(in oklab,var(--mood) 45%,var(--ink))">话还没说出口</small></p>
+        </div>
+        <div style="position:absolute;left:24px;right:24px;top:338px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--mood) 60%,transparent) 15%,color-mix(in srgb,var(--mood) 30%,transparent) 85%,transparent)"></div>
+        <div style="position:absolute;left:0;right:0;top:339px;bottom:0;background:linear-gradient(color-mix(in srgb,var(--mood) 9%,transparent),transparent 60%)"></div>
+        <div class="ph-lines" style="top:356px;opacity:.6;filter:blur(.6px)">
+          <p>揺れる光を数えて<small>数着摇晃的光</small></p>
+          <p style="opacity:.6">届かなくてもいいよ<small>传不到也没关系</small></p>
+        </div>
+        <div class="ph-dock"></div>
+      </div>
+      <div class="phone-cap">提案（手机端水下不模糊，这里仅示意）</div>
+    </div>
+  </div>
+
+  <h2 class="sec">落地<small>Plan</small></h2>
+  <div class="card">
+    <div class="tablewrap"><table>
+      <thead><tr><th>步骤</th><th>内容</th><th>文件</th></tr></thead>
+      <tbody>
+        <tr><td>L0 修</td><td>手机分段条下移；间奏圈临时改为只在空白时显示（在 L2 之前止血）</td><td><code>OasisResonance.tsx</code>、<code>Interlude.tsx</code></td></tr>
+        <tr><td>L1 阅读设置</td><td>工具条收进 Aa 弹层，按钮显示当前状态；最小字号 10px</td><td><code>LyricPanel.tsx</code></td></tr>
+        <tr><td>L2 水线</td><td>焦点 0.42→0.5；当前句底边对齐水线；水下层；水线 path 承担间奏与换句波；删掉 Interlude 圆圈；标题移到栏头</td><td><code>LyricField.tsx</code>、<code>index.css</code>，删 <code>Interlude.tsx</code></td></tr>
+        <tr><td>L3 镜头推拉</td><td>歌词模式：唱片 transform 到舞台左缘、基座唱臂淡出、右栏加宽；与内页提案共用贴纸入口</td><td><code>OasisResonance.tsx</code></td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:12px;font-size:14px;color:var(--ink2)">和内页 / 水琴窟提案合起来的顺序建议：L0 → 内页 P0–P2 → L1–L3 → 水琴窟 P3。</p>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  root.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+
+  // ———— 情绪色 / 主题 ————
+  const MOODS = [['#F48FB1', '樱'], ['#6EE7B7', '夏草'], ['#93C5FD', '雨'], ['#FCD34D', '黄昏']];
+  const sw = $('#swatches');
+  MOODS.forEach(([c, n], i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.style.setProperty('--c', c); b.setAttribute('aria-label', n); b.setAttribute('aria-pressed', i === 0);
+    b.onclick = () => { root.style.setProperty('--mood', c); sw.querySelectorAll('.swatch').forEach(s => s.setAttribute('aria-pressed', s === b)); };
+    sw.appendChild(b);
+  });
+  $('#themeBtn').onclick = () => { root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; };
+
+  // ———— 示意歌词（自拟）。「漢字(かな)」是注音 ————
+  const RAW = [
+    [2.0, 6.2, '夜明(よあ)け前(まえ)の 水面(みなも)に 小(ちい)さな石(いし)を落(お)とした', '黎明之前 我向水面投下一颗小石子'],
+    [6.4, 10.6, '広(ひろ)がる輪(わ)の向(む)こうで 君(きみ)が笑(わら)った気(き)がした', '在扩散的涟漪那头 仿佛看见你在笑'],
+    [10.8, 15.0, '言葉(ことば)にならないまま 夏(なつ)は遠(とお)くなってく', '话还没说出口 夏天就渐渐远了'],
+    [24.0, 28.2, '揺(ゆ)れる光(ひかり)を数(かぞ)えて 名前(なまえ)を呼(よ)んでみる', '数着摇晃的光 试着唤你的名字'],
+    [28.4, 32.6, '届(とど)かなくてもいいよ 波(なみ)が運(はこ)んでくれる', '传不到也没关系 波浪会替我送去'],
+    [32.8, 37.0, '水底(みなそこ)に沈(しず)めた灯(ひ)が まだ消(き)えずにいる', '沉在水底的灯 至今仍未熄灭'],
+    [37.2, 41.5, '静(しず)かになったら きっと聞(き)こえる', '等一切静下来 一定能听见'],
+  ];
+  const END = 45;
+  const KANJI = /[一-鿿々]/;
+  const parse = s => {
+    const u = [];
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === '(') {
+        const j = s.indexOf(')', i); const reading = s.slice(i + 1, j); i = j;
+        let base = '';
+        while (u.length && u[u.length - 1].k && !u[u.length - 1].r) base = u.pop().t + base;
+        u.push({ t: base, r: reading, w: base.length });
+      } else u.push({ t: ch, k: KANJI.test(ch), w: ch === ' ' ? .3 : 1 });
+    }
+    const total = u.reduce((a, x) => a + x.w, 0); let acc = 0;
+    return u.map(x => { const a = acc / total; acc += x.w; return { ...x, a, b: acc / total }; });
+  };
+  const LINES = RAW.map(([t0, t1, ja, zh]) => ({ t0, t1, zh, beats: parse(ja) }));
+
+  const track = $('#track'), field = $('#field'), stage = $('#stage');
+  const rows = LINES.map((ln, i) => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'lrow'; el.dataset.d = 'far';
+    el.innerHTML = `<span class="lja" lang="ja">${ln.beats.map(b => `<span class="b" style="--a:${b.a.toFixed(4)};--b:${b.b.toFixed(4)}">${b.r ? `<ruby>${b.t}<rt>${b.r}</rt></ruby>` : (b.t === ' ' ? '&nbsp;' : b.t)}</span>`).join('')}</span><span class="lzh">${ln.zh}</span>`;
+    el.onclick = () => { t = ln.t0 + .01; };
+    track.appendChild(el);
+    return { el, top: 0, h: 0 };
+  });
+
+  // ———— 设置 ————
+  let lang = 'bi', ruby = true;
+  const applyReading = () => {
+    field.classList.toggle('lang-ja', lang === 'ja'); field.classList.toggle('lang-zh', lang === 'zh');
+    field.classList.toggle('no-ruby', !ruby);
+    $('#aaState').textContent = { ja: '日', bi: '日中', zh: '中' }[lang] + (ruby && lang !== 'zh' ? ' · 注音' : '');
+    requestAnimationFrame(measure);
+  };
+  $('#langSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; lang = b.dataset.l; $('#langSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); applyReading(); };
+  $('#rubySw').onclick = e => { ruby = !ruby; e.currentTarget.setAttribute('aria-checked', ruby); applyReading(); };
+  const aa = $('#aaBtn'), pop = $('#pop');
+  const setPop = v => { pop.classList.toggle('open', v); aa.setAttribute('aria-expanded', v); };
+  aa.onclick = e => { e.stopPropagation(); setPop(!pop.classList.contains('open')); };
+  document.addEventListener('click', e => { if (!pop.contains(e.target)) setPop(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') setPop(false); });
+
+  // ———— 版本与面板 ————
+  const setView = v => {
+    stage.classList.toggle('v-new', v === 'new'); stage.classList.toggle('v-now', v === 'now');
+    $('#vNew').setAttribute('aria-pressed', v === 'new'); $('#vNow').setAttribute('aria-pressed', v === 'now');
+    setPop(false); requestAnimationFrame(() => { measure(); snap = true; });
+  };
+  $('#vNew').onclick = () => setView('new'); $('#vNow').onclick = () => setView('now');
+  $('#pill').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('#pill').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    stage.classList.toggle('p-lyrics', b.dataset.p === 'lyrics'); stage.classList.toggle('p-crate', b.dataset.p === 'crate');
+  };
+  $('#interBtn').onclick = () => { t = 13.2; if (!playing) togglePlay(); };
+
+  // ———— 走带 ————
+  let t = 8.4, playing = true;
+  const playIcon = $('#playIcon');
+  const togglePlay = () => {
+    playing = !playing;
+    playIcon.innerHTML = playing ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="7 4 20 12 7 20"/>';
+    $('#arm').style.rotate = playing ? '' : '-14deg';
+  };
+  playing = !playing; togglePlay();
+  $('#playBtn').onclick = togglePlay;
+  $('#bar').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); t = clamp((e.clientX - r.left) / r.width) * END; };
+
+  // ———— 缩放与测量 ————
+  const wrap = $('#stageWrap');
+  let S = 1, fieldH = 600, fieldW = 600;
+  const fit = () => { S = Math.min(1, wrap.clientWidth / 1200); stage.style.transform = `scale(${S})`; wrap.style.height = 720 * S + 'px'; measure(); };
+  function measure() {
+    rows.forEach(r => { r.top = r.el.offsetTop; r.h = r.el.offsetHeight; });
+    fieldH = field.clientHeight; fieldW = field.clientWidth;
+    $('#wlSvg').setAttribute('viewBox', `0 0 ${fieldW} 40`);
+  }
+  addEventListener('resize', fit);
+  document.fonts.ready.then(fit);
+  fit();
+
+  // ———— 每帧 ————
+  const disc = $('#disc'), water = $('#water'), wl = $('#wl'), wlPath = $('#wlPath'), fglow = $('#fglow');
+  const clk = $('#clk'), cd = $('#cd'), ring = $('#ring'), ringArc = $('#ringArc'), barFill = $('#barFill'), tNow = $('#tNow');
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  let y = 0, snap = true, cur = -2, rippleT0 = -1, angle = 0, vel = 20, last = performance.now(), flat = false;
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (playing) { t += dt; if (t >= END) { t = 0; snap = true; } }
+    const isNew = stage.classList.contains('v-new');
+
+    // 当前句 / 间奏
+    let idx = -1; for (let i = 0; i < LINES.length; i++) if (LINES[i].t0 <= t) idx = i;
+    const L = LINES[idx], N = LINES[idx + 1];
+    const inter = !!(L && N && t > L.t1 && N.t0 - L.t1 > 5);
+    const interP = inter ? (t - L.t1) / (N.t0 - L.t1) : 0;
+    if (idx !== cur) {
+      rows.forEach((r, i) => { const d = i - idx; r.el.dataset.d = d === 0 ? '0' : d > 3 ? 'far' : d < -3 ? '-far' : String(d); r.el.style.removeProperty('--p'); });
+      if (cur !== -2 && idx >= 0 && !reduce) rippleT0 = now;
+      cur = idx;
+    }
+    if (L) rows[idx].el.style.setProperty('--p', clamp((t - L.t0) / (L.t1 - L.t0)).toFixed(4));
+
+    // 词场位置
+    const W = isNew ? fieldH * .5 : fieldH * .42;
+    let target;
+    if (isNew) target = idx < 0 ? W + 20 - rows[0].top : W - 8 - (rows[idx].top + rows[idx].h);
+    else target = idx < 0 ? 0 : W - (rows[idx].top + rows[idx].h / 2);
+    y = snap || reduce ? target : y + (target - y) * (1 - Math.exp(-dt / .26));
+    snap = false;
+    track.style.transform = `translateY(${y.toFixed(2)}px)`;
+
+    // 水线、水下层、焦点光
+    wl.style.top = (W - 20) + 'px';
+    water.style.top = W + 'px';
+    if (isNew && L) fglow.style.top = (y + rows[idx].top + rows[idx].h / 2 - 80).toFixed(1) + 'px';
+    fglow.style.opacity = isNew && !inter ? (.55 + .25 * Math.sin(now / 420) * Math.sin(now / 1300)).toFixed(3) : '0';
+    clk.textContent = fmt(t);
+
+    let animated = false;
+    const pts = [];
+    const ru = rippleT0 >= 0 ? (now - rippleT0) / 900 : 1;
+    if (ru >= 1) rippleT0 = -1;
+    const amp = inter && !reduce ? 7 * Math.pow(1 - interP, 1.3) : 0;
+    if (isNew && (amp > .05 || rippleT0 >= 0)) {
+      animated = true;
+      for (let x = 0; x <= fieldW; x += 6) {
+        const env = Math.sin(Math.PI * x / fieldW);
+        let v = amp * env * (Math.sin(x / 38 - now / 460) * .7 + Math.sin(x / 17 + now / 300) * .3);
+        if (rippleT0 >= 0) { const c = 14 + ru * fieldW * .75; v += 5 * Math.pow(1 - ru, 1.5) * Math.exp(-Math.pow((x - c) / 46, 2)) * Math.sin((x - 14) / 7 - ru * 18); }
+        pts.push(`${x},${(20 + v).toFixed(2)}`);
+      }
+      wlPath.setAttribute('d', 'M' + pts.join(' L'));
+      flat = false;
+    } else if (!flat) { wlPath.setAttribute('d', `M0,20 L${fieldW},20`); flat = true; }
+    cd.textContent = inter ? `还有 ${Math.ceil((1 - interP) * (N.t0 - L.t1))}″` : '';
+    cd.classList.toggle('on', isNew && inter);
+
+    // 现状：间奏圈
+    ring.classList.toggle('on', !isNew && inter);
+    ringArc.style.strokeDashoffset = (1 - interP).toFixed(4);
+
+    barFill.style.width = (t / END * 100) + '%'; tNow.textContent = fmt(t);
+    vel += ((playing && !reduce ? 20 : 0) - vel) * (1 - Math.exp(-dt / 1.4));
+    angle = (angle + vel * dt) % 360; disc.style.transform = `rotate(${angle}deg)`;
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

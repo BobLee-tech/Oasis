@@ -3,6 +3,7 @@
 // 🎧 共鸣（音乐页）。四条规矩，改之前必读（详见 docs/music-design.md §A2）：
 //   1. 100ms 内给画面反馈：命令当帧改界面状态，音量淡入淡出在后台跟上（useSoundscape 的命令）。
 //   2. 控件不随内容迁移：歌词/选碟切换条固定在右栏顶部；曲目铭牌外框定高；在播标识在曲号槽里替换数字。
+//      歌词近景时唱片退到舞台边缘是“镜头”而非控件迁移：走带、音量、切换条都不动。
 //   3. 一个元素只归一套动画系统：不跨容器用 layoutId；被 ticker 每帧移动的容器里不放 framer layout 元素。
 //      layoutId 只留给父容器静止的高亮块与下划线。
 //   4. 最后一帧等于静止态：面板只做原位交叉淡化（opacity），尺寸变化一律预留。
@@ -31,6 +32,7 @@ import { PlaybackBar } from './resonance/PlaybackBar';
 import { CrateList, type AlbumGroup } from './resonance/CrateList';
 import { TrackCaption } from './resonance/TrackCaption';
 import { LinerNotes } from './resonance/LinerNotes';
+import { RippleReveal } from './resonance/RippleReveal';
 import { getTrackProfile, loadTrackProfiles, useTrackProfilesReady } from '../lib/trackProfile';
 
 const Icons = {
@@ -65,6 +67,29 @@ const CATEGORIES: { id: MusicCategory; label: string }[] = [
   { id: 'Atarayo', label: 'ATARAYO' },
   { id: 'Miku', label: 'MIKU' }
 ];
+
+// 📜 纸套底：情绪色从唱机一侧晕开；四边羽化进页面底色
+const SLEEVE_FEATHER = 'linear-gradient(to right, transparent, #000 4rem, #000 calc(100% - 4rem), transparent)';
+const SLEEVE_BACKDROP: React.CSSProperties = {
+  backgroundImage:
+    'radial-gradient(60% 70% at 22% 45%, color-mix(in srgb, var(--mood) 13%, transparent), transparent 70%),' +
+    'radial-gradient(40% 50% at 96% 100%, color-mix(in srgb, var(--mood) 7%, transparent), transparent 70%)',
+  maskImage: `${SLEEVE_FEATHER}, linear-gradient(to bottom, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent)`,
+  WebkitMaskImage: `${SLEEVE_FEATHER}, linear-gradient(to bottom, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent)`,
+  maskComposite: 'intersect',
+  WebkitMaskComposite: 'source-in',
+};
+
+const MOBILE_SLEEVE_BACKDROP: React.CSSProperties = {
+  backgroundImage: 'radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--mood) 12%, transparent), transparent 70%)',
+  maskImage: 'linear-gradient(to bottom, transparent, #000 0.75rem, #000 calc(100% - 1.5rem), transparent)',
+  WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 0.75rem, #000 calc(100% - 1.5rem), transparent)',
+};
+
+// 🎥 歌词近景的镜头：唱片放大 1.4 倍、中心移到台面左缘外 18% 处，只露出右半边。
+//    只动 transform / opacity；切回选碟时从当前值折返（规矩 4）。
+const CLOSE_UP_DISC = 'translateX(-84%) scale(1.4)';
+const CAMERA = 'transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none';
 
 // 💿 黑胶纹理：主唱盘的同心声槽
 const VINYL_GROOVES = 'repeating-radial-gradient(circle at 50% 50%, #111 0px, #111 3px, #1b1b1f 4px, #111 5px)';
@@ -115,10 +140,17 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
   const [desktopPanel, setDesktopPanel] = useState<'lyrics' | 'crate'>('crate');
   const [ambienceEnabled, setAmbienceEnabled] = useState(initialAmbience);
   const motionEnabled = ambienceEnabled && !reduceMotion;
-  // 📜 曲目卡（内页）：浮层，不占排版；切面板或切段时合上
+  // 📜 内页：一直在水下，点贴纸或标题荡开涟漪才看见（RippleReveal）；切面板或切段时合上。
+  //    原点记在 ref 里：收回时波回到开启时的那个点。
   const [notesOpen, setNotesOpen] = useState(false);
-  const openNotes = () => setNotesOpen(true);
+  const notesOrigin = useRef<HTMLElement | null>(null);
+  const toggleNotes = (origin: HTMLElement) => {
+    if (!notesOpen) notesOrigin.current = origin;
+    setNotesOpen(open => !open);
+  };
   const closeNotes = useMemo(() => () => setNotesOpen(false), []);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLButtonElement>(null);
   const chooseDesktopPanel = (panel: 'lyrics' | 'crate') => { setDesktopPanel(panel); setNotesOpen(false); };
   const chooseMobileTab = (tab: 'disc' | 'lyrics' | 'crate') => { setMobileTab(tab); setNotesOpen(false); };
 
@@ -142,6 +174,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
       const dx = event.clientX - start.x;
       if (dy < -60 && Math.abs(dy) > Math.abs(dx) * 1.6) {
         swiped.current = true;
+        notesOrigin.current = labelRef.current;
         setNotesOpen(true);
       }
     },
@@ -248,6 +281,8 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
   }, []);
 
   const moodStyle = { '--mood': currentTrack.color } as React.CSSProperties;
+  // 🎥 歌词近景：镜头推近，唱片退到舞台边缘成背景，歌词站到中央（docs/music-lyrics-stage-demo.html）
+  const closeUp = desktopPanel === 'lyrics';
   const toggleMute = () => changeVolume(volume > 0 ? 0 : 0.5);
 
   // 分类栏：选中只改颜色与下划线，不改字重——字重会改变按钮宽度，带着整排分类横跳。
@@ -274,6 +309,34 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
     </button>
   ));
 
+  // 🏷️ 贴纸 = 内页入口（盘面声槽仍是播放/暂停）。按钮不放进旋转的唱片里，免得提示字跟着转。
+  const notesLabel = (compact: boolean) => (
+    <button
+      ref={labelRef}
+      type="button"
+      onClick={event => { event.stopPropagation(); toggleNotes(event.currentTarget); }}
+      aria-label={notesOpen ? '合上内页' : `翻开「${currentTrack.title}」的内页`}
+      aria-expanded={notesOpen}
+      className="notes-label group/label absolute inset-[31%] z-30 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mood)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+    >
+      {!compact && (
+        <>
+          <span
+            aria-hidden
+            className="absolute -inset-[9%] rounded-full border border-dashed opacity-0 transition-opacity duration-200 group-hover/label:opacity-70"
+            style={{ borderColor: 'color-mix(in srgb, var(--mood) 70%, white)' }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-full mt-4 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/70 px-2.5 py-1 font-mono text-[10px] tracking-[0.3em] text-white opacity-0 transition-opacity duration-200 group-hover/label:opacity-100"
+          >
+            {notesOpen ? '合上' : '内页'}
+          </span>
+        </>
+      )}
+    </button>
+  );
+
   const crateMask = (top: number, bottom: number) => ({
     maskImage: `linear-gradient(to bottom, transparent 0, #000 ${top}px, #000 calc(100% - ${bottom}px), transparent 100%)`,
     WebkitMaskImage: `linear-gradient(to bottom, transparent 0, #000 ${top}px, #000 calc(100% - ${bottom}px), transparent 100%)`,
@@ -283,7 +346,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
   if (!isDesktop) {
     return (
       <div
-        className="oasis-mood oasis-bottom-scroll-safe relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(3.25rem,calc(env(safe-area-inset-top)+1.75rem))] pb-[var(--oasis-bottom-safe-space)] px-5"
+        className="oasis-mood oasis-bottom-scroll-safe relative w-full h-full flex flex-col z-10 overflow-hidden pt-[max(4.75rem,calc(env(safe-area-inset-top)+3.25rem))] pb-[var(--oasis-bottom-safe-space)] px-5"
         style={moodStyle}
       >
 
@@ -360,12 +423,13 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                       </div>
                       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[4.5%] h-[4.5%] bg-[#FAF8F3] dark:bg-[#0A0F1D] rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] z-20" />
                     </div>
+                    {notesLabel(true)}
                   </div>
 
                   {/* 正在共鸣：声波 → 歌名 → 艺术家 */}
                   <div className="w-full flex flex-col items-center text-center px-2 min-h-0">
                     <div className="w-full max-w-[280px] mt-5"><StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={40} active={active && motionEnabled} /></div>
-                    <div className="w-full mt-3"><TrackCaption track={currentTrack} isPlaying={isPlaying} onOpenNotes={openNotes} /></div>
+                    <div className="w-full mt-3"><TrackCaption track={currentTrack} isPlaying={isPlaying} onOpenNotes={toggleNotes} /></div>
                   </div>
 
                   {/* 走带控制台：进度 + 传送键 */}
@@ -392,6 +456,8 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                     isPlaying={isPlaying}
                     active={active}
                     compact
+                    onOpenNotes={toggleNotes}
+                    ambient={motionEnabled}
                   />
                 </div>
               ) : (
@@ -414,7 +480,20 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
               )}
             </motion.div>
           </AnimatePresence>
-          <LinerNotes track={currentTrack} open={notesOpen} onClose={closeNotes} isOwner={isOwner} compact />
+          <RippleReveal
+            open={notesOpen}
+            originRef={notesOrigin}
+            color={currentTrack.color}
+            plain={!motionEnabled}
+            onClose={closeNotes}
+            className="absolute inset-0 z-30"
+            fxClassName="absolute inset-0 z-[31] h-full w-full"
+          >
+            <div aria-hidden className="pointer-events-none absolute -inset-x-5 -inset-y-3 bg-[#FAF8F3] dark:bg-[#0A0F1D]" style={MOBILE_SLEEVE_BACKDROP} />
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain px-1 pb-8 pt-1 no-scrollbar">
+              <LinerNotes track={currentTrack} onClose={closeNotes} isOwner={isOwner} compact />
+            </div>
+          </RippleReveal>
         </div>
       </div>
     );
@@ -430,7 +509,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
       </div>
 
       {/* ✨ 两列都允许收缩，间距来自容器而非十二列网格中的空轨。 */}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] gap-y-14 lg:gap-x-[clamp(2.5rem,5vw,6rem)] w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
+      <div ref={stageRef} className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] gap-y-14 lg:gap-x-[clamp(2.5rem,5vw,6rem)] w-full mt-8 lg:flex-1 lg:min-h-0 items-stretch">
 
         {/* 🕯️ 一套近光 + 远光：唱片是光源，词场只承接余光。 */}
         <StageGlow
@@ -443,23 +522,29 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
         />
 
         {/* ================= 左侧：拟真转盘唱机（主角） ================= */}
-        <div className="min-w-0 flex flex-col items-center justify-center relative h-full min-h-0">
+        <div className="min-w-0 flex flex-col items-center justify-center relative z-30 h-full min-h-0">
 
-          {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂 */}
-          <div className="relative w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] aspect-[10/8.8] rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)]">
-
-            {/* 台面微光拉丝 */}
-            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent pointer-events-none" />
-            {/* 台面顶缘高光，增强玻璃质感 */}
-            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 dark:via-white/20 to-transparent pointer-events-none" />
+          {/* 🎛️ 唱机基座 Plinth：玻璃木纹台面，承载转盘与唱臂。
+              台面是单独一层：歌词近景时它淡出，唱片留下来退到舞台边缘。 */}
+          <div className="relative w-full max-w-[420px] lg:max-w-[480px] xl:max-w-[520px] aspect-[10/8.8]">
+            <div
+              aria-hidden
+              className={`absolute inset-0 rounded-[2.5rem] bg-white/45 dark:bg-white/[0.04] border border-white/60 dark:border-white/10 backdrop-blur-xl shadow-[0_36px_90px_rgba(0,0,0,0.14)] dark:shadow-[0_36px_90px_rgba(0,0,0,0.6)] pointer-events-none ${CAMERA} ${closeUp ? 'opacity-0 scale-[0.96]' : ''}`}
+            >
+              {/* 台面微光拉丝 */}
+              <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/35 via-transparent to-white/5 dark:from-white/[0.07] dark:to-transparent" />
+              {/* 台面顶缘高光，增强玻璃质感 */}
+              <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 dark:via-white/20 to-transparent" />
+            </div>
 
             {/* 💿 转盘 + 黑胶：偏左放置，给唱臂留出呼吸位 */}
             <div
-              className="absolute left-[6%] top-1/2 -translate-y-1/2 w-[71%] aspect-square cursor-pointer group"
+              className={`absolute left-[6%] top-1/2 -translate-y-1/2 w-[71%] aspect-square cursor-pointer group ${CAMERA}`}
+              style={{ transform: closeUp ? CLOSE_UP_DISC : 'none' }}
               onClick={togglePlay} role="button" aria-label={isPlaying ? '暂停' : '播放'}
             >
               {/* 🎛️ 拉丝金属转盘（platter）：黑胶坐落其上，带柔和径向高光与内阴影，质感更真实 */}
-              <div className="absolute -inset-[4.5%] rounded-full bg-gradient-to-br from-slate-200/70 via-slate-300/45 to-slate-400/40 dark:from-white/[0.07] dark:via-black/30 dark:to-black/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.18)] border border-white/50 dark:border-white/[0.06]" />
+              <div className={`absolute -inset-[4.5%] rounded-full bg-gradient-to-br from-slate-200/70 via-slate-300/45 to-slate-400/40 dark:from-white/[0.07] dark:via-black/30 dark:to-black/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.18)] border border-white/50 dark:border-white/[0.06] ${CAMERA} ${closeUp ? 'opacity-0' : ''}`} />
               {/* 转盘边缘细圈，分隔黑胶与盘面 */}
               <div className="absolute -inset-[0.5%] rounded-full border border-white/25 dark:border-white/[0.05] pointer-events-none z-10" />
 
@@ -489,16 +574,20 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[4.5%] h-[4.5%] bg-[#FAF8F3] dark:bg-[#0A0F1D] rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] z-20" />
               </div>
 
-              {/* 悬停播放/暂停提示 */}
-              <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/0 group-hover:bg-black/25 opacity-0 group-hover:opacity-100 transition-all duration-500 backdrop-blur-[1px] z-30">
-                <span className="text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] scale-[1.8]">
+              {/* 悬停播放/暂停提示：只罩声槽（中间挖空给贴纸），悬停贴纸时让位给「内页」 */}
+              <div
+                className="absolute inset-0 rounded-full flex items-start justify-center pt-[9%] bg-black/0 group-hover:bg-black/25 opacity-0 group-hover:opacity-100 group-has-[.notes-label:hover]:opacity-0 transition-all duration-500 z-30 pointer-events-none"
+                style={{ maskImage: 'radial-gradient(circle, transparent 19.5%, #000 20.5%)', WebkitMaskImage: 'radial-gradient(circle, transparent 19.5%, #000 20.5%)' }}
+              >
+                <span className="text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] scale-[1.5]">
                   {isPlaying ? Icons.pause : Icons.play}
                 </span>
               </div>
+              {notesLabel(false)}
             </div>
 
             {/* 🦾 唱臂 Tonearm：随播放状态落针/抬臂，并随进度缓缓内移（ticker 驱动） */}
-            <div className="absolute right-[9%] top-[13%] h-[62%] z-30 pointer-events-none">
+            <div className={`absolute right-[9%] top-[13%] h-[62%] z-30 pointer-events-none ${CAMERA} ${closeUp ? 'opacity-0' : ''}`}>
               {/* 轴座 */}
               <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[15%] min-w-9 aspect-square rounded-full bg-gradient-to-br from-slate-100 to-slate-300 dark:from-slate-600 dark:to-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.25)] border border-white/60 dark:border-white/10 z-20" />
               <div ref={armRef} className="relative h-full w-2 origin-top will-change-transform" style={{ transform: `rotate(${ARM_REST}deg)` }}>
@@ -520,7 +609,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
             </div>
 
             {/* 🔴 转速指示灯：右下角，呼吸节奏与播放同步 */}
-            <div className="absolute right-[7%] bottom-[7%] flex items-center gap-2.5">
+            <div className={`absolute right-[7%] bottom-[7%] flex items-center gap-2.5 ${CAMERA} ${closeUp ? 'opacity-0' : ''}`}>
               <span
                 className="w-2 h-2 rounded-full transition-[opacity,box-shadow] duration-300"
                 style={{
@@ -613,11 +702,35 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
           </div>
         </div>
 
+        {/* 📜 内页：与网格同框、整张纸套；背景向外多铺一圈并羽化，免得露出硬边 */}
+        <RippleReveal
+          open={notesOpen}
+          originRef={notesOrigin}
+          color={currentTrack.color}
+          plain={!motionEnabled}
+          onClose={closeNotes}
+          scopeRef={stageRef}
+          className="absolute inset-0 z-[25] hidden lg:block"
+          fxClassName="absolute inset-0 z-[26] hidden h-full w-full lg:block"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-16 -inset-y-10 bg-[#FAF8F3] dark:bg-[#0A0F1D]"
+            style={SLEEVE_BACKDROP}
+          />
+          <div className="relative grid h-full grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] gap-x-[clamp(2.5rem,5vw,6rem)]">
+            <div aria-hidden />
+            <div className="min-h-0 pt-14 pb-4">
+              <LinerNotes track={currentTrack} onClose={closeNotes} isOwner={isOwner} />
+            </div>
+          </div>
+        </RippleReveal>
+
         {/* ================= 右侧：切换条（固定） + 面板（原位交叉淡化） ================= */}
-        <div className="min-w-0 flex flex-col items-center text-center w-full h-full min-h-0 relative z-20">
+        <div className="min-w-0 flex flex-col items-center text-center w-full h-full min-h-0 relative">
 
           {/* 歌词 / 选碟：同一舞台的两种观看距离。固定在右栏顶部，任何状态下都不移动（规矩 2）。 */}
-          <div className="shrink-0 inline-flex mb-6 p-1 rounded-full bg-white/40 dark:bg-white/[0.035] border border-white/55 dark:border-white/[0.08] shadow-sm">
+          <div className="relative z-40 shrink-0 inline-flex mb-6 p-1 rounded-full bg-white/40 dark:bg-white/[0.035] border border-white/55 dark:border-white/[0.08] shadow-sm">
             {(['lyrics', 'crate'] as const).map(panel => (
               <button
                 key={panel}
@@ -639,23 +752,25 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
             ))}
           </div>
 
-          <div className="relative w-full flex-1 min-h-0">
+          <div className="relative isolate w-full flex-1 min-h-0">
             <AnimatePresence initial={false}>
               {desktopPanel === 'lyrics' ? (
                 <motion.div
                   key="lyrics"
-                  className="absolute inset-0 flex justify-center"
+                  className="absolute inset-y-0 right-0 -left-[clamp(2rem,7vw,7.5rem)] flex justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={MOTION.swap}
                 >
-                  <div className="w-full max-w-[540px] h-full">
+                  <div className="w-full max-w-[680px] h-full" data-ripple-push>
                     <LyricPanel
                       track={currentTrack}
                       color={currentTrack.color}
                       isPlaying={isPlaying}
                       active={active}
+                      onOpenNotes={toggleNotes}
+                      ambient={motionEnabled}
                     />
                   </div>
                 </motion.div>
@@ -669,21 +784,21 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                   transition={MOTION.swap}
                 >
                   {/* 封套式曲目铭牌：声波 + 定高的歌名框 */}
-                  <div className="shrink-0 w-full max-w-[480px] flex flex-col items-center">
+                  <div className="shrink-0 w-full max-w-[480px] flex flex-col items-center" data-ripple-push>
                     {/* 声波是装饰：屏高不足时让位给碟箱 */}
                     <div className="w-full [@media(max-height:860px)]:hidden">
                       <StageMeter color={currentTrack.color} isPlaying={isPlaying} bars={72} active={active && motionEnabled} />
                     </div>
-                    <div className="w-full mt-2"><TrackCaption track={currentTrack} isPlaying={isPlaying} withExcerpt onOpenNotes={openNotes} /></div>
+                    <div className="w-full mt-2"><TrackCaption track={currentTrack} isPlaying={isPlaying} withExcerpt onOpenNotes={toggleNotes} /></div>
                   </div>
 
                   {/* 分类栏（居中） */}
-                  <div className="shrink-0 flex flex-wrap justify-center gap-x-5 md:gap-x-8 gap-y-2 mt-4 mb-5 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-3">
+                  <div className="shrink-0 flex flex-wrap justify-center gap-x-5 md:gap-x-8 gap-y-2 mt-4 mb-5 w-full max-w-[540px] border-b border-slate-200/50 dark:border-white/5 pb-3" data-ripple-push>
                     {categoryBar(false)}
                   </div>
 
                   {/* 💿 选碟台 The Crate：一台拟真选碟箱，碟片在其中陈列，点选即「换碟上盘」 */}
-                  <div className="w-full max-w-[520px] mx-auto flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="w-full max-w-[520px] mx-auto flex flex-col flex-1 min-h-0 overflow-hidden" data-ripple-push>
 
                     {/* 🏷️ 极简标签行：身份标识 + 碟数 */}
                     <div className="shrink-0 flex items-center justify-between px-1 pb-3 mb-1 border-b border-transparent [border-image:linear-gradient(to_right,transparent,rgba(148,163,184,0.25),transparent)_1] dark:[border-image:linear-gradient(to_right,transparent,rgba(255,255,255,0.12),transparent)_1]">
@@ -711,8 +826,6 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                     </div>
                   </div>
 
-                  {/* 📜 内页：盖在铭牌与碟箱上方，绝对定位，不推动任何东西 */}
-                  <LinerNotes track={currentTrack} open={notesOpen} onClose={closeNotes} isOwner={isOwner} />
                 </motion.div>
               )}
             </AnimatePresence>

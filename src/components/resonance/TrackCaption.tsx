@@ -34,8 +34,8 @@ interface TrackCaptionProps {
   isPlaying: boolean;
   /** 桌面选碟台带摘句、留更高的固定高度；手机唱片页只要歌名与艺人。 */
   withExcerpt?: boolean;
-  /** 艺人那一行末尾的「内页」入口（曲目卡）；不传就不显示 */
-  onOpenNotes?: () => void;
+  /** 内页入口：歌名本身可点，艺人行末另有一枚「内页 ›」；参数是涟漪的原点。不传就都不可点 */
+  onOpenNotes?: (origin: HTMLElement) => void;
 }
 
 /**
@@ -57,7 +57,16 @@ export const TrackCaption: React.FC<TrackCaptionProps> = ({ track, isPlaying, wi
           title={track.title}
           className={`${withExcerpt ? deskTitleSizeClass(titleVisualWidth(track.title)) : titleSizeClass(titleVisualWidth(track.title))} font-serif text-slate-800 dark:text-slate-50 tracking-wide leading-[1.12] w-full text-balance line-clamp-2`}
         >
-          {track.title}
+          {onOpenNotes ? (
+            <button
+              type="button"
+              onClick={event => onOpenNotes(event.currentTarget)}
+              aria-label={`${track.title}，翻开内页`}
+              className="rounded-xl px-2 outline-none transition-colors hover:bg-[color-mix(in_srgb,var(--mood)_8%,transparent)] focus-visible:ring-2 focus-visible:ring-[color:var(--mood)]"
+            >
+              {track.title}
+            </button>
+          ) : track.title}
         </h2>
 
         <div className={`flex items-center justify-center ${withExcerpt ? 'gap-3 mt-4 [@media(min-height:900px)]:mt-5' : 'gap-2.5 mt-3'}`}>
@@ -71,7 +80,7 @@ export const TrackCaption: React.FC<TrackCaptionProps> = ({ track, isPlaying, wi
           {onOpenNotes && (
             <button
               type="button"
-              onClick={onOpenNotes}
+              onClick={event => onOpenNotes(event.currentTarget)}
               aria-label={`打开「${track.title}」的内页`}
               className="group/notes -my-2 flex items-center gap-1 rounded-full px-2 py-2 font-mono text-[9px] tracking-[0.28em] text-slate-400 outline-none transition-colors hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[color:var(--mood)] dark:text-slate-500 dark:hover:text-slate-200"
             >

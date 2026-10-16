@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getEnergy, getPlayerSnapshot, setActiveLyric } from '../../hooks/useSoundscape';
 import { beatsOf, formatClock, interludeAt, lineProgress, prepareTimedLines } from '../../lib/lyricTiming';
 import { findActiveLine } from '../../lib/lyrics';
 import { useTicker } from '../../lib/ticker';
 import type { LyricLanguage, LyricsDocument, Track } from '../../types/music';
-import { Interlude } from './Interlude';
 import { LyricRow } from './LyricRow';
 
 interface LyricFieldProps {
@@ -22,8 +21,19 @@ interface LyricFieldProps {
   furigana: boolean;
 }
 
-/** 焦点行停在词场高度的这个位置：上方留 42% 的已唱，下方留 58% 的将唱。 */
-const FOCUS_RATIO = 0.42;
+/**
+ * 水线：词场高度的一半。当前句的底边贴在水线上，线上是已唱，线下是“水里”的将唱——
+ * 句子被唱到时穿过水线浮上来（docs/music-lyrics-stage-demo.html）。
+ */
+const FOCUS_RATIO = 0.5;
+/** 当前句底边到水线的距离（行自带上下内边距，这里只留一点呼吸） */
+const WATER_GAP = 4;
+/** 前奏时第一句沉在水线下的深度 */
+const INTRO_DEPTH = 18;
+/** 换句时水线上那道小波走完的时长 */
+const RIPPLE_MS = 900;
+/** 间奏时水线的最大起伏（px），随剩余时间衰减到 0：水面平静了，下一句就来了 */
+const INTERLUDE_SWELL = 7;
 const TAP_SLOP = 6;          // px，小于此位移算点击而非拖拽
 const FLING_TAU = 0.32;      // s，惯性衰减时间常数
 const FLING_STOP = 60;       // px/s，低于此速度就吸附
@@ -55,17 +65,19 @@ export const LyricField: React.FC<LyricFieldProps> = ({
 
   const [playbackIndex, setPlaybackIndex] = useState(initialIndex);
   const [following, setFollowing] = useState(true);
-  const [interludeVisible, setInterludeVisible] = useState(false);
 
   const fieldRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const interludeRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const glowLevelRef = useRef(0);
-  const rippleRef = useRef<HTMLSpanElement>(null);
   const waterClockRef = useRef<HTMLSpanElement>(null);
+  const countdownRef = useRef<HTMLSpanElement>(null);
+  const countdownTextRef = useRef('');
+  const waterSvgRef = useRef<SVGSVGElement>(null);
+  const wavePathRef = useRef<SVGPathElement>(null);
+  /** 水线：上一次换句的时刻（小波从句首荡开）与是否已经写回直线 */
+  const waveRef = useRef({ rippleAt: -Infinity, flat: false });
+  const gradientId = `waterline-${useId().replace(/:/g, '')}`;
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const publishedLyricRef = useRef('');
 
@@ -81,6 +93,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     tops: [] as number[],
     heights: [] as number[],
     fieldHeight: 0,
+    fieldWidth: 0,
     minY: 0,
     maxY: 0,
   });
@@ -106,7 +119,6 @@ export const LyricField: React.FC<LyricFieldProps> = ({
   const appliedPlaybackRef = useRef(Number.NaN);
   const appliedBrowsingRef = useRef(false);
   const followingRef = useRef(true);
-  const interludeVisibleRef = useRef(false);
   const lastInputRef = useRef(0);
 
   const markInput = useCallback(() => {
@@ -118,7 +130,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     if (!fieldHeight) return springRef.current.target;
     if (index < 0) return maxY;
     if (tops[index] === undefined) return springRef.current.target;
-    return -(tops[index] + heights[index] / 2) + fieldHeight * FOCUS_RATIO;
+    return fieldHeight * FOCUS_RATIO - WATER_GAP - (tops[index] + heights[index]);
   }, []);
 
   const measure = useCallback(() => {
@@ -138,12 +150,15 @@ export const LyricField: React.FC<LyricFieldProps> = ({
       tops[index] = row ? row.getBoundingClientRect().top - fieldTop - currentY : 0;
       heights[index] = row?.offsetHeight ?? 0;
     }
-    const title = titleRef.current;
-    const maxY = title ? fieldHeight * 0.19 - title.offsetTop : 0;
+    // 前奏：第一句沉在水线下；最后一句浮在水线上
+    const maxY = count ? fieldHeight * FOCUS_RATIO + INTRO_DEPTH - tops[0] : 0;
     const minY = count
-      ? -(tops[count - 1] + heights[count - 1] / 2) + fieldHeight * FOCUS_RATIO
+      ? fieldHeight * FOCUS_RATIO - WATER_GAP - (tops[count - 1] + heights[count - 1])
       : 0;
-    measurementsRef.current = { tops, heights, fieldHeight, minY, maxY };
+    const fieldWidth = field.clientWidth;
+    measurementsRef.current = { tops, heights, fieldHeight, fieldWidth, minY, maxY };
+    waterSvgRef.current?.setAttribute('viewBox', `0 0 ${Math.max(1, fieldWidth)} 40`);
+    waveRef.current.flat = false;
 
     const spring = springRef.current;
     spring.target = targetFor(focusRef.current);
@@ -194,11 +209,11 @@ export const LyricField: React.FC<LyricFieldProps> = ({
 
   const nearestIndex = useCallback((y: number) => {
     const { tops, heights, fieldHeight } = measurementsRef.current;
-    const focusAt = fieldHeight * FOCUS_RATIO - y;
+    const focusAt = fieldHeight * FOCUS_RATIO - WATER_GAP - y;
     let best = 0;
     let bestDistance = Infinity;
     for (let index = 0; index < tops.length; index += 1) {
-      const distance = Math.abs(tops[index] + heights[index] / 2 - focusAt);
+      const distance = Math.abs(tops[index] + heights[index] - focusAt);
       if (distance < bestDistance) {
         bestDistance = distance;
         best = index;
@@ -277,6 +292,35 @@ export const LyricField: React.FC<LyricFieldProps> = ({
     return () => field.removeEventListener('wheel', onWheel);
   }, [dragBy, markInput]);
 
+  /** 水线的形状：间奏的起伏（swell 0–1）+ 换句后的一道小波。没动静时写一次直线就不再碰 */
+  const drawWaterline = (now: number, swell: number) => {
+    const path = wavePathRef.current;
+    const width = measurementsRef.current.fieldWidth;
+    const wave = waveRef.current;
+    if (!path || !width) return;
+    const ripple = (now - wave.rippleAt) / RIPPLE_MS;
+    const amplitude = INTERLUDE_SWELL * Math.pow(swell, 1.3) * (0.85 + getEnergy().low * 0.3);
+    if (amplitude < 0.05 && !(ripple >= 0 && ripple < 1)) {
+      if (!wave.flat) {
+        path.setAttribute('d', `M0,20 L${width},20`);
+        wave.flat = true;
+      }
+      return;
+    }
+    wave.flat = false;
+    const head = 14 + Math.max(0, ripple) * width * 0.75;
+    let d = '';
+    for (let x = 0; x <= width + 5; x += 6) {
+      const edge = Math.sin(Math.PI * Math.min(1, x / width));
+      let y = amplitude * edge * (Math.sin(x / 38 - now / 460) * 0.7 + Math.sin(x / 17 + now / 300) * 0.3);
+      if (ripple >= 0 && ripple < 1) {
+        y += 5 * Math.pow(1 - ripple, 1.5) * Math.exp(-(((x - head) / 46) ** 2)) * Math.sin((x - 14) / 7 - ripple * 18);
+      }
+      d += `${d ? 'L' : 'M'}${Math.min(x, width)},${(20 + y).toFixed(2)}`;
+    }
+    path.setAttribute('d', d);
+  };
+
   useTicker(
     (now, dt) => {
       // 换曲后这一页词场还在淡出：时钟已属于新曲，冻结在原地，别被新曲的 0 秒拽回顶部。
@@ -309,13 +353,8 @@ export const LyricField: React.FC<LyricFieldProps> = ({
             spring.y = spring.target;
             spring.velocity = 0;
           }
-          // 换行涟漪：从行首荡开一圈，呼应站点的水波语汇
-          const ripple = rippleRef.current;
-          if (ripple && !still) {
-            ripple.style.animation = 'none';
-            void ripple.offsetWidth;
-            ripple.style.animation = '';
-          }
+          // 换句：水线上从句首荡出一道小波，呼应站点的水波语汇
+          if (!still) waveRef.current.rippleAt = now;
         }
       }
       if (playbackIndexRef.current !== appliedPlaybackRef.current) {
@@ -403,23 +442,21 @@ export const LyricField: React.FC<LyricFieldProps> = ({
           });
         }
       }
-      if (interlude.active !== interludeVisibleRef.current) {
-        interludeVisibleRef.current = interlude.active;
-        setInterludeVisible(interlude.active);
+      // 间奏不再是独立的圆圈：水线自己起伏，振幅随剩余时间衰减，右端写还有几秒
+      let remainingMs = 0;
+      if (interlude.active) {
+        const line = timedLines[nextIndex];
+        remainingMs = line
+          ? line.sungEndMs + line.gapMs - playbackMs
+          : (timedLines[0]?.startMs ?? 0) - playbackMs;
       }
-      if (interludeRef.current) {
-        interludeRef.current.style.setProperty('--g', String(interlude.progress));
-        interludeRef.current.style.setProperty('--e', String(getEnergy().beat));
+      const countdown = interlude.active && remainingMs >= 1_000 ? `还有 ${Math.ceil(remainingMs / 1_000)}″` : '';
+      if (countdown !== countdownTextRef.current && countdownRef.current) {
+        countdownTextRef.current = countdown;
+        countdownRef.current.textContent = countdown;
+        countdownRef.current.style.opacity = countdown ? '1' : '0';
       }
-
-      const titleBottom = titleRef.current
-        ? titleRef.current.offsetTop + titleRef.current.offsetHeight
-        : 0;
-      if (headerRef.current) {
-        headerRef.current.style.opacity = String(
-          Math.max(0, Math.min(1, (-spring.y - titleBottom) / 24)),
-        );
-      }
+      drawWaterline(now, interlude.active && !still ? 1 - interlude.progress : 0);
 
       const browsing = !followingRef.current;
       if (browsing !== appliedBrowsingRef.current) {
@@ -551,66 +588,45 @@ export const LyricField: React.FC<LyricFieldProps> = ({
       className="lyric-field relative h-full min-h-0 touch-none overflow-clip overscroll-contain text-left outline-none"
       aria-label={`${track.title} 流动歌词，上下键浏览，回车跳转，左右键快退快进`}
     >
-      <div
-        ref={headerRef}
-        className="pointer-events-none absolute left-3 right-3 top-5 z-20 flex items-baseline justify-between opacity-0"
-      >
-        <span className="max-w-[70%] truncate font-serif text-sm tracking-wider text-slate-500 dark:text-slate-400">
-          {track.title}
-        </span>
-        <span className="font-mono text-[8px] tracking-[0.25em] uppercase text-slate-400/70 dark:text-slate-600">
-          {track.artist}
-        </span>
-      </div>
-
-      {/* 焦点位的柔光与水面线：歌词落进来的那道光 */}
+      {/* 当前句背后的柔光：贴着水线上方，歌词落进来的那道光 */}
       <div
         ref={glowRef}
         aria-hidden="true"
         className="lyric-focus-glow pointer-events-none absolute inset-x-0 z-0"
         style={{ top: `${FOCUS_RATIO * 100}%`, '--accent': color } as React.CSSProperties}
-      >
-        <span ref={rippleRef} className="lyric-focus-ripple" />
-      </div>
+      />
+
+      {/* 水下：一块静止的水色层（桌面加一点模糊），将唱的句子从它底下穿过 */}
       <div
         aria-hidden="true"
-        className="lyric-waterline pointer-events-none absolute inset-x-0 z-10 flex items-center gap-2 px-2"
+        className="lyric-water pointer-events-none absolute inset-x-0 bottom-0 z-10"
+        style={{ top: `${FOCUS_RATIO * 100}%`, '--accent': color } as React.CSSProperties}
+      />
+
+      {/* 水线：换句时荡一道小波；间奏时起伏、渐平；浏览时右端显示所指那句的时间 */}
+      <div
+        aria-hidden="true"
+        className="lyric-waterline pointer-events-none absolute inset-x-0 z-10 h-10"
         style={{ top: `${FOCUS_RATIO * 100}%`, '--accent': color } as React.CSSProperties}
       >
-        <span className="lyric-waterline-rule h-px flex-1" />
-        <span
-          ref={waterClockRef}
-          className="font-mono text-[8px] tabular-nums tracking-[0.18em] text-slate-500 dark:text-slate-400"
-        >
-          0:00
-        </span>
+        <svg ref={waterSvgRef} className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" style={{ stopColor: 'var(--accent)', stopOpacity: 0 }} />
+              <stop offset="0.15" style={{ stopColor: 'var(--accent)', stopOpacity: 0.55 }} />
+              <stop offset="0.85" style={{ stopColor: 'var(--accent)', stopOpacity: 0.3 }} />
+              <stop offset="1" style={{ stopColor: 'var(--accent)', stopOpacity: 0 }} />
+            </linearGradient>
+          </defs>
+          <path ref={wavePathRef} fill="none" stroke={`url(#${gradientId})`} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <div className="absolute -top-1 right-2 flex items-baseline gap-3 font-mono text-[10px] tabular-nums tracking-[0.16em]">
+          <span ref={countdownRef} className="lyric-countdown" style={{ opacity: 0 }} />
+          <span ref={waterClockRef} className="lyric-waterclock text-slate-500 dark:text-slate-400">0:00</span>
+        </div>
       </div>
 
-      <div ref={trackRef} className="absolute inset-x-0 top-0 transform-gpu px-1 pb-[42vh] pt-[12%]">
-        <div ref={titleRef} className="mb-14 px-3 text-left">
-          <h2
-            className={`font-serif font-medium leading-[1.08] tracking-wide text-slate-800 dark:text-slate-50 ${
-              compact ? 'text-[2rem]' : 'text-[2.45rem] xl:text-[3.15rem]'
-            }`}
-          >
-            {track.title}
-          </h2>
-          <p className="mt-3 font-mono text-[9px] tracking-[0.32em] uppercase text-slate-400 dark:text-slate-500">
-            {track.artist}
-          </p>
-          {track.excerpt && (
-            <p
-              className={`mt-6 max-w-[92%] font-serif italic leading-loose tracking-wider text-slate-500 dark:text-slate-400 ${
-                compact ? 'text-sm' : 'text-base'
-              }`}
-            >
-              <span style={{ color }}>“ </span>
-              {track.excerpt}
-              <span style={{ color }}> ”</span>
-            </p>
-          )}
-        </div>
-
+      <div ref={trackRef} className="absolute inset-x-0 top-0 transform-gpu px-1 pb-[50vh] pt-[12%]">
         <div role="list" aria-live="off">
           {timedLines.map((line, index) => (
             <LyricRow
@@ -631,8 +647,6 @@ export const LyricField: React.FC<LyricFieldProps> = ({
         </div>
       </div>
 
-      <Interlude ref={interludeRef} visible={interludeVisible} color={color} />
-
       <AnimatePresence>
         {!following && (
           <motion.button
@@ -641,7 +655,7 @@ export const LyricField: React.FC<LyricFieldProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             onClick={() => setFollowing(true)}
-            className="absolute bottom-5 left-1/2 z-30 h-9 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-white/78 px-4 font-mono text-[8px] tracking-[0.18em] text-slate-600 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-slate-900/78 dark:text-slate-300"
+            className="absolute bottom-5 left-1/2 z-30 h-9 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-white/78 px-4 font-mono text-[10px] tracking-[0.18em] text-slate-600 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-slate-900/78 dark:text-slate-300"
           >
             回到此刻
           </motion.button>

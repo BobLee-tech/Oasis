@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>水下的内页</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Klee+One&family=Noto+Serif+SC:wght@400;600&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+/* ———————————————— 令牌 ———————————————— */
+:root {
+  --mood: #6EE7B7;
+  --page: #FAF8F3; --sleeve: #F3EFE6;
+  --ink: #1E293B; --ink2: #475569; --ink3: #94A3B8;
+  --hair: rgba(15, 23, 42, .09);
+  --glass: rgba(255, 255, 255, .5); --glass-b: rgba(255, 255, 255, .75);
+  --card: rgba(255, 255, 255, .62);
+  --shadow: 0 36px 90px rgba(0, 0, 0, .13);
+  --platter: linear-gradient(135deg, rgba(226,232,240,.75), rgba(203,213,225,.45) 50%, rgba(148,163,184,.4));
+  --spindle: #FAF8F3;
+  --serif: "EB Garamond", "Noto Serif SC", serif;
+  --mincho: "Shippori Mincho", "Klee One", "Noto Serif SC", serif;
+  --ja: "Klee One", "Shippori Mincho", serif;
+  --zh: "Noto Serif SC", "Songti SC", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0A0F1D; --sleeve: #0D1324;
+    --ink: #E2E8F0; --ink2: #94A3B8; --ink3: #64748B;
+    --hair: rgba(255, 255, 255, .08);
+    --glass: rgba(255, 255, 255, .04); --glass-b: rgba(255, 255, 255, .1);
+    --card: rgba(255, 255, 255, .035);
+    --shadow: 0 36px 90px rgba(0, 0, 0, .6);
+    --platter: linear-gradient(135deg, rgba(255,255,255,.07), rgba(0,0,0,.3) 50%, rgba(0,0,0,.5));
+    --spindle: #0A0F1D;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0A0F1D; --sleeve: #0D1324;
+  --ink: #E2E8F0; --ink2: #94A3B8; --ink3: #64748B;
+  --hair: rgba(255, 255, 255, .08);
+  --glass: rgba(255, 255, 255, .04); --glass-b: rgba(255, 255, 255, .1);
+  --card: rgba(255, 255, 255, .035);
+  --shadow: 0 36px 90px rgba(0, 0, 0, .6);
+  --platter: linear-gradient(135deg, rgba(255,255,255,.07), rgba(0,0,0,.3) 50%, rgba(0,0,0,.5));
+  --spindle: #0A0F1D;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font-family: var(--zh); line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .4s, color .4s;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration-color: color-mix(in srgb, var(--mood) 60%, transparent); text-underline-offset: 3px; }
+.page { max-width: 1240px; margin: 0 auto; padding: 56px 20px 120px; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .32em; color: var(--ink3); text-transform: uppercase; }
+h1 { font-family: var(--mincho); font-weight: 600; font-size: clamp(34px, 6vw, 56px); letter-spacing: .08em; margin: 14px 0 10px; line-height: 1.2; }
+h2.sec { font-family: var(--mincho); font-weight: 600; font-size: 26px; letter-spacing: .06em; margin: 88px 0 6px; }
+h2.sec small { font-family: var(--mono); font-size: 11px; letter-spacing: .3em; color: var(--ink3); font-weight: 400; margin-left: 14px; vertical-align: middle; }
+h3 { font-family: var(--mincho); font-size: 18px; font-weight: 600; letter-spacing: .05em; margin: 0 0 10px; }
+p { margin: 0 0 12px; }
+.lede { max-width: 760px; font-size: 16px; color: var(--ink2); }
+.rule { height: 1px; margin: 22px 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mood) 55%, transparent), transparent 80%); border: 0; }
+.muted { color: var(--ink2); }
+.ink3 { color: var(--ink3); }
+.mono { font-family: var(--mono); }
+code { font-family: var(--mono); font-size: .88em; padding: 1px 5px; border-radius: 5px; background: var(--hair); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 22px 0 16px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--hair); background: var(--card);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em; color: var(--ink2);
+  transition: color .2s, border-color .2s, background-color .2s;
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--mood) 60%, transparent); background: color-mix(in srgb, var(--mood) 12%, transparent); }
+.chip:focus-visible, .swatch:focus-visible { outline: 2px solid var(--mood); outline-offset: 2px; }
+.swatches { display: inline-flex; gap: 8px; align-items: center; padding: 0 6px; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; background: var(--c); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--hair); }
+.swatch[aria-pressed="true"] { border-color: var(--page); box-shadow: 0 0 0 2px var(--c); }
+.hint { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--ink3); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-top: 22px; }
+.card { border: 1px solid var(--hair); background: var(--card); border-radius: 22px; padding: 22px 24px; }
+.card p, .card li { font-size: 14px; color: var(--ink2); }
+.card ul { margin: 0; padding-left: 1.1em; }
+.card li { margin-bottom: 6px; }
+.card li::marker { color: var(--mood); }
+.diag { counter-reset: d; list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 12px; }
+.diag li { counter-increment: d; display: grid; grid-template-columns: 34px 1fr; gap: 8px; font-size: 15px; color: var(--ink2); }
+.diag li::before { content: counter(d, decimal-leading-zero); font-family: var(--mono); font-size: 12px; color: var(--mood); padding-top: 4px; }
+.diag b { color: var(--ink); font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+th { font-family: var(--mono); font-weight: 400; font-size: 10.5px; letter-spacing: .18em; color: var(--ink3); text-transform: uppercase; }
+td { color: var(--ink2); }
+td:first-child { color: var(--ink); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+
+/* ———————————————— 舞台（1200×720 设计尺寸，整体按宽缩放） ———————————————— */
+.stage-wrap { position: relative; width: 100%; border-radius: 28px; overflow: hidden; border: 1px solid var(--hair); background: var(--page); }
+.stage { position: absolute; left: 0; top: 0; width: 1200px; height: 720px; transform-origin: 0 0; overflow: hidden; }
+.stage .glow {
+  position: absolute; left: -120px; top: -60px; width: 820px; height: 820px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mood) 16%, transparent), transparent);
+  pointer-events: none; transition: background .8s;
+}
+.stage .chamber { position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 10px; letter-spacing: .5em; color: color-mix(in srgb, var(--ink3) 50%, transparent); }
+
+/* 左：唱机 */
+.left { position: absolute; left: 70px; top: 64px; width: 470px; z-index: 4; }
+.plinth {
+  position: relative; width: 470px; height: 414px; border-radius: 40px;
+  background: var(--glass); border: 1px solid var(--glass-b); box-shadow: var(--shadow);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.plinth::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.18), transparent 50%); pointer-events: none; }
+.deck { position: absolute; left: 28px; top: 40px; width: 334px; height: 334px; }
+.platter { position: absolute; inset: -15px; border-radius: 50%; background: var(--platter); border: 1px solid var(--glass-b); box-shadow: inset 0 2px 10px rgba(0,0,0,.18); }
+.disc {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
+  background: repeating-radial-gradient(circle at 50% 50%, #111 0px, #111 3px, #1b1b1f 4px, #111 5px);
+  box-shadow: 0 18px 45px rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.08); will-change: transform;
+}
+.disc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(45deg, rgba(255,255,255,.1), transparent 40%, transparent 60%, rgba(255,255,255,.05)); mix-blend-mode: overlay; pointer-events: none; }
+.label {
+  position: absolute; left: 50%; top: 50%; width: 38%; height: 38%; translate: -50% -50%;
+  border-radius: 50%; z-index: 3; cursor: pointer;
+  transition: scale .12s cubic-bezier(.2,0,0,1);
+}
+.label-face { position: absolute; inset: 0; border-radius: 50%; background: var(--mood); box-shadow: inset 0 0 18px rgba(0,0,0,.18); transition: background-color .8s; }
+.label-face::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.08); mix-blend-mode: overlay; }
+.label-text { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--mono); font-size: 7px; letter-spacing: .3em; color: rgba(255,255,255,.85); rotate: -12deg; text-transform: uppercase; pointer-events: none; }
+.spindle { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; translate: -50% -50%; border-radius: 50%; background: var(--spindle); box-shadow: inset 0 2px 4px rgba(0,0,0,.5); z-index: 4; pointer-events: none; }
+.label-ring { position: absolute; inset: -9px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--mood) 70%, white); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.label:hover .label-ring, .label:focus-visible .label-ring { opacity: .7; }
+.label:focus-visible { outline: none; }
+.label-tip {
+  position: absolute; left: 50%; top: calc(100% + 16px); translate: -50% 0; white-space: nowrap;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .3em; color: #fff; padding: 3px 9px; border-radius: 999px;
+  background: rgba(10,15,29,.7); opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5;
+}
+.label:hover .label-tip, .label:focus-visible .label-tip { opacity: 1; }
+.groove-tip { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.arm { position: absolute; right: 42px; top: 54px; height: 256px; width: 8px; transform-origin: 50% 0; transition: rotate 1.1s cubic-bezier(.3,1.4,.5,1); z-index: 5; pointer-events: none; }
+.arm .pivot { position: absolute; top: -18px; left: 50%; width: 40px; height: 40px; translate: -50% 0; border-radius: 50%; background: linear-gradient(135deg, #e2e8f0, #94a3b8); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.arm .rod { position: absolute; top: 0; left: 50%; translate: -50% 0; width: 4px; height: 88%; border-radius: 4px; background: linear-gradient(#cbd5e1, #e2e8f0, #cbd5e1); }
+.arm .head { position: absolute; bottom: 0; left: 50%; translate: -50% 0; rotate: 14deg; width: 12px; height: 24px; border-radius: 3px; background: linear-gradient(#94a3b8, #475569); }
+.rpm { position: absolute; right: 32px; bottom: 26px; display: flex; gap: 9px; align-items: center; font-family: var(--mono); font-size: 8px; letter-spacing: .25em; color: var(--ink3); }
+.rpm i { width: 8px; height: 8px; border-radius: 50%; background: var(--mood); box-shadow: 0 0 8px var(--mood); }
+
+.transport { margin-top: 44px; display: grid; gap: 18px; }
+.prog { display: grid; gap: 8px; }
+.prog .bar { height: 3px; border-radius: 3px; background: var(--hair); overflow: hidden; }
+.prog .bar i { display: block; height: 100%; width: 34%; background: var(--mood); border-radius: 3px; }
+.prog .t { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink3); }
+.keys { display: flex; align-items: center; justify-content: space-between; padding: 12px 30px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-b); backdrop-filter: blur(20px); }
+.keys button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink2); }
+.keys .play { width: 56px; height: 56px; border-radius: 50%; background: var(--mood); color: #fff; box-shadow: 0 8px 25px color-mix(in srgb, var(--mood) 33%, transparent); }
+.keys svg { width: 18px; height: 18px; }
+
+/* 右：选碟（旧内容，会被涟漪盖过） */
+.right { position: absolute; left: 640px; top: 0; width: 500px; height: 720px; z-index: 1; text-align: center; }
+.pill { position: absolute; left: 890px; top: 52px; translate: -50% 0; z-index: 6; display: inline-flex; padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-b); }
+.pill button { min-width: 80px; height: 32px; border-radius: 999px; font-family: var(--mono); font-size: 9px; letter-spacing: .24em; color: var(--ink2); }
+.pill button[aria-pressed="true"] { background: var(--mood); color: #fff; box-shadow: 0 4px 16px color-mix(in srgb, var(--mood) 25%, transparent); }
+.caption { position: absolute; left: 0; right: 0; top: 150px; }
+.cap-title { font-family: var(--serif); font-size: 48px; line-height: 1.12; letter-spacing: .04em; color: var(--ink); cursor: pointer; display: inline-block; padding: 0 8px; border-radius: 12px; transition: background-color .2s; }
+.cap-title:hover { background: color-mix(in srgb, var(--mood) 8%, transparent); }
+.cap-title:focus-visible { outline: 2px solid var(--mood); outline-offset: 4px; }
+.cap-artist { margin-top: 18px; display: flex; justify-content: center; gap: 12px; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: .4em; color: var(--ink2); }
+.cap-artist i { width: 6px; height: 6px; border-radius: 50%; background: var(--mood); }
+.cap-ex { margin-top: 22px; font-family: var(--ja); font-style: italic; font-size: 17px; color: var(--ink2); letter-spacing: .08em; }
+.cap-ex span { color: var(--mood); opacity: .7; }
+.cats { position: absolute; left: 20px; right: 20px; top: 368px; display: flex; justify-content: center; gap: 30px; padding-bottom: 12px; border-bottom: 1px solid var(--hair); font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--ink3); }
+.cats b { font-weight: 400; color: var(--ink); position: relative; }
+.cats b::after { content: ""; position: absolute; left: 0; right: 0; bottom: -13px; height: 2px; border-radius: 2px; background: var(--mood); }
+.crate { position: absolute; left: 10px; right: 10px; top: 420px; text-align: left; }
+.crate .head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; letter-spacing: .3em; color: var(--ink3); padding: 0 6px 10px; }
+.row { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 14px; }
+.row.on { background: color-mix(in srgb, var(--mood) 9%, transparent); }
+.row .n { font-family: var(--mono); font-size: 10px; color: var(--ink3); text-align: center; }
+.row.on .n { color: var(--mood); }
+.row .tt { font-family: var(--ja); font-size: 14px; color: var(--ink); }
+.row .ar { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; color: var(--ink3); }
+.row .d { font-family: var(--mono); font-size: 10px; color: var(--ink3); }
+
+/* 内页（一直在水下；涟漪只是让它被看见） */
+.notes {
+  position: absolute; inset: 0; z-index: 2; visibility: hidden;
+  background:
+    radial-gradient(900px 640px at 18% 40%, color-mix(in srgb, var(--mood) 13%, transparent), transparent 70%),
+    radial-gradient(600px 500px at 96% 100%, color-mix(in srgb, var(--mood) 7%, transparent), transparent 70%),
+    var(--sleeve);
+  clip-path: circle(0 at 50% 50%);
+}
+.notes.live { visibility: visible; }
+.notes::before { /* 纸纹：程序生成的颗粒，不引外部图片 */
+  content: ""; position: absolute; inset: 0; opacity: .22; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.notes .numeral { position: absolute; right: 52px; bottom: -30px; font-family: var(--serif); font-size: 230px; line-height: 1; color: color-mix(in srgb, var(--mood) 14%, transparent); letter-spacing: -.02em; pointer-events: none; }
+.vtitle {
+  position: absolute; right: 500px; top: 104px; height: 560px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  writing-mode: vertical-rl; cursor: pointer; padding: 8px 6px; border-radius: 14px;
+}
+.vtitle:focus-visible { outline: 2px solid var(--mood); outline-offset: 4px; }
+.vtitle .ja { font-family: var(--mincho); font-weight: 600; font-size: 40px; letter-spacing: .16em; color: var(--ink); line-height: 1.1; }
+.vtitle .alt { font-family: var(--zh); font-size: 13px; letter-spacing: .4em; color: var(--ink2); padding-top: 6px; }
+.vtitle .seal { margin-top: 0; width: 20px; height: 20px; border-radius: 4px; background: var(--mood); opacity: .85; writing-mode: horizontal-tb; display: grid; place-items: center; font-family: var(--mincho); font-size: 11px; color: #fff; }
+.ncol { position: absolute; left: 722px; top: 104px; width: 410px; text-align: left; }
+.n-meta { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--ink2); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.n-meta span:first-child { color: var(--mood); }
+.n-feel { margin-top: 18px; display: flex; align-items: center; gap: 16px; }
+.n-feel .w { font-family: var(--zh); font-size: 15px; letter-spacing: .32em; color: color-mix(in oklab, var(--mood) 70%, var(--ink)); }
+.n-feel svg { width: 46px; height: 46px; flex: none; }
+.n-rule { height: 1px; margin: 20px 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mood) 55%, transparent), transparent 85%); }
+.n-credits { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; font-family: var(--mono); font-size: 11px; }
+.n-credits dt { color: var(--ink3); letter-spacing: .12em; }
+.n-credits dd { margin: 0; color: var(--ink); font-family: var(--ja); }
+.n-intro { font-family: var(--zh); font-size: 14px; line-height: 2; color: var(--ink); margin: 0; text-align: justify; }
+.n-intro::first-letter { font-family: var(--mincho); font-size: 2.6em; float: left; line-height: 1; margin: 4px 8px 0 0; color: var(--mood); }
+.n-note { font-family: var(--zh); font-size: 14px; color: var(--ink); margin: 0; padding-left: 14px; border-left: 2px solid color-mix(in srgb, var(--mood) 60%, transparent); }
+.n-note small { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .24em; color: var(--ink3); margin-bottom: 4px; }
+.n-foot { margin-top: 26px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ink3); }
+
+canvas.fx { position: absolute; left: 0; top: 0; width: 1200px; height: 720px; z-index: 3; pointer-events: none; }
+
+/* ———————————————— 水池 ———————————————— */
+.pond-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 18px; margin-top: 22px; align-items: stretch; }
+@media (max-width: 820px) { .pond-grid { grid-template-columns: 1fr; } }
+.panel { border: 1px solid var(--hair); border-radius: 26px; background: var(--card); padding: 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+.panel .tag { align-self: flex-start; font-family: var(--mono); font-size: 10px; letter-spacing: .3em; color: var(--ink3); }
+.old-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 0; }
+.instrumental-orbit {
+  position: relative; width: 96px; height: 96px; border-radius: 50%;
+  color: color-mix(in oklab, var(--mood) 65%, #64748b);
+  border: 1px solid color-mix(in srgb, var(--mood) 28%, transparent);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--mood) 14%, transparent), inset 0 0 28px color-mix(in srgb, var(--mood) 9%, transparent);
+  animation: ib 5.4s ease-in-out infinite;
+}
+.instrumental-orbit::before, .instrumental-orbit::after { content: ""; position: absolute; inset: -18%; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--mood) 22%, transparent); animation: ir 4.8s ease-out infinite; }
+.instrumental-orbit::after { animation-delay: 2.4s; }
+.instrumental-orbit span { position: absolute; border-radius: 50%; border: 1px solid currentColor; }
+@keyframes ib { 0%, 100% { transform: scale(.96); opacity: .72; } 50% { transform: scale(1.035); opacity: 1; } }
+@keyframes ir { 0% { opacity: 0; transform: scale(.72); } 18% { opacity: .48; } 100% { opacity: 0; transform: scale(1.52); } }
+.old-wrap .t1 { margin-top: 26px; font-family: var(--ja); font-size: 17px; letter-spacing: .16em; color: var(--ink2); }
+.old-wrap .t2 { margin-top: 4px; font-size: 13px; letter-spacing: .12em; color: var(--ink3); }
+.pond-box { position: relative; width: min(560px, 100%); aspect-ratio: 1; margin: 6px auto 0; touch-action: none; cursor: crosshair; }
+.pond-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pond-cap { margin-top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .32em; color: var(--ink3); text-align: center; }
+.song { width: min(560px, 100%); margin: 16px auto 0; }
+.song .track { position: relative; height: 18px; cursor: pointer; }
+.song .rail { position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--hair); border-radius: 2px; }
+.song .sec { position: absolute; top: 5px; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--mood) 28%, transparent); }
+.song .head { position: absolute; top: 3px; width: 2px; height: 12px; margin-left: -1px; background: var(--ink); border-radius: 2px; }
+.song .lbl { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink3); margin-top: 6px; }
+.meters { display: flex; gap: 18px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.meter { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--ink3); }
+.meter .m { width: 46px; height: 4px; border-radius: 4px; background: var(--hair); overflow: hidden; }
+.meter .m i { display: block; height: 100%; width: 0; background: var(--mood); }
+.fallback { display: none; position: absolute; inset: 0; place-items: center; text-align: center; color: var(--ink3); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .page { padding-top: 36px; }
+  h2.sec { margin-top: 64px; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="kicker">Oasis · 共鸣 · 设计提案 · 2026-10-10</div>
+  <h1>水下的内页</h1>
+  <p class="lede">内页不该是一张浮在碟箱上的卡片。它一直在水下：唱片是投进水里的石子，涟漪荡开，你才看见它；再点一次，水纹倒放、向贴纸汇拢，内页沉回唱片里。纯器乐那一页也照这个隐喻重做：没有词的歌，就让水面替它“写字”。</p>
+
+  <h2 class="sec">现状<small>Diagnosis</small></h2>
+  <ol class="diag">
+    <li><span><b>内页和唱片没有关系。</b>它是右栏中间的一张通用模态卡（<code>LinerNotes.tsx</code> 的 <code>max-w-[460px]</code> 圆角卡 + 60% 遮罩），换成任何网站的弹窗都成立，和“唱片纸套背面”的隐喻断开了。</span></li>
+    <li><span><b>入口藏得深，而且只在选碟模式有。</b>唯一入口是艺人行末 9px 的「内页 ›」；桌面切到歌词模式后 <code>TrackCaption</code> 不渲染，就没有入口了。</span></li>
+    <li><span><b>两层信息在抢眼睛。</b>遮罩只压到 60%，下面的碟箱列表、分类栏仍清晰可读，卡片的排版因此显得单薄。</span></li>
+    <li><span><b>纯器乐的水纹和音乐无关。</b><code>.instrumental-orbit</code> 是两圈伪元素以 4.8s 恒定循环外扩，不论曲子是钢琴独奏还是全编制、是否暂停，都在同样地呼吸；只有线条没有光，看不出“水”。</span></li>
+  </ol>
+
+  <h2 class="sec">演示一：涟漪揭页<small>Ripple Reveal</small></h2>
+  <div class="toolbar">
+    <button class="chip" id="themeBtn" type="button">昼 / 夜</button>
+    <button class="chip" id="slowBtn" type="button" aria-pressed="false">慢放 ×4</button>
+    <span class="swatches" id="swatches" role="group" aria-label="情绪色"></span>
+    <span class="hint">点唱片中心的贴纸，或点右侧大标题 → 展开 · 再点贴纸 / 竖排标题 / Esc → 收回 · 中途再点会原路折返</span>
+  </div>
+
+  <div class="stage-wrap" id="stageWrap">
+    <div class="stage" id="stage">
+      <div class="glow"></div>
+      <div class="chamber">RESONANCE CHAMBER</div>
+
+      <!-- 右栏：选碟（旧内容） -->
+      <div class="right" id="right">
+        <div class="caption">
+          <div data-push><span class="cap-title" id="capTitle" role="button" tabindex="0" aria-controls="notes" aria-expanded="false">夏陰、ピアノを弾く</span></div>
+          <div class="cap-artist" data-push><i></i>YORUSHIKA</div>
+          <div class="cap-ex" data-push><span>“</span>君の匂いがする<span>”</span></div>
+        </div>
+        <div class="cats" data-push><b>ALL TRACKS</b><span>YORUSHIKA</span><span>ATARAYO</span><span>MIKU</span></div>
+        <div class="crate">
+          <div class="head" data-push><span>● THE CRATE · 选碟台</span><span>110 首</span></div>
+          <div class="row on" data-push><span class="n">▶</span><span><div class="tt">夏陰、ピアノを弾く</div><div class="ar">夏草が邪魔をする</div></span><span class="d">2:07</span></div>
+          <div class="row" data-push><span class="n">02</span><span><div class="tt">カトレア</div><div class="ar">夏草が邪魔をする</div></span><span class="d">4:31</span></div>
+          <div class="row" data-push><span class="n">03</span><span><div class="tt">言って。</div><div class="ar">夏草が邪魔をする</div></span><span class="d">4:11</span></div>
+          <div class="row" data-push><span class="n">04</span><span><div class="tt">あの夏に咲け</div><div class="ar">夏草が邪魔をする</div></span><span class="d">4:20</span></div>
+        </div>
+      </div>
+
+      <!-- 内页：全舞台大小，唱机浮在它上面 -->
+      <section class="notes" id="notes" role="region" aria-label="夏陰、ピアノを弾く 的内页" inert>
+        <div class="numeral" data-rip>01</div>
+        <div class="vtitle" id="vTitle" role="button" tabindex="0" aria-label="合上内页" data-rip>
+          <span class="ja" lang="ja">夏陰、ピアノを弾く</span>
+          <span class="alt">夏晚，钢琴弹奏</span>
+          <span class="seal">夏</span>
+        </div>
+        <div class="ncol">
+          <div class="n-meta" data-rip><span>A面 · 01</span><span lang="ja">夏草が邪魔をする</span><span>2017.06.28</span><span>INSTRUMENTAL</span></div>
+          <div class="n-feel" data-rip>
+            <svg viewBox="0 0 46 46" aria-hidden="true" id="feelGlyph"></svg>
+            <span class="w">怀念 · 平静 · 超然 · 夏</span>
+          </div>
+          <div class="n-rule" data-rip></div>
+          <dl class="n-credits" data-rip>
+            <dt>作曲·编曲</dt><dd>n-buna</dd>
+            <dt>形式</dt><dd style="font-family:var(--zh)">钢琴独奏 · 无词</dd>
+          </dl>
+          <div class="n-rule" data-rip></div>
+          <p class="n-intro" data-rip>为纪念今年的晚夏，我想弹奏一首钢琴。作为ヨルシカ首张迷你专辑第一首，琴声简约，是平静夏日的消逝。没有过多的背景乐器，就像蝉鸣过后的晚夏，留给钢琴般的告别。</p>
+          <div class="n-rule" data-rip></div>
+          <p class="n-note" data-rip><small>你写的</small>「为纪念今年的晚夏和你，我想弹奏一首钢琴。」</p>
+          <div class="n-foot" data-rip><span>资料：你 · 网易云 · 音频标签</span><span>ESC 合上</span></div>
+        </div>
+      </section>
+
+      <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+
+      <!-- 左：唱机（浮在水面之上） -->
+      <div class="left">
+        <div class="plinth">
+          <div class="deck">
+            <div class="platter"></div>
+            <div class="disc" id="disc" role="button" tabindex="0" aria-label="播放 / 暂停"></div>
+            <div class="label" id="label" role="button" tabindex="0" aria-controls="notes" aria-expanded="false" aria-label="翻开内页">
+              <span class="label-ring"></span>
+              <span class="label-face"></span>
+              <span class="label-text" id="labelText">Yorushika</span>
+              <span class="spindle"></span>
+              <span class="label-tip" id="labelTip">内页</span>
+            </div>
+          </div>
+          <div class="arm" id="arm"><span class="pivot"></span><span class="rod"></span><span class="head"></span></div>
+          <div class="rpm"><i></i>33⅓ RPM</div>
+        </div>
+        <div class="transport">
+          <div class="prog"><div class="bar"><i></i></div><div class="t"><span>0:43</span><span>2:07</span></div></div>
+          <div class="keys">
+            <button type="button" aria-label="模式"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+            <button type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4"/><rect x="5" y="4" width="2" height="16" rx="1"/></svg></button>
+            <button type="button" class="play" id="playBtn" aria-label="暂停"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
+            <button type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20"/><rect x="17" y="4" width="2" height="16" rx="1"/></svg></button>
+            <button type="button" aria-label="氛围"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pill" id="pill"><button type="button" aria-pressed="false">歌词</button><button type="button" aria-pressed="true">选碟</button></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>隐喻与入口</h3>
+      <ul>
+        <li><b>贴纸 = 内页</b>，盘面声槽仍是播放/暂停（悬停分别显示虚线圈+「内页」与播放图标）。这解决了“点唱片”已被播放占用的冲突，且歌词模式也有入口了。</li>
+        <li><b>大标题 = 内页</b>：标题现在不可点，零冲突；涟漪从标题中心起。</li>
+        <li>收回永远向<b>开启时的原点</b>汇拢，最后在原点“咚”地溅一小圈——空间记忆：内页从哪里来，就回哪里去。</li>
+        <li>唱机、走带、歌词/选碟切换条浮在水面之上，不被盖住（规矩 2：控件不迁移）。点切换条会顺手合上内页。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>为什么它看起来像水</h3>
+      <ul>
+        <li><b>是波列，不是一条线</b>：峰—谷—峰，包络居中在波前后方约 0.6λ；单根描边圈看起来只像“扩散的环”。</li>
+        <li><b>毛细波跑在前面</b>：水滴激起的短波（毛细波，λ&lt;1.7cm）相速更快，所以真实水面上细碎的小纹总在主波外圈；演示里波前外有一组 0.32λ 的浅细纹。</li>
+        <li><b>振幅随 1/√r 衰减</b>：二维扩散的能量守恒；收回时是会聚波，振幅反而略增，到原点溅起。</li>
+        <li><b>光从左上来</b>：迎光坡亮、背光坡暗（与全站的光源方向一致），人眼靠这一明一暗读出“起伏”，比任何描边都可信。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>内页的版面</h3>
+      <ul>
+        <li>竖排标题（Shippori Mincho）贴着唱机右缘，像纸套书脊；下面一枚情绪色小印。点它就是合上。</li>
+        <li>字段沿用 A6 的顺序与“缺则不显示”，但不再挤在 460px 卡里：一整栏 420px，正文 14/2.0，首字下沉染情绪色。</li>
+        <li>情绪不再只是文字：<b>情绪水纹</b>小印，每一圈是一维 feels，粗细 = 强度 0–3，复用 <code>mood-core.mjs</code> 的数据。</li>
+        <li>背景是整块纸套：情绪色从唱机一侧晕开 + 程序生成的纸纹，右下角大号曲号做水印。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>节奏表</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>时刻</th><th>发生什么</th><th>依据</th></tr></thead>
+      <tbody>
+        <tr><td>0 ms</td><td>贴纸下沉 4%（120ms 回弹），涟漪同帧起步</td><td>规矩 1：100ms 内有画面反馈</td></tr>
+        <tr><td>0–980 ms</td><td>波前 r(t)=R·(1−(1−t)<sup>2.6</sup>)：起手快、抵达远角时慢下来；内页以 <code>clip-path: circle()</code> 跟在波峰下方 10px，硬边被波峰的高光盖住</td><td>落水的初速大、能量随半径摊薄</td></tr>
+        <tr><td>波前经过时</td><td>每块内容在波前越过它后的 170px 内浮出：opacity 0→1、沿离心方向 16px→0；右栏旧内容在波前到达前被“推”7px</td><td>按距离错峰 = 涟漪的语义；只用 opacity/transform</td></tr>
+        <tr><td>收回 720 ms</td><td>ease-in-out，会聚波向原点收拢，内容由外向内依次沉下</td><td>时间倒放；比展开短（离开比到来轻）</td></tr>
+        <tr><td>收回末 380 ms</td><td>原点溅起一圈 λ=22 的小波</td><td>落回唱片的“咚”</td></tr>
+        <tr><td>中途再点</td><td>从当前半径原路折返，不跳帧、不重启</td><td>规矩 4：最后一帧等于静止态</td></tr>
+        <tr><td>减弱动态</td><td>200ms 交叉淡化，无波</td><td><code>prefers-reduced-motion</code> / 氛围关</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <h2 class="sec">演示二：纯器乐 · 水琴窟<small>Suikinkutsu</small></h2>
+  <p class="lede">水琴窟是日本庭园里埋在地下的倒扣陶瓮：水滴落进去，人只听见回响，看不见水。这里反过来——听得见琴声，看得见水。曲名沉在水底，每个鼓点落一滴，高频是细雨，副歌段落雨变密；暂停时水慢慢静成一面镜子，字也就清楚了。也可以自己点一下水面。</p>
+  <div class="toolbar">
+    <button class="chip" id="pondPlay" type="button" aria-pressed="true">播放中（模拟）</button>
+    <button class="chip" id="jumpSec" type="button">跳到副歌段 0:51</button>
+    <span class="hint">演示里没有音频，能量由 BPM 157 与段落数据合成；正式版读 <code>getEnergy()</code></span>
+  </div>
+  <div class="pond-grid">
+    <div class="panel">
+      <span class="tag">现在</span>
+      <div class="old-wrap">
+        <div class="instrumental-orbit"><span style="inset:18%"></span><span style="inset:36%"></span></div>
+        <div class="t1">纯器乐</div>
+        <div class="t2">此曲无词，且听水纹</div>
+      </div>
+    </div>
+    <div class="panel">
+      <span class="tag">提案</span>
+      <div class="pond-box" id="pondBox">
+        <canvas id="pond" aria-label="随音乐落雨的水面，曲名沉在水底"></canvas>
+        <div class="fallback" id="pondFallback">此浏览器不支持 WebGL2，回退到现在的样式。</div>
+      </div>
+      <div class="pond-cap">INSTRUMENTAL · 此曲无词，且听水纹</div>
+      <div class="song">
+        <div class="track" id="songTrack"><div class="rail"></div><div class="sec" id="songSec"></div><div class="head" id="songHead"></div></div>
+        <div class="lbl"><span id="songNow">0:00</span><span>副歌段来自 mood.sections</span><span>1:35</span></div>
+      </div>
+      <div class="meters">
+        <span class="meter">鼓点→落滴 <span class="m"><i id="mBeat"></i></span></span>
+        <span class="meter">低频→滴的大小 <span class="m"><i id="mLow"></i></span></span>
+        <span class="meter">高频→细雨 <span class="m"><i id="mHigh"></i></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>音乐 → 水</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>输入</th><th>水的行为</th></tr></thead>
+        <tbody>
+          <tr><td><code>energy.beat</code> 上穿 0.6</td><td>落一滴；位置沿黄金角螺线（137.5°）铺开，不会扎堆</td></tr>
+          <tr><td><code>energy.low</code></td><td>滴的半径与力度</td></tr>
+          <tr><td><code>energy.high</code></td><td>细雨的密度（泊松过程，0.8–3 滴/秒）</td></tr>
+          <tr><td><code>mood.sections</code></td><td>段落内雨更密、滴更大</td></tr>
+          <tr><td><code>mood.bpm</code></td><td>拿不到频谱时（静音、受限浏览器）按 BPM 合成节拍兜底</td></tr>
+          <tr><td>暂停</td><td>不再落雨，阻尼让水在 2 秒内静成镜面</td></tr>
+          <tr><td>点击 / 拖动</td><td>你自己的一滴</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <h3>渲染管线</h3>
+      <ul>
+        <li><b>高度场</b>：160×160 网格，经典的两缓冲波动方程（Hugo Elias 的 2D Water）。每步 <code>next = (左+右+上+下)/2 − prev</code>，乘阻尼 0.989，边缘 12 格海绵层吸收反射。CPU 单步约 0.1ms，固定 60Hz 步进。</li>
+        <li><b>着色</b>：一张 R16F 纹理上传高度，一个全屏三角形。法线由相邻高度差得出 → 折射偏移采样“水底”纹理（曲名、底石，Canvas 2D 预绘一次）→ 左上光的漫反射与高光 → 拉普拉斯为负处（凸面聚光）加情绪色焦散。</li>
+        <li><b>边缘</b>：圆形羽化 alpha，水池没有框，直接长在页面里。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>性能与降级</h3>
+      <ul>
+        <li>只有一个 draw call；不在视口、视图离场（<code>useIsPresent</code>）或标签页隐藏时停 ticker。</li>
+        <li>手机：网格 96×96、DPR 封顶 1.5，细雨减半。</li>
+        <li>无 WebGL2 / 氛围关 / 减弱动态：退回现在的 CSS 样式（保留），水面不动。</li>
+        <li>涟漪揭页的叠加层也是一个全屏三角形、5 次解析求值，只在动画那 1 秒画，结束即清空。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">落地计划<small>Plan</small></h2>
+  <div class="card">
+    <div class="tablewrap"><table>
+      <thead><tr><th>阶段</th><th>内容</th><th>文件</th></tr></thead>
+      <tbody>
+        <tr><td>P0 入口</td><td>贴纸/盘面分区点击；标题可点；歌词模式也有入口；<code>notesOpen</code> 记住原点</td><td><code>OasisResonance.tsx</code>、<code>TrackCaption.tsx</code></td></tr>
+        <tr><td>P1 涟漪揭页</td><td>ticker 驱动半径 → 直写 clip-path 与各块 transform（不进 framer，规矩 3）；WebGL2 叠加层画波的明暗；可中途折返</td><td>新 <code>resonance/RippleReveal.tsx</code>、<code>lib/ripple.ts</code>（半径曲线与波列函数，可测）</td></tr>
+        <tr><td>P2 内页版面</td><td>全舞台纸套：竖排标题、情绪水纹小印、首字下沉；手机版用同一套内容，从贴纸起波铺满唱片段，上滑仍可唤起</td><td><code>LinerNotes.tsx</code> 改写为 <code>SleeveNotes</code></td></tr>
+        <tr><td>P3 水琴窟</td><td>高度场 + 着色器；接 <code>getEnergy()</code> 与 <code>mood.sections</code>；保留旧 CSS 作降级</td><td>新 <code>resonance/InstrumentalPond.tsx</code>、<code>lib/waterSim.ts</code>；<code>LyricPanel.tsx</code> 替换 <code>InstrumentalEmpty</code></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <h2 class="sec">参考<small>References</small></h2>
+  <div class="card">
+    <ul>
+      <li>Evan Wallace，<a href="https://madebyevan.com/webgl-water/" target="_blank" rel="noopener">WebGL Water</a>——高度场 + 折射 + 焦散的标杆，本方案的着色思路来源。</li>
+      <li>sirxemic，<a href="https://github.com/sirxemic/jquery.ripples" target="_blank" rel="noopener">jQuery Ripples</a>——把水波折射叠在网页背景上的经典实现，证明 GPU 波动方程在网页里足够轻。</li>
+      <li>Hugo Elias，<i>2D Water</i>——两缓冲波动方程，几乎所有网页水波的祖先。</li>
+      <li>Wikipedia，<a href="https://en.wikipedia.org/wiki/Capillary_wave" target="_blank" rel="noopener">Capillary wave</a>——色散关系 ω² = (σ/ρ)k³，短波更快，所以细纹在外圈。</li>
+      <li><a href="https://ja.wikipedia.org/wiki/%E6%B0%B4%E7%90%B4%E7%AA%9F" target="_blank" rel="noopener">水琴窟</a>——纯器乐页的隐喻。</li>
+      <li>字体：<a href="https://fonts.google.com/specimen/Shippori+Mincho" target="_blank" rel="noopener">Shippori Mincho</a>（竖排标题，SIL OFL）。纸纹、波、水底都是程序生成，不引入图片素材，零版权与体积负担。</li>
+    </ul>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const smooth = t => t * t * (3 - 2 * t);
+  let slow = 1;
+
+  // ———————— 主题与情绪色 ————————
+  root.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  const isDark = () => root.dataset.theme === 'dark';
+  const MOODS = [['#6EE7B7', '夏草'], ['#F48FB1', '幼年期'], ['#93C5FD', '雨'], ['#FCD34D', '黄昏']];
+  let mood = MOODS[0][0];
+  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  const listeners = [];
+  const swatches = $('#swatches');
+  MOODS.forEach(([c, name], i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.style.setProperty('--c', c);
+    b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', i === 0);
+    b.onclick = () => {
+      mood = c; root.style.setProperty('--mood', c);
+      swatches.querySelectorAll('.swatch').forEach(s => s.setAttribute('aria-pressed', s === b));
+      listeners.forEach(f => f());
+    };
+    swatches.appendChild(b);
+  });
+  $('#themeBtn').onclick = () => { root.dataset.theme = isDark() ? 'light' : 'dark'; listeners.forEach(f => f()); };
+  $('#slowBtn').onclick = e => { slow = slow === 1 ? 4 : 1; e.currentTarget.setAttribute('aria-pressed', slow > 1); };
+
+  // ———————— WebGL 小工具 ————————
+  const VS = `#version 300 es
+  in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+  function makeProgram(gl, fs) {
+    const sh = (type, src) => {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const u = {};
+    const n = gl.getProgramParameter(pr, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(pr, i).name; u[name] = gl.getUniformLocation(pr, name); }
+    return u;
+  }
+
+  // ============================== 演示一：涟漪揭页 ==============================
+  const W = 1200, H = 720;
+  const stage = $('#stage'), wrap = $('#stageWrap'), notes = $('#notes');
+  const label = $('#label'), capTitle = $('#capTitle'), vTitle = $('#vTitle');
+  let S = 1;
+
+  // 情绪水纹小印：每圈一维 feels，粗细 = 强度
+  function drawGlyph() {
+    const feels = [2, 2, 2, 1]; // 怀念 平静 超然 + 一维弱的
+    $('#feelGlyph').innerHTML = feels.map((v, i) =>
+      `<circle cx="23" cy="23" r="${6 + i * 5}" fill="none" stroke="var(--mood)" stroke-width="${0.6 + v * 0.7}" opacity="${0.95 - i * 0.18}"/>`
+    ).join('') + '<circle cx="23" cy="23" r="2" fill="var(--mood)"/>';
+  }
+  drawGlyph();
+
+  // 盘面转动 + 唱臂
+  let playing = true, angle = 0, vel = 20;
+  const disc = $('#disc'), arm = $('#arm');
+  const setPlay = () => {
+    arm.style.rotate = playing ? '21deg' : '-14deg';
+    $('#playIcon').innerHTML = playing ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="7 4 20 12 7 20"/>';
+  };
+  setPlay();
+  const togglePlay = () => { playing = !playing; setPlay(); };
+  disc.onclick = togglePlay; $('#playBtn').onclick = togglePlay;
+  disc.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePlay(); } };
+
+  // 叠加层
+  const fx = $('#fx');
+  const fgl = fx.getContext('webgl2', { premultipliedAlpha: true, alpha: true, antialias: false });
+  let fu = null;
+  if (fgl) {
+    fu = makeProgram(fgl, `#version 300 es
+    precision highp float;
+    uniform vec2 uSize; uniform float uScale;
+    uniform vec2 uO; uniform float uR, uA, uDir;
+    uniform vec2 uO2; uniform float uR2, uA2;
+    uniform vec3 uTint; uniform float uDark;
+    out vec4 o;
+    float train(float r, float R, float dir, float lam){
+      float d = (r - R) * dir;                       // d>0：波前前方
+      float behind = exp(-pow((d + lam*0.6)/(lam*0.95), 2.0)) * cos(6.2831853*d/lam);
+      float ahead = smoothstep(-lam*0.25, 0.0, d) * exp(-max(d, 0.0)/(lam*0.5)) * 0.3 * cos(6.2831853*d/(lam*0.32));
+      return behind + ahead;                         // 主波列 + 跑在前面的毛细细纹
+    }
+    float Hh(vec2 p){
+      return uA * train(length(p - uO), uR, uDir, 46.0) + uA2 * train(length(p - uO2), uR2, 1.0, 22.0);
+    }
+    void main(){
+      vec2 p = vec2(gl_FragCoord.x, uSize.y - gl_FragCoord.y) / uScale;
+      float d1 = abs(length(p - uO) - uR), d2 = abs(length(p - uO2) - uR2);
+      if ((uA < 0.002 || d1 > 150.0) && (uA2 < 0.002 || d2 > 70.0)) { o = vec4(0.0); return; }
+      vec2 g = vec2(Hh(p + vec2(1,0)) - Hh(p - vec2(1,0)), Hh(p + vec2(0,1)) - Hh(p - vec2(0,1))) * 0.5;
+      vec3 n = normalize(vec3(-g * 7.0, 1.0));
+      vec3 L = normalize(vec3(-0.55, -0.7, 0.6));
+      float s = dot(n, L) - L.z;
+      float spec = pow(max(dot(reflect(-L, n), vec3(0,0,1)), 0.0), 60.0);
+      float hi = clamp(max(s, 0.0) * mix(1.4, 2.2, uDark) + spec * mix(0.5, 0.9, uDark), 0.0, 1.0);
+      float sh = clamp(max(-s, 0.0) * mix(1.5, 1.7, uDark), 0.0, 1.0);
+      vec3 hc = mix(vec3(1.0), uTint, 0.35);
+      vec3 sc = mix(vec3(0.04, 0.06, 0.14), uTint * 0.2, 0.25);
+      float a = hi + sh * (1.0 - hi);
+      o = vec4((hc * hi + sc * sh * (1.0 - hi)) * 0.92, a * 0.92);
+    }`);
+  }
+
+  function fit() {
+    S = Math.min(1, wrap.clientWidth / W);
+    stage.style.transform = `scale(${S})`;
+    wrap.style.height = H * S + 'px';
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    fx.width = Math.round(W * S * dpr); fx.height = Math.round(H * S * dpr);
+    measure();
+  }
+  const centerIn = el => {
+    const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    return { x: (r.left + r.width / 2 - s.left) / S, y: (r.top + r.height / 2 - s.top) / S };
+  };
+  let rips = [], pushes = [];
+  function measure() {
+    const grab = sel => [...stage.querySelectorAll(sel)].map(el => {
+      const t = el.style.transform; el.style.transform = 'none';
+      const c = centerIn(el); el.style.transform = t;
+      return { el, ...c };
+    });
+    rips = grab('[data-rip]'); pushes = grab('[data-push]');
+  }
+
+  const R = { open: false, p: 0, from: 0, to: 0, t0: 0, dur: 1, ox: 0, oy: 0, rmax: 1, running: false, splashT0: -1, raf: 0 };
+  const easeOpen = u => 1 - Math.pow(1 - u, 2.6);
+  const easeClose = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+
+  function setExpanded(v) {
+    [label, capTitle].forEach(el => el.setAttribute('aria-expanded', v));
+    $('#labelTip').textContent = v ? '合上' : '内页';
+    label.setAttribute('aria-label', v ? '合上内页' : '翻开内页');
+    if (v) notes.removeAttribute('inert'); else notes.setAttribute('inert', '');
+  }
+  function press(el) {
+    if (el !== label) return;
+    label.animate([{ scale: 1 }, { scale: .96 }, { scale: 1 }], { duration: 240, easing: 'cubic-bezier(.2,0,0,1)' });
+  }
+
+  function toggle(originEl) {
+    if (!R.open && !R.running) {
+      const c = centerIn(originEl);
+      R.ox = c.x; R.oy = c.y;
+      R.rmax = Math.max(...[[0, 0], [W, 0], [0, H], [W, H]].map(([x, y]) => Math.hypot(x - c.x, y - c.y))) + 80;
+      rips.forEach(it => { const dx = it.x - R.ox, dy = it.y - R.oy, d = Math.hypot(dx, dy) || 1; Object.assign(it, { d, ux: dx / d, uy: dy / d }); });
+      pushes.forEach(it => { const dx = it.x - R.ox, dy = it.y - R.oy, d = Math.hypot(dx, dy) || 1; Object.assign(it, { d, ux: dx / d, uy: dy / d }); });
+    }
+    R.open = !R.open;
+    setExpanded(R.open);
+    press(originEl);
+    if (R.open) { (originEl === capTitle ? vTitle : label).focus({ preventScroll: true }); }
+
+    if (reduce) {
+      notes.classList.add('live');
+      notes.style.clipPath = 'none';
+      rips.forEach(it => { it.el.style.transform = ''; it.el.style.opacity = ''; });
+      notes.animate([{ opacity: R.open ? 0 : 1 }, { opacity: R.open ? 1 : 0 }], { duration: 200, fill: 'forwards' })
+        .onfinish = () => { if (!R.open) notes.classList.remove('live'); };
+      R.p = R.open ? 1 : 0;
+      return;
+    }
+    notes.getAnimations().forEach(a => a.cancel());
+    notes.classList.add('live');
+    R.from = R.p; R.to = R.open ? 1 : 0;
+    R.dur = (R.open ? 980 : 720) * Math.max(.25, Math.abs(R.to - R.from));
+    R.t0 = performance.now(); R.running = true;
+    if (!R.raf) R.raf = requestAnimationFrame(frame);
+  }
+
+  function frame(now) {
+    R.raf = 0;
+    let u = 0, r = R.p * R.rmax;
+    if (R.running) {
+      u = clamp((now - R.t0) / (R.dur * slow));
+      const e = R.open ? easeOpen(u) : easeClose(u);
+      R.p = R.from + (R.to - R.from) * e;
+      r = R.p * R.rmax;
+      notes.style.clipPath = `circle(${Math.max(0, r - 10).toFixed(1)}px at ${R.ox}px ${R.oy}px)`;
+      for (const it of rips) {
+        const k = smooth(clamp((r - it.d - 10) / 170));
+        it.el.style.opacity = k.toFixed(3);
+        it.el.style.transform = `translate(${(it.ux * (1 - k) * 16).toFixed(2)}px, ${(it.uy * (1 - k) * 16).toFixed(2)}px)`;
+      }
+      for (const it of pushes) {
+        const k = Math.exp(-Math.pow((r - it.d + 30) / 80, 2));
+        it.el.style.transform = k > .002 ? `translate(${(it.ux * k * 7).toFixed(2)}px, ${(it.uy * k * 7).toFixed(2)}px)` : '';
+      }
+      if (u >= 1) {
+        R.running = false;
+        pushes.forEach(it => { it.el.style.transform = ''; });
+        if (R.open) { notes.style.clipPath = 'none'; rips.forEach(it => { it.el.style.transform = ''; it.el.style.opacity = ''; }); }
+        else { notes.classList.remove('live'); notes.style.clipPath = 'circle(0 at 50% 50%)'; R.splashT0 = now; press(label); }
+      }
+    }
+    // 溅落
+    let r2 = 0, a2 = 0;
+    if (R.splashT0 >= 0) {
+      const v = clamp((now - R.splashT0) / (380 * slow));
+      r2 = 12 + 110 * easeOpen(v); a2 = .55 * (1 - v);
+      if (v >= 1) R.splashT0 = -1;
+    }
+    // 主波振幅：1/√r 衰减；展开的尾段淡出，收回的起步淡入
+    let a1 = 0;
+    if (R.running) {
+      const env = R.open ? 1 - smooth(clamp((u - .72) / .28)) : smooth(clamp(u / .12)) * (1 - smooth(clamp((u - .9) / .1)));
+      a1 = 1.15 * Math.sqrt(160 / (160 + r)) * env;
+    }
+    drawFx(r, a1, r2, a2);
+    if (R.running || R.splashT0 >= 0) R.raf = requestAnimationFrame(frame);
+    else drawFx(0, 0, 0, 0);
+  }
+
+  function drawFx(r, a, r2, a2) {
+    if (!fgl) return;
+    fgl.viewport(0, 0, fx.width, fx.height);
+    fgl.clearColor(0, 0, 0, 0); fgl.clear(fgl.COLOR_BUFFER_BIT);
+    if (a < .002 && a2 < .002) return;
+    fgl.uniform2f(fu.uSize, fx.width, fx.height);
+    fgl.uniform1f(fu.uScale, fx.width / W);
+    fgl.uniform2f(fu.uO, R.ox, R.oy); fgl.uniform1f(fu.uR, r); fgl.uniform1f(fu.uA, a); fgl.uniform1f(fu.uDir, R.open ? 1 : -1);
+    fgl.uniform2f(fu.uO2, R.ox, R.oy); fgl.uniform1f(fu.uR2, r2); fgl.uniform1f(fu.uA2, a2);
+    fgl.uniform3f(fu.uTint, ...hexRgb(mood)); fgl.uniform1f(fu.uDark, isDark() ? 1 : 0);
+    fgl.drawArrays(fgl.TRIANGLES, 0, 3);
+  }
+
+  const activate = el => e => {
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); e.stopPropagation();
+    if (el === vTitle && !R.open) return;
+    toggle(el === vTitle ? label : el);
+  };
+  [label, capTitle, vTitle].forEach(el => { el.addEventListener('click', activate(el)); el.addEventListener('keydown', activate(el)); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && R.open) toggle(label); });
+  $('#pill').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('#pill').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (R.open) toggle(label);
+  });
+
+  // 唱盘惯性
+  let lastT = performance.now();
+  (function spin(now) {
+    const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+    vel += ((playing && !reduce ? 20 : 0) - vel) * (1 - Math.exp(-dt / 1.4));
+    angle = (angle + vel * dt) % 360;
+    disc.style.transform = `rotate(${angle}deg)`;
+    requestAnimationFrame(spin);
+  })(lastT);
+
+  addEventListener('resize', fit);
+  document.fonts.ready.then(fit);
+  fit();
+
+  // ============================== 演示二：水琴窟 ==============================
+  const pond = $('#pond'), pondBox = $('#pondBox');
+  const gl = pond.getContext('webgl2', { premultipliedAlpha: true, alpha: true, antialias: false });
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const G = coarse ? 96 : 160;
+  let A = new Float32Array(G * G), B = new Float32Array(G * G);
+  const sponge = new Float32Array(G * G);
+  for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+    const e = Math.min(x, y, G - 1 - x, G - 1 - y);
+    sponge[y * G + x] = e < 12 ? 1 - .08 * Math.pow(1 - e / 12, 2) : 1;
+  }
+  const DAMP = .989;
+  function step() {
+    for (let y = 1; y < G - 1; y++) {
+      let i = y * G + 1;
+      for (let x = 1; x < G - 1; x++, i++) {
+        B[i] = ((A[i - 1] + A[i + 1] + A[i - G] + A[i + G]) * .5 - B[i]) * DAMP * sponge[i];
+      }
+    }
+    const t = A; A = B; B = t;
+  }
+  function drop(gx, gy, rad, str) {
+    const r = Math.ceil(rad);
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+      const d = Math.hypot(x, y); if (d > rad) continue;
+      const X = Math.round(gx + x), Y = Math.round(gy + y);
+      if (X < 1 || Y < 1 || X >= G - 1 || Y >= G - 1) continue;
+      A[Y * G + X] -= str * (Math.cos(Math.PI * d / rad) + 1) * .5;
+    }
+  }
+
+  let pu = null, texH = null, texBed = null;
+  const bed = document.createElement('canvas'), bctx = bed.getContext('2d');
+  if (!gl) {
+    $('#pondFallback').style.display = 'grid';
+  } else {
+    pu = makeProgram(gl, `#version 300 es
+    precision highp float;
+    uniform sampler2D uH; uniform sampler2D uBed;
+    uniform vec2 uRes; uniform float uTexel;
+    uniform vec3 uMood; uniform float uDark;
+    out vec4 o;
+    void main(){
+      vec2 uv = vec2(gl_FragCoord.x / uRes.x, 1.0 - gl_FragCoord.y / uRes.y);
+      float h = texture(uH, uv).r;
+      float hl = texture(uH, uv - vec2(uTexel, 0)).r, hr = texture(uH, uv + vec2(uTexel, 0)).r;
+      float hu = texture(uH, uv - vec2(0, uTexel)).r, hd = texture(uH, uv + vec2(0, uTexel)).r;
+      vec2 g = vec2(hr - hl, hd - hu);
+      vec3 n = normalize(vec3(-g * 2.0, 1.0));
+      vec3 bedc = texture(uBed, uv - g * 0.035).rgb;
+      float lap = hl + hr + hu + hd - 4.0 * h;
+      float caustic = clamp(-lap * 6.0, 0.0, 1.0);
+      vec3 L = normalize(vec3(-0.5, -0.6, 0.62));
+      float diff = dot(n, L) - L.z;
+      float spec = pow(max(dot(reflect(-L, n), vec3(0,0,1)), 0.0), 80.0);
+      vec3 c = bedc;
+      c += uMood * caustic * mix(0.28, 0.42, uDark);
+      c += diff * mix(0.14, 0.17, uDark);
+      c += vec3(spec) * mix(0.45, 0.5, uDark);
+      vec2 q = (uv - 0.5) * 2.0;
+      float a = 1.0 - smoothstep(0.74, 1.0, length(q));
+      o = vec4(clamp(c, 0.0, 1.0) * a, a);
+    }`);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    texH = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texH);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, G, G, 0, gl.RED, gl.FLOAT, A);
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.LINEAR));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    texBed = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texBed);
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.LINEAR));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.uniform1i(pu.uH, 0); gl.uniform1i(pu.uBed, 1);
+  }
+
+  // 水底：曲名、底石，Canvas 2D 预绘一次
+  function drawBed() {
+    if (!gl) return;
+    const w = bed.width = pond.width, h = bed.height = pond.height;
+    const dark = isDark(), [mr, mg, mb] = hexRgb(mood).map(v => Math.round(v * 255));
+    const page = dark ? '#0A0F1D' : '#FAF8F3';
+    bctx.fillStyle = page; bctx.fillRect(0, 0, w, h);
+    const g = bctx.createRadialGradient(w * .5, h * .48, 0, w * .5, h * .5, w * .5);
+    g.addColorStop(0, `rgba(${mr},${mg},${mb},${dark ? .2 : .16})`);
+    g.addColorStop(1, `rgba(${mr},${mg},${mb},0)`);
+    bctx.fillStyle = g; bctx.fillRect(0, 0, w, h);
+    // 底石：固定种子
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.39996 + 1, rr = (.18 + .22 * rnd()) * w;
+      const x = w * .5 + Math.cos(a) * rr, y = h * .5 + Math.sin(a) * rr * .9, s = w * (.035 + .04 * rnd());
+      const sg = bctx.createRadialGradient(x - s * .3, y - s * .3, s * .1, x, y, s);
+      const ink = dark ? '255,255,255' : '15,23,42';
+      sg.addColorStop(0, `rgba(${ink},${dark ? .035 : .04})`); sg.addColorStop(.85, `rgba(${ink},${dark ? .02 : .025})`); sg.addColorStop(1, `rgba(${ink},0)`);
+      bctx.fillStyle = sg; bctx.beginPath(); bctx.ellipse(x, y, s, s * .78, a, 0, Math.PI * 2); bctx.fill();
+    }
+    const ink = dark ? '226,232,240' : '30,41,59';
+    bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+    bctx.fillStyle = `rgba(${ink},.86)`;
+    bctx.font = `600 ${Math.round(w * .068)}px "Shippori Mincho", "Klee One", serif`;
+    bctx.fillText('夏陰、ピアノを弾く', w * .5, h * .46);
+    bctx.fillStyle = `rgba(${ink},.5)`;
+    bctx.font = `${Math.round(w * .022)}px "JetBrains Mono", monospace`;
+    bctx.fillText('I N S T R U M E N T A L', w * .5, h * .555);
+    bctx.fillStyle = `rgba(${mr},${mg},${mb},.9)`;
+    bctx.beginPath(); bctx.arc(w * .5, h * .61, w * .005, 0, Math.PI * 2); bctx.fill();
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texBed);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bed);
+  }
+  function sizePond() {
+    if (!gl) return;
+    const dpr = Math.min(coarse ? 1.5 : 2, devicePixelRatio || 1);
+    const s = pondBox.clientWidth;
+    pond.width = Math.round(s * dpr); pond.height = Math.round(s * dpr);
+    drawBed();
+  }
+  listeners.push(drawBed);
+
+  // 合成的“音乐”：BPM 157（半拍落滴）、副歌段 51–72s
+  const SONG = { dur: 95, sections: [[51, 72]], bpm: 157 };
+  let st = 0, pPlaying = true, phase = 0, golden = 0;
+  const en = { beat: 0, low: 0, high: 0 };
+  $('#songSec').style.left = (SONG.sections[0][0] / SONG.dur * 100) + '%';
+  $('#songSec').style.width = ((SONG.sections[0][1] - SONG.sections[0][0]) / SONG.dur * 100) + '%';
+  const pondPlayBtn = $('#pondPlay');
+  pondPlayBtn.onclick = () => { pPlaying = !pPlaying; pondPlayBtn.setAttribute('aria-pressed', pPlaying); pondPlayBtn.textContent = pPlaying ? '播放中（模拟）' : '已暂停 · 看水静下来'; };
+  $('#jumpSec').onclick = () => { st = 50.5; if (!pPlaying) pondPlayBtn.click(); };
+  $('#songTrack').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); st = clamp((e.clientX - r.left) / r.width) * SONG.dur; };
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  function music(dt) {
+    en.beat *= Math.exp(-dt / .12);
+    if (!pPlaying) { en.low *= .9; en.high *= .9; return; }
+    st += dt; if (st > SONG.dur) st = 0;
+    const inSec = SONG.sections.some(([a, b]) => st >= a && st < b);
+    en.low = .5 + .3 * Math.sin(st * .9) + .2 * Math.sin(st * 2.3) + (inSec ? .15 : 0);
+    en.high = clamp((inSec ? .62 : .26) + .15 * Math.sin(st * 3.1));
+    const period = 60 / (SONG.bpm / 2);
+    phase += dt;
+    if (phase >= period) {
+      phase -= period;
+      if (Math.random() < (inSec ? .95 : .62)) {
+        en.beat = 1;
+        golden += 2.39996;
+        const rr = Math.sqrt(Math.random()) * .34 * G;
+        drop(G / 2 + Math.cos(golden) * rr, G / 2 + Math.sin(golden) * rr, (inSec ? 5 : 3.6) * (G / 160) * (.8 + .4 * en.low), (inSec ? .95 : .68) * (.7 + .5 * en.low));
+      }
+    }
+    const rate = en.high * (coarse ? 2.4 : 4.8);
+    if (Math.random() < rate * dt) {
+      const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * .4 * G;
+      drop(G / 2 + Math.cos(a) * rr, G / 2 + Math.sin(a) * rr, 1.6 * (G / 160) + .6, .12);
+    }
+  }
+
+  // 点 / 拖：自己的一滴
+  let lastDrag = null;
+  const toGrid = e => { const r = pond.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * G, (e.clientY - r.top) / r.height * G]; };
+  pondBox.addEventListener('pointerdown', e => { const [x, y] = toGrid(e); drop(x, y, 4.5 * G / 160 + 1, .7); lastDrag = [x, y]; pondBox.setPointerCapture(e.pointerId); });
+  pondBox.addEventListener('pointermove', e => {
+    if (!lastDrag) return; const [x, y] = toGrid(e);
+    if (Math.hypot(x - lastDrag[0], y - lastDrag[1]) > 3) { drop(x, y, 2.4, .18); lastDrag = [x, y]; }
+  });
+  const endDrag = () => { lastDrag = null; };
+  pondBox.addEventListener('pointerup', endDrag); pondBox.addEventListener('pointercancel', endDrag);
+
+  let visible = true, acc = 0, pLast = performance.now();
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(pondBox);
+  const mBeat = $('#mBeat'), mLow = $('#mLow'), mHigh = $('#mHigh'), head = $('#songHead'), now$ = $('#songNow');
+  function pondFrame(now) {
+    requestAnimationFrame(pondFrame);
+    const dt = Math.min(.05, (now - pLast) / 1000); pLast = now;
+    if (!visible || document.hidden || !gl) return;
+    if (reduce) { if (pPlaying && Math.random() < dt / 6) drop(G / 2, G / 2, 4, .6); }
+    else music(dt);
+    acc += dt;
+    let n = 0;
+    while (acc >= 1 / 60 && n < 3) { step(); acc -= 1 / 60; n++; }
+    if (n === 3) acc = 0;
+    gl.viewport(0, 0, pond.width, pond.height);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texH);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, G, G, gl.RED, gl.FLOAT, A);
+    gl.uniform2f(pu.uRes, pond.width, pond.height);
+    gl.uniform1f(pu.uTexel, 1 / G);
+    gl.uniform3f(pu.uMood, ...hexRgb(mood));
+    gl.uniform1f(pu.uDark, isDark() ? 1 : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    mBeat.style.width = (en.beat * 100) + '%'; mLow.style.width = (clamp(en.low) * 100) + '%'; mHigh.style.width = (en.high * 100) + '%';
+    head.style.left = (st / SONG.dur * 100) + '%'; now$.textContent = fmt(st);
+  }
+  addEventListener('resize', sizePond);
+  document.fonts.ready.then(sizePond);
+  sizePond();
+  requestAnimationFrame(pondFrame);
+})();
+</script>
+</body>
+</html>
