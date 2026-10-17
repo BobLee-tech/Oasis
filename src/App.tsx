@@ -22,6 +22,7 @@ import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
 import { OasisBottomChrome } from './components/OasisBottomChrome';
 import { GardenViewSwitch } from './components/GardenViewSwitch';
+import { SCENE_OF } from './components/yuantu/scenes';
 import { OasisPalette, openPalette, type PaletteView } from './components/OasisPalette';
 
 // 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
@@ -31,6 +32,8 @@ const OasisGallery = lazy(() => import('./components/OasisGallery').then(m => ({
 const OasisResonance = lazy(() => import('./components/OasisResonance').then(m => ({ default: m.OasisResonance })));
 const OasisLights = lazy(() => import('./components/OasisLights').then(m => ({ default: m.OasisLights })));
 const OasisAtelier = lazy(() => import('./components/OasisAtelier').then(m => ({ default: m.OasisAtelier })));
+// 📜 园图：three.js 与卷的引擎都在这个 chunk 里，只有展卷时才拉
+const OasisYuantu = lazy(() => import('./components/OasisYuantu').then(m => ({ default: m.OasisYuantu })));
 
 import type { BgPhase, AppView } from './types/auth';
 
@@ -288,6 +291,9 @@ function App() {
     if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
   }, []);
 
+  // 📜 园图从哪一处进来：卷展到那一景、页脚的「回到」也回那里
+  const [yuantuFrom, setYuantuFrom] = useState<AppView | undefined>(undefined);
+
   const handleViewChange = (view: AppView, origin?: RippleOrigin) => {
     if (origin) setRevealOrigin(origin);
     setWaveKey(k => k + 1);
@@ -296,7 +302,12 @@ function App() {
     // 0.5s 退场 + 0.6s 入场，再留一点懒加载余量；音乐页是 0.2s + 0.28s（lib/transitions.ts）。
     transitionTimer.current = window.setTimeout(() => setTransitioning(false), view === 'soundscape' ? 650 : 1250);
     setAppView(view);
-    navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
+    if (view === 'yuantu') {
+      setYuantuFrom(appView);
+      navigate('yuantu', SCENE_OF[appView]); // #/yuantu/<景>：刷新或分享也展到同一景
+    } else {
+      navigate(view); // 同步地址栏，切换场所即可被收藏 / 分享 / 后退
+    }
   };
 
 
@@ -374,7 +385,7 @@ function App() {
   const { posts: rawAllPosts } = useGarden();
   const allPosts = filterVisible(rawAllPosts, effectiveIsAdmin);
   const paletteView: PaletteView | 'welcome' =
-    appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights' || appView === 'atelier'
+    appView === 'garden' || appView === 'soundscape' || appView === 'orchard' || appView === 'lights' || appView === 'atelier' || appView === 'yuantu'
       ? appView : 'welcome';
   const themeLabel = themeMode === 'auto' ? `AUTO · ${isDarkMode ? '☽' : '☼'}` : themeMode === 'light' ? 'LIGHT' : 'DARK';
 
@@ -395,7 +406,7 @@ function App() {
       />
       <NoiseOverlay />
       <ClickRipples />
-      <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} onClockTap={handleClockTap} />
+      {appView !== 'yuantu' && <OasisHUD showClock={terminalStatus === 'granted' && bgPhase === 'zen'} onClockTap={handleClockTap} />}
 
       <AnimatePresence>
         {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
@@ -449,7 +460,7 @@ function App() {
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : (getVisitorAlias() ?? "Visitor")} isReturningUser={effectiveIsAdmin || getVisitorAlias() !== null} onEnterGarden={() => handleViewChange('garden')} />
+            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : (getVisitorAlias() ?? "Visitor")} isReturningUser={effectiveIsAdmin || getVisitorAlias() !== null} onEnterGarden={() => handleViewChange('garden')} onOpenScroll={() => handleViewChange('yuantu')} />
           )}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
             <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.9, ease: [0.32, 0.72, 0, 1] } }} exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.9, 0.2] } }}>
@@ -475,6 +486,14 @@ function App() {
                     />)}
                     {appView === 'lights' && wrap('lights-space', <OasisLights />)}
                     {appView === 'atelier' && wrap('atelier-space', <OasisAtelier />)}
+                    {appView === 'yuantu' && wrap('yuantu-space', <OasisYuantu
+                      from={yuantuFrom}
+                      scene={route.view === 'yuantu' ? route.itemId : undefined}
+                      posts={allPosts}
+                      isDark={isDarkMode}
+                      onEnter={(view) => handleViewChange(view)}
+                      onBack={() => handleViewChange(yuantuFrom && yuantuFrom !== 'yuantu' ? yuantuFrom : 'welcome')}
+                    />)}
                   </AnimatePresence>
                 );
               })()}
@@ -485,7 +504,12 @@ function App() {
                   <GardenViewSwitch key="garden-view-switch" view={appView} onSwitch={handleViewChange} />
                 )}
               </AnimatePresence>
-              <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} isOwner={effectiveIsAdmin} />
+              {/* 📜 园图是一处单独的去处：Dock 与 Miku 在那里收起，出口是卷下的「回到…」与签条 */}
+              <AnimatePresence>
+                {appView !== 'yuantu' && (
+                  <OasisBottomChrome key="bottom-chrome" currentView={appView} onViewChange={handleViewChange} isOwner={effectiveIsAdmin} />
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>

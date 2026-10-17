@@ -13,6 +13,7 @@ describe('parseHash', () => {
     expect(parseHash('#/constellation')).toEqual({ view: 'orchard' });
     expect(parseHash('#/lanterns')).toEqual({ view: 'lights' });
     expect(parseHash('#/atelier')).toEqual({ view: 'atelier' });
+    expect(parseHash('#/yuantu')).toEqual({ view: 'yuantu' });
   });
 
   it('garden, constellation and atelier carry an itemId, decoded', () => {
@@ -20,6 +21,10 @@ describe('parseHash', () => {
     expect(parseHash('#/garden/hello%20world')).toEqual({ view: 'garden', itemId: 'hello world' });
     expect(parseHash('#/constellation/star-1')).toEqual({ view: 'orchard', itemId: 'star-1' });
     expect(parseHash('#/atelier/art-1')).toEqual({ view: 'atelier', itemId: 'art-1' });
+  });
+
+  it('yuantu carries a scene id', () => {
+    expect(parseHash('#/yuantu/nongshui')).toEqual({ view: 'yuantu', itemId: 'nongshui' });
   });
 
   it('ignores a trailing segment on non-garden views', () => {
@@ -38,6 +43,7 @@ describe('formatHash', () => {
     expect(formatHash('orchard')).toBe('#/constellation');
     expect(formatHash('lights')).toBe('#/lanterns');
     expect(formatHash('atelier')).toBe('#/atelier');
+    expect(formatHash('yuantu')).toBe('#/yuantu');
   });
 
   it('falls back to root for a view with no known URL segment', () => {
@@ -48,12 +54,13 @@ describe('formatHash', () => {
     expect(formatHash('garden', 'hello world')).toBe('#/garden/hello%20world');
     expect(formatHash('orchard', 'star 1')).toBe('#/constellation/star%201');
     expect(formatHash('atelier', 'art 1')).toBe('#/atelier/art%201');
+    expect(formatHash('yuantu', 'jianshan')).toBe('#/yuantu/jianshan');
   });
 });
 
 describe('parseHash <-> formatHash round trip', () => {
   it('recovers the same route for every routable view', () => {
-    (['garden', 'soundscape', 'orchard', 'lights', 'atelier'] as const).forEach((view) => {
+    (['garden', 'soundscape', 'orchard', 'lights', 'atelier', 'yuantu'] as const).forEach((view) => {
       expect(parseHash(formatHash(view))).toEqual({ view });
     });
   });

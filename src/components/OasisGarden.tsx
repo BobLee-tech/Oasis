@@ -8,11 +8,13 @@ interface OasisGardenProps {
   visitorName: string;
   isReturningUser: boolean;
   onEnterGarden: () => void;
+  /** 📜 园图的一扇门：第一次来的人可以先看一眼整座园子 */
+  onOpenScroll?: () => void;
 }
 
 const customEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden }) => {
+export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturningUser, onEnterGarden, onOpenScroll }) => {
   const term = currentSolarTerm();
   // 🌙 深夜到访：问候换成夜间版；平日则随节气内的日子在几句语录间轮换
   const termDay = daysIntoTerm();
@@ -114,6 +116,24 @@ return (
       >
         [ Click anywhere to step into the oasis ]
       </motion.div>
+
+      {/* 📜 另一扇门：整页是「点哪都进园」，这里要拦住点击与回车，别让它冒泡成进园 */}
+      {onOpenScroll && (
+        <motion.button
+          type="button"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          transition={{ duration: 1.5, delay: 1.6 }}   // 熟客的入口页 3 秒就进园，门要早一点露出来
+          onClick={(e) => { e.stopPropagation(); onOpenScroll(); }}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="absolute bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] inline-flex items-center gap-2 px-2 py-1.5 font-serif text-sm tracking-[0.24em] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-b border-transparent hover:border-slate-300/60 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#39C5BB] rounded-sm"
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+            <rect x="3" y="5" width="3" height="14" rx="1.5" /><rect x="18" y="5" width="3" height="14" rx="1.5" /><path d="M6 7h12M6 17h12" /><path d="M8.5 12c1.6-1.4 3.2-1.4 4.8 0s3.2 1.4 4.7 0" opacity=".6" />
+          </svg>
+          或者，展卷看园
+        </motion.button>
+      )}
     </motion.div>
   );
 };

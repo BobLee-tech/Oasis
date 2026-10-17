@@ -10,6 +10,7 @@ const VIEW_TO_SEG: Partial<Record<AppView, string>> = {
   orchard: 'constellation',
   lights: 'lanterns',
   atelier: 'atelier',
+  yuantu: 'yuantu',
 };
 const SEG_TO_VIEW: Record<string, AppView> = {
   resonance: 'soundscape',
@@ -17,14 +18,15 @@ const SEG_TO_VIEW: Record<string, AppView> = {
   constellation: 'orchard',
   lanterns: 'lights',
   atelier: 'atelier',
+  yuantu: 'yuantu',
 };
 
-// 支持「场所内单条目直达」的 view（garden 的文章 / constellation 的选中星 / atelier 工坊的项目页）
-const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'orchard', 'atelier']);
+// 支持「场所内单条目直达」的 view：garden 的文章 / constellation 的选中星 / atelier 的项目页 / yuantu 的景（卷展到那一景）
+const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'orchard', 'atelier', 'yuantu']);
 
 export interface Route {
   view: AppView;        // 'welcome' 表示无有效路由（首页入场）
-  itemId?: string;      // garden/orchard 的文章 id 或 atelier 项目 id，仅 ITEM_VIEWS 内的场所有意义
+  itemId?: string;      // 文章 / 项目 / 景的 id，仅 ITEM_VIEWS 内的场所有意义
 }
 
 export const parseHash = (hash: string): Route => {

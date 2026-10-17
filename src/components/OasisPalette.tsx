@@ -10,6 +10,7 @@ import type { BlogPost } from '../hooks/useGarden';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
+import { PLACE_NAME } from '../lib/places';
 
 // 🔔 跨组件唤起：与 Markdown.tsx 的 LIGHTBOX_EVENT 同一种约定——
 //   任何深处的组件（如 Gallery 的搜索图标）都能 dispatch 这个事件唤起面板，
@@ -17,13 +18,15 @@ import { emitRipple } from '../lib/rippleSignal';
 export const PALETTE_EVENT = 'oasis:palette';
 export const openPalette = () => window.dispatchEvent(new CustomEvent(PALETTE_EVENT));
 
-export type PaletteView = 'soundscape' | 'garden' | 'orchard' | 'lights' | 'atelier';
+export type PaletteView = 'soundscape' | 'garden' | 'orchard' | 'lights' | 'atelier' | 'yuantu';
+// 中文名取 lib/places.ts（树测试定名后只改那一处）；园图不是 Dock 上的场所，这里是它的两扇门之一
 const VIEW_META: Record<PaletteView, { label: string; icon: string }> = {
-  garden: { label: '花园 · Garden', icon: '🌱' },
-  soundscape: { label: '共鸣 · Soundscape', icon: '🎧' },
-  orchard: { label: '星图 · Orchard', icon: '🪐' },
-  lights: { label: '灯火 · Lanterns', icon: '🏮' },
-  atelier: { label: '工坊 · Atelier', icon: '🪵' },
+  garden: { label: `${PLACE_NAME.garden} · Garden`, icon: '🌱' },
+  soundscape: { label: `${PLACE_NAME.soundscape} · Soundscape`, icon: '🎧' },
+  orchard: { label: `${PLACE_NAME.orchard} · Orchard`, icon: '🪐' },
+  lights: { label: `${PLACE_NAME.lights} · Lanterns`, icon: '🏮' },
+  atelier: { label: `${PLACE_NAME.atelier} · Atelier`, icon: '🪵' },
+  yuantu: { label: '园图 · 园中七景', icon: '📜' },
 };
 
 interface PostHit { kind: 'post'; id: string; title: string; color: string; snippet: string }

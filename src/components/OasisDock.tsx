@@ -5,6 +5,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { AppView } from '../types/auth';
+import { PLACE_NAME } from '../lib/places';
 
 interface OasisDockProps {
   currentView: AppView;
@@ -12,7 +13,7 @@ interface OasisDockProps {
 }
 
 interface DockItem {
-  view: Exclude<AppView, 'welcome' | 'echoes' | 'orchard'>;
+  view: Exclude<AppView, 'welcome' | 'echoes' | 'orchard' | 'yuantu'>;
   label: string;
   shortLabel: string;
   icon: React.ReactNode;
@@ -62,10 +63,10 @@ const LanternIcon = () => (
 );
 
 const DOCK_ITEMS: DockItem[] = [
-  { view: 'soundscape', label: 'Resonance', shortLabel: '共鸣', icon: <ResonanceIcon /> },
-  { view: 'garden', label: 'Garden', shortLabel: '花园', icon: <GardenIcon /> },
-  { view: 'atelier', label: 'Atelier', shortLabel: '工坊', icon: <AtelierIcon /> },
-  { view: 'lights', label: 'Lanterns', shortLabel: '灯火', icon: <LanternIcon /> },
+  { view: 'soundscape', label: 'Resonance', shortLabel: PLACE_NAME.soundscape, icon: <ResonanceIcon /> },
+  { view: 'garden', label: 'Garden', shortLabel: PLACE_NAME.garden, icon: <GardenIcon /> },
+  { view: 'atelier', label: 'Atelier', shortLabel: PLACE_NAME.atelier, icon: <AtelierIcon /> },
+  { view: 'lights', label: 'Lanterns', shortLabel: PLACE_NAME.lights, icon: <LanternIcon /> },
 ];
 
 // 🪄 场所预取：手指/光标刚落到某个目的地图标上就提前拉取对应 chunk（与 App.tsx 的

@@ -1,0 +1,158 @@
+/* 📜 园图 · 一卷《独乐园图》
+   移植自书斋六版 docs/shuzhai-v6.html 的「庭」。这一处有自己的「地」（引首纸；夜里是灯下的桌面），
+   就像星图有砂庭 / 星池、工坊有册页——外壳（⌘K、昼夜胶囊、时钟）照旧，Dock 在这里收起。
+   · 卷由 WebGL 画（yuantu/scrollScene.ts）；签条、热区、题跋按钮是跟着纸走的 DOM，只在两端卷筒之间露出（--wl/--wr 由引擎每帧写）。
+   · 中文衬线 / 楷与工坊同源；纸、绫、印、景名全出自同一卷（出处见 public/yuantu/CREDITS.md）。
+   · 动只动 transform / opacity；reduced-motion 下不演解带、签条不摆。 */
+
+.oasis-yuantu {
+  --paper: #EEE7D8; --sheet: #F7F2E6; --ink: #1E1A15; --ink-2: #4A4236; --ink-3: #7D735F; --ink-4: #AFA48D;
+  --rule: rgba(40, 32, 22, .16); --zhu: #A8392B; --on-zhu: #F8EFE2; --shilv: #2D7F77;
+  --f-song: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  --f-kai: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif;
+  --f-lat: "EB Garamond", Georgia, serif;
+  --e-out: cubic-bezier(.16, 1, .3, 1); --e-io: cubic-bezier(.65, 0, .35, 1);
+  --gut: clamp(16px, 5vw, 72px);
+  --Hs: clamp(280px, 52%, 620px);
+
+  position: absolute; inset: 0; overflow: hidden; isolation: isolate;
+  color: var(--ink); font: 400 15px/1.75 var(--f-kai);
+  -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none;
+}
+.dark .oasis-yuantu {
+  --paper: #121314; --sheet: #1A1B1C; --ink: #E9E2D2; --ink-2: #BDB4A2; --ink-3: #888170; --ink-4: #585349;
+  --rule: rgba(233, 226, 210, .14); --zhu: #C9604A; --on-zhu: #15120E; --shilv: #6CC7BC;
+}
+.oasis-yuantu button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+.oasis-yuantu :focus-visible { outline: 1.5px solid var(--zhu); outline-offset: 3px; }
+
+/* 地：引首纸。夜里桌面压暗，烛光同时照在桌上（--lx/--ly 由引擎写） */
+.oasis-yuantu .yt-ground { position: absolute; inset: 0; z-index: 0; background: var(--paper) var(--yt-paper) center / 1024px; background-blend-mode: multiply; transition: background-color .9s var(--e-io); }
+.dark .oasis-yuantu .yt-ground { background-blend-mode: soft-light; }
+.oasis-yuantu .yt-ground::after { content: ""; position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 45%, transparent 55%, rgba(90, 62, 30, .16)); }
+.dark .oasis-yuantu .yt-ground::after { background: radial-gradient(120% 100% at 50% 45%, transparent 40%, rgba(0, 0, 0, .55)); }
+.oasis-yuantu .yt-ground i { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s var(--e-io);
+  background: radial-gradient(circle min(46vw, 640px) at var(--lx, 50%) var(--ly, 50%), rgba(255, 190, 120, .10), rgba(255, 170, 90, .03) 45%, transparent 70%); }
+.dark .oasis-yuantu .yt-ground i { opacity: 1; }
+
+.oasis-yuantu .yt-gl { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; display: block; transition: opacity 1.1s var(--e-out), transform 1.1s var(--e-out); }
+.oasis-yuantu:not([data-ready]) .yt-gl { opacity: 0; transform: translateY(-10px); }   /* 画布由引擎自己建（scrollScene.ts），素材到齐再淡入 */
+.oasis-yuantu .yt-dust { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; transition: opacity 1.2s var(--e-io); }
+.dark .oasis-yuantu .yt-dust { opacity: 0; }
+
+/* 页头：问候与时令 */
+.oasis-yuantu .yt-head { position: absolute; z-index: 4; left: var(--gut); right: var(--gut); top: calc(50% - var(--Hs) / 2 - 104px); display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; pointer-events: none; transition: opacity .9s var(--e-out); }
+.oasis-yuantu .yt-say { font: 400 15px/1.7 var(--f-kai); color: var(--ink-2); letter-spacing: .06em; }
+.oasis-yuantu .yt-say b { font: 500 17px/1.6 var(--f-song); color: var(--ink); letter-spacing: .1em; display: block; }
+.oasis-yuantu .yt-say em { font-style: normal; color: var(--shilv); }
+.oasis-yuantu .yt-say button { pointer-events: auto; margin-left: 6px; font: 500 13px/1 var(--f-song); letter-spacing: .2em; color: var(--zhu); border-bottom: 1px solid currentColor; padding-bottom: 2px; }
+.oasis-yuantu .yt-now { text-align: right; font: 400 13px/1.7 var(--f-kai); color: var(--ink-3); letter-spacing: .08em; }
+.oasis-yuantu .yt-now b { font: 500 14px/1.6 var(--f-song); color: var(--ink-2); letter-spacing: .24em; }
+
+/* 卷带：卷面上的可点之物只在两端卷筒之间露出 */
+.oasis-yuantu .yt-band { position: absolute; z-index: 2; left: 0; right: 0; top: calc(50% - var(--Hs) / 2 - 10px); height: var(--Hs); touch-action: none; cursor: grab;
+  -webkit-mask-image: linear-gradient(90deg, transparent var(--wl, 0px), #000 calc(var(--wl, 0px) + 22px), #000 calc(var(--wr, 100vw) - 22px), transparent var(--wr, 100vw));
+  mask-image: linear-gradient(90deg, transparent var(--wl, 0px), #000 calc(var(--wl, 0px) + 22px), #000 calc(var(--wr, 100vw) - 22px), transparent var(--wr, 100vw)); }
+.oasis-yuantu .yt-band::before { content: ""; position: absolute; left: 0; right: 0; top: -200px; bottom: -40px; }   /* 让上方垂下的签条也落在遮罩的高度里 */
+.oasis-yuantu .yt-band.drag { cursor: grabbing; }
+.oasis-yuantu[data-roll="closed"] .yt-band { cursor: pointer; }
+.oasis-yuantu .yt-track { position: absolute; left: 0; top: 0; height: 100%; will-change: transform; --k: 1; }
+.oasis-yuantu .yt-ov { position: absolute; }
+
+/* 签条：钉在卷的天头，一根线吊着。走到跟前线放长、签放大（弹簧），卷动时按加速度摆（阻尼摆） */
+.oasis-yuantu .yt-slip { width: 0; height: 0; }
+.oasis-yuantu .yt-slip .sw { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.oasis-yuantu .yt-slip .str { position: absolute; left: -.5px; top: 0; width: 1px; height: 100px; transform-origin: 0 0; background: linear-gradient(rgba(60, 45, 25, .15), rgba(60, 45, 25, .55)); }
+.oasis-yuantu .yt-slip .pin { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #E8D9B4, #8A7350 70%); box-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.oasis-yuantu .yt-slip .card { position: absolute; left: 0; top: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: calc(var(--k) * 22px); padding: calc(var(--k) * 30px) calc(var(--k) * 24px) calc(var(--k) * 24px);
+  background: #F5EFE1 var(--yt-paper) center / calc(var(--k) * 900px); background-blend-mode: multiply;
+  box-shadow: 0 1px 2px rgba(40, 28, 10, .18), 0 calc(var(--k) * 24px) calc(var(--k) * 44px) calc(var(--k) * -20px) rgba(40, 28, 10, .45);
+  transform-origin: 50% 0; will-change: transform; }
+.oasis-yuantu .yt-slip .card::after { content: ""; position: absolute; inset: calc(var(--k) * 8px); border: 1px solid rgba(90, 70, 40, .22); pointer-events: none; }
+.oasis-yuantu .yt-slip .card img { width: calc(var(--k) * 118px); height: auto; filter: contrast(1.05); pointer-events: none; }
+.oasis-yuantu .yt-slip .card .rm { writing-mode: vertical-rl; inline-size: max-content; font: 500 calc(var(--k) * 32px)/1 var(--f-song); color: #6D5F49; letter-spacing: .3em; opacity: 0; transition: opacity .5s .2s; }
+.oasis-yuantu .yt-slip .card i { font: italic 500 calc(var(--k) * 40px)/1 var(--f-song); color: #A8392B; opacity: 0; transition: opacity .5s .25s; }
+.oasis-yuantu .yt-slip.on .card .rm, .oasis-yuantu .yt-slip.on .card i { opacity: 1; }
+.oasis-yuantu .yt-slip .card.off { cursor: default; }
+.oasis-yuantu .yt-slip .card.off .rm { color: #9C9078; }
+.oasis-yuantu .yt-slip .card .here { position: absolute; left: calc(100% + var(--k) * 10px); top: calc(var(--k) * 20px); white-space: nowrap; writing-mode: vertical-rl; padding: calc(var(--k) * 14px) calc(var(--k) * 8px); background: #A8392B; color: #F8EFE2; font: 500 calc(var(--k) * 28px)/1 var(--f-song); letter-spacing: .2em; border-radius: 2px; }
+.dark .oasis-yuantu .yt-slip .card { filter: brightness(.62) sepia(.2); transition: filter .6s; }
+.dark .oasis-yuantu .yt-slip.on .card { filter: brightness(.95); box-shadow: 0 0 0 1px rgba(255, 214, 160, .14), 0 calc(var(--k) * 24px) calc(var(--k) * 60px) calc(var(--k) * -10px) rgba(0, 0, 0, .7); }
+.oasis-yuantu .yt-hot { cursor: pointer; border-radius: 40%; }
+.oasis-yuantu .yt-qy { position: relative; cursor: pointer; }
+.oasis-yuantu .yt-qy::before { content: ""; position: absolute; inset: 0; border-radius: 2px; background: radial-gradient(closest-side, rgba(168, 57, 43, .10), transparent); opacity: 0; transition: opacity .4s; }
+.oasis-yuantu .yt-qy:hover::before { opacity: 1; }
+.oasis-yuantu .yt-qy .tip { position: absolute; left: 50%; top: 100%; translate: -50% 10px; white-space: nowrap; padding: 6px 12px; background: #1E1A15; color: #F2EADB; font: 400 13px/1.4 var(--f-kai); letter-spacing: .06em; border-radius: 3px; opacity: 0; transition: opacity .3s, translate .45s var(--e-out); pointer-events: none; }
+.oasis-yuantu .yt-qy:hover .tip { opacity: 1; translate: -50% 4px; }
+.oasis-yuantu .yt-tb { display: flex; flex-direction: row-reverse; gap: calc(var(--k) * 40px); }
+.oasis-yuantu .yt-tb button { writing-mode: vertical-rl; padding: calc(var(--k) * 30px) calc(var(--k) * 18px); border: 1px solid rgba(60, 45, 25, .45); font: 500 calc(var(--k) * 40px)/1 var(--f-song); letter-spacing: .4em; color: #2B241B; background: rgba(245, 239, 225, .35); transition: background-color .3s, color .3s, border-color .3s; }
+.oasis-yuantu .yt-tb button:hover { background: #A8392B; color: #F8EFE2; border-color: #A8392B; }
+.dark .oasis-yuantu .yt-tb button { color: #D8CDB6; border-color: rgba(216, 205, 182, .35); background: rgba(0, 0, 0, .2); }
+/* 钤印：落、压、起三拍 */
+.oasis-yuantu .yt-stamp { position: absolute; display: grid; place-items: center; writing-mode: vertical-rl; font-family: var(--f-song); font-weight: 600; letter-spacing: .04em; color: #F8EFE2; background: #A8392B; border-radius: 3px; animation: yt-press .95s var(--e-out) both; }
+@keyframes yt-press {
+  0% { opacity: 0; transform: translate(10px, -16px) scale(1.9) rotate(-4deg); filter: blur(10px); }
+  44% { opacity: 1; transform: scale(.97) rotate(-4deg); filter: blur(0); }
+  58% { transform: scale(1.01) rotate(-4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-4deg); }
+}
+
+/* 解带：只在卷合着时出现 */
+.oasis-yuantu .yt-untie { position: absolute; z-index: 5; left: 50%; top: calc(50% + var(--Hs) / 2 + 10px); translate: -50% 0; display: grid; justify-items: center; gap: 10px; text-align: center; transition: opacity .6s var(--e-out), translate .8s var(--e-out); }
+.oasis-yuantu .yt-untie button { display: inline-flex; align-items: center; gap: 12px; padding: 11px 22px; border: 1px solid var(--rule); border-radius: 999px; font: 600 14px/1 var(--f-song); letter-spacing: .4em; color: var(--ink); background: color-mix(in oklab, var(--sheet) 50%, transparent); transition: background-color .3s, color .3s, border-color .3s; }
+.oasis-yuantu .yt-untie button:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.oasis-yuantu .yt-untie small { font: 400 13px/1.6 var(--f-kai); color: var(--ink-3); letter-spacing: .1em; }
+.oasis-yuantu:not([data-roll="closed"]) .yt-untie { opacity: 0; translate: -50% 10px; pointer-events: none; }
+.oasis-yuantu[data-roll="closed"] .yt-head, .oasis-yuantu[data-roll="closed"] .yt-foot,
+.oasis-yuantu[data-roll="opening"] .yt-head, .oasis-yuantu[data-roll="opening"] .yt-foot { opacity: 0; pointer-events: none; }
+
+/* 页脚：缩略条、近况、回去与主按钮 */
+.oasis-yuantu .yt-foot { position: absolute; z-index: 4; left: var(--gut); right: var(--gut); top: calc(50% + var(--Hs) / 2 + 56px); display: grid; grid-template-columns: 1fr auto; gap: 14px 28px; align-items: start; transition: opacity .9s var(--e-out); }
+.oasis-yuantu .yt-mini { position: relative; grid-column: 1 / -1; height: 28px; cursor: pointer; }
+.oasis-yuantu .yt-mini .ms { position: absolute; inset: 0; overflow: hidden; }
+.oasis-yuantu .yt-mini img { position: absolute; left: 0; top: 4px; width: 100%; height: 20px; object-fit: fill; opacity: .55; filter: sepia(.2); border-radius: 1px; pointer-events: none; }
+.dark .oasis-yuantu .yt-mini img { opacity: .35; }
+.oasis-yuantu .yt-mini .win { position: absolute; top: 0; height: 28px; border: 1px solid var(--ink); border-radius: 2px; box-shadow: 0 0 0 9999px color-mix(in oklab, var(--paper) 45%, transparent); pointer-events: none; }
+.oasis-yuantu .yt-mini .mk { position: absolute; top: 30px; translate: -50% 0; font: 500 12px/1 var(--f-song); letter-spacing: .14em; color: var(--ink-3); white-space: nowrap; transition: color .3s; padding-top: 8px; }
+.oasis-yuantu .yt-mini .mk::before { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 5px; background: currentColor; }
+.oasis-yuantu .yt-mini .mk.on { color: var(--zhu); }
+.oasis-yuantu .yt-mini .mk:not(.on) { font-size: 0; }
+.oasis-yuantu .yt-mini:hover .mk { font-size: 12px; }
+.oasis-yuantu .yt-mini:hover .mk:not(.on) { color: var(--ink-4); }
+.oasis-yuantu .yt-near { margin-top: 16px; font: 400 14px/1.7 var(--f-kai); color: var(--ink-2); letter-spacing: .06em; min-height: 1.7em; }
+.oasis-yuantu .yt-near b { font: 500 14px/1.7 var(--f-song); color: var(--ink); letter-spacing: .16em; margin-right: .8em; }
+.oasis-yuantu .yt-near em { font-style: normal; color: var(--zhu); }
+.oasis-yuantu .yt-hint { font: 400 13px/1.7 var(--f-kai); color: var(--ink-3); letter-spacing: .08em; margin-top: 6px; }
+.oasis-yuantu .yt-hint kbd { font: 500 11px/1 var(--f-lat); padding: 2px 6px; border: 1px solid var(--rule); border-radius: 3px; }
+.oasis-yuantu .yt-back { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font: 500 13px/1 var(--f-song); letter-spacing: .24em; color: var(--ink-3); padding: 6px 0; transition: color .3s; }
+.oasis-yuantu .yt-back:hover { color: var(--ink); }
+.oasis-yuantu .yt-exit { position: absolute; z-index: 6; top: calc(env(safe-area-inset-top) + 24px); right: 30px; margin: 0; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 999px; background: color-mix(in oklab, var(--sheet) 55%, transparent); color: var(--ink-2); transition: color .3s, background-color .3s, border-color .3s, opacity .9s var(--e-out); }
+.oasis-yuantu .yt-exit:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.oasis-yuantu .yt-back svg, .oasis-yuantu .yt-go svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.3; }
+/* 主按钮：墨从右往左漫过去（与展卷同向） */
+.oasis-yuantu .yt-go { position: relative; overflow: hidden; isolation: isolate; margin-top: 12px; display: inline-flex; align-items: center; gap: 14px; padding: 12px 20px 12px 22px; border: 1px solid var(--rule); border-radius: 999px; font: 600 14px/1 var(--f-song); letter-spacing: .3em; color: var(--ink); transition: color .45s var(--e-out), border-color .45s; white-space: nowrap; }
+.oasis-yuantu .yt-go::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--ink); clip-path: inset(0 0 0 100%); transition: clip-path .55s var(--e-out); }
+.oasis-yuantu .yt-go svg { width: 16px; height: 16px; transition: transform .5s var(--e-out); }
+.oasis-yuantu .yt-go:hover { color: var(--paper); border-color: var(--ink); }
+.oasis-yuantu .yt-go:hover::before { clip-path: inset(0 0 0 0); }
+.oasis-yuantu .yt-go:hover svg { transform: translateX(-4px); }
+
+.oasis-yuantu .yt-toast { position: absolute; left: 50%; bottom: 32px; z-index: 8; translate: -50% 16px; opacity: 0; padding: 11px 18px; background: var(--ink); color: var(--paper); font: 400 13.5px/1.6 var(--f-kai); border-radius: 3px; transition: opacity .4s, translate .5s var(--e-out); pointer-events: none; }
+.oasis-yuantu .yt-toast.on { opacity: 1; translate: -50% 0; }
+
+/* 没有 WebGL2：给一行说明和七景的门，园图照样能当地图用 */
+.oasis-yuantu .yt-nogl { position: absolute; inset: 0; z-index: 6; display: grid; place-content: center; justify-items: center; gap: 22px; text-align: center; padding: 24px; font: 400 15px/2 var(--f-kai); color: var(--ink-2); }
+.oasis-yuantu .yt-nogl ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; list-style: none; margin: 0; padding: 0; }
+.oasis-yuantu .yt-nogl li button { font: 500 15px/1 var(--f-song); letter-spacing: .2em; color: var(--ink); border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+.oasis-yuantu .yt-nogl li span { font: 500 15px/1 var(--f-song); letter-spacing: .2em; color: var(--ink-4); }
+
+@media (max-width: 860px) {
+  .oasis-yuantu { --Hs: clamp(240px, 44%, 400px); }
+  .oasis-yuantu .yt-now { display: none; }
+  .oasis-yuantu .yt-foot { grid-template-columns: 1fr; top: calc(50% + var(--Hs) / 2 + 40px); }
+  .oasis-yuantu .yt-go { justify-self: start; margin-top: 4px; }
+  .oasis-yuantu .yt-exit { top: calc(env(safe-area-inset-top) + 18px); right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oasis-yuantu *, .oasis-yuantu *::before, .oasis-yuantu *::after { transition-duration: .01ms !important; animation: none !important; }
+}
