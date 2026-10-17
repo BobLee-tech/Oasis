@@ -9,6 +9,8 @@
 //   由 trackMood.ts（以及音乐页的 music:build）按 人标 > 导入 > 自动 > 专辑默认 > 缺省 合并。
 //
 //   默认只分析产物里还没有的曲目；传 id 只分析这些；--all 全部重算。
+//   声波峰值另存 src/data/trackPeaks.generated.json（音乐页的声波进度条按需加载，不进 Miku 的包）：
+//   解码时顺带算；缺峰值的曲目单独补解码一遍（不重算特征）。--peaks 只补峰值，配 --all 则全部重算峰值。
 //   只靠歌词的量（歌词法副歌、段落、季语、意象、时段）每次都对全体重算，不用解码音频——补了歌词以后
 //   直接 `npm run song:analyze` 就会刷新。
 import { readFile, writeFile } from 'node:fs/promises';
@@ -21,10 +23,12 @@ import {
   analyzeSpectrum, arousalFromRaw, chorusFromEnergy, chorusFromLyrics, DEFAULT_AROUSAL_WEIGHTS, estimateBpm,
   imageryOf, median, onsetRate, round3, seasonOf, segmentsFromLyrics, segmentsFromSections, spearman, timeOf,
 } from './lib/track-features.mjs';
+import { PEAK_COUNT, encodePeaks, peaksOf } from './lib/peaks-core.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PLAYLIST_FILE = path.join(ROOT, 'src/hooks/useSoundscape.ts');
 const OUT_FILE = path.join(ROOT, 'src/data/trackFeatures.generated.json');
+const PEAKS_FILE = path.join(ROOT, 'src/data/trackPeaks.generated.json');
 const WEIGHTS_FILE = path.join(ROOT, 'music-data/arousal-weights.json');
 const PROFILE_DIR = path.join(ROOT, 'music-data/tracks');
 const SR = 11025;
@@ -74,9 +78,17 @@ const lyricsOf = async id => {
   return Array.isArray(doc?.lines) ? doc.lines : [];
 };
 
-const analyzeOne = async track => {
+const audioFileOf = track => {
   const file = path.join(ROOT, 'public', decodeURI(track.url));
   if (!existsSync(file)) throw new Error(`找不到音频：${path.relative(ROOT, file)}`);
+  return file;
+};
+
+/** 只为声波进度条解码：不跑 STFT 与响度 */
+const peaksOne = async track => encodePeaks(peaksOf(await decode(audioFileOf(track))));
+
+const analyzeOne = async track => {
+  const file = audioFileOf(track);
   const [pcm, loud, lines] = await Promise.all([decode(file), loudness(file), lyricsOf(track.id)]);
   const { flux, centroid, rms, hopSec } = analyzeSpectrum(pcm, SR);
   // 谱质心只统计有声的帧（静音帧的质心是噪声），取中位数
@@ -95,6 +107,7 @@ const analyzeOne = async track => {
     },
     sections: sections ?? undefined,
     sectionsSource: fromLyrics ? 'lyrics' : sections ? 'energy' : undefined,
+    peaks: encodePeaks(peaksOf(pcm)),
   };
 };
 
@@ -113,27 +126,59 @@ const pool = async (items, size, fn) => {
 const main = async () => {
   const args = process.argv.slice(2);
   const all = args.includes('--all');
+  const peaksOnly = args.includes('--peaks');
   const ids = args.filter(a => !a.startsWith('--'));
   const playlist = parsePlaylist(await readFile(PLAYLIST_FILE, 'utf8'));
   const previous = await readJson(OUT_FILE, { tracks: {} });
+  const previousPeaks = (await readJson(PEAKS_FILE, { tracks: {} })).tracks ?? {};
   const weights = { ...DEFAULT_AROUSAL_WEIGHTS, ...(await readJson(WEIGHTS_FILE, {})).weights };
 
   const unknown = ids.filter(id => !playlist.some(t => t.id === id));
   if (unknown.length) throw new Error(`PLAYLIST 里没有：${unknown.join(', ')}`);
-  const targets = playlist.filter(t => all || (ids.length ? ids.includes(t.id) : !previous.tracks[t.id]));
+  const picked = t => all || (ids.length ? ids.includes(t.id) : false);
+  const targets = peaksOnly ? [] : playlist.filter(t => picked(t) || (!ids.length && !previous.tracks[t.id]));
   console.log(`分析 ${targets.length} / ${playlist.length} 首（权重 ${JSON.stringify(weights)}）`);
 
+  const workers = Math.max(1, Math.min(4, os.cpus().length - 1));
   const fresh = {};
+  const freshPeaks = {};
   let done = 0;
-  await pool(targets, Math.max(1, Math.min(4, os.cpus().length - 1)), async track => {
+  await pool(targets, workers, async track => {
     try {
-      fresh[track.id] = await analyzeOne(track);
+      const { peaks, ...entry } = await analyzeOne(track);
+      fresh[track.id] = entry;
+      freshPeaks[track.id] = peaks;
     } catch (error) {
       console.warn(`  ✗ ${track.id} ${track.title}：${error.message}`);
     }
     done++;
     if (done % 10 === 0 || done === targets.length) console.log(`  ${done}/${targets.length}`);
   });
+
+  // 声波峰值：刚分析过的已经有了；其余缺的（或 --all / 点名的）单独解码补上
+  const peakTargets = playlist.filter(t => !freshPeaks[t.id] && (picked(t) || (!ids.length && !previousPeaks[t.id])));
+  if (peakTargets.length) console.log(`补声波峰值 ${peakTargets.length} 首`);
+  let peaksDone = 0;
+  await pool(peakTargets, workers, async track => {
+    try {
+      freshPeaks[track.id] = await peaksOne(track);
+    } catch (error) {
+      console.warn(`  ✗ ${track.id} ${track.title}：${error.message}`);
+    }
+    peaksDone++;
+    if (peaksDone % 20 === 0 || peaksDone === peakTargets.length) console.log(`  峰值 ${peaksDone}/${peakTargets.length}`);
+  });
+  const peaksOut = {
+    version: 1,
+    generatedBy: 'scripts/analyze-tracks.mjs',
+    count: PEAK_COUNT,
+    tracks: Object.fromEntries(playlist
+      .map(track => [track.id, freshPeaks[track.id] ?? previousPeaks[track.id]])
+      .filter(([, peaks]) => peaks)),
+  };
+  await writeFile(PEAKS_FILE, `${JSON.stringify(peaksOut, null, 1)}\n`, 'utf8');
+  console.log(`写出 ${path.relative(ROOT, PEAKS_FILE)}：${Object.keys(peaksOut.tracks).length} / ${playlist.length} 首有声波`);
+  if (peaksOnly) return;
 
   // 只保留仍在 PLAYLIST 里的曲目（删歌后产物自动收缩）
   const merged = {};

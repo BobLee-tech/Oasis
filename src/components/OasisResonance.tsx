@@ -508,11 +508,15 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
               transition={MOTION.swap}
             >
               {mobileTab === 'disc' ? (
-                /* ——— 唱片段：黑胶 + 情绪光晕 → 声波 → 歌名 → 走带 ——— */
+                /* ——— 唱片段：（黑胶 → 歌名 → 内页条）一组居中，走带贴底 ——— */
                 <div className="flex-1 min-h-0 flex flex-col items-center justify-between touch-pan-x" {...swipeHandlers}>
 
+                  {/* 唱片与它的铭牌是一件东西：收成一组。铭牌与内页条定高不压缩；唱片吃剩下的高度
+                      （不超过 58vw / 260px，保持正方形），矮屏上缩小唱片，而不是让内页条压到走带上 */}
+                  <div className="w-full flex-1 min-h-0 flex flex-col items-center gap-5">
+                  <div className="w-full flex-1 min-h-0 flex items-center justify-center">
                   {/* 💿 手机只保留一层近光；缩放上限 2%，避免大面积合成层抢占性能。 */}
-                  <div onClick={togglePlay} className="relative w-[58vw] max-w-[260px] aspect-square shrink-0 cursor-pointer">
+                  <div onClick={togglePlay} className="relative h-full max-h-[min(58vw,260px)] aspect-square cursor-pointer">
                     <StageGlow
                       color={currentTrack.color}
                       isPlaying={isPlaying}
@@ -532,11 +536,13 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                     </div>
                     {notesLabel(true)}
                   </div>
+                  </div>
 
                   {/* 正在共鸣：歌名 → 艺术家 → 内页条 */}
-                  <div className="w-full flex flex-col items-center text-center px-2 min-h-0">
-                    <div className="w-full mt-4"><TrackCaption track={currentTrack} isPlaying={isPlaying} onOpenNotes={toggleNotes} /></div>
+                  <div className="w-full shrink-0 flex flex-col items-center text-center px-2">
+                    <div className="w-full"><TrackCaption track={currentTrack} isPlaying={isPlaying} onOpenNotes={toggleNotes} /></div>
                     <div className="w-full max-w-[340px] mt-1"><LinerSlip track={currentTrack} onOpen={toggleNotes} compact /></div>
+                  </div>
                   </div>
 
                   {/* 走带控制台：进度 + 传送键 */}

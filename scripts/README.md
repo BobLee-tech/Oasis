@@ -14,6 +14,7 @@
 | `npm run lyric:review` | 生成逐行试听 + 编辑的本地校对页 | `public/__lyrics-review/` |
 | `npm run lyric:gate` | 歌词五道闸全曲库体检（版本/洁净/译文/读音/试听），`--track` 看行号 | 只读，打印报告 |
 | `npm run music:netease` | 网易云事实层：译名、专辑、署名、出处、BPM + 歌词换源提案（有缓存不联网） | `music-data/tracks/<id>.json` 的 `sources.netease` |
+| `npm run song:analyze` | 曲目特征（arousal / BPM / 副歌 / 段落 / 季语）+ 声波峰值；默认只补缺的，`--peaks` 只补峰值、`--all` 全部重算 | `src/data/trackFeatures.generated.json`、`src/data/trackPeaks.generated.json` |
 | `npm run music:build` | 曲目档案合并（人标 > 导入 > 自动 > 专辑默认）+ 校验，`prebuild` 自动跑 | `src/data/trackProfiles.generated.json` |
 | `npm run dev` → `/__studio` | **曲目工坊**：歌词换源/打点/补译/读音、资料与网页导入、心境与副歌标注（只在开发服务器） | `music-data/`、`lyrics-src/`、`dist-lyrics/` |
 | `npm run backup` | 导出 Supabase 里的全部文章到本地 | `backups/` |
