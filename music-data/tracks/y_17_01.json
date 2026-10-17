@@ -25,11 +25,24 @@
     },
     "draft": {
       "intro": "首张迷你专辑的开场，一段只有钢琴的夏日树荫。没有歌词，像在故事开始之前，先请你在阴凉里坐一会儿。",
-      "valence": 0.1,
-      "feel": "peaceful",
+      "valence": 0.3,
+      "feels": {
+        "peaceful": 2,
+        "nostalgic": 2,
+        "tender": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐钢琴小品；标题即「夏阴、弹钢琴」。",
-      "draftedAt": "2026-10-07"
+      "basis": "开场钢琴小品「夏阴、弹钢琴」：先在阴凉里坐一会儿；宁静的怀念，与专辑「旋律明亮、底色怀念」的默认一致。 原依据：纯器乐钢琴小品；标题即「夏阴、弹钢琴」。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/夏草が邪魔をする",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

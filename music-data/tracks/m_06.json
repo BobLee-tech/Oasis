@@ -26,9 +26,13 @@
     "draft": {
       "intro": "ryo 2007 年 12 月发表的第二首原创曲，一年内播放破三百万，掀起「メルト震撼」：一早醒来就想到你，剪了刘海想被问一句「怎么了」。supercell 由此开始。",
       "valence": 0.5,
-      "feel": "joyful",
+      "feels": {
+        "tender": 3,
+        "joyful": 2,
+        "tense": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia。",
+      "basis": "一早醒来就想到你、剪了刘海想被问一句「怎么了」：心要化掉的温柔与雀跃，带点小鹿乱撞的紧张。 原依据：见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · メルト (supercellの曲)",
@@ -39,7 +43,7 @@
           "url": "https://vocadb.net/S/1322"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

@@ -32,9 +32,13 @@
     "draft": {
       "intro": "「世界第一的公主殿下」：发型变了要发现，鞋子也要看，一句话要回三句。ryo 2008 年的傲娇宣言，后来成了初音未来最具代表性的形象之一。",
       "valence": 0.6,
-      "feel": "joyful",
+      "feels": {
+        "joyful": 3,
+        "tender": 1,
+        "defiant": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia 与 VocaDB。",
+      "basis": "「世界第一的公主殿下」：发型变了要发现、一句话要回三句——傲娇的雀跃，撒娇里有一点不服。 原依据：见 Wikipedia 与 VocaDB。",
       "refs": [
         {
           "title": "Wikipedia · supercell (アルバム)",
@@ -45,7 +49,7 @@
           "url": "https://vocadb.net/S/1326"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

@@ -21,16 +21,32 @@
     "draft": {
       "intro": "azuma 2007 年 9 月的作品：这台电脑是我的新家，你是我的主人——别让我唱奇怪的歌词，让我唱出你的「话语」和「心意」。",
       "valence": 0.4,
-      "feel": "tender",
+      "feels": {
+        "tender": 3,
+        "joyful": 1,
+        "wonder": 1
+      },
       "confidence": "high",
-      "basis": "见 VocaDB（first work, meta）。",
+      "basis": "「这台电脑是我的新家，你是我的主人」：让我唱出你的话语与心意，温柔为主。 原依据：见 VocaDB（first work, meta）。",
       "refs": [
         {
           "title": "VocaDB · あなたの歌姫",
           "url": "https://vocadb.net/S/197018"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://vocadb.net/S/197018",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "azuma"
+        ],
+        "composer": [
+          "azuma"
+        ]
+      }
     }
   }
 }

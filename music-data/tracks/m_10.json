@@ -29,17 +29,22 @@
     },
     "draft": {
       "intro": "小林オニキス 2008 年的作品，写与重要之人的永别；虽未明说，唱的是死亡：晴得让人难过的告别日，愿你一路平安。后由フルカワミキ翻唱。",
-      "valence": -0.4,
-      "feel": "sad",
+      "lyricValence": -0.6,
+      "soundValence": 0.4,
+      "feels": {
+        "sad": 2,
+        "nostalgic": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia；曲调快而苦甜。",
+      "basis": "与重要之人的永别、晴得让人难过的告别日（Wikipedia）：哀伤与怀念；曲调快而苦甜，曲亮词暗。 原依据：见 Wikipedia；曲调快而苦甜。",
       "refs": [
         {
           "title": "Wikipedia · サイハテ",
           "url": "https://ja.wikipedia.org/wiki/サイハテ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

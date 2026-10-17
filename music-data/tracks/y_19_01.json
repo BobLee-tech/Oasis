@@ -14,16 +14,29 @@
     "draft": {
       "intro": "以日期为题的器乐开场。这张专辑的四首纯音乐都是日期：8/31、7/13、5/6、4/10，倒着往回数，像把艾米的旅途日记一页页往前翻。",
       "valence": -0.2,
-      "feel": "nostalgic",
+      "feels": {
+        "nostalgic": 2,
+        "sad": 1,
+        "peaceful": 1
+      },
       "confidence": "medium",
-      "basis": "四首器乐的标题是倒序日期；「日记」是推测。",
+      "basis": "器乐开场，八月三十一日：夏天最后一天，四个倒序日期的第一页；凭标题与位置标作回望。 原依据：四首器乐的标题是倒序日期；「日记」是推测。",
       "refs": [
         {
           "title": "Wikipedia · だから僕は音楽を辞めた",
           "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

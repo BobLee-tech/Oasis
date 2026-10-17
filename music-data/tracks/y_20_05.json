@@ -14,11 +14,23 @@
     },
     "draft": {
       "intro": "器乐，题为「青年期、空巢」。专辑里的三段器乐都以人生阶段命名：青年期、朱夏期、幼年期，把盗作家的一生切成几块。",
-      "valence": -0.2,
-      "feel": "peaceful",
+      "valence": -0.1,
+      "feels": {
+        "nostalgic": 2,
+        "tense": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；标题规律。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐「青年期、空巢」：以人生阶段命名、写他年轻时行窃的一段；凭标题标作回望，带一点偷偷摸摸的不安。 原依据：纯器乐；标题规律。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

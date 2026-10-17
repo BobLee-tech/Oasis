@@ -28,16 +28,19 @@
     "draft": {
       "intro": "DECO*27 2009 年 7 月写给听众的谢礼，「爱言叶」就是「爱が十、ありがとう」。后来续写成系列，也是他早期破百万播放的歌之一。",
       "valence": 0.7,
-      "feel": "joyful",
+      "feels": {
+        "tender": 3,
+        "joyful": 2
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia 与 VocaDB。",
+      "basis": "写给听众的谢礼，「爱が十、ありがとう」：满满的感谢与温柔，明亮雀跃。 原依据：见 Wikipedia 与 VocaDB。",
       "refs": [
         {
           "title": "Wikipedia · 愛言葉 (DECO*27の曲)",
           "url": "https://ja.wikipedia.org/wiki/愛言葉_(DECO*27の曲)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

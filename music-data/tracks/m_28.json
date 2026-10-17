@@ -26,17 +26,22 @@
     },
     "draft": {
       "intro": "「这是我进化的第一页。」因为想拥抱，所以用两只脚走路；因为一个人寂寞，所以和你一起呼吸。轻快的旋律底下藏着沉重的故事。",
-      "valence": -0.4,
-      "feel": "sad",
+      "lyricValence": -0.7,
+      "soundValence": 0.3,
+      "feels": {
+        "tense": 2,
+        "sad": 2,
+        "tender": 1
+      },
       "confidence": "medium",
-      "basis": "歌词；VocaDB 标签 dark。",
+      "basis": "为了拥抱而用两只脚走路，抬起的前足却开始伤你，最后「让你吸着我的话停止呼吸」（VocaDB 标签 dark）：不安与哀伤；轻快的旋律托着沉重的故事，曲亮词暗。 原依据：歌词；VocaDB 标签 dark。",
       "refs": [
         {
           "title": "VocaDB · 二息歩行",
           "url": "https://vocadb.net/S/5859"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

@@ -29,16 +29,19 @@
     "draft": {
       "intro": "如果能看着你说一句「喜欢」就好了。与 KERENMI（蔦谷好位置）合作，为电影《交换谎言日记》写的主题曲，是乐队少见的明亮恋歌。",
       "valence": 0.6,
-      "feel": "joyful",
+      "feels": {
+        "tender": 3,
+        "joyful": 2
+      },
       "confidence": "high",
-      "basis": "合作与主题曲见 Wikipedia。",
+      "basis": "电影《交换谎言日记》主题曲：想说「喜欢」的心意与明亮的日常，温柔为主、带着雀跃。 原依据：合作与主题曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · あたらよ",
           "url": "https://ja.wikipedia.org/wiki/あたらよ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

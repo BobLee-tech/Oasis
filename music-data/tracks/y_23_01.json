@@ -26,17 +26,21 @@
     },
     "draft": {
       "intro": "化用《万叶集》但马皇女的和歌：清晨渡河、流言和离别，古今叠在一起。「此刻，我正从京城落下。」《幻灯》数字版仅有的两首新曲之一。",
-      "valence": -0.2,
-      "feel": "nostalgic",
+      "valence": -0.3,
+      "feels": {
+        "nostalgic": 3,
+        "sad": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "出处见你的专辑注记；新曲见英文 Wikipedia。",
+      "basis": "但马皇女的和歌化用：清晨渡河、岸边挥手、「我正从京城落下」——追忆与离别的哀伤，留着恋慕的温柔。 原依据：出处见你的专辑注记；新曲见英文 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · Magic Lantern (album)",
           "url": "https://en.wikipedia.org/wiki/Magic_Lantern_(album)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

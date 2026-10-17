@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "心的正中央开了一个小洞。它回应了《夜紛い》里那句想在你心上打洞的话：这个缺口是失去，也是艾米住着的地方。乐队的大厂出道曲。",
-      "valence": -0.2,
-      "feel": "nostalgic",
+      "valence": -0.3,
+      "feels": {
+        "sad": 2,
+        "nostalgic": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "回应关系见你的专辑注记；出道曲见 Wikipedia。",
+      "basis": "心正中开了个洞，那里曾住着你；「只有你是我的音乐」：失去的哀伤与怀念，缺口里留着温柔。 原依据：回应关系见你的专辑注记；出道曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 心に穴が空いた",
           "url": "https://ja.wikipedia.org/wiki/心に穴が空いた"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

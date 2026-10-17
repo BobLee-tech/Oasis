@@ -27,16 +27,20 @@
     "draft": {
       "intro": "「春ひさぎ」是卖春的古语。表面像游女的应答，底下是为了生活削减自尊、把作品连同自己廉价出售的商业音乐。专辑先行曲之一。",
       "valence": -0.5,
-      "feel": "sad",
+      "feels": {
+        "sad": 2,
+        "tender": 1,
+        "defiant": 1
+      },
       "confidence": "high",
-      "basis": "隐喻见你的专辑注记；先行曲见中文 Wikipedia。",
+      "basis": "卖春的古语，隐喻为生活贱卖作品与自尊；冷嘲的应答底下，最后一句是「只是想被爱啊」——哀伤，带一点不甘与渴望。 原依据：隐喻见你的专辑注记；先行曲见中文 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 盗作",
           "url": "https://zh.wikipedia.org/wiki/盗作"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

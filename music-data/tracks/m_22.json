@@ -25,17 +25,21 @@
     },
     "draft": {
       "intro": "DECO*27 的出道作（2008 年 10 月）：「这里是五天后的我，收到请回答。」用无线电呼叫的方式，一天天喊回因为小事分开的你。",
-      "valence": -0.4,
-      "feel": "sad",
+      "valence": -0.3,
+      "feels": {
+        "sad": 2,
+        "tender": 2,
+        "nostalgic": 1
+      },
       "confidence": "high",
-      "basis": "出道作见 Wikipedia；VocaDB 标签 bittersweet / breakup。",
+      "basis": "无线电一天天呼叫因小事分开的你，「我可以哭出来吗」，连着两人的是爱：温柔的难过，是切ない。 原依据：出道作见 Wikipedia；VocaDB 标签 bittersweet / breakup。",
       "refs": [
         {
           "title": "Wikipedia · 相愛性理論",
           "url": "https://ja.wikipedia.org/wiki/相愛性理論"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

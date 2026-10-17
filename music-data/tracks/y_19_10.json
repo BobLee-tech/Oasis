@@ -14,10 +14,23 @@
     "draft": {
       "intro": "五月六日。又一页没有歌词的日记，留给瑞典的风景，也留给越来越近的终点。",
       "valence": -0.2,
-      "feel": "peaceful",
+      "feels": {
+        "peaceful": 2,
+        "nostalgic": 2,
+        "sad": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐，五月六日：留给瑞典风景的一页，终点越来越近；凭标题与位置标作宁静的回望。 原依据：纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

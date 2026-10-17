@@ -28,16 +28,20 @@
     "draft": {
       "intro": "あたらよ的起点：吉他手まーしー在推特上听到ひとみ的这首歌，邀她组了乐队。一段早晨的道别语音之后，是「早知道会变成这样」的失恋。",
       "valence": -0.6,
-      "feel": "sad",
+      "feels": {
+        "sad": 3,
+        "nostalgic": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "组队经过见 Wikipedia；失恋主题。",
+      "basis": "失恋后一个人回想：哀伤为主，怀念其次；开头那段早晨的道别语音留着一点温柔。 原依据：组队经过见 Wikipedia；失恋主题。",
       "refs": [
         {
           "title": "Wikipedia · あたらよ",
           "url": "https://ja.wikipedia.org/wiki/あたらよ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

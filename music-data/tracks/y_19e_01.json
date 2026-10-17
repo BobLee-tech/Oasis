@@ -14,17 +14,33 @@
     },
     "draft": {
       "intro": "《エルマ》的开场器乐，题为「车窗」。艾尔玛的旅程从一扇车窗开始，沿着艾米走过的路线一路向北。",
-      "valence": 0,
-      "feel": "peaceful",
+      "valence": 0.0,
+      "feels": {
+        "peaceful": 2,
+        "nostalgic": 2,
+        "wonder": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；旅行叙事见 Wikipedia。",
+      "basis": "开场器乐「车窗」：循着艾米的路线向北出发；凭标题与位置标作安静的回望，带一点启程的新奇。 原依据：纯器乐；旅行叙事见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · Elma (album)",
           "url": "https://en.wikipedia.org/wiki/Elma_(album)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://en.wikipedia.org/wiki/Elma_(album)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

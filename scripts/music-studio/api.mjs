@@ -169,8 +169,9 @@ const completeness = (merged, kind) => ({
   titleAlt: Boolean(merged.titleAlt),
   intro: Boolean(merged.intro),
   note: Boolean(merged.note || merged.notePrivate),
-  // 心境：情绪向量是写出来的（你或专辑默认），不算 VA 猜的
-  feel: ['manual', 'album'].includes(merged.provenance['mood.feels']),
+  // 心境：情绪向量是写出来的（你、草稿或专辑默认），不算 VA 猜的。草稿已经生效，
+  //   要校的看「待校草稿」，你亲手标没标看 feelsMine
+  feel: ['manual', 'draft', 'album'].includes(merged.provenance['mood.feels']),
   /** 这一首你亲手标过情绪（⌘⏎「下一首没标的」按它找） */
   feelsMine: merged.provenance['mood.feels'] === 'manual',
   valence: typeof merged.mood?.valence === 'number',

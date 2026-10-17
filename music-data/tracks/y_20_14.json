@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "你或许已经忘了：夏天的树荫下，我们吃着冰淇淋等风来。在夜里回望夏日，亡灵更像寄住在花里的回忆。《想哭的我戴上了猫的面具》主题曲。",
-      "valence": 0,
-      "feel": "nostalgic",
+      "valence": 0.0,
+      "feels": {
+        "nostalgic": 3,
+        "tender": 2,
+        "transcendence": 1
+      },
       "confidence": "high",
-      "basis": "只以美丽情景构成（你的专辑注记）；主题曲见 Wikipedia。",
+      "basis": "夏日树荫、冰淇淋、等风来；亡灵是寄在花里的回忆：怀念与温柔，带一点空灵，刻意只写美的情景。 原依据：只以美丽情景构成（你的专辑注记）；主题曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · Ghost in a Flower",
           "url": "https://en.wikipedia.org/wiki/Ghost_in_a_Flower"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

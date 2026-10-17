@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "泛白的灰色言语，像卡布奇诺的颜色。八月的维斯比，雨水漂着落花流过窗前，她只求那段回忆永不褪色。",
-      "valence": -0.1,
-      "feel": "tender",
+      "valence": -0.2,
+      "feels": {
+        "tender": 2,
+        "nostalgic": 2,
+        "sad": 2
+      },
       "confidence": "high",
-      "basis": "歌词写雨、海与维斯比；专辑封面就在维斯比（英文 Wikipedia）。",
+      "basis": "八月的维斯比、卡布奇诺色的言语、愿回忆永不褪色：温柔的追忆里压着难过，是切ない。 原依据：歌词写雨、海与维斯比；专辑封面就在维斯比（英文 Wikipedia）。",
       "refs": [
         {
           "title": "Wikipedia · Elma (album)",
           "url": "https://en.wikipedia.org/wiki/Elma_(album)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

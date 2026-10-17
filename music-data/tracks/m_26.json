@@ -18,16 +18,32 @@
     "draft": {
       "intro": "DECO*27 2012 年为 3DS 游戏《初音未来 and Future Stars Project mirai》写的歌：先别说我了，我想听听你。昨天一层层叠起来，终于碰到未来时，又会遇见另一扇门。",
       "valence": 0.6,
-      "feel": "joyful",
+      "feels": {
+        "joyful": 3,
+        "tender": 1,
+        "wonder": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia。",
+      "basis": "3DS《初音未来 and Future Stars Project mirai》的歌：「先别说我了，我想听你」，昨天叠起来碰到未来——轻快雀跃，带点对下一扇门的好奇。 原依据：见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · ゆめゆめ",
           "url": "https://ja.wikipedia.org/wiki/ゆめゆめ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/ゆめゆめ",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      }
     }
   }
 }

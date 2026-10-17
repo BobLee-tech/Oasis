@@ -27,10 +27,14 @@
     "draft": {
       "intro": "树影斑驳的路上一个人走。每当夏天来，就会傻傻地想起你；最怕的，是有一天把你忘了。",
       "valence": -0.3,
-      "feel": "nostalgic",
+      "feels": {
+        "nostalgic": 3,
+        "sad": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "歌词。",
-      "draftedAt": "2026-10-07"
+      "basis": "每到夏天就想起你、最怕有一天把你忘了：怀念为主，带着怕失去的难过。 原依据：歌词。",
+      "draftedAt": "2026-10-17"
     }
   }
 }

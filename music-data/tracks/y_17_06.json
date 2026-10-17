@@ -24,17 +24,21 @@
     },
     "draft": {
       "intro": "以宫泽贤治《夜鹰之星》为母题：想飞向天空，却连变成夜鹰都是奢望的「我」。鞋尖开出的花与夜空的大烟火之间，是一个够不到你的夏天。",
-      "valence": -0.3,
-      "feel": "nostalgic",
+      "valence": -0.1,
+      "feels": {
+        "nostalgic": 2,
+        "sad": 2,
+        "transcendence": 1
+      },
       "confidence": "high",
-      "basis": "Wikipedia 证实以《よだかの星》为母题；飞行与烟火带危险的歧义。",
+      "basis": "宫泽贤治《夜鹰之星》：飞出大气圈、你曾在的街道越来越小，「想要永远哭下去」——怀念与哀伤，带着飞向星空的空灵。 原依据：Wikipedia 证实以《よだかの星》为母题；飞行与烟火带危险的歧义。",
       "refs": [
         {
           "title": "Wikipedia · よだかの星",
           "url": "https://ja.wikipedia.org/wiki/よだかの星"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

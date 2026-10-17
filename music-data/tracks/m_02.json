@@ -30,10 +30,14 @@
     "draft": {
       "intro": "kz（livetune）的代表作之一：握着你的手入睡，盼着再和你度过一个美好的早晨——这么小的希望，也是奇迹。可那句再见始终没说。",
       "valence": -0.3,
-      "feel": "tender",
+      "feels": {
+        "tender": 3,
+        "sad": 2,
+        "transcendence": 1
+      },
       "confidence": "medium",
-      "basis": "歌词。",
-      "draftedAt": "2026-10-07"
+      "basis": "与 Re-Dialed 版同一首：握着你的手入睡、再见没说出口；温柔里的哀伤，是切ない。 原依据：歌词。",
+      "draftedAt": "2026-10-17"
     }
   }
 }

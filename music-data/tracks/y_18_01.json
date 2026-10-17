@@ -13,17 +13,30 @@
     },
     "draft": {
       "intro": "第二张迷你专辑的序曲，题为「前世」。后来乐队把线上演唱会与首次武道馆巡演都命名为「前世」，这个词一直跟着他们。",
-      "valence": 0,
-      "feel": "peaceful",
+      "valence": 0.0,
+      "feels": {
+        "transcendence": 2,
+        "nostalgic": 1,
+        "peaceful": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；演唱会命名见 Wikipedia。",
+      "basis": "第二张迷你专辑的序曲「前世」；凭标题与位置标作空灵的回望。 原依据：纯器乐；演唱会命名见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · ヨルシカ",
           "url": "https://ja.wikipedia.org/wiki/ヨルシカ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

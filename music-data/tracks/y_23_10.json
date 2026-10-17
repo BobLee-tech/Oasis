@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "以夏目漱石《梦十夜》第一夜为母题：「请等我一百年。」坟前守候，百合开放，网易云把它译作「百年」。《幻灯》数字版仅有的两首新曲之一。",
-      "valence": -0.1,
-      "feel": "tender",
+      "valence": 0.0,
+      "feels": {
+        "nostalgic": 3,
+        "tender": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "出处见你的专辑注记；新曲见英文 Wikipedia。",
+      "basis": "《梦十夜》第一夜：夏日的日常里只记得你，梦里沿着白百合的路跑去、你说一直在等——怀念与温柔，底下是死别的哀伤。 原依据：出处见你的专辑注记；新曲见英文 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · Magic Lantern (album)",
           "url": "https://en.wikipedia.org/wiki/Magic_Lantern_(album)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

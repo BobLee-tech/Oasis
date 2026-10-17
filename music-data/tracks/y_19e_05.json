@@ -14,11 +14,26 @@
     },
     "draft": {
       "intro": "器乐小品，题为「湖之城」。艾尔玛一路北上，在湖边的小城停留了一会儿。",
-      "valence": 0,
-      "feel": "peaceful",
+      "valence": 0.1,
+      "feels": {
+        "peaceful": 3,
+        "nostalgic": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐「湖之城」：一路北上在湖边小城停留；凭标题标作宁静。 原依据：纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://en.wikipedia.org/wiki/Elma_(album)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

@@ -30,17 +30,21 @@
     },
     "draft": {
       "intro": "「再怎么说也哭得太凶了吧」，你笑着说，我却怎么也笑不出来。DECO*27 2010 年的作品，先有 marina 演唱版，再有初音未来版。",
-      "valence": -0.5,
-      "feel": "sad",
+      "valence": -0.6,
+      "feels": {
+        "sad": 3,
+        "tense": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia。",
+      "basis": "「再怎么说也哭得太凶了吧」，我笑不出来；恐惧涌上、一起停止呼吸的水中挽歌：哀伤与不安。 原依据：见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 愛迷エレジー",
           "url": "https://ja.wikipedia.org/wiki/愛迷エレジー"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

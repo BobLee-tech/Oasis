@@ -372,6 +372,20 @@ src/types/music.ts             + TrackProfile、LyricLine.kana
   也可「采纳整张专辑的草稿」（只填你还没写的字段，已写的永远不动）。曲目列表「待校草稿」筛选。
 - `confidence: low` 的多是纯音乐（只能凭标题与位置），值得优先过目。
 
+### 补充：草稿生效（2026-10-17）
+
+站主反馈「人工标注太多了」，拍板**搜来的标注直接用，工坊里只校不填**。改动：
+- `profile-merge.mjs` 加草稿层，合并顺序变成 **人标 > 草稿 > 导入 > 自动 > 专辑默认**，出处记 `draft`。
+  草稿里的 intro、效价（含词 / 曲分量）、情绪向量、弧线、意象都参与；人标永远压住草稿。开关是同文件的 `DRAFT_LAYER`，
+  改成 `false` 就回到「草稿不进公开档案」。草稿内容在构建时过与人标同一道校验（intro ≤ 120 字、情绪规矩）。
+- 前端跟着认这一层：Miku 的 `trackMoodData.ts` 多拆一层草稿、`trackMood.ts` 的解析链与复合情绪认 `draft`，
+  `brain/facts.ts` 与 `useMikuBrain.ts` 把草稿算作「写出来的」情绪；曲目卡署名把草稿写作「网络资料整理」，不署站主。
+- 工坊：「缺心境」把草稿算作已有；「待校草稿」筛选就是校准队列；⌘⏎「下一首没标的」仍按你亲手标没标（feelsMine）。
+- 补齐：其余 92 首草稿由单个 feel 升级为多维向量（依据是歌词译文、专辑注记、原有出处，器乐与拿不准的再上网补搜，
+  basis 里写明理由并保留原依据），8 首词曲反差的拆了 lyricValence / soundValence；25 首缺署名的器乐与早期 Miku 曲，
+  按 Wikipedia / VocaDB 等写进 `sources.web.credits`（One Way、intro ~memories~ 查不到可靠出处，留空）。
+- 结果：110 首介绍、心境齐全（109 首来自草稿，1 首是你写的），署名 108 首。草稿层的单测在 `scripts/lib/profile-merge.test.mjs`。
+
 ## B3. 与 Miku 方案的衔接
 
 ```

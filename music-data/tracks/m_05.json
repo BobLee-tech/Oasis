@@ -22,16 +22,32 @@
     "draft": {
       "intro": "malo 2007 年 10 月发表：「你最初的声音是什么样的？」初音未来对着赋予她声音的人唱的歌，早期最具代表性的「关于自己」的作品之一。",
       "valence": 0.3,
-      "feel": "tender",
+      "feels": {
+        "tender": 3,
+        "nostalgic": 2,
+        "wonder": 1
+      },
       "confidence": "high",
-      "basis": "发表时间见中文 Wikipedia。",
+      "basis": "「你最初的声音是什么样的？」初音对赋予她声音的人唱：温柔与怀念，带着初见世界的新奇。 原依据：发表时间见中文 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · VOCALOID (音乐风格)",
           "url": "https://zh.wikipedia.org/wiki/VOCALOID_(音乐风格)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://zh.wikipedia.org/wiki/VOCALOID_(音乐风格)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "malo"
+        ],
+        "composer": [
+          "malo"
+        ]
+      }
     }
   }
 }

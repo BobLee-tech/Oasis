@@ -14,10 +14,22 @@
     "draft": {
       "intro": "日期标题的第二首器乐，七月十三日。夹在专辑中段，像旅途中没有写下文字的一天。",
       "valence": -0.1,
-      "feel": "peaceful",
+      "feels": {
+        "peaceful": 2,
+        "nostalgic": 2
+      },
       "confidence": "low",
-      "basis": "纯器乐；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐，七月十三日：旅途中没写下文字的一天；凭标题与位置标作宁静的回望。 原依据：纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

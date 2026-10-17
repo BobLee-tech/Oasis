@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "长夜若就这样来临，我们会变成什么样？不如乘上列车远去。这里的夜，同时是长大、死亡与自然的时间；动画电影《想哭的我戴上了猫的面具》插曲。",
-      "valence": -0.1,
-      "feel": "nostalgic",
+      "valence": -0.2,
+      "feels": {
+        "nostalgic": 3,
+        "tender": 2,
+        "sad": 2
+      },
       "confidence": "high",
-      "basis": "夜的多义见你的专辑注记；插曲见 Wikipedia。",
+      "basis": "长大、死亡与夏天的终结叠在一起，「我会留在这里，你会去往遥远的彼方」：怀念与温柔里的离别，是切ない。 原依据：夜的多义见你的专辑注记；插曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · Night Journey (song)",
           "url": "https://en.wikipedia.org/wiki/Night_Journey_(song)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

@@ -23,17 +23,21 @@
     },
     "draft": {
       "intro": "OSTER project 2007 年的作品，少见的百老汇式大乐队爵士：用魔法画笔把我画进梦里，直到指尖都染上你的颜色。",
-      "valence": 0.5,
-      "feel": "joyful",
+      "valence": 0.6,
+      "feels": {
+        "joyful": 3,
+        "wonder": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "风格见 VocaDB 备注。",
+      "basis": "少见的百老汇式大乐队爵士（VocaDB 备注）：用魔法画笔把我画进梦里，雀跃而奇妙。 原依据：风格见 VocaDB 备注。",
       "refs": [
         {
           "title": "VocaDB · ミラクルペイント",
           "url": "https://vocadb.net/S/3658"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

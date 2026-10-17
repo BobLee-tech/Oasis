@@ -14,11 +14,24 @@
     },
     "draft": {
       "intro": "收尾的器乐小品，题目把这张碟反复出现的意象排成一行：夏天，巴士站，等你。",
-      "valence": 0,
-      "feel": "nostalgic",
+      "valence": 0.1,
+      "feels": {
+        "nostalgic": 3,
+        "peaceful": 1,
+        "tender": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；标题即全碟意象。",
-      "draftedAt": "2026-10-07"
+      "basis": "收尾器乐，标题即整张碟的意象：夏天，巴士站，等你；凭标题标作怀念。 原依据：纯器乐；标题即全碟意象。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

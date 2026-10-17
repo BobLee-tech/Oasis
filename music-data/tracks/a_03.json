@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "冬天结束，天桥下的街道满是春天。花在凋零时最美，我们大概也一样。乐队的第二首单曲。",
-      "valence": 0.2,
-      "feel": "tender",
+      "valence": 0.1,
+      "feels": {
+        "tender": 2,
+        "nostalgic": 2,
+        "peaceful": 1
+      },
       "confidence": "medium",
-      "basis": "春天与告别；第二单曲见 Wikipedia。",
+      "basis": "「花在凋零时最美」：送别春天的温柔与怀念，结尾雨霁、春天还会再来，心是静的。 原依据：春天与告别；第二单曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · あたらよ",
           "url": "https://ja.wikipedia.org/wiki/あたらよ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

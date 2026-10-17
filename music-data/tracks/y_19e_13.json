@@ -15,10 +15,26 @@
     "draft": {
       "intro": "压轴前的器乐，题为「海底、月光」。和前作的《八月、某、月明かり》共用「月光」一词，故事正沉向最后一首。",
       "valence": -0.3,
-      "feel": "sad",
+      "feels": {
+        "transcendence": 2,
+        "sad": 2,
+        "peaceful": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐；标题呼应为推测。",
-      "draftedAt": "2026-10-07"
+      "basis": "压轴前的器乐「海底、月光」：故事沉向最后一首；凭标题标作海底的空灵与哀伤。 原依据：纯器乐；标题呼应为推测。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://en.wikipedia.org/wiki/Elma_(album)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

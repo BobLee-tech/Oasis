@@ -29,17 +29,22 @@
     },
     "draft": {
       "intro": "夏天的巴士站背后浮现出你，就这样来不及地长成了大人。歌里改写了正冈子规的一句俳句；这是 Yorushika 第一首串流破亿的歌，MV 在富山雨晴海岸拍摄。",
-      "valence": 0,
-      "feel": "nostalgic",
+      "lyricValence": -0.3,
+      "soundValence": 0.4,
+      "feels": {
+        "nostalgic": 3,
+        "tender": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "子规俳句改写见你的专辑注记；破亿与拍摄地见 Wikipedia。",
+      "basis": "夏天的巴士站背后浮现出你，「就这样来不及地长成了大人」，照片是废纸、回忆是垃圾——怀念与温柔；明快的曲子托着放弃的话，曲亮词暗。 原依据：子规俳句改写见你的专辑注记；破亿与拍摄地见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · ただ君に晴れ",
           "url": "https://ja.wikipedia.org/wiki/ただ君に晴れ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

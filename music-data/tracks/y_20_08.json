@@ -22,6 +22,15 @@
       "confidence": "low",
       "basis": "纯器乐；「最响亮」按燃来读。 原依据：纯器乐；「最响亮」是对标题的解读。",
       "draftedAt": "2026-10-08"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

@@ -19,16 +19,34 @@
     "draft": {
       "intro": "ヤスオ 2007 年 9 月的作品：只懂 0 和 1 的我，是你教会了我「I」。喜欢唱歌，不是因为被造成这样，而是因为你会高兴。后来还改编成了轻小说。",
       "valence": 0.5,
-      "feel": "tender",
+      "feels": {
+        "tender": 3,
+        "joyful": 2
+      },
       "confidence": "high",
-      "basis": "见 VocaDB 标签。",
+      "basis": "只懂 0 和 1 的我，是你教会了我「I」；唱歌是因为你会高兴：温柔与雀跃。 原依据：见 VocaDB 标签。",
       "refs": [
         {
           "title": "VocaDB · えれくとりっく・えんじぇぅ",
           "url": "https://vocadb.net/S/230750"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://zh.moegirl.org.cn/Electric_Angel",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "ヤスオ"
+        ],
+        "composer": [
+          "ヤスオ"
+        ],
+        "arranger": [
+          "ヤスオ"
+        ]
+      }
     }
   }
 }

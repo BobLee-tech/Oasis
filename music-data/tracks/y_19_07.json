@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "窗外的五月雨，纸上长方形的心；现在的生活是 i²，减去你就小于零。n-buna 在斯德哥尔摩老城因下雨出不了门，在旅馆里想出了这首。",
-      "valence": -0.2,
-      "feel": "nostalgic",
+      "valence": -0.3,
+      "feels": {
+        "nostalgic": 3,
+        "sad": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "雨后街景与追忆；创作缘由见英文 Wikipedia。",
+      "basis": "窗外五月雨、纸上长方形的心、「现在的生活是 i²，减去你就小于零」：雨后街景里的追忆与难过。 原依据：雨后街景与追忆；创作缘由见英文 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · That's Why I Gave Up on Music",
           "url": "https://en.wikipedia.org/wiki/That%27s_Why_I_Gave_Up_on_Music"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

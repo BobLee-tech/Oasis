@@ -14,10 +14,14 @@
     "draft": {
       "intro": "精选集《初音ミク ベスト～memories～》四十秒的开场，ケフィアP 制作，像翻开相册的第一页。",
       "valence": 0.4,
-      "feel": "joyful",
+      "feels": {
+        "nostalgic": 2,
+        "joyful": 1,
+        "tender": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；作者来自音频标签。",
-      "draftedAt": "2026-10-07"
+      "basis": "精选集《memories》四十秒的开场，像翻开相册第一页；凭标题与位置标作带笑的怀念。 原依据：纯器乐；作者来自音频标签。",
+      "draftedAt": "2026-10-17"
     }
   }
 }

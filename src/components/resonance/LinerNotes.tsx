@@ -38,6 +38,7 @@ const creditRows = (credits?: TrackCredits) => {
 
 const SOURCE_WORD: Record<string, string> = {
   netease: '网易云', vocadb: 'VocaDB', musicbrainz: 'MusicBrainz', web: '网页', tags: '音频标签',
+  draft: '网络资料整理',   // sources.draft：据 Wikipedia / VocaDB / 官方资料与歌词起草，站主没改写过的字段
 };
 
 // 感受词（docs/song-emotion-design.md §5）：有复合情绪就说复合名（切ない、释然…，只在你没标「说不准」时），

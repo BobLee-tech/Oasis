@@ -14,17 +14,33 @@
     },
     "draft": {
       "intro": "《盗作》的开场器乐，题为「音乐小偷的自白」。整张专辑是一个盗作音乐的男人的故事，从这段没有歌词的自白开始。",
-      "valence": -0.3,
-      "feel": "sad",
+      "valence": -0.4,
+      "feels": {
+        "sad": 2,
+        "tense": 2
+      },
       "confidence": "medium",
-      "basis": "纯器乐开场；专辑概念见 Wikipedia。",
+      "basis": "器乐开场「音乐小偷的自白」：专辑是一个盗作音乐的男人的破坏冲动（岛村乐器专辑介绍）；凭标题与位置标作哀伤与悬着的不安。 原依据：纯器乐开场；专辑概念见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · 盗作 (アルバム)",
           "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)"
+        },
+        {
+          "title": "島村楽器 · ヨルシカ『盗作』",
+          "url": "https://www.shimamura.co.jp/update/?p=49286"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

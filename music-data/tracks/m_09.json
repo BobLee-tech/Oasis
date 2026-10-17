@@ -17,17 +17,33 @@
     },
     "draft": {
       "intro": "ゆうゆ 2007 年 11 月的冬日叙事曲：搓着冻僵的手挤过人潮，白色的碎片把世界染白，等春天把这声音带到你身边。",
-      "valence": -0.2,
-      "feel": "nostalgic",
+      "valence": -0.1,
+      "feels": {
+        "nostalgic": 2,
+        "tender": 2,
+        "sad": 1
+      },
       "confidence": "medium",
-      "basis": "VocaDB 标签 ballad / winter；歌词。",
+      "basis": "冬日叙事曲（VocaDB 标签 ballad / winter）：搓着冻僵的手挤过人潮，等春天把声音带到你身边——怀念与温柔，带一点冷。 原依据：VocaDB 标签 ballad / winter；歌词。",
       "refs": [
         {
           "title": "VocaDB · 白の季節",
           "url": "https://vocadb.net/S/5839"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://vocadb.net/S/5839",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "ゆうゆ"
+        ],
+        "composer": [
+          "ゆうゆ"
+        ]
+      }
     }
   }
 }

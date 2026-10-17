@@ -734,8 +734,8 @@ export const useMikuBrain = ({
           if (!listen.logged) voice.remember({ kind: 'skip', data: { trackId: listen.id } });
           if (ownerRef.current) {
             const passMood = getTrackMood(listen.id);
-            // 只认写出来的情绪向量（人标或专辑）：VA 猜的那一维不代表他在听什么
-            const written = passMood && (passMood.provenance.feels === 'manual' || passMood.provenance.feels === 'album');
+            // 只认写出来的情绪向量（人标、草稿或专辑）：VA 猜的那一维不代表他在听什么
+            const written = passMood && (passMood.provenance.feels === 'manual' || passMood.provenance.feels === 'draft' || passMood.provenance.feels === 'album');
             listening.record({
               feels: written ? passMood.feels : undefined,
               felt: getTrackFelt(listen.id),

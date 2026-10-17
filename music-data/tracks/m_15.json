@@ -18,17 +18,37 @@
     },
     "draft": {
       "intro": "ぢょんP 用初音未来翻唱的 JUDY AND MARY 名曲，原曲是 1996 年《浪客剑心》的第一首片头曲。讨厌的雀斑，像方糖一样化掉的恋爱，轻快地唱失恋。",
-      "valence": 0.2,
-      "feel": "joyful",
+      "lyricValence": -0.3,
+      "soundValence": 0.6,
+      "feels": {
+        "joyful": 2,
+        "nostalgic": 1,
+        "defiant": 1
+      },
       "confidence": "high",
-      "basis": "原曲见 Wikipedia。",
+      "basis": "JUDY AND MARY《浪客剑心》片头曲的翻唱：讨厌的雀斑、像方糖一样化掉的恋爱——轻快地唱失恋，带点倔，曲亮词暗。 原依据：原曲见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · そばかす (曲)",
           "url": "https://ja.wikipedia.org/wiki/そばかす_(曲)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.chordwiki.org/wiki/そばかす",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "YUKI"
+        ],
+        "composer": [
+          "恩田快人"
+        ],
+        "arranger": [
+          "ぢょんP"
+        ]
+      }
     }
   }
 }

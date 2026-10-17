@@ -26,16 +26,20 @@
     "draft": {
       "intro": "ジミーサムP 2009 年的钢琴抒情曲：你转身走开，我在心里像孩子一样喊「别走」；然后我也转身，赶在眼泪落下之前。",
       "valence": -0.6,
-      "feel": "sad",
+      "feels": {
+        "sad": 3,
+        "tender": 2,
+        "nostalgic": 1
+      },
       "confidence": "high",
-      "basis": "VocaDB 标签 ballad / breakup；歌词。",
+      "basis": "钢琴抒情曲（VocaDB 标签 ballad / breakup）：你转身走开，我在心里像孩子一样喊「别走」，再赶在眼泪落下前转身——是切ない。 原依据：VocaDB 标签 ballad / breakup；歌词。",
       "refs": [
         {
           "title": "VocaDB · from Y to Y",
           "url": "https://vocadb.net/S/4230"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

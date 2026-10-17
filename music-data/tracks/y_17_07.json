@@ -27,17 +27,21 @@
     },
     "draft": {
       "intro": "变成幽灵的我，回去看你，看夏天怎么结束。乐队名「ヨルシカ」就取自这首里的一句：如今只在夜里才能睡去。",
-      "valence": -0.2,
-      "feel": "tender",
+      "valence": 0.0,
+      "feels": {
+        "tender": 2,
+        "nostalgic": 2,
+        "transcendence": 2
+      },
       "confidence": "high",
-      "basis": "幽灵自述、日常凝望与放手；乐队名出处见 Wikipedia。",
+      "basis": "变成幽灵的我回去看你、看夏天怎样结束，「所以啊，你也可以放下了」：温柔的凝望与怀念，幽灵的视线放得很远，是「空」。 原依据：幽灵自述、日常凝望与放手；乐队名出处见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · ヨルシカ",
           "url": "https://ja.wikipedia.org/wiki/ヨルシカ"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

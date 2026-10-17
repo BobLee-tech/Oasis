@@ -13,11 +13,24 @@
     },
     "draft": {
       "intro": "一分多钟的器乐，题为「落下」。和「前世」「夏、巴士站、等你」一起，把这张迷你专辑隔成几段。",
-      "valence": -0.1,
-      "feel": "peaceful",
+      "valence": -0.2,
+      "feels": {
+        "sad": 1,
+        "tense": 1,
+        "transcendence": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐间奏；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "basis": "一分多钟的器乐「落下」，把迷你专辑隔成几段；凭标题与位置标作下坠的恍惚。 原依据：纯器乐间奏；仅凭标题与位置。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/負け犬にアンコールはいらない",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

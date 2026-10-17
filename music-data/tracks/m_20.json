@@ -14,10 +14,32 @@
     "draft": {
       "intro": "精选集的尾声，North-T 的「タイムリミット -Endless-」。和开头的 intro 一起，把整张 memories 合上。",
       "valence": 0.2,
-      "feel": "joyful",
-      "confidence": "low",
-      "basis": "纯器乐；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "feels": {
+        "nostalgic": 2,
+        "tender": 2,
+        "joyful": 1
+      },
+      "confidence": "medium",
+      "basis": "North-T 的《タイムリミット》是初音未来体验版的印象曲（2007-10-09，体验版本身就有时限）；这里的 Endless 版为精选集收尾：温柔的怀念。 原依据：纯器乐；仅凭标题与位置。",
+      "refs": [
+        {
+          "title": "Project DIVA Wiki · Time Limit",
+          "url": "https://project-diva.fandom.com/wiki/Time_Limit"
+        }
+      ],
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://project-diva.fandom.com/wiki/Time_Limit",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "North-T"
+        ],
+        "composer": [
+          "North-T"
+        ]
+      }
     }
   }
 }

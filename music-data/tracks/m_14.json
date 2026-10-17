@@ -29,17 +29,21 @@
     },
     "draft": {
       "intro": "mikuru396 2007 年 10 月发表，最早的初音未来歌曲之一。以「Vocaloid Version 2, Code 01」的启动语音开场，接着是一首温柔的 trance 恋歌。",
-      "valence": 0.2,
-      "feel": "tender",
+      "valence": 0.3,
+      "feels": {
+        "tender": 2,
+        "transcendence": 2,
+        "joyful": 1
+      },
       "confidence": "medium",
-      "basis": "见 VocaDB 备注；开场语音来自网易云歌词。",
+      "basis": "最早的初音歌曲之一，以启动语音开场的温柔 trance 恋歌（VocaDB 备注）：温柔与空灵。 原依据：见 VocaDB 备注；开场语音来自网易云歌词。",
       "refs": [
         {
           "title": "VocaDB · melody...",
           "url": "https://vocadb.net/S/2734"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

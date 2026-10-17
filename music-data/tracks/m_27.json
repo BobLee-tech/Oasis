@@ -19,17 +19,33 @@
     },
     "draft": {
       "intro": "漫画《周刊 第一次的初音未来》的主题曲：请空出一点时间，听一首有点消极的歌。镜子里昨天的我和今天一模一样，眼泪最后传到了某个人那里。",
-      "valence": 0.1,
-      "feel": "tender",
+      "valence": 0.2,
+      "feels": {
+        "tender": 3,
+        "sad": 1,
+        "joyful": 1
+      },
       "confidence": "high",
-      "basis": "见 VocaDB 与 Wikipedia。",
+      "basis": "「请听一首有点消极的歌」，眼泪传到了某个人那里，最后轮到我为大家加油：温柔的鼓励，从难过里走出来。 原依据：见 VocaDB 与 Wikipedia。",
       "refs": [
         {
           "title": "VocaDB · むかしむかしのきょうのぼく",
           "url": "https://vocadb.net/S/1273"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://vocadb.net/S/1273",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "lyricist": [
+          "DECO*27"
+        ],
+        "composer": [
+          "DECO*27"
+        ]
+      }
     }
   }
 }

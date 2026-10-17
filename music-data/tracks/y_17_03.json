@@ -27,17 +27,22 @@
     },
     "draft": {
       "intro": "轻快的节奏里，藏着一件早已知道却不愿承认的事：你已经不在了。日语「说了」与「逝去」同音，那句「再多说一点」，是迟来的悼念。",
-      "valence": -0.3,
-      "feel": "sad",
+      "lyricValence": -0.6,
+      "soundValence": 0.5,
+      "feels": {
+        "sad": 2,
+        "nostalgic": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "明快曲调与悼亡歌词形成反差；你的专辑注记指出「言った／逝った」同音。",
+      "basis": "「言った／逝った」同音，再多说一点是迟来的悼念；明快的曲调托着悼亡的词，曲亮词暗。 原依据：明快曲调与悼亡歌词形成反差；你的专辑注记指出「言った／逝った」同音。",
       "refs": [
         {
           "title": "Wikipedia · Say It (Yorushika song)",
           "url": "https://en.wikipedia.org/wiki/Say_It_(Yorushika_song)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

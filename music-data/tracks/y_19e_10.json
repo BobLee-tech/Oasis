@@ -15,10 +15,25 @@
     "draft": {
       "intro": "器乐小品，题为「森之教会」。安静得像在北欧森林里推开一扇木门。",
       "valence": 0.1,
-      "feel": "peaceful",
+      "feels": {
+        "peaceful": 3,
+        "transcendence": 2
+      },
       "confidence": "low",
-      "basis": "纯器乐；仅凭标题。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐「森之教会」：凭标题标作宁静与空灵。 原依据：纯器乐；仅凭标题。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://en.wikipedia.org/wiki/Elma_(album)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ],
+        "arranger": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

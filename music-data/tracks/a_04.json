@@ -27,11 +27,21 @@
     },
     "draft": {
       "intro": "「祥月」是故人离世的那个月份。路灯下、残缺的月影里，仍在找你的脚步声，宁可沉在夜里不醒来。",
-      "valence": -0.6,
-      "feel": "sad",
+      "valence": -0.7,
+      "feels": {
+        "sad": 3,
+        "nostalgic": 2,
+        "tense": 1
+      },
       "confidence": "medium",
-      "basis": "词义与歌词；「故人」是否指死别未明说。",
-      "draftedAt": "2026-10-07"
+      "basis": "「祥月」词义是故人去世的月份（辞书）；歌词里不肯醒的夜、怕听不见你的脚步声：哀伤、怀念，带一点悬着的不安。死别还是分手歌词没说破。 原依据：词义与歌词；「故人」是否指死别未明说。",
+      "refs": [
+        {
+          "title": "Nihongo Master · 祥月（しょうつき）",
+          "url": "https://www.nihongomaster.com/japanese/dictionary/word/75883"
+        }
+      ],
+      "draftedAt": "2026-10-17"
     }
   }
 }

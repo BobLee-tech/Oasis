@@ -65,7 +65,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const SEASON_CN: Record<string, string> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
 const DAY = 86_400_000;
 
-const isWritten = (source: string | undefined) => source === 'manual' || source === 'album';
+// 写出来的：人标、草稿（据资料与歌词起草，站主拍板直接生效）、专辑默认；VA 猜的不算
+const isWritten = (source: string | undefined) => source === 'manual' || source === 'draft' || source === 'album';
 const writtenValence = (mood: ResolvedTrackMood) =>
   isWritten(mood.provenance.lyricValence) ? mood.lyricValence : isWritten(mood.provenance.valence) ? mood.valence : undefined;
 
@@ -85,7 +86,7 @@ export const buildFacts = (input: FactsInput) => {
   const mood = input.mood;
   const tf = input.trackFacts;
   const memory = owner ? input.memory : null;
-  const feelSure = !!mood && mood.sure !== false && (mood.provenance.feel === 'manual' || mood.provenance.feel === 'album');
+  const feelSure = !!mood && mood.sure !== false && isWritten(mood.provenance.feel);
   const songNow = mood ? moodNow(mood, input.segment ?? null) : undefined;
 
   // 文章：访客只看公开发布的（unlisted 是「知道链接才能读」，不主动推荐）；草稿本就不在缓存里

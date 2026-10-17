@@ -19,11 +19,21 @@
     },
     "draft": {
       "intro": "Aura Qualic 与 Trinity Note 合作、收于专辑《ELATE》的长版电子舞曲，用了初音未来 Append 的 Sweet 与 Dark 两种声线；八分多钟里，人声只在中段出现。",
-      "valence": 0.2,
-      "feel": "wonder",
+      "valence": 0.3,
+      "feels": {
+        "transcendence": 2,
+        "wonder": 2,
+        "power": 1
+      },
       "confidence": "medium",
-      "basis": "署名来自音频标签；人声区间来自网易云歌词时间轴。",
-      "draftedAt": "2026-10-07"
+      "basis": "Aura Qualic 以 trance 为主（namu.moe）；八分多钟的长版电子舞曲，人声只在中段：空灵、奇妙，推进处有一点燃。 原依据：署名来自音频标签；人声区间来自网易云歌词时间轴。",
+      "refs": [
+        {
+          "title": "namu.moe · Aura Qualic",
+          "url": "https://namu.moe/w/Aura%20Qualic"
+        }
+      ],
+      "draftedAt": "2026-10-17"
     }
   }
 }

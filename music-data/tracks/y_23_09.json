@@ -28,17 +28,21 @@
     },
     "draft": {
       "intro": "取自丹尼尔·凯斯《献给阿尔吉侬的花束》：你为什么给了我心，又画出我的眼睛？在聪慧、变化与终将衰退之间保持克制。日剧《黄昏时分、牵着手》主题曲。",
-      "valence": -0.1,
-      "feel": "tender",
+      "valence": 0.0,
+      "feels": {
+        "tender": 2,
+        "wonder": 2,
+        "sad": 1
+      },
       "confidence": "high",
-      "basis": "出处见你的专辑注记；主题曲见 ciatr。",
+      "basis": "《献给阿尔吉侬的花束》：「你为何给了我心」——对变化与终将衰退的温柔凝视，带着奇妙与一点哀伤。 原依据：出处见你的专辑注记；主题曲见 ciatr。",
       "refs": [
         {
           "title": "ciatr · ヨルシカ アルジャーノン",
           "url": "https://ciatr.jp/topics/322874"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

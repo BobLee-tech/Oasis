@@ -25,16 +25,20 @@
     "draft": {
       "intro": "教科书上没写，学者也解不出：像「1+1=2」那样的「我＋你＝爱」的方程式还没找到。DECO*27 2009 年的理科恋歌，也是他首张大厂专辑的标题。",
       "valence": 0.5,
-      "feel": "joyful",
+      "feels": {
+        "joyful": 3,
+        "wonder": 1,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia 与 VocaDB。",
+      "basis": "「我＋你＝爱」的方程式还没找到：俏皮的理科恋歌，雀跃为主。 原依据：见 Wikipedia 与 VocaDB。",
       "refs": [
         {
           "title": "Wikipedia · 相愛性理論",
           "url": "https://ja.wikipedia.org/wiki/相愛性理論"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

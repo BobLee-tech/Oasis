@@ -14,11 +14,24 @@
     },
     "draft": {
       "intro": "器乐，题为「幼年期、回忆之中」。破坏冲动走到尽头，故事退回童年的回忆里。",
-      "valence": 0,
-      "feel": "peaceful",
+      "valence": 0.1,
+      "feels": {
+        "nostalgic": 3,
+        "peaceful": 2,
+        "transcendence": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐；仅凭标题与位置。",
-      "draftedAt": "2026-10-07"
+      "basis": "器乐「幼年期、回忆之中」：破坏冲动走到尽头、退回童年；凭标题与位置标作怀念与宁静。 原依据：纯器乐；仅凭标题与位置。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/盗作_(アルバム)",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

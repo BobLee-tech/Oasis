@@ -29,17 +29,20 @@
     },
     "draft": {
       "intro": "kz（livetune）2007 年 9 月发表，初音未来热潮的推手之一：把想传达的心意封进包裹，「这个世界的旋律和我的歌声，你收到了吗？」",
-      "valence": 0.5,
-      "feel": "joyful",
+      "valence": 0.6,
+      "feels": {
+        "joyful": 3,
+        "tender": 2
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia。",
+      "basis": "把心意封进包裹，「这个世界的旋律和我的歌声，你收到了吗？」与你相遇后再不寂寞：雀跃与温柔。 原依据：见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · livetune",
           "url": "https://ja.wikipedia.org/wiki/Livetune"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

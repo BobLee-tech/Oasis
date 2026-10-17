@@ -24,17 +24,21 @@
     },
     "draft": {
       "intro": "baker 2007 年的作品，用自己拍的实景影像配成 PV；作者说「其实是首郁曲」。冰冷的空气，不停的雨，等一丝光透进来。",
-      "valence": -0.4,
-      "feel": "sad",
+      "valence": -0.5,
+      "feels": {
+        "sad": 3,
+        "tense": 2,
+        "tender": 1
+      },
       "confidence": "high",
-      "basis": "见 Wikipedia 与 VocaDB 作者备注。",
+      "basis": "作者说「其实是首郁曲」：冰冷的空气、不停的雨、漫漫长夜仍恐惧，却还想把褪色的颜色传给你——哀伤与不安。 原依据：见 Wikipedia 与 VocaDB 作者备注。",
       "refs": [
         {
           "title": "Wikipedia · baker",
           "url": "https://ja.wikipedia.org/wiki/Baker_(日本のミュージシャン)"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

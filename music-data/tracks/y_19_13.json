@@ -14,16 +14,29 @@
     "draft": {
       "intro": "最后一个日期，四月十日，也正是这张专辑的发行日。故事在这一天合上。",
       "valence": -0.2,
-      "feel": "peaceful",
+      "feels": {
+        "peaceful": 2,
+        "sad": 2,
+        "transcendence": 1
+      },
       "confidence": "medium",
-      "basis": "纯器乐；发行日 2019-04-10 见 Wikipedia。",
+      "basis": "最后一个日期四月十日，也是专辑发行日：故事合上；凭标题与位置标作释然的收尾。 原依据：纯器乐；发行日 2019-04-10 见 Wikipedia。",
       "refs": [
         {
           "title": "Wikipedia · だから僕は音楽を辞めた",
           "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }

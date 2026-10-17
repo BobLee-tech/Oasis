@@ -27,17 +27,22 @@
     },
     "draft": {
       "intro": "正午躺在高架桥下，为白纸一样的人生独自鼓掌。写给你的故事里，水电、社会和新闻都无关紧要；这是放弃音乐之前，把一生都化作墨水的自白。",
-      "valence": -0.5,
-      "feel": "sad",
+      "lyricValence": -0.6,
+      "soundValence": 0.1,
+      "feels": {
+        "sad": 2,
+        "defiant": 2,
+        "nostalgic": 1
+      },
       "confidence": "high",
-      "basis": "歌词直述自我否定与时效将至的梦想。",
+      "basis": "为白纸一样的人生独自鼓掌、「人生是妥协的延续」「唯有你是我的音乐」：自我否定里的不甘；明快的吉他摇滚托着丧气的词，曲亮词暗。 原依据：歌词直述自我否定与时效将至的梦想。",
       "refs": [
         {
           "title": "Wikipedia · だから僕は音楽を辞めた",
           "url": "https://ja.wikipedia.org/wiki/だから僕は音楽を辞めた"
         }
       ],
-      "draftedAt": "2026-10-07"
+      "draftedAt": "2026-10-17"
     }
   }
 }

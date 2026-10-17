@@ -17,7 +17,7 @@ export { BLENDS, FEELS, FEEL_LABELS, FEEL_VA, IMAGERY_LABELS, nearestFeel } from
 export type { ArcStep, BlendId, Feel, Feels, Imagery, SectionLabel } from '../../scripts/lib/mood-core.mjs';
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export type TrackTime = 'morning' | 'dusk' | 'night';
-export type Provenance = 'manual' | 'netease' | 'auto' | 'album' | 'default' | 'va';
+export type Provenance = 'manual' | 'draft' | 'netease' | 'auto' | 'album' | 'default' | 'va';
 
 /** 人标 / 专辑默认里可以写的字段（全部可选）。arousal 用 0..1，与自动层同一量纲。 */
 export interface MoodLayer {
@@ -99,11 +99,13 @@ const DEFAULTS = { arousal: 0.4, valence: 0.15, contrast: 0.5 };
 
 export const resolveTrackMood = (layers: {
   manual?: MoodLayer;
+  /** 草稿：据网络资料与歌词起草（music-data 的 sources.draft，构建时出处记 draft）；人标压住它 */
+  draft?: MoodLayer;
   album?: MoodLayer;
   auto?: AutoFeatures;
   notes?: TrackNotes;
 }): ResolvedTrackMood => {
-  const { manual = {}, album = {}, auto, notes = {} } = layers;
+  const { manual = {}, draft = {}, album = {}, auto, notes = {} } = layers;
   const provenance = {} as ResolvedTrackMood['provenance'];
   const pick = <K extends keyof ResolvedTrackMood['provenance']>(
     key: K,
@@ -120,11 +122,11 @@ export const resolveTrackMood = (layers: {
   };
 
   const arousal = (pick('arousal', [[manual.arousal, 'manual'], [auto?.arousal, 'auto'], [album.arousal, 'album']]) as number | undefined) ?? DEFAULTS.arousal;
-  const valence = (pick('valence', [[overallValenceOfLayer(manual), 'manual'], [overallValenceOfLayer(album), 'album']]) as number | undefined) ?? DEFAULTS.valence;
-  const lyricValence = pick('lyricValence', [[manual.lyricValence, 'manual'], [album.lyricValence, 'album']]) as number | undefined;
-  const soundValence = pick('soundValence', [[manual.soundValence, 'manual'], [album.soundValence, 'album']]) as number | undefined;
+  const valence = (pick('valence', [[overallValenceOfLayer(manual), 'manual'], [overallValenceOfLayer(draft), 'draft'], [overallValenceOfLayer(album), 'album']]) as number | undefined) ?? DEFAULTS.valence;
+  const lyricValence = pick('lyricValence', [[manual.lyricValence, 'manual'], [draft.lyricValence, 'draft'], [album.lyricValence, 'album']]) as number | undefined;
+  const soundValence = pick('soundValence', [[manual.soundValence, 'manual'], [draft.soundValence, 'draft'], [album.soundValence, 'album']]) as number | undefined;
   // 情绪向量整层替换，不跨层混合
-  let feels = pick('feels', [[feelsOfLayer(manual), 'manual'], [feelsOfLayer(album), 'album']]) as Feels | undefined;
+  let feels = pick('feels', [[feelsOfLayer(manual), 'manual'], [feelsOfLayer(draft), 'draft'], [feelsOfLayer(album), 'album']]) as Feels | undefined;
   let feel: Feel;
   if (feels) {
     feel = dominantFeel(feels)!;
@@ -136,12 +138,15 @@ export const resolveTrackMood = (layers: {
     provenance.feel = provenance.valence === 'default' ? 'default' : 'va';
     provenance.feels = provenance.feel;
   }
-  const arc = (pick('arc', [[normalizeArc(manual.arc), 'manual']]) as ArcStep[] | undefined) ?? [];
+  const arc = (pick('arc', [[normalizeArc(manual.arc), 'manual'], [normalizeArc(draft.arc), 'draft']]) as ArcStep[] | undefined) ?? [];
   // 人标写了空数组 = 「这首没有意象」，压住自动计出来的
   let imagery: Imagery[];
   if (Array.isArray(manual.imagery)) {
     imagery = normalizeImagery(manual.imagery) ?? [];
     provenance.imagery = 'manual';
+  } else if (Array.isArray(draft.imagery) && normalizeImagery(draft.imagery)?.length) {
+    imagery = normalizeImagery(draft.imagery)!;
+    provenance.imagery = 'draft';
   } else imagery = (pick('imagery', [[normalizeImagery(auto?.imagery ? [auto.imagery] : undefined), 'auto']]) as Imagery[] | undefined) ?? [];
   const bpm = pick('bpm', [[manual.bpm, 'manual'], [auto?.bpmNetease, 'netease'], [auto?.bpm, 'auto'], [album.bpm, 'album']]) as number | undefined;
   const sections = (pick('sections', [[manual.sections, 'manual'], [auto?.sections, 'auto']]) as [number, number][] | undefined) ?? [];
@@ -158,8 +163,8 @@ export const resolveTrackMood = (layers: {
     split: isSplit(lyricValence ?? valence, soundValence ?? valence),
     feels,
     feel,
-    // 复合情绪只认写出来的向量：VA 猜的单维凑不出组合
-    blend: provenance.feels === 'manual' || provenance.feels === 'album' ? blendOf(feels) : undefined,
+    // 复合情绪只认写出来的向量（人标、草稿、专辑）：VA 猜的单维凑不出组合
+    blend: provenance.feels === 'manual' || provenance.feels === 'draft' || provenance.feels === 'album' ? blendOf(feels) : undefined,
     arc,
     imagery,
     sure: manual.sure !== false,

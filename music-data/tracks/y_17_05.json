@@ -14,11 +14,24 @@
     },
     "draft": {
       "intro": "九十秒的器乐间奏，名叫「飞行」。下一首里的「我」会在暮色中飞离这颗星球，这里像是起飞前的那口气。",
-      "valence": 0.2,
-      "feel": "wonder",
+      "valence": 0.3,
+      "feels": {
+        "wonder": 2,
+        "joyful": 1,
+        "transcendence": 1
+      },
       "confidence": "low",
-      "basis": "纯器乐；与下一首《靴の花火》的飞行意象相连（推测）。",
-      "draftedAt": "2026-10-07"
+      "basis": "九十秒的器乐「飞行」，接下一首在暮色中飞离星球的意象；凭标题与位置标作起飞的奇妙。 原依据：纯器乐；与下一首《靴の花火》的飞行意象相连（推测）。",
+      "draftedAt": "2026-10-17"
+    },
+    "web": {
+      "url": "https://ja.wikipedia.org/wiki/夏草が邪魔をする",
+      "fetchedAt": "2026-10-17",
+      "credits": {
+        "composer": [
+          "n-buna"
+        ]
+      }
     }
   }
 }
