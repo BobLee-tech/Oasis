@@ -21,6 +21,7 @@ import { OasisTerminal } from './components/OasisTerminal';
 import { OasisBackground } from './components/OasisBackground';
 import { OasisGarden } from './components/OasisGarden';
 import { OasisBottomChrome } from './components/OasisBottomChrome';
+import { GardenViewSwitch } from './components/GardenViewSwitch';
 import { OasisPalette, openPalette, type PaletteView } from './components/OasisPalette';
 
 // 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
@@ -478,6 +479,12 @@ function App() {
                 );
               })()}
               {!prefersReducedMotion && !coarse && waveKey > 0 && <RippleBloom key={waveKey} origin={revealOrigin} view={appView} />}
+              {/* 🗺️ 文章的两种看法：列表 / 星图。星图不占 Dock 一格，入口在这里（窄屏不显示） */}
+              <AnimatePresence>
+                {(appView === 'garden' || appView === 'orchard') && (
+                  <GardenViewSwitch key="garden-view-switch" view={appView} onSwitch={handleViewChange} />
+                )}
+              </AnimatePresence>
               <OasisBottomChrome currentView={appView} onViewChange={handleViewChange} isOwner={effectiveIsAdmin} />
             </motion.div>
           )}

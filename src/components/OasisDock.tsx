@@ -1,7 +1,8 @@
-// 🧭 五个顶层场所的稳定入口。
+// 🧭 四个顶层场所的稳定入口。星图不占格子：它是文章的另一种看法，入口在文章页顶上的
+//   「列表 / 星图」切换（GardenViewSwitch）；在星图时这里亮「花园」，再点一下回到列表。
 // 24 网格 / 20×20 live area / 统一 1.6px 描边；色彩只表达「当前所在」，
 // 各场所的情绪色留给页面与涟漪，不让导航同时说五种语言。
-import React, { useSyncExternalStore } from 'react';
+import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { AppView } from '../types/auth';
 
@@ -11,7 +12,7 @@ interface OasisDockProps {
 }
 
 interface DockItem {
-  view: Exclude<AppView, 'welcome' | 'echoes'>;
+  view: Exclude<AppView, 'welcome' | 'echoes' | 'orchard'>;
   label: string;
   shortLabel: string;
   icon: React.ReactNode;
@@ -32,16 +33,6 @@ const ResonanceIcon = () => (
     <path d="M4 13.6v-1.9a8 8 0 0 1 16 0v1.9" />
     <rect x="2" y="12.8" width="4.6" height="7.4" rx="2.3" />
     <rect x="17.4" y="12.8" width="4.6" height="7.4" rx="2.3" />
-  </svg>
-);
-
-const ConstellationIcon = () => (
-  <svg {...svgProps}>
-    <path d="M5.4 8.8 11.2 5.3l2.2 9.2 5.6 4" opacity=".58" />
-    <circle cx="5.4" cy="8.8" r="1.8" fill="currentColor" stroke="none" />
-    <circle cx="11.2" cy="5.3" r="1.25" fill="currentColor" stroke="none" />
-    <circle cx="13.4" cy="14.5" r="1.25" fill="currentColor" stroke="none" />
-    <circle cx="19" cy="18.5" r="1.5" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -72,7 +63,6 @@ const LanternIcon = () => (
 
 const DOCK_ITEMS: DockItem[] = [
   { view: 'soundscape', label: 'Resonance', shortLabel: '共鸣', icon: <ResonanceIcon /> },
-  { view: 'orchard', label: 'Constellation', shortLabel: '星图', icon: <ConstellationIcon /> },
   { view: 'garden', label: 'Garden', shortLabel: '花园', icon: <GardenIcon /> },
   { view: 'atelier', label: 'Atelier', shortLabel: '工坊', icon: <AtelierIcon /> },
   { view: 'lights', label: 'Lanterns', shortLabel: '灯火', icon: <LanternIcon /> },
@@ -84,34 +74,21 @@ const DOCK_ITEMS: DockItem[] = [
 //   重复 hover 不会重复发请求，无需额外去重。
 const VIEW_PREFETCH: Partial<Record<AppView, () => Promise<unknown>>> = {
   soundscape: () => import('./OasisResonance'),
-  orchard: () => import('./OasisOrchard'),
   garden: () => import('./OasisGallery'),
   atelier: () => import('./OasisAtelier'),
   lights: () => import('./OasisLights'),
 };
 
-// 窄屏不做星野：竖屏上那张横版版心只会缩成一条带，字反而压过图。
-// 与其做一块永远不够好的手机版，不如不给入口。详见 docs/redesign-2026-08/04-sky-ye.md §8。
-const subscribeNarrow = (notify: () => void) => {
-  const q = window.matchMedia('(max-width: 767px)');
-  q.addEventListener('change', notify);
-  return () => q.removeEventListener('change', notify);
-};
-const isNarrow = () => window.matchMedia('(max-width: 767px)').matches;
-
 export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange }) => {
   const reduceMotion = !!useReducedMotion();
-  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
-  // 已经在星图上（比如直接开了 #/constellation）就仍然显示，否则用户会看不到自己在哪
-  const items = narrow && currentView !== 'orchard'
-    ? DOCK_ITEMS.filter(i => i.view !== 'orchard')
-    : DOCK_ITEMS;
+  // 星图归在文章名下：亮哪一格看「所在的那一处」，点不点得动看「是不是就在这一页」
+  const here: AppView = currentView === 'orchard' ? 'garden' : currentView;
 
   return (
     <nav aria-label="主要场所" data-oasis-avoid className="pointer-events-auto relative z-10">
       <div className="relative isolate flex items-center gap-0.5 md:gap-2.5 p-2 md:p-2.5 rounded-[24px] md:rounded-[26px] bg-white/55 dark:bg-[#0A0F1D]/70 border border-white/55 dark:border-white/10 border-t-white/80 dark:border-t-white/20 backdrop-blur-2xl shadow-[0_18px_44px_-20px_rgba(15,23,42,0.34),inset_0_1px_0_rgba(255,255,255,0.42)] dark:shadow-[0_20px_48px_-20px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors duration-700">
-        {items.map((item) => {
-          const isActive = currentView === item.view;
+        {DOCK_ITEMS.map((item) => {
+          const isActive = here === item.view;
 
           return (
             <motion.button
@@ -119,7 +96,7 @@ export const OasisDock: React.FC<OasisDockProps> = ({ currentView, onViewChange 
               onPointerEnter={() => VIEW_PREFETCH[item.view]?.()}
               onTouchStart={() => VIEW_PREFETCH[item.view]?.()}
               onClick={(event) => {
-                if (isActive) return;
+                if (currentView === item.view) return;
                 const rect = event.currentTarget.getBoundingClientRect();
                 onViewChange(item.view, {
                   x: rect.left + rect.width / 2,

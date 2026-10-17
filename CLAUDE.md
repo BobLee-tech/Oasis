@@ -8,7 +8,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ## 架构(src/, 共约 5700 行)
 - [App.tsx](src/App.tsx) — 根组件:视图切换(AnimatePresence 交叉溶解 + RippleBloom 涟漪转场)、日夜主题、终端暗门(按 `` ` `` 或 2.5s 内连点右上角时钟 5 次唤起登录终端)、深夜低语、点击涟漪、访客模拟开关。
-- 视图(AppView):`welcome`(OasisGarden 入场页) / `garden`(OasisGallery 博客) / `soundscape`(OasisResonance 音乐播放器) / `orchard`(OasisOrchard 知识星图) / `lights`(OasisLights 友链灯笼) / `atelier`(OasisAtelier 工坊:简历三件作品的册页,数据在 `src/data/projects.ts`,规矩见 `atelier/atelier.css` 文件头)。底部 OasisDock 切换。
+- 视图(AppView):`welcome`(OasisGarden 入场页) / `garden`(OasisGallery 博客) / `soundscape`(OasisResonance 音乐播放器) / `orchard`(OasisOrchard 知识星图) / `lights`(OasisLights 友链灯笼) / `atelier`(OasisAtelier 工坊:简历三件作品的册页,数据在 `src/data/projects.ts`,规矩见 `atelier/atelier.css` 文件头)。底部 OasisDock 四格:共鸣 · 花园 · 工坊 · 灯火(名字待树测试定,演示见 `docs/ia-demo.html`)。星图不占格子,是文章的另一种看法:`garden` / `orchard` 顶上的「列表 / 星图」切换 [GardenViewSwitch.tsx](src/components/GardenViewSwitch.tsx)(窄屏不显示),在星图时 Dock 亮「花园」;内部仍是两个场所,路由与 Miku 场所台词照旧。
 - [lib/route.ts](src/lib/route.ts) — 极轻 hash 路由:`#/garden|resonance|constellation|lanterns`,garden 支持 `#/garden/<postId>`。注意 URL 段与内部 view 名不同(orchard↔constellation, soundscape↔resonance)。
 - [lib/supabase.ts](src/lib/supabase.ts) — 客户端,需 `.env.local` 里 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`。
 
@@ -26,7 +26,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
   - 内页 `resonance/RippleReveal.tsx` + `LinerNotes.tsx`:贴纸(盘面声槽仍是播放)或歌名点开,波前由 ticker 推进、直写 clip-path,WebGL2 画波的明暗;几何与节奏是纯函数 `lib/ripple.ts`(有测试)。
   - 歌词近景:唱片 transform 退到舞台左缘,纵向量歌词水线与舞台边界定位(圆心对水线,不越界、给走带留 76px 空带),进度是半圈 `ProgressArc`;大走带隐去,换成左下 `CloseUpTransport` 一行,`useIdle` 闲置 2.5s 隐去、暂停常显,切换条随之退到 38%;`LyricField` 焦点 0.5 是水线,当前句底边贴线,线下 `.lyric-water` 是将唱(桌面 backdrop 模糊),间奏由水线起伏+倒计时承担;阅读设置收进 `LyricPanel` 的 Aa 弹层。
   - 纯器乐 `resonance/InstrumentalPond.tsx`:`lib/waterSim.ts` 高度场(有测试)+ 着色器,鼓点落滴、高频细雨、`mood.sections` 段落雨密,无频谱按 `mood.bpm` 兜底;氛围关 / 无 WebGL2 回退静止 CSS 水纹。WebGL 小封装在 `lib/gl.ts`。
-- [OasisOrchard.tsx](src/components/OasisOrchard.tsx) — 星图「砂与星」:昼为枯山水砂庭、夜为星池,同一套几何只换光。视觉基准 `docs/sandprototype-v5.1.html`,取舍见 `docs/constellation-v5.1-refinement.md`。石/星=文章(大小=篇幅五档,种子=实线浅卵石、常青覆苔/四角芒),庭=分类,合集=枯流れ(砂纹自身沿章序流成的窄溪,不画连接线;夜里是星座连线)+源头灯笼,石桥/鹊桥=双链,砂纹=整座庭一张距离场的等值线。月亮是固定在右上角的 `orchard/Moon.tsx`(悉尼所见、南半球倒置)。本文件只管版面外的 React 部分(页头、庭记目录、星卡、时光拨盘);**星图内不提供长文阅读**,星卡跳 `#/garden/<id>`。已拍板去掉:星等切换、未种下的星、待照料模式、手机版(窄屏只给告示,Dock 隐藏入口)。每次从别的场所切进来都走一遍进场编排(相机俯身落定 → 石逐块落定 → 砂纹耙出 → 注记淡入)。
+- [OasisOrchard.tsx](src/components/OasisOrchard.tsx) — 星图「砂与星」:昼为枯山水砂庭、夜为星池,同一套几何只换光。视觉基准 `docs/sandprototype-v5.1.html`,取舍见 `docs/constellation-v5.1-refinement.md`。石/星=文章(大小=篇幅五档,种子=实线浅卵石、常青覆苔/四角芒),庭=分类,合集=枯流れ(砂纹自身沿章序流成的窄溪,不画连接线;夜里是星座连线)+源头灯笼,石桥/鹊桥=双链,砂纹=整座庭一张距离场的等值线。月亮是固定在右上角的 `orchard/Moon.tsx`(悉尼所见、南半球倒置)。本文件只管版面外的 React 部分(页头、庭记目录、星卡、时光拨盘);**星图内不提供长文阅读**,星卡跳 `#/garden/<id>`。已拍板去掉:星等切换、未种下的星、待照料模式、手机版(窄屏只给告示,入口只在文章页的「列表 / 星图」切换,窄屏不显示切换)。每次从别的场所切进来都走一遍进场编排(相机俯身落定 → 石逐块落定 → 砂纹耙出 → 注记淡入)。
   - [orchard/sandScene.ts](src/components/orchard/sandScene.ts) — 地图引擎,**全程不进 React**:相机直写 transform,屏幕尺寸恒定的东西放 `scale(1/k)` 子组;定位写 SVG transform 特性、CSS 动画放内层 g(CSS transform 会覆盖特性);注记在屏幕空间择位、canvas 量真实字宽;最近邻拾取。样式在同目录 `sand.css`(`.oasis-sand` 昼 / `.dark .oasis-sand` 夜;color-mix 只能写在 CSS 里)。
   - [lib/sandGarden.ts](src/lib/sandGarden.ts) — 纯数据层:落座「出生时择邻,此后终生不迁」(按 createdAt 依次落座,新分类上黄金角螺线),测试守着前缀不变量(新增文章不移动旧石)与 `MIN_SEP`;关系推导(小径/桥/同话题);砂纹 smooth-min 距离场 + marching squares。
 
