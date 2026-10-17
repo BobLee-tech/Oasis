@@ -64,6 +64,8 @@ export interface Project {
   result: string;
   resultFlag?: string;
   links: ProjectLink[];
+  /** 借景：园中写过这件作品的文章（id 取自 garden_posts）。工坊「出处」里多一行，文章读完也会指回这一页 */
+  posts?: { id: string; title: string }[];
 }
 
 export const PROJECTS: Project[] = [
@@ -202,6 +204,7 @@ export const PROJECTS: Project[] = [
     },
     result: '入围 ICON UNSW × Lyra 决赛。复盘：核心循环依赖手动记录，我判断它撑不住留存，提出改用可穿戴设备的被动数据驱动计划。',
     resultFlag: '假设 · 未验证',
+    posts: [{ id: '627371d2-1add-400d-82a3-ae5c6a49a120', title: '来日方长' }],   // 那场黑客松的复盘：前八、final pitch、无奖
     links: [
       { label: '在线 Demo', href: 'https://akeso-navy.vercel.app', icon: 'live', note: 'akeso-navy.vercel.app', live: true },
       { label: 'GitHub', href: 'https://github.com/EdwinjJ1/akeso', icon: 'code', note: 'EdwinjJ1/akeso' },

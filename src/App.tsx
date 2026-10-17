@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
 import { useGarden, filterVisible } from './hooks/useGarden';
-import { playBGM, getPlayerSnapshot } from './hooks/useSoundscape';
+import { playBGM, getPlayerSnapshot, switchTrack, PLAYLIST } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
 import { useAutoTheme } from './hooks/useAutoTheme';
 import { isLateNight } from './lib/timeContext';
@@ -319,6 +319,14 @@ function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.view]);
+
+  // 🎵 借景到一首歌：#/resonance/<曲目 id>（文章里写 [歌名](#/resonance/y_23_04) 即可）
+  //   选中那首；正在放就换过去接着放，没在放就只摆上唱机，不替读者按播放。
+  useEffect(() => {
+    if (route.view !== 'soundscape' || !route.itemId) return;
+    const t = PLAYLIST.find(x => x.id === route.itemId);
+    if (t) switchTrack(t);
+  }, [route.view, route.itemId]);
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');

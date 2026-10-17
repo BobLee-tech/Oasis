@@ -8,7 +8,7 @@ import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { PLAYLIST, switchTrack } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
-import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter } from './OasisReader';
+import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter, WorkshopNote } from './OasisReader';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
@@ -1820,6 +1820,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
                 {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
                 <Colophon date={activePost.date} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
+                <WorkshopNote postId={activePost.id} />
 
                 <PostFooter
                   key={activePost.id}

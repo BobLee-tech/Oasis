@@ -252,6 +252,9 @@
 .atl .lnk .lead { border-bottom: 1px dotted var(--ink-3); opacity: .5; transform: translateY(-4px); }
 .atl .lnk .nt { font-family: var(--f-mono); font-size: var(--fs-x); letter-spacing: .01em; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atl .lnk.mute .nt { font-family: var(--f-body); letter-spacing: .06em; }
+/* 站内的路（园中文章）：去处是中文篇名，用正文衬线，不用等宽 */
+.atl .lnk.inner .nt { font-family: var(--f-body); font-size: var(--fs-s); letter-spacing: .06em; color: var(--ink-2); }
+.atl .lnk.inner:hover .ext { transform: translateX(3px); color: var(--teal-ink); }
 .atl .lnk .ext { font-size: var(--fs-s); color: var(--ink-3); transition: transform .4s var(--e-out), color .3s; }
 .atl a.lnk:hover .lb { text-decoration-color: var(--ink); }
 .atl a.lnk:hover .ext { transform: translate(2px, -2px); color: var(--ink); }

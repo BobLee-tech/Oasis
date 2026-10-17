@@ -168,6 +168,17 @@ const LinkRow: React.FC<{ l: ProjectLink; i: number }> = ({ l, i }) => {
     : <div className="lnk mute">{inner}</div>;
 };
 
+// 借景：园中写过这件作品的文章，排在「出处」后面，同一种行；站内的路，用 ⟶ 不用 ↗
+const PostRow: React.FC<{ post: { id: string; title: string }; i: number }> = ({ post, i }) => (
+  <a className="lnk inner" href={`#/garden/${encodeURIComponent(post.id)}`}>
+    <span className="no">{NUMS[i]}</span>
+    <span className="lb">园中文章</span>
+    <span className="lead" aria-hidden />
+    <span className="nt">{post.title}</span>
+    <span className="ext" aria-hidden>⟶</span>
+  </a>
+);
+
 // 画心：墨稿 / 中心设色 / 全幅设色 三层同图叠放 + 宣传片
 const Canvas: React.FC<{ p: Project; videoRef?: React.Ref<HTMLVideoElement>; autoSrc?: boolean }> = ({ p, videoRef, autoSrc }) => (
   <div className="canvas">
@@ -279,7 +290,10 @@ const Spread: React.FC<{ p: Project; index: number; rootRef: React.RefObject<HTM
           </dl>
           <Stream ref={brookRef} p={p} fig={index} onEnter={() => { if (tintedRef.current && !reduce) runSpark(brookRef.current); }} />
           <p className="decision"><span className="an">按</span><span className="sr-only">：</span>{p.decision}</p>
-          <div className="links">{p.links.slice(0, 2).map((l, i) => <LinkRow key={l.label} l={l} i={i} />)}</div>
+          <div className="links">
+            {p.links.slice(0, 2).map((l, i) => <LinkRow key={l.label} l={l} i={i} />)}
+            {p.posts?.map((post, i) => <PostRow key={post.id} post={post} i={Math.min(p.links.length, 2) + i} />)}
+          </div>
           <div className="ins-foot">
             <button className="go-page" type="button" onClick={open}>展开全页<span className="arw" aria-hidden>⟶</span></button>
             <div className="kuan"><p>{kuanOf(p)}</p><NameChop /></div>
@@ -415,7 +429,11 @@ const ProjectSheet: React.FC<{
           <p>{p.result}</p>
         </div>
         <div className="ins-foot" style={stagger()}>
-          <div className="links"><h3><span className="no">{SEC_NUMS[4]}</span>出处</h3>{p.links.map((l, i) => <LinkRow key={l.label} l={l} i={i} />)}</div>
+          <div className="links">
+            <h3><span className="no">{SEC_NUMS[4]}</span>出处</h3>
+            {p.links.map((l, i) => <LinkRow key={l.label} l={l} i={i} />)}
+            {p.posts?.map((post, i) => <PostRow key={post.id} post={post} i={p.links.length + i} />)}
+          </div>
           <div className="kuan"><p>{kuanOf(p)}</p><NameChop /></div>
         </div>
       </article>

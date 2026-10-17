@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useMotionValueEvent, useTransform, useScroll, 
 import type { TocItem } from '../lib/reading';
 import { LIGHTBOX_EVENT } from './Markdown';
 import { currentSolarTerm } from '../lib/solarTerms';
+import { PROJECTS } from '../data/projects';
 import type { Backlink } from '../lib/wikilinks';
 
 // ══════════════════════════════════════════════════════════════
@@ -340,6 +341,30 @@ export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, updatedAt, 
         写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
         {tended && <><br />照料于 {tendedDate} · {currentSolarTerm(new Date(updatedAt)).name}</>}
       </span>
+    </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════
+// 🪵 借景：这篇写过工坊里的哪件作品（关系只记在 data/projects.ts 的 posts 一处），
+//    落款下面一行小字指回那一页册页；没有就不出现。
+// ══════════════════════════════════════════════════════════════
+export const WorkshopNote: React.FC<{ postId: string }> = ({ postId }) => {
+  const works = PROJECTS.filter((p) => p.posts?.some((x) => x.id === postId));
+  if (!works.length) return null;
+  return (
+    <div className="-mt-2 mb-8 flex flex-col items-center gap-1.5">
+      {works.map((p) => (
+        <a
+          key={p.id}
+          href={`#/atelier/${encodeURIComponent(p.id)}`}
+          className="group inline-flex items-center gap-2 font-serif text-xs text-slate-400 dark:text-slate-500 tracking-wide hover:text-slate-600 dark:hover:text-slate-300 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#39C5BB] rounded-sm"
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} aria-hidden />
+          工坊里有这件作品的册页 · <span className="text-slate-500 dark:text-slate-400">{p.title}</span>
+          <span className="transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden>⟶</span>
+        </a>
+      ))}
     </div>
   );
 };

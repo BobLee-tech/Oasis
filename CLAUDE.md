@@ -9,7 +9,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 ## 架构(src/, 共约 5700 行)
 - [App.tsx](src/App.tsx) — 根组件:视图切换(AnimatePresence 交叉溶解 + RippleBloom 涟漪转场)、日夜主题、终端暗门(按 `` ` `` 或 2.5s 内连点右上角时钟 5 次唤起登录终端)、深夜低语、点击涟漪、访客模拟开关。
 - 视图(AppView):`welcome`(OasisGarden 入场页) / `garden`(OasisGallery 博客) / `soundscape`(OasisResonance 音乐播放器) / `orchard`(OasisOrchard 知识星图) / `lights`(OasisLights 友链灯笼) / `atelier`(OasisAtelier 工坊:简历三件作品的册页,数据在 `src/data/projects.ts`,规矩见 `atelier/atelier.css` 文件头) / `yuantu`(OasisYuantu 园图,见下)。底部 OasisDock 四格:共鸣 · 花园 · 工坊 · 灯火(名字待树测试定,演示见 `docs/ia-demo.html`;场所中文名只在 [lib/places.ts](src/lib/places.ts) 一处,Dock、⌘K、园图签条都读它)。星图不占格子,是文章的另一种看法:`garden` / `orchard` 顶上的「列表 / 星图」切换 [GardenViewSwitch.tsx](src/components/GardenViewSwitch.tsx)(窄屏不显示),在星图时 Dock 亮「花园」;内部仍是两个场所,路由与 Miku 场所台词照旧。
-- [lib/route.ts](src/lib/route.ts) — 极轻 hash 路由:`#/garden|resonance|constellation|lanterns|atelier|yuantu`,带条目的有 `#/garden/<postId>`、`#/constellation/<postId>`、`#/atelier/<projectId>`、`#/yuantu/<景>`。注意 URL 段与内部 view 名不同(orchard↔constellation, soundscape↔resonance)。
+- [lib/route.ts](src/lib/route.ts) — 极轻 hash 路由:`#/garden|resonance|constellation|lanterns|atelier|yuantu`,带条目的有 `#/garden/<postId>`、`#/constellation/<postId>`、`#/atelier/<projectId>`、`#/resonance/<曲目 id>`(App 里选中那首:在放就换着放,没放只摆上唱机)、`#/yuantu/<景>`。注意 URL 段与内部 view 名不同(orchard↔constellation, soundscape↔resonance)。
 - [lib/supabase.ts](src/lib/supabase.ts) — 客户端,需 `.env.local` 里 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`。
 
 ### Hooks(数据层)
@@ -35,6 +35,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
   - [yuantu/scrollScene.ts](src/components/yuantu/scrollScene.ts) — 卷的引擎,**全程不进 React**(three.js 自成一包,不进首屏):纸带三段(左轴/平铺/右杆)顶点全在着色器里算、切片按视口远近懒加载(GPU 最多 9 张)、签条阻尼摆、解带展卷(只给第一次来的人,途中再点一下跳过)、卷起、卷尾钤印(只记本机)、夜里烛光照出绢纹、昼里浮尘。画布由引擎每次自建自拆(React 开发模式会挂载两次,复用画布会拿到已丢失的上下文);建不起 WebGL 就退回「七景的门」列表。GLSL 里别写 pow(负数, 2.)(部分 GPU 出 NaN),用 sq()。移植自 `docs/shuzhai-v6.html` 的「庭」。
   - [yuantu/scenes.ts](src/components/yuantu/scenes.ts) 七景坐标与去处、本机记忆 `oasis_yuantu_*`;样式 `yuantu/yuantu.css`(这一处自己的「地」:引首纸 / 灯下桌面)。
   - 素材在 `public/yuantu/`(约 6 MB,出处见 `public/yuantu/CREDITS.md`,全部 CC0 / OFL);要挪到 R2 时设 `VITE_YUANTU_BASE`(别用 `VITE_ART_BASE`,那个变量另有用途)。
+- 借景(板块之间的串联):工坊作品在 `projects.ts` 的 `posts` 里记园中文章 id,工坊「出处」多一行「园中文章」,那篇读完的落款下也会指回册页(`OasisReader.tsx` 的 WorkshopNote);文章里写 `[歌名](#/resonance/<曲目 id>)` 就能借景到那首歌;文章侧栏的 Today's Resonance 本来就是借景。
 
 ### 其他
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。

@@ -23,7 +23,8 @@ describe('parseHash', () => {
     expect(parseHash('#/atelier/art-1')).toEqual({ view: 'atelier', itemId: 'art-1' });
   });
 
-  it('yuantu carries a scene id', () => {
+  it('resonance carries a track id and yuantu carries a scene id', () => {
+    expect(parseHash('#/resonance/y_23_04')).toEqual({ view: 'soundscape', itemId: 'y_23_04' });
     expect(parseHash('#/yuantu/nongshui')).toEqual({ view: 'yuantu', itemId: 'nongshui' });
   });
 
@@ -54,6 +55,7 @@ describe('formatHash', () => {
     expect(formatHash('garden', 'hello world')).toBe('#/garden/hello%20world');
     expect(formatHash('orchard', 'star 1')).toBe('#/constellation/star%201');
     expect(formatHash('atelier', 'art 1')).toBe('#/atelier/art%201');
+    expect(formatHash('soundscape', 'y_23_04')).toBe('#/resonance/y_23_04');
     expect(formatHash('yuantu', 'jianshan')).toBe('#/yuantu/jianshan');
   });
 });

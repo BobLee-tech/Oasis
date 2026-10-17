@@ -21,12 +21,13 @@ const SEG_TO_VIEW: Record<string, AppView> = {
   yuantu: 'yuantu',
 };
 
-// 支持「场所内单条目直达」的 view：garden 的文章 / constellation 的选中星 / atelier 的项目页 / yuantu 的景（卷展到那一景）
-const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'orchard', 'atelier', 'yuantu']);
+// 支持「场所内单条目直达」的 view：garden 的文章 / constellation 的选中星 / atelier 的项目页 /
+//   resonance 的曲目（文章里写 [歌名](#/resonance/<曲目 id>) 就能借景到那首歌）/ yuantu 的景（卷展到那一景）
+const ITEM_VIEWS: ReadonlySet<AppView> = new Set(['garden', 'orchard', 'atelier', 'soundscape', 'yuantu']);
 
 export interface Route {
   view: AppView;        // 'welcome' 表示无有效路由（首页入场）
-  itemId?: string;      // 文章 / 项目 / 景的 id，仅 ITEM_VIEWS 内的场所有意义
+  itemId?: string;      // 文章 / 项目 / 曲目 / 景的 id，仅 ITEM_VIEWS 内的场所有意义
 }
 
 export const parseHash = (hash: string): Route => {
