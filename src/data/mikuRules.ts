@@ -116,7 +116,7 @@ const RETURN: Rule[] = [
 const VIEW: Rule[] = [
   { id: 'view.orchard', on: 'view', who: 'any', when: { view: 'orchard' }, chance: 0.6, say: ['星图好安静，像是把心事都摊开了。', '每一颗星星都是一篇文章呢。'] },
   { id: 'view.orchard.visitor', on: 'view', who: 'visitor', when: { view: 'orchard' }, chance: 0.6, say: ['每颗星是一篇文章，按写下的日子排在年轮上。'] },
-  { id: 'view.lights', on: 'view', who: 'any', when: { view: 'lights' }, chance: 0.6, say: ['这些灯笼，都是朋友留下的光。', '每一盏灯笼背后，都是一个愿意留下痕迹的人。'] },
+  { id: 'view.lights', on: 'view', who: 'any', when: { view: 'lights' }, chance: 0.6, say: ['这些信，都是朋友从各自的花园寄来的。', '每一封信背后，都是一个愿意留下痕迹的人。'] },
   { id: 'view.garden.owner', on: 'view', who: 'owner', when: { view: 'garden' }, chance: 0.6, say: ['要不要一起读读最近写的东西？', '文字发芽的地方，我很喜欢待着。', '这片花园里，藏着不少你没说出口的话吧。'] },
   { id: 'view.garden.visitor', on: 'view', who: 'visitor', when: { view: 'garden' }, chance: 0.6, say: ['这是他写东西的地方。最新的一篇是《{latestPost.title}》。', '文字发芽的地方，慢慢看。'] },
   { id: 'view.atelier', on: 'view', who: 'any', when: { view: 'atelier' }, chance: 0.6, say: ['每一页都盖过印了呢。', '做出来的东西，比说出来的更有分量。', '慢慢翻，每一开都有故事。'] },
@@ -382,7 +382,7 @@ const HOST: Rule[] = [
     say: ['想安静看看的话，我就不出声了。'] },
   { id: 'p7.host.orchard', on: 'view', who: 'visitor', when: { view: 'orchard' }, chance: 0.6,
     say: ['星图的角度就是日期，转一圈是一年。', '点一颗星会翻开它的星卡，从那里能进到文章。'] },
-  { id: 'p7.host.lights', on: 'view', who: 'visitor', when: { view: 'lights' }, chance: 0.6, say: ['灯笼点开就是他朋友们的站。'] },
+  { id: 'p7.host.lights', on: 'view', who: 'visitor', when: { view: 'lights' }, chance: 0.6, say: ['信抽出来读完，就能去他朋友们的站。'] },
   { id: 'p7.host.atelier', on: 'view', who: 'visitor', when: { view: 'atelier' }, chance: 0.6, say: ['工坊里是他做过的作品，点开能看细节。'] },
   { id: 'p7.host.soundscape', on: 'view', who: 'visitor', when: { view: 'soundscape' }, chance: 0.6, say: ['歌词面板可以点开，跟着一起看。'] },
   { id: 'p7.host.reading.long', on: 'reading-open', who: 'visitor', when: { 'reading.minutes': '>=10' }, chance: 0.6,

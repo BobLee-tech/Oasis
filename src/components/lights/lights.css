@@ -1,0 +1,101 @@
+/* ✉️ 灯火 · 邻家尺牍
+   这一处有自己的「地」：园图同一张引首纸做桌面，夜里是秉烛的桌面（就像工坊有册页、园图有引首纸）。
+   外壳（⌘K、昼夜胶囊、Dock、Miku）照现网，不在这里。演示稿：docs/chidu-demo.html。
+   · 信封、八行笺由 WebGL 画（lights/letterScene.ts）；可点之物是这里的 DOM：热区跟着信封走，展读的按钮跟着笺走（位置由引擎写）。
+   · 字：标题齐伋体（刻本），页面朱雀仿宋（印），信上志莽行书 + Homemade Apple（手），西文 IM Fell English（1670 年代 Fell 铅字），小注霞鹜文楷。
+   · 圆角最多 2px；按钮是一行字加一道细墨线，不用药丸与光晕（同工坊）。
+   · 动只动 transform / opacity；reduced-motion 下页头不逐字显现。 */
+@font-face { font-family: "Qiji Chidu"; src: url("/lights/qiji.woff2") format("woff2"); font-display: block; unicode-range: U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF; }
+
+.oasis-lights {
+  --paper: #EEE7D8; --ink: #1E1A15; --ink-2: #4A4236; --ink-3: #7D735F; --ink-4: #AFA48D;
+  --rule: rgba(40, 32, 22, .16); --zhu: #A8392B;
+  --f-song: "Zhuque Fangsong", "Noto Serif SC", "Songti SC", "STSong", serif;
+  --f-kai: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif;
+  --f-lat: "IM Fell English", "EB Garamond", Georgia, serif;
+  --f-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --f-ke: "Qiji Chidu", var(--f-song);
+  --e-out: cubic-bezier(.16, 1, .3, 1); --e-io: cubic-bezier(.65, 0, .35, 1);
+  --gut: clamp(16px, 5vw, 72px);
+
+  position: absolute; inset: 0; overflow: hidden; isolation: isolate;
+  background: var(--paper); color: var(--ink);
+  font: 400 15px/1.75 var(--f-song);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 1.2s var(--e-io), color 1.2s var(--e-io);
+}
+.dark .oasis-lights {
+  --paper: #121314; --ink: #E9E2D2; --ink-2: #BDB4A2; --ink-3: #888170; --ink-4: #585349;
+  --rule: rgba(233, 226, 210, .14); --zhu: #D06A52;
+}
+.oasis-lights button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+.oasis-lights a { color: inherit; text-decoration: none; }
+.oasis-lights :focus-visible { outline: 1.5px solid var(--zhu); outline-offset: 3px; }
+
+/* 画布：素材到齐再淡入 */
+.oasis-lights .lt-stage { position: absolute; inset: 0; z-index: 0; }
+.oasis-lights .lt-gl { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--e-out); }
+.oasis-lights[data-ready] .lt-gl { opacity: 1; }
+
+/* 页头：印刷品排版，读信时让开 */
+.oasis-lights .lt-head { position: absolute; left: var(--gut); top: 96px; z-index: 5; pointer-events: none; max-width: 36em; transition: opacity .6s var(--e-out); }
+.oasis-lights[data-reading] .lt-head { opacity: 0; }
+.oasis-lights .lt-kick { display: flex; align-items: center; gap: 12px; font: 400 14px/1 var(--f-sc); letter-spacing: .16em; color: var(--ink-3); }
+.oasis-lights .lt-kick b { font: 600 13px/1 var(--f-song); letter-spacing: .3em; color: var(--ink-2); }
+.oasis-lights .lt-kick i { width: 36px; height: 1px; background: var(--rule); }
+.oasis-lights .lt-head h1 { margin: 18px 0 14px; font: 400 54px/1 var(--f-ke); letter-spacing: .08em; color: var(--ink); }
+.oasis-lights .lt-head p { font: 400 16px/1.9 var(--f-song); color: var(--ink-2); letter-spacing: .06em; }
+.oasis-lights .lt-head p small { display: block; margin-top: 4px; font: 400 13px/1.7 var(--f-kai); color: var(--ink-3); }
+.oasis-lights .lt-head kbd { font: 500 11px/1 var(--f-lat); padding: 2px 5px; border: 1px solid var(--rule); border-radius: 2px; color: var(--ink-2); }
+/* 进场：题与题记先到，正文逐字显现（与信落桌同时） */
+.oasis-lights .lt-rise { animation: lt-rise 1s var(--e-out) both; animation-delay: calc(var(--d, 0) * 100ms); }
+.oasis-lights .lt-ch { display: inline-block; animation: lt-ch .8s ease-out both; animation-delay: calc(250ms + var(--i) * 12ms); }
+@keyframes lt-rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes lt-ch { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
+
+/* 热区：真正可点、可聚焦的是这层 DOM，画布只负责好看 */
+.oasis-lights .lt-hits { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.oasis-lights .lt-hits > * { position: absolute; pointer-events: auto; border-radius: 2px; -webkit-tap-highlight-color: transparent; }
+.oasis-lights .lt-hits > :focus-visible { outline-offset: 6px; }
+.oasis-lights[data-reading] .lt-hits { visibility: hidden; }
+
+/* 展读 */
+.oasis-lights .lt-reader { position: absolute; inset: 0; z-index: 20; visibility: hidden; }
+.oasis-lights .lt-reader.on { visibility: visible; }
+.oasis-lights .lt-scrim { position: absolute; inset: 0; cursor: zoom-out; }
+.oasis-lights .lt-acts { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 14px; translate: -50% 8px; opacity: 0; pointer-events: none; width: max-content; max-width: calc(100% - 32px); transition: opacity .5s var(--e-out), translate .6s var(--e-out); }
+.oasis-lights .lt-reader.shown .lt-acts { opacity: 1; translate: -50% 0; pointer-events: auto; }
+.oasis-lights .lt-row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; justify-content: center; }
+.oasis-lights .lt-go { display: inline-flex; align-items: center; gap: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--ink); font: 600 15px/1 var(--f-song); letter-spacing: .3em; color: var(--ink); transition: color .3s, border-color .3s; }
+.oasis-lights .lt-go small { font: italic 400 15px/1 var(--f-lat); letter-spacing: .02em; color: var(--ink-3); }
+.oasis-lights .lt-go:hover { color: var(--zhu); border-color: var(--zhu); }
+.oasis-lights .lt-ghost { font: 500 13px/1 var(--f-song); letter-spacing: .24em; color: var(--ink-3); padding: 6px 0; transition: color .3s; }
+.oasis-lights .lt-ghost:hover { color: var(--ink); }
+.oasis-lights .lt-mingtie { max-width: min(780px, calc(100vw - 32px)); text-align: center; font: 400 13px/1.8 var(--f-kai); color: var(--ink-2); }
+.oasis-lights .lt-mingtie b { font: 600 12px/1 var(--f-song); letter-spacing: .3em; color: var(--zhu); margin-right: 10px; }
+.oasis-lights .lt-mingtie code { font: italic 400 14px/1 var(--f-lat); color: var(--ink-3); }
+.oasis-lights .lt-side { position: absolute; translate: -50% -50%; white-space: nowrap; writing-mode: vertical-rl; padding: 14px 8px; font: 400 14px/1 var(--f-kai); letter-spacing: .3em; color: var(--ink-3); opacity: 0; pointer-events: none; transition: opacity .5s var(--e-out), color .3s; }
+.oasis-lights .lt-reader.shown .lt-side:not(:disabled) { opacity: 1; pointer-events: auto; }
+.oasis-lights .lt-side:hover { color: var(--ink); }
+
+/* 建不起 WebGL：退回 DOM 信封 */
+.oasis-lights .lt-nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 220px var(--gut) 140px; overflow-y: auto; }
+.oasis-lights .lt-nogl ul { display: flex; gap: 36px; flex-wrap: wrap; justify-content: center; list-style: none; padding: 0; margin: 0; }
+.oasis-lights .lt-nogl a { position: relative; width: 168px; height: 252px; display: grid; place-items: center; background: #ECE0C4 var(--lt-paper) center / 400px; background-blend-mode: multiply; box-shadow: 0 18px 30px -18px rgba(60, 40, 15, .5); border-radius: 2px; }
+.oasis-lights .lt-nogl a span { writing-mode: vertical-rl; padding: 14px 8px; background: #A8352A; color: #F7ECDA; font: 400 17px/1 "Homemade Apple", var(--f-lat); letter-spacing: .06em; }
+.oasis-lights .lt-nogl a small { position: absolute; left: 12px; bottom: 12px; writing-mode: vertical-rl; font: italic 400 12px/1 var(--f-lat); color: #6F6250; letter-spacing: .06em; }
+.oasis-lights .lt-nogl p { margin-top: 32px; text-align: center; font-size: 14px; color: var(--ink-3); }
+.oasis-lights .lt-nogl p a { all: unset; cursor: pointer; color: var(--ink-2); border-bottom: 1px solid var(--rule); }
+
+@media (max-width: 700px) {
+  .oasis-lights .lt-head { top: 76px; }
+  .oasis-lights .lt-head h1 { font-size: 38px; margin: 12px 0 8px; }
+  .oasis-lights .lt-head p { font-size: 13.5px; }
+  .oasis-lights .lt-head p small { display: none; }
+  .oasis-lights .lt-side { writing-mode: horizontal-tb; padding: 8px 4px; font-size: 13px; letter-spacing: .2em; }
+  .oasis-lights .lt-prev::before { content: "← "; }
+  .oasis-lights .lt-next::after { content: " →"; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oasis-lights .lt-rise, .oasis-lights .lt-ch { animation: none; }
+}

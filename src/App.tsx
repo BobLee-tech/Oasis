@@ -492,7 +492,7 @@ function App() {
                       itemId={route.view === 'orchard' ? route.itemId : undefined}
                       onNavigate={(id) => navigate('orchard', id)}
                     />)}
-                    {appView === 'lights' && wrap('lights-space', <OasisLights />)}
+                    {appView === 'lights' && wrap('lights-space', <OasisLights isDark={isDarkMode} />)}
                     {appView === 'atelier' && wrap('atelier-space', <OasisAtelier />)}
                     {appView === 'yuantu' && wrap('yuantu-space', <OasisYuantu
                       from={yuantuFrom}

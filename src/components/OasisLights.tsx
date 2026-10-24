@@ -1,106 +1,175 @@
 // src/components/OasisLights.tsx
-// 🏮 灯火 Neighboring Lights：朋友们的花园，长夜里各自亮着的灯。
-//   每位朋友是一盏漂浮的「光茧」——磨砂玻璃卡，站名与一句话直接可见，
-//   错落高低、各按自己的节奏浮沉，hover 时整盏灯被点亮。
-//   数据源：src/data/friends.ts（与站内 aura 色板同语言）。
-import React from 'react';
-import { motion } from 'framer-motion';
+// ✉️ 灯火 · 邻家尺牍：一位邻居一封信。移近信封会自己拆开、八行笺抽出半截；点一下抽出来、摊开读；
+//   ⌘ / Ctrl 点击直接登门（热区本身就是普通链接）。最后一只没封口的空信封是「虚席以待」：回帖里有可复制的名帖与来信。
+//   信、封舌、烛与竹影在 lights/letterScene.ts（WebGL，不进 React）；这里只管页头、热区、展读的按钮与建不起 WebGL 时的退路。
+//   数据：src/data/friends.ts（color 是笺色，since 是落款的结邻日）。演示稿与取舍：docs/chidu-demo.html。
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { FRIENDS } from '../data/friends';
+import { PLACE_NAME } from '../lib/places';
+import { useCoarsePointer } from '../hooks/useCoarsePointer';
+import { buildLetters, dateLine, SELF } from './lights/letters';
+import { createLetterScene, hasWebGL, type LetterScene } from './lights/letterScene';
+// 字只在进这一处时才加载（随本场所的 chunk）：页面朱雀仿宋、信上志莽行书 + Homemade Apple、西文 IM Fell
+import '@free-fonts/zhuque-fangsong/zhuque-fangsong.css';
+import '@fontsource/zhi-mang-xing/400.css';
+import '@fontsource/homemade-apple/400.css';
+import '@fontsource/im-fell-english/400.css';
+import '@fontsource/im-fell-english/400-italic.css';
+import '@fontsource/im-fell-english-sc/400.css';
+import './lights/lights.css';
 
-// 确定性哈希：错落偏移与呼吸相位每次一致，不随渲染乱跳
-const seeded = (str: string) => {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  const x = Math.sin(h) * 10000;
-  return x - Math.floor(x);
-};
+// 素材根：默认随站点部署在 public/lights；纸色与纸面法线与园图同一份（public/yuantu/tex）
+const BASE = ((import.meta.env.VITE_LIGHTS_BASE as string | undefined) || '/lights').replace(/\/$/, '');
+const YUANTU_BASE = ((import.meta.env.VITE_YUANTU_BASE as string | undefined) || '/yuantu').replace(/\/$/, '');
+const CN = '〇一二三四五六七八九十';
 
-const hostOf = (url: string) => {
-  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
-};
+interface OasisLightsProps {
+  isDark: boolean;
+}
 
-export const OasisLights: React.FC = () => (
-  <motion.div className="oasis-bottom-scroll-safe absolute inset-0 w-full h-full overflow-y-auto no-scrollbar flex flex-col items-center pt-20 md:pt-28 px-5 md:px-8 z-10">
-    {/* 报头：与其他场所同款的安静排版 */}
-    <div className="text-center mb-16 shrink-0">
-      <div className="font-mono text-[10px] tracking-[0.5em] uppercase text-slate-400/70 dark:text-slate-500 mb-3 transition-colors duration-[1500ms]">Neighboring Lights</div>
-      <p className="font-serif italic text-slate-400 dark:text-slate-500 text-sm transition-colors duration-[1500ms]">长夜里，朋友们的花园各自亮着灯。</p>
+export const OasisLights = ({ isDark }: OasisLightsProps) => {
+  const reduce = !!useReducedMotion();
+  const coarse = useCoarsePointer();
+  const selfUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : '/';
+  const letters = useMemo(() => buildLetters(FRIENDS, selfUrl), [selfUrl]);
+  const [gl, setGl] = useState(hasWebGL);
+  const [ready, setReady] = useState(false);
+  const [reading, setReading] = useState(-1);
+  const [shown, setShown] = useState(false);
+  const [copied, setCopied] = useState<'' | 'ok' | 'fail'>('');
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLElement>(null);
+  const hitRefs = useRef<HTMLElement[]>([]);
+  const actsRef = useRef<HTMLDivElement>(null);
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+  const goRef = useRef<HTMLAnchorElement>(null);
+  const engine = useRef<LetterScene | null>(null);
+
+  // 桌子：挂载即摆，卸载即收（GPU 资源全部释放）；昼夜另有一处跟着走
+  useEffect(() => {
+    if (!gl) return;
+    const root = rootRef.current, stage = stageRef.current, head = headRef.current, acts = actsRef.current, prev = prevRef.current, next = nextRef.current;
+    if (!root || !stage || !head || !acts || !prev || !next) return;
+    try {
+      engine.current = createLetterScene({
+        root, stage, head, acts, prev, next, letters, hits: hitRefs.current.slice(0, letters.length),
+        base: BASE, yuantuBase: YUANTU_BASE, night: isDark, reduce, coarse,
+        onRead: (i) => { setReading(i); if (i >= 0) setCopied(''); },
+        onShown: (s) => { setShown(s); if (s) requestAnimationFrame(() => goRef.current?.focus({ preventScroll: true })); },
+        onReady: () => setReady(true),
+      });
+    } catch (err) {
+      // 显卡建不起 WebGL 上下文：退回 DOM 信封，别让整站跟着白屏
+      console.warn('[lights] 尺牍没能摆上桌，退回信封列表', err);
+      queueMicrotask(() => setGl(false));
+      return;
+    }
+    return () => { engine.current?.destroy(); engine.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl, letters]);
+
+  const firstNight = useRef(true);
+  useEffect(() => {
+    if (firstNight.current) { firstNight.current = false; return; }
+    engine.current?.setNight(isDark);
+  }, [isDark]);
+
+  const nf = FRIENDS.length;
+  const lede = `凡${CN[nf] ?? nf}封，虚一席以待。信封移近会自己拆开，点一下抽出来读。`;
+  const cur = reading >= 0 ? letters[reading] : null;
+  const vacant = cur?.kind === 'vacant';
+
+  const copyCard = async () => {
+    const txt = `站名：${SELF.name}\n地址：${selfUrl}\n简介：${SELF.desc}\n头像：${new URL('/miku.jpg', selfUrl).href}`;
+    try { await navigator.clipboard.writeText(txt); setCopied('ok'); } catch { setCopied('fail'); }
+    window.setTimeout(() => setCopied(''), 1800);
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="oasis-lights"
+      data-ready={ready ? '' : undefined}
+      data-reading={reading >= 0 ? '' : undefined}
+      style={{ '--lt-paper': `url(${YUANTU_BASE}/tex/yinshou-paper.webp)` } as CSSProperties}
+    >
+      <div ref={stageRef} className="lt-stage" aria-hidden />
+
+      <header ref={headRef} className="lt-head">
+        <div className="lt-kick lt-rise"><b>{PLACE_NAME.lights}</b><i /><span>Neighboring Lights</span></div>
+        <h1 className="lt-rise" style={{ '--d': 1 } as CSSProperties}>邻家尺牍</h1>
+        <p>
+          <span className="sr-only">{lede}</span>
+          <span aria-hidden>{[...lede].map((ch, i) => <span key={i} className="lt-ch" style={{ '--i': i } as CSSProperties}>{ch}</span>)}</span>
+          {gl && !coarse && <small>熟客：<kbd>⌘</kbd> / <kbd>Ctrl</kbd> 点信封，直接登门。</small>}
+        </p>
+      </header>
+
+      {gl ? (
+        <>
+          <nav className="lt-hits" aria-label="邻家来信">
+            {letters.map((l, i) => l.kind === 'friend' ? (
+              <a
+                key={l.url}
+                ref={(el) => { if (el) hitRefs.current[i] = el; }}
+                href={l.url} target="_blank" rel="noopener noreferrer"
+                aria-label={`${l.name} 的来信：${l.desc}。寄自 ${l.host}。回车展读，⌘ 点击直接登门`}
+              />
+            ) : (
+              <button
+                key="vacant" type="button"
+                ref={(el) => { if (el) hitRefs.current[i] = el; }}
+                aria-label="虚席以待：一只空信封。展读回帖，交换友链"
+              />
+            ))}
+          </nav>
+
+          <div className={`lt-reader${reading >= 0 ? ' on' : ''}${shown ? ' shown' : ''}`} role="dialog" aria-modal="true" aria-label={cur ? (vacant ? '回帖' : `${cur.name} 的来信`) : undefined}>
+            <div className="lt-scrim" onClick={() => engine.current?.close()} />
+            <div ref={actsRef} className="lt-acts">
+              {vacant && (
+                <p className="lt-mingtie"><b>名帖</b>{SELF.name} ／ <code>{letters[letters.length - 1].host}</code> ／ {SELF.desc}</p>
+              )}
+              <div className="lt-row">
+                {cur && !vacant && (
+                  <a ref={goRef} className="lt-go" href={cur.url} target="_blank" rel="noopener noreferrer">
+                    <span>登门拜访</span><small>{cur.host}</small><span aria-hidden>↗</span>
+                  </a>
+                )}
+                {vacant && (
+                  <>
+                    <a ref={goRef} className="lt-go" href={`mailto:${SELF.mail}?subject=${encodeURIComponent('交换友链')}`}><span>来信</span><span aria-hidden>↗</span></a>
+                    <button type="button" className="lt-ghost" onClick={copyCard}>{copied === 'ok' ? '已复制' : copied === 'fail' ? '复制不了，请手抄' : '复制名帖'}</button>
+                  </>
+                )}
+                <button type="button" className="lt-ghost" onClick={() => engine.current?.close()}>放回信封</button>
+              </div>
+            </div>
+            <button ref={prevRef} type="button" className="lt-side lt-prev" disabled={reading <= 0} onClick={() => engine.current?.open(reading - 1)}>上一封</button>
+            <button ref={nextRef} type="button" className="lt-side lt-next" disabled={reading < 0 || reading >= letters.length - 1} onClick={() => engine.current?.open(reading + 1)}>下一封</button>
+            <p className="sr-only" aria-live="polite">
+              {cur && (vacant
+                ? `回帖。灯火常新，想把你的花园连过来？来信。名帖：${SELF.name}，${selfUrl}，${SELF.desc}`
+                : `${cur.name} 的来信。见字如面。${cur.desc}。${cur.name}，${dateLine(FRIENDS[reading]?.since)}结邻，寄自 ${cur.host}。`)}
+            </p>
+          </div>
+        </>
+      ) : (
+        <div className="lt-nogl">
+          <div>
+            <ul>
+              {letters.filter((l) => l.kind === 'friend').map((l) => (
+                <li key={l.url}><a href={l.url} target="_blank" rel="noopener noreferrer"><span>{l.name}</span><small>寄自 {l.host}</small></a></li>
+              ))}
+            </ul>
+            <p>虚一席以待——想把你的花园连过来？<a href={`mailto:${SELF.mail}?subject=${encodeURIComponent('交换友链')}`}>来信</a></p>
+          </div>
+        </div>
+      )}
     </div>
-
-    {FRIENDS.length === 0 ? (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center -mt-16">
-        <span className="font-serif italic text-slate-400 dark:text-slate-400 text-lg">夜色很安静，还没有灯。</span>
-        <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-slate-400/60 dark:text-slate-600">The night is quiet — no lights yet</span>
-      </div>
-    ) : (
-      <div className="flex flex-wrap justify-center items-start gap-x-9 gap-y-8 max-w-4xl w-full">
-        {FRIENDS.map((f, i) => {
-          const lift = seeded(f.name) * 56;            // 错落高低，像高低不一的灯
-          const breathe = 6 + seeded(f.url) * 3;       // 各自的呼吸周期
-          const phase = seeded(f.name + 'p') * 4;      // 错峰相位
-          return (
-            <motion.a
-              key={f.url}
-              href={f.url} target="_blank" rel="noopener noreferrer"
-              className="group relative w-full max-w-[340px] sm:w-[230px] outline-none md:mt-[var(--lift)]"
-              style={{ ['--lift' as string]: `${lift}px` }}
-              initial={{ opacity: 0, y: 26, filter: 'blur(6px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 1.1, delay: 0.2 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-              whileTap={{ scale: 0.97 }}
-              aria-label={`${f.name} — ${f.desc}`}
-            >
-              {/* 灯在夜里轻轻浮沉 */}
-              <motion.div
-                animate={{ y: [-4, 4] }}
-                transition={{ duration: breathe, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: phase }}
-              >
-                {/* 灯的辉光：常态微微呼吸，hover 时整盏点亮 */}
-                <motion.span
-                  aria-hidden
-                  className="absolute -inset-2 rounded-[2rem] blur-xl pointer-events-none"
-                  style={{ backgroundColor: f.color }}
-                  animate={{ opacity: [0.07, 0.16, 0.07] }}
-                  transition={{ duration: breathe, repeat: Infinity, ease: 'easeInOut', delay: phase }}
-                />
-                <span
-                  aria-hidden
-                  className="absolute -inset-2 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none"
-                  style={{ backgroundColor: f.color }}
-                />
-
-                {/* 光茧本体 */}
-                <div className="relative flex flex-col items-center text-center rounded-3xl px-7 pt-8 pb-7 bg-white/45 dark:bg-white/[0.045] backdrop-blur-xl border border-white/55 dark:border-white/[0.08] shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] dark:shadow-[0_18px_50px_-30px_rgba(0,0,0,0.7)] transition-colors duration-700 group-hover:border-white/80 dark:group-hover:border-white/[0.16]">
-                  {/* 灯芯：呼吸光点 */}
-                  <span className="relative flex items-center justify-center w-4 h-4 mb-4">
-                    <motion.span
-                      aria-hidden
-                      className="absolute w-4 h-4 rounded-full blur-[5px]"
-                      style={{ backgroundColor: f.color }}
-                      animate={{ opacity: [0.35, 0.85, 0.35] }}
-                      transition={{ duration: breathe, repeat: Infinity, ease: 'easeInOut', delay: phase }}
-                    />
-                    <span className="relative w-1.5 h-1.5 rounded-full" style={{ backgroundColor: f.color, boxShadow: `0 0 10px ${f.color}90` }} />
-                  </span>
-
-                  <span className="font-serif text-[17px] text-slate-700 dark:text-slate-200 mb-2 leading-snug transition-colors duration-700 group-hover:text-slate-900 dark:group-hover:text-white">{f.name}</span>
-                  <span className="font-serif italic text-xs leading-[1.7] text-slate-400 dark:text-slate-500 mb-4 transition-colors duration-700">{f.desc}</span>
-                  <span className="font-mono text-[8px] tracking-[0.25em] uppercase text-slate-400/60 dark:text-slate-600 group-hover:opacity-100 transition-all duration-700" style={{ color: undefined }}>
-                    <span className="group-hover:hidden">{hostOf(f.url)}</span>
-                    <span className="hidden group-hover:inline oasis-accent-ink" style={{ '--accent': f.color } as React.CSSProperties}>Visit →</span>
-                  </span>
-                </div>
-              </motion.div>
-            </motion.a>
-          );
-        })}
-      </div>
-    )}
-
-    {/* 尾注：友链交换的温柔入口 */}
-    <p className="mt-20 shrink-0 text-center font-serif italic text-xs text-slate-400/80 dark:text-slate-600 transition-colors duration-[1500ms]">
-      灯火常新 — 想把你的花园连过来？<a href="mailto:lb15058460816@gmail.com" className="text-slate-400 dark:text-slate-500 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] border-b border-slate-300/50 dark:border-white/10 hover:border-[#39C5BB]/50 pb-0.5 transition-colors">来信</a>
-    </p>
-    <div className="oasis-bottom-spacer" aria-hidden />
-  </motion.div>
-);
+  );
+};

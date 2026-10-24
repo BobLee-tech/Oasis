@@ -11,4 +11,9 @@ export default defineConfig({
     tailwindcss(), // 注入 Tailwind v4 编译灵魂
     musicStudio(),
   ],
+  build: {
+    // 灯火页的两套中文字（朱雀仿宋、志莽行书）切成几百片：小于 4 KB 的片默认会被 base64 塞进 CSS，
+    // 一进灯火就得下完整整 200 KB 的 CSS。让它们保持独立文件，按 unicode-range 用到哪片取哪片。
+    assetsInlineLimit: (file) => (/zhuque-fangsong|zhi-mang-xing/i.test(file) ? false : undefined),
+  },
 })

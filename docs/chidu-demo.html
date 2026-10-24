@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="zh-CN" data-time="day">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>灯火 · 邻家尺牍</title>
+<meta name="description" content="友链（灯火）沿用书斋四版的尺牍信封，做成实物：three.js 信封与八行笺、明代木刻花笺（克利夫兰 CC0）与 ambientCG 纸纹、GSAP 编排；外壳照现网。须在 npm run dev 下打开。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Homemade+Apple&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Kaushan+Script&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@free-fonts/zhuque-fangsong@1.0.0/zhuque-fangsong.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css" rel="stylesheet" />
+<style>
+/* 灯火 · 邻家尺牍
+   一位邻居一封信。信封、封舌、八行笺都是 three.js 里的实物（引擎不进 DOM），
+   可点之物是跟着信封走的 DOM（键盘、读屏、⌘ 点击直达都靠它）。
+   外壳（⌘K、昼夜、Dock、Miku）照现网；屋里的「地」与园图同一张引首纸，夜里是秉烛的桌面。 */
+@font-face { font-family: "Qiji Ink"; src: url("shuzhai/fonts/qiji-v4.woff2") format("woff2"); font-display: block; unicode-range: U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF; }
+
+:root {
+  --paper: #EEE7D8; --ink: #1E1A15; --ink-2: #4A4236; --ink-3: #7D735F; --ink-4: #AFA48D;
+  --rule: rgba(40, 32, 22, .16); --zhu: #A8392B; --on-zhu: #F8EFE2;
+  --teal: #39C5BB; --teal-ink: #0E8C85;
+  --glass: rgba(255, 255, 255, .55); --glass2: rgba(255, 255, 255, .86); --edge: rgba(255, 255, 255, .72); --line: rgba(100, 116, 139, .17);
+  --shadow: 0 18px 44px -20px rgba(15, 23, 42, .32);
+  --f-song: "Zhuque Fangsong", "Noto Serif SC", "Songti SC", "STSong", serif;   /* 印：朱雀仿宋，刻本味 */
+  --f-kai: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif;                 /* 批：小字注 */
+  --f-lat: "IM Fell English", "EB Garamond", Georgia, serif;                   /* 西文：1670 年代的 Fell 铅字，与 1625 木刻同时代 */
+  --f-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --f-ke: "Qiji Ink", var(--f-song);
+  --e-out: cubic-bezier(.16, 1, .3, 1); --e-io: cubic-bezier(.65, 0, .35, 1);
+  --gut: clamp(16px, 5vw, 72px);
+  color-scheme: light;
+}
+:root[data-time="night"] {
+  --paper: #121314; --ink: #E9E2D2; --ink-2: #BDB4A2; --ink-3: #888170; --ink-4: #585349;
+  --rule: rgba(233, 226, 210, .14); --zhu: #D06A52; --on-zhu: #15120E; --teal-ink: #66DED5;
+  --glass: rgba(10, 15, 29, .7); --glass2: rgba(14, 20, 36, .92); --edge: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .09);
+  --shadow: 0 20px 48px -20px rgba(0, 0, 0, .75);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font: 400 15px/1.75 var(--f-kai); overflow: hidden; -webkit-font-smoothing: antialiased; transition: background-color 1.2s var(--e-io), color 1.2s var(--e-io); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 1.5px solid var(--zhu); outline-offset: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* 画布 */
+#stage { position: fixed; inset: 0; z-index: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--e-out); }
+body[data-ready] #stage canvas { opacity: 1; }
+
+/* 页头：与工坊同一套印刷品排版 */
+.head { position: fixed; left: var(--gut); top: 96px; z-index: 5; pointer-events: none; max-width: 36em; }
+.head .kick { display: flex; align-items: center; gap: 12px; font: 400 14px/1 var(--f-sc); letter-spacing: .16em; color: var(--ink-3); }
+.head .kick b { font: 600 13px/1 var(--f-song); letter-spacing: .3em; color: var(--ink-2); text-transform: none; }
+.head .kick i { width: 36px; height: 1px; background: var(--rule); }
+.head h1 { margin: 18px 0 14px; font: 400 54px/1 var(--f-ke); letter-spacing: .08em; color: var(--ink); }
+.head p { font: 400 16px/1.9 var(--f-song); color: var(--ink-2); letter-spacing: .06em; }
+.head p small { display: block; margin-top: 4px; font: 400 13px/1.7 var(--f-kai); color: var(--ink-3); }
+.head kbd { font: 500 11px/1 var(--f-mono); padding: 2px 5px; border: 1px solid var(--rule); border-radius: 2px; color: var(--ink-2); }
+
+/* 现网外壳（示意）：左上 ⌘K 与昼夜胶囊，底部 Dock + Miku */
+.hud-l { position: fixed; top: 26px; left: 26px; z-index: 30; display: flex; gap: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 999px; font: 500 9px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: color .4s, border-color .4s, background-color 1.2s; }
+.pill svg { width: 13px; height: 13px; }
+.pill.sw { padding: 3px; gap: 0; }
+.pill.sw button { height: 26px; padding: 0 11px; border-radius: 999px; font: 500 12px/1 var(--f-song); letter-spacing: .2em; color: var(--ink-3); transition: color .3s, background-color .3s; }
+.pill.sw button[aria-pressed="true"] { color: var(--teal-ink); background: rgba(57, 197, 187, .13); }
+.demo-r { position: fixed; top: 30px; right: 28px; z-index: 30; display: flex; gap: 22px; font: 500 10px/1 var(--f-mono); letter-spacing: .26em; text-transform: uppercase; }
+.demo-r button { color: var(--ink-3); padding: 6px 0; border-bottom: 1px solid transparent; transition: color .3s, border-color .3s; }
+.demo-r button:hover { color: var(--ink); border-color: var(--ink-3); }
+.demo-r .hand { display: flex; align-items: center; gap: 12px; color: var(--ink-4); }
+.demo-r .hand button { font: 400 13px/1 var(--f-song); letter-spacing: .14em; }
+.demo-r .hand button[aria-pressed="true"] { color: var(--zhu); border-color: var(--zhu); }
+@media (max-width: 700px) { .demo-r .hand > span { display: none; } }
+.dock-wrap { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; z-index: 30; display: flex; align-items: center; gap: 12px; }
+.dock { display: inline-flex; align-items: center; gap: 10px; padding: 10px; border-radius: 26px; background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(24px) saturate(1.2); -webkit-backdrop-filter: blur(24px) saturate(1.2); box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .42); transition: background-color 1.2s; }
+.dock .it { position: relative; width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; color: color-mix(in srgb, var(--ink-2) 85%, transparent); }
+.dock .it.on { color: var(--teal-ink); background: rgba(57, 197, 187, .11); border: 1px solid rgba(57, 197, 187, .2); }
+.dock .it svg, .pendant svg { width: 22px; height: 22px; }
+.dock .it .tip { position: absolute; bottom: calc(100% + 12px); left: 50%; translate: -50% 4px; opacity: 0; pointer-events: none; white-space: nowrap; font: 400 10px/1 var(--f-mono); letter-spacing: .16em; color: var(--ink-2); background: var(--glass2); border: 1px solid var(--edge); border-radius: 8px; padding: 7px 10px; transition: opacity .2s, translate .2s var(--e-out); }
+.dock .it:hover .tip { opacity: 1; translate: -50% 0; }
+.pendant { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 14px 34px -18px rgba(15, 23, 42, .42), inset 0 1px 0 rgba(255, 255, 255, .44); }
+
+/* 信封的热区：真正可点、可聚焦的是这层 DOM，画布只负责好看 */
+#hits { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+#hits a, #hits button { position: absolute; pointer-events: auto; border-radius: 2px; -webkit-tap-highlight-color: transparent; }
+#hits a:focus-visible, #hits button:focus-visible { outline-offset: 6px; }
+body.reading #hits { visibility: hidden; }
+.head { transition: opacity .6s var(--e-out); }
+body.reading .head { opacity: 0; }
+
+/* 展读 */
+#reader { position: fixed; inset: 0; z-index: 20; visibility: hidden; }
+#reader.on { visibility: visible; }
+#reader .scrim { position: absolute; inset: 0; cursor: zoom-out; }
+#reader .acts { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 14px; translate: -50% 0; opacity: 0; transition: opacity .5s var(--e-out), translate .6s var(--e-out); pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+#reader.on.shown .acts { opacity: 1; pointer-events: auto; }
+#reader:not(.shown) .acts { translate: -50% 8px; }
+.acts .row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; justify-content: center; }
+.acts .go { display: inline-flex; align-items: center; gap: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--ink); font: 600 15px/1 var(--f-song); letter-spacing: .3em; color: var(--ink); transition: color .3s, border-color .3s; }
+.acts .go small { font: italic 400 15px/1 var(--f-lat); letter-spacing: .02em; color: var(--ink-3); }
+.acts .go:hover { color: var(--zhu); border-color: var(--zhu); }
+.acts .ghost { font: 500 13px/1 var(--f-song); letter-spacing: .24em; color: var(--ink-3); padding: 6px 0; transition: color .3s; }
+.acts .ghost:hover { color: var(--ink); }
+#reader .side { position: absolute; translate: -50% -50%; white-space: nowrap; writing-mode: vertical-rl; padding: 14px 8px; font: 400 14px/1 var(--f-kai); letter-spacing: .3em; color: var(--ink-3); opacity: 0; transition: opacity .5s var(--e-out), color .3s; pointer-events: none; }
+#reader.on.shown .side { opacity: 1; pointer-events: auto; }
+#reader .side:hover { color: var(--ink); }
+#reader .side:disabled { opacity: 0 !important; pointer-events: none; }
+.mingtie { display: none; max-width: min(780px, calc(100vw - 32px)); text-align: center; font: 400 13px/1.8 var(--f-kai); color: var(--ink-2); }
+.mingtie b { font: 600 12px/1 var(--f-song); letter-spacing: .3em; color: var(--zhu); margin-right: 10px; }
+.mingtie code { font: italic 400 14px/1 var(--f-lat); color: var(--ink-3); }
+#reader.vacant .mingtie { display: block; }
+#reader.vacant .go small { display: none; }
+
+/* 说明（演示用） */
+#notes { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); z-index: 40; overflow-y: auto; padding: 72px 36px 120px; background: color-mix(in oklab, var(--paper) 94%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-left: 1px solid var(--rule); translate: 100% 0; transition: translate .7s var(--e-out), background-color 1.2s; font: 400 14px/1.95 var(--f-song); color: var(--ink-2); }
+#notes.on { translate: 0 0; }
+#notes .x { position: absolute; top: 28px; right: 30px; font: 500 10px/1 var(--f-mono); letter-spacing: .26em; color: var(--ink-3); }
+#notes h2 { font: 400 40px/1.1 var(--f-ke); letter-spacing: .08em; color: var(--ink); margin-bottom: 14px; }
+#notes h3 { margin: 34px 0 10px; padding-top: 18px; border-top: 1px solid var(--rule); font: 600 15px/1.4 var(--f-song); letter-spacing: .2em; color: var(--ink); }
+#notes p.lede { font: 400 15px/1.95 var(--f-kai); color: var(--ink-2); }
+#notes ol, #notes ul { padding-left: 1.3em; }
+#notes li { margin: 6px 0; }
+#notes b { color: var(--ink); font-weight: 600; }
+#notes code { font: 400 12px/1 var(--f-mono); color: var(--ink-3); }
+#notes table { width: 100%; border-collapse: collapse; font: 400 12.5px/1.6 var(--f-song); margin-top: 6px; }
+#notes td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+#notes td:first-child { width: 30%; color: var(--ink); }
+
+/* 建不起 WebGL：退回 DOM 信封 */
+#fallback { position: fixed; inset: 0; z-index: 4; display: none; place-items: center; padding: 200px var(--gut) 120px; }
+body.nogl #fallback { display: grid; }
+#fallback .row { display: flex; gap: 36px; flex-wrap: wrap; justify-content: center; }
+#fallback a { position: relative; width: 168px; height: 252px; display: grid; place-items: center; background: #ECE0C4 url("shuzhai/v5/tex/yinshou-paper.webp") center / 400px; background-blend-mode: multiply; box-shadow: 0 18px 30px -18px rgba(60, 40, 15, .5); }
+#fallback a span { writing-mode: vertical-rl; padding: 14px 8px; background: #A8352A; color: #F7ECDA; font: 500 16px/1 var(--f-lat); letter-spacing: .14em; }
+#fallback a small { position: absolute; left: 12px; bottom: 12px; writing-mode: vertical-rl; font: 400 12px/1 var(--f-kai); color: #6F6250; letter-spacing: .14em; }
+
+@media (max-width: 700px) {
+  .head { top: 76px; }
+  .head h1 { font-size: 38px; margin: 12px 0 8px; }
+  .head p { font-size: 13.5px; }
+  .head p small { display: none; }
+  .hud-l { top: 18px; left: 16px; }
+  .pill .t { display: none; }
+  .demo-r { top: 24px; right: 16px; gap: 14px; }
+  .dock-wrap { bottom: 14px; }
+  .dock { gap: 4px; padding: 7px; }
+  #notes { padding: 64px 22px 120px; }
+  #reader .side { writing-mode: horizontal-tb; padding: 8px 4px; font-size: 13px; letter-spacing: .2em; }
+  #prevBtn::before { content: "← "; } #nextBtn::after { content: " →"; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+
+<header class="hud-l">
+  <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="t">⌘K</span></span>
+  <span class="pill sw" role="group" aria-label="昼夜"><button data-time="day" aria-pressed="true">昼</button><button data-time="night" aria-pressed="false">夜</button></span>
+</header>
+<div class="demo-r"><span class="hand" role="group" aria-label="信上的字"><span>信上的字</span><button data-hand="xing" aria-pressed="true">行书</button><button data-hand="kai" aria-pressed="false">楷书</button><button data-hand="song" aria-pressed="false">仿宋</button></span><button id="replay">重播</button><button id="openNotes">说明</button></div>
+
+<section class="head" id="head">
+  <div class="kick"><b>灯火</b><i></i><span>Neighboring Lights</span></div>
+  <h1>邻家尺牍</h1>
+  <p id="lede">凡二封，虚一席以待。信封移近会自己拆开，点一下抽出来读。<small>熟客：<kbd>⌘</kbd> / <kbd>Ctrl</kbd> 点信封，直接登门。</small></p>
+</section>
+
+<nav id="hits" aria-label="邻家来信"></nav>
+
+<div id="reader" role="dialog" aria-modal="true" aria-labelledby="readerTitle">
+  <div class="scrim" data-close></div>
+  <div class="acts">
+    <p class="mingtie"><b>名帖</b><span id="mtLine"></span></p>
+    <div class="row">
+      <a class="go" id="goLink" target="_blank" rel="noopener"><span id="goTxt">登门拜访</span><small id="goHost"></small><span aria-hidden="true">↗</span></a>
+      <button class="ghost" id="copyBtn" hidden>复制名帖</button>
+      <button class="ghost" data-close>放回信封</button>
+    </div>
+  </div>
+  <button class="side" id="prevBtn" aria-label="上一封">上一封</button>
+  <button class="side" id="nextBtn" aria-label="下一封">下一封</button>
+  <div class="sr" id="readerTitle" aria-live="polite"></div>
+</div>
+
+<div class="dock-wrap" aria-hidden="true"><nav class="dock" id="dock"></nav><span class="pendant" id="pendant"></span></div>
+
+<div id="fallback"><div class="row" id="fbRow"></div></div>
+
+<aside id="notes" aria-label="设计说明">
+  <button class="x" id="closeNotes">关闭</button>
+  <h2>灯火 · 尺牍</h2>
+  <p class="lede">友链这一页的屋里，换成书斋四版的尺牍：一位邻居一封信。外壳（⌘K、昼夜胶囊、Dock、Miku）照现网不动——这一处像工坊的册页、园图的引首纸一样，有自己的「地」。</p>
+
+  <h3>比四版多了什么</h3>
+  <ol>
+    <li><b>实物</b>：信封由 three.js 画。封舌真的翻过去、露出里子，翻到底会轻轻弹一下；骑缝钤一方印，拆开时一分为二；八行笺对折装在封里，抽出来像册页一样摊开，折痕留着。</li>
+    <li><b>花笺</b>：每位邻居的 aura 色成了笺色（薛涛笺的意思）；笺上淡印一枝花鸟，取自明天启五年（1625）的彩色木刻《花鸟》，又压成拱花（法线），斜光下才看得出起伏，夜里烛光最明显。</li>
+    <li><b>洒金红签</b>：红签上的金点粗糙度低，烛光下有一点反光。信封纸是带帘纹的手工纸（法线），横着一道道。</li>
+    <li><b>光</b>：昼是窗下，雪窗《风竹图》的竹影投在桌上、随风轻摇；夜是秉烛，烛跟着指针走，读信时挪到信边。信抬起来，影子跟着离开。</li>
+    <li><b>落款有来由</b>：信末署结邻那天的干支与节气——Evan Lin 丙午寒露、hejiac 丙午霜降，日子取自 git 记录。</li>
+    <li><b>虚席以待</b>：「Waiting for you」那条占位，改成一只没封口的空信封；抽出来是回帖，下面一行名帖可复制，旁边是「来信」。</li>
+  </ol>
+
+  <h3>怎么用</h3>
+  <ul>
+    <li>移近＝拆封窥信；点击＝抽出展读；<b>⌘ / Ctrl 点击＝直接登门</b>（就是普通链接）。</li>
+    <li>Esc 或点空白＝收回；← → 换一封。</li>
+    <li>右上「信上的字」：行书（默认）／楷书／仿宋，中西文一起换，当场重画所有信，方便对照。</li>
+    <li>触屏：点一下拆封，再点一下读信。键盘：Tab 到信封即拆封，回车读信。</li>
+  </ul>
+
+  <h3>落地（若采用）</h3>
+  <ul>
+    <li>引擎 <code>lights/letterScene.ts</code> 全程不进 React，同 <code>sandScene</code> / <code>scrollScene</code>；three 与园图共用一个懒加载包，首屏不变。</li>
+    <li><code>FriendLink</code> 加 <code>since</code>（结邻日）与可选 <code>note</code>（园主朱批，一列小字）；<code>color</code> 照旧，改作笺色。</li>
+    <li>建不起 WebGL：退回 DOM 信封；reduced-motion：不演进场、竹影不摇、烛不闪。</li>
+    <li>手机两列；邻居多到一屏放不下时，桌面纵向可滚（相机跟着平移）。</li>
+    <li>Miku 的两句灯笼台词（<code>mikuRules.ts</code> 的 view.lights）要跟着改成信。</li>
+    <li>素材约 0.6 MB（三块木刻、三张纸纹），可与园图一起上 R2。</li>
+  </ul>
+
+  <h3>待你定</h3>
+  <ol>
+    <li>点信先读再登门，多了一步。留 ⌘ 直达够不够？还是窥信时红签本身就可直达？</li>
+    <li>页名仍叫「灯火」：夜里秉烛读信说得通，昼里是窗下。要不要趁树测试一起想名字？</li>
+    <li>朱批 note 要不要：每封信给你留一列自己的话，没写就不显示。</li>
+    <li>信上的字定哪一手：行书最像真信，楷书更稳，仿宋最好认。</li>
+  </ol>
+
+  <h3>出处</h3>
+  <table>
+    <tr><td>花笺木刻</td><td>《花鸟》彩色木刻，明 1625，克利夫兰美术馆 1932.125，CC0。抠出墨版三块（鸟、花、枝），淡印＋拱花法线。</td></tr>
+    <tr><td>信封帘纹</td><td>ambientCG Paper004（NormalGL / Roughness），CC0</td></tr>
+    <tr><td>笺纸屑</td><td>ambientCG Paper002（Color 去色），CC0</td></tr>
+    <tr><td>纸面起伏</td><td>ambientCG Paper001（六版已用）</td></tr>
+    <tr><td>纸色</td><td>仇英《独乐园图》卷空白引首纸（园图同款）</td></tr>
+    <tr><td>竹影</td><td>雪窗普明《风竹图》，克利夫兰 1953.246（五版已处理成阴影）</td></tr>
+    <tr><td>骑缝印</td><td>《独乐园图》卷上的葫芦形收藏印</td></tr>
+    <tr><td>库</td><td>three.js 0.170（MIT）；GSAP 3.13 + CustomEase + SplitText（免费商用）</td></tr>
+    <tr><td>字</td><td>齐伋体（标题，刻本）；信上默认志莽行书，可换马善政楷书、朱雀仿宋对照；西文随之换 Homemade Apple（钢笔手写）、Kaushan Script（粗笔刷）、IM Fell English 斜体（1670 年代 Fell 铅字）；页面正文朱雀仿宋，页面西文 IM Fell English；小注霞鹜文楷。均 OFL，走 Google Fonts / jsDelivr 按需切片</td></tr>
+  </table>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+const G = window.gsap;
+G.registerPlugin(CustomEase, SplitText);
+// 纸的手感：封舌先被纸的硬挺拖住一下再翻，翻到底弹一点；笺摊开时也回一点
+CustomEase.create('paperFlip', 'M0,0 C0.32,0 0.22,1.08 0.56,1.035 0.7,1.012 0.84,1 1,1');
+CustomEase.create('unfold', 'M0,0 C0.22,0 0.28,1.07 0.6,1.03 0.72,1.012 0.86,1 1,1');
+
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lerp = (a, b, t) => a + (b - a) * t, clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const CN = '〇一二三四五六七八九十';
+
+/* ═════════════ 数据（与 src/data/friends.ts 同形，多一个 since） ═════════════ */
+const FRIENDS = [
+  { name: 'Evan Lin', url: 'https://evanlin.site/', desc: 'UNSW Builder', color: '#39C5BB', since: '2026-10-10', motif: 'bird' },
+  { name: 'hejiac', url: 'https://hejiac.com', desc: 'Made with curiosity.', color: '#7DD3FC', since: '2026-10-24', motif: 'spray' },
+];
+const SELF = {
+  name: 'Oasis · Bob Lee 的小站',
+  url: /localhost|127\.0\.0\.1/.test(location.hostname) ? 'https://oasis-five-blush.vercel.app/' : location.origin + '/',
+  desc: '一处温柔疗愈、带着禅意的数字花园。',
+  mail: 'lb15058460816@gmail.com', color: '#FFB7C5', motif: 'blossom',
+};
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+
+/* 节气与干支：落款只写到节气，不写农历日（省得算错） */
+const TERMS = [[1,5,'小寒'],[1,20,'大寒'],[2,4,'立春'],[2,18,'雨水'],[3,5,'惊蛰'],[3,20,'春分'],[4,5,'清明'],[4,20,'谷雨'],[5,5,'立夏'],[5,21,'小满'],[6,5,'芒种'],[6,21,'夏至'],[7,7,'小暑'],[7,22,'大暑'],[8,7,'立秋'],[8,23,'处暑'],[9,7,'白露'],[9,23,'秋分'],[10,8,'寒露'],[10,23,'霜降'],[11,7,'立冬'],[11,22,'小雪'],[12,7,'大雪'],[12,21,'冬至']];
+const termOf = d => { const m = d.getMonth() + 1, day = d.getDate(); let t = '冬至'; for (const [tm, td, n] of TERMS) if (m > tm || (m === tm && day >= td)) t = n; return t; };
+const ganzhi = d => { let y = d.getFullYear(); if (d.getMonth() === 0 || (d.getMonth() === 1 && d.getDate() < 4)) y--; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
+const dateLine = iso => { const d = iso ? new Date(iso + 'T12:00:00') : new Date(); return `${ganzhi(d)}${termOf(d)}`; };
+
+const ITEMS = [
+  ...FRIENDS.map(f => ({ kind: 'friend', ...f, host: hostOf(f.url),
+    cols: [{ t: '见字如面' }, { t: f.desc }, {}, {}, {}, {}, { t: f.name, at: 'end' }, { t: dateLine(f.since), at: 'end', small: true }] })),
+  { kind: 'vacant', name: '虚席以待', url: SELF.url, host: hostOf(SELF.url), color: SELF.color, motif: SELF.motif,
+    cols: [{ t: '灯火常新' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: '绿洲园丁 Bob Lee', at: 'end' }, { t: dateLine(), at: 'end', small: true }] },
+];
+const NF = FRIENDS.length;
+$('#lede').firstChild.textContent = `凡${CN[NF] || NF}封，虚一席以待。信封移近会自己拆开，点一下抽出来读。`;
+
+/* ═════════════ 外壳：Dock（现网四格，灯火亮着） ═════════════ */
+const IC = {
+  sound: '<path d="M4 13.6v-1.9a8 8 0 0 1 16 0v1.9"/><rect x="2" y="12.8" width="4.6" height="7.4" rx="2.3"/><rect x="17.4" y="12.8" width="4.6" height="7.4" rx="2.3"/>',
+  garden: '<path d="M12 20.3V10.1"/><path d="M12 11.5C12 7.3 8.9 3.7 3.9 3.7c0 5 3.4 7.8 8.1 7.8Z"/><path d="M12 15.3c0-3.6 3-6.2 8.1-6.2 0 4.2-3.4 6.2-8.1 6.2Z"/>',
+  atelier: '<path d="M9.6 13.6v-3a2.4 2.4 0 1 1 4.8 0v3"/><rect x="4.5" y="13.6" width="15" height="4.6" rx="1.6"/><path d="M6.5 21h11"/>',
+  lights: '<path d="M12 3v2.3M7.2 5.6h9.6"/><path d="M15.3 5.6c2.9 1.3 4.5 3.6 4.5 6.2s-1.6 4.9-4.5 6.2H8.7c-2.9-1.3-4.5-3.6-4.5-6.2s1.6-4.9 4.5-6.2Z"/><path d="M7.2 18h9.6M12 18v3"/>',
+  miku: '<path d="M8.8 8.2C6 8.8 4.3 11.4 4.1 14.4c-.1 2 .5 3.9 1.7 5.5.4-3.2 1.5-6.1 3.4-8.4"/><path d="M15.2 8.2c2.8.6 4.5 3.2 4.7 6.2.1 2-.5 3.9-1.7 5.5-.4-3.2-1.5-6.1-3.4-8.4"/><path d="M8.7 7.8c.7-2.2 5.9-2.2 6.6 0l.9 4.1c.4 2.3-1.5 4.3-4.2 4.3s-4.6-2-4.2-4.3l.9-4.1Z"/><circle cx="7.6" cy="8.9" r=".85" fill="currentColor" stroke="none"/><circle cx="16.4" cy="8.9" r=".85" fill="currentColor" stroke="none"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
+$('#dock').innerHTML = [['sound', '共鸣 · Resonance'], ['garden', '花园 · Garden'], ['atelier', '工坊 · Atelier'], ['lights', '灯火 · Lanterns']]
+  .map(([k, tip]) => `<span class="it${k === 'lights' ? ' on' : ''}">${svg(k)}<span class="tip">${tip}</span></span>`).join('');
+$('#pendant').innerHTML = svg('miku');
+
+/* ═════════════ 渲染器 ═════════════ */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  document.body.classList.add('nogl');
+  $('#fbRow').innerHTML = ITEMS.filter(it => it.kind === 'friend').map(it => `<a href="${it.url}" target="_blank" rel="noopener"><span>${it.name}</span><small>寄自 ${it.host}</small></a>`).join('');
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // PCF 才认 radius：烛焰有大小，影边是软的
+$('#stage').appendChild(renderer.domElement);
+const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 40, 9000);
+
+/* ═════════════ 素材 ═════════════ */
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error(src)); i.src = src; });
+const SRC = {
+  yinshou: 'shuzhai/v5/tex/yinshou-paper.webp', paperN: 'shuzhai/v6/tex/paper-n.webp', laidN: 'chidu/tex/laid-n.webp',
+  fleck: 'chidu/tex/fleck.webp', specks: 'shuzhai/textures/inkpad-specks.webp', seal: 'shuzhai/v5/seals/s09.webp', bamboo: 'shuzhai/v5/tex/bamboo-shadow.webp',
+  bird: 'chidu/motif/bird.webp', spray: 'chidu/motif/spray.webp', blossom: 'chidu/motif/blossom.webp',
+};
+const IMG = {};
+// 信上的字（「手」）：尺牍多是行书，默认志莽行书；楷书、仿宋留作对照。西文用 Cormorant 斜体，像钢笔写的
+const HANDS = {
+  // 西文跟着同一支笔：行书配钢笔手写，楷书配粗笔刷，仿宋配同时代的 Fell 铅字斜体
+  xing: { cjk: '"Zhi Mang Xing"', gap: 1.06, size: 1.16, lat: '"Homemade Apple"', latStyle: '400', latSize: .62 },   // 志莽字面偏小，放大一档
+  kai: { cjk: '"Ma Shan Zheng"', gap: 1.12, size: 1, lat: '"Kaushan Script"', latStyle: '400', latSize: .8 },
+  song: { cjk: '"Zhuque Fangsong"', gap: 1.2, size: .96, lat: '"IM Fell English"', latStyle: 'italic 400', latSize: .9 },
+};
+let HAND = HANDS.xing, KAI = '', LAT = '';
+const setHand = k => {
+  HAND = HANDS[k];
+  KAI = `${HAND.cjk}, "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif`;
+  LAT = `${HAND.lat}, "IM Fell English", Georgia, serif`;
+};
+setHand('xing');
+const ALL_TEXT = ITEMS.flatMap(it => it.cols.map(c => c.t || '')).join('') + '寄自缄虚席以待';
+const LAT_TEXT = ALL_TEXT.replace(/[^\x20-\x7E]/g, '') + ITEMS.map(it => it.host).join(' ');
+const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+await Promise.all([
+  ...Object.entries(SRC).map(([k, s]) => loadImg(s).then(i => { IMG[k] = i; })),
+  withTimeout(Promise.all([
+    document.fonts.load(`400 52px ${KAI}`, ALL_TEXT), document.fonts.load(`${HAND.latStyle} 40px ${LAT}`, LAT_TEXT), document.fonts.load('400 14px "IM Fell English SC"', 'Neighboring Lights'), document.fonts.load('italic 400 15px "IM Fell English"', LAT_TEXT), document.fonts.load('400 16px "Zhuque Fangsong"', '凡二封虚一席以待信移近会自己拆开点下抽出来读熟客直接登门'),
+    document.fonts.load('400 54px "Qiji Ink"', '邻家尺牍'),
+  ]), 4000),
+]);
+
+const cv = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const ctex = (src, { srgb = true, repeat } = {}) => {
+  const t = src instanceof HTMLCanvasElement ? new THREE.CanvasTexture(src) : new THREE.Texture(src);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = ANISO;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
+  t.needsUpdate = true;
+  return t;
+};
+const rnd = seed => { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+const hash = str => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const mixHex = (a, b, t) => { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, t).getHexString(); };
+
+/* 纸：底色 × 引首纸纹 × 纸屑；四边做旧 */
+function paperFill(x, w, h, base, { tex = IMG.yinshou, alpha = .6, scale = 1, fleck = 0, edge = .1 } = {}) {
+  x.fillStyle = base; x.fillRect(0, 0, w, h);
+  x.save(); x.globalCompositeOperation = 'multiply';
+  const p = x.createPattern(tex, 'repeat'); p.setTransform(new DOMMatrix().scale(scale)); x.globalAlpha = alpha; x.fillStyle = p; x.fillRect(0, 0, w, h);
+  if (fleck) { const q = x.createPattern(IMG.fleck, 'repeat'); q.setTransform(new DOMMatrix().scale(scale * .7)); x.globalAlpha = fleck; x.fillStyle = q; x.fillRect(0, 0, w, h); }
+  if (edge) {
+    x.globalAlpha = 1;
+    const m = Math.min(w, h) * .09;
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, m, 0, 0, w, m], [0, h, 0, h - m, 0, h - m, w, m], [0, 0, m, 0, 0, 0, m, h], [w, 0, w - m, 0, w - m, 0, m, h]]) {
+      const g = x.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, `rgba(120,90,50,${edge})`); g.addColorStop(1, 'rgba(120,90,50,0)'); x.fillStyle = g; x.fillRect(rx, ry, rw, rh);
+    }
+  }
+  x.restore();
+}
+
+/* 竖排一列：汉字直立、西文整段侧躺（同 vertical-rl），句读挪到右上 */
+const PUNC_TR = '，。、；：', PUNC_C = '？！';
+function tokens(str) {
+  const out = []; let lat = '';
+  for (const ch of str) {
+    if (/[\x20-\x7E·]/.test(ch) && !(ch === '·' && !lat)) { lat += ch; continue; }
+    if (lat.trim()) out.push({ lat: lat.trim() }); lat = '';
+    out.push({ ch });
+  }
+  if (lat.trim()) out.push({ lat: lat.trim() });
+  return out;
+}
+function vcol(x, str, cx, y0, y1, { size, color, at = 'start', gap = HAND.gap, latSize = HAND.latSize, rand, print = false }) {
+  size *= HAND.size;
+  // 地址这类「印上去」的西文不跟手写：固定 Fell 斜体，小字也认得清
+  const latFont = print ? `italic 400 ${size * .92}px "IM Fell English", Georgia, serif` : `${HAND.latStyle} ${size * latSize}px ${LAT}`;
+  const toks = tokens(str);
+  const adv = toks.map(t => {
+    if (t.lat) { x.font = latFont; return x.measureText(t.lat).width + size * .3; }
+    return PUNC_TR.includes(t.ch) ? size * .7 : size * gap;
+  });
+  const total = adv.reduce((a, b) => a + b, 0);
+  let y = at === 'end' ? y1 - total : y0;
+  x.save(); x.fillStyle = color; x.textBaseline = 'middle';
+  toks.forEach((t, i) => {
+    const jx = rand ? (rand() - .5) * size * .05 : 0, jr = rand ? (rand() - .5) * .035 : 0, a = rand ? .86 + rand() * .14 : 1;
+    x.globalAlpha = a;
+    if (t.lat) {
+      x.font = latFont; x.textAlign = 'left';
+      x.save(); x.translate(cx + jx - size * .04, y + size * .12); x.rotate(Math.PI / 2); x.fillText(t.lat, 0, 0); x.restore();
+    } else {
+      x.font = `400 ${size}px ${KAI}`; x.textAlign = 'center';
+      const px = PUNC_TR.includes(t.ch) ? cx + size * .32 : cx + jx, py = PUNC_TR.includes(t.ch) ? y + size * .12 : y + adv[i] / 2;
+      x.save(); x.translate(px, py); x.rotate(jr);
+      x.shadowColor = color; x.shadowBlur = size * .03;   // 墨在纸上略洇
+      x.fillText(t.ch, 0, 0); x.restore();
+    }
+    y += adv[i];
+  });
+  x.restore();
+  return total;
+}
+
+/* 木刻墨版 → 有颜色有透明度的印样（花笺淡印用），按 motif+色缓存 */
+const PRINT = new Map();
+function printOf(key, color) {
+  const id = key + color; if (PRINT.has(id)) return PRINT.get(id);
+  const img = IMG[key], c = cv(img.width, img.height), x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data, col = new THREE.Color(color);
+  const r = col.r * 255, g = col.g * 255, b = col.b * 255;
+  for (let i = 0; i < p.length; i += 4) { const a = p[i]; p[i] = r; p[i + 1] = g; p[i + 2] = b; p[i + 3] = a; }
+  x.putImageData(d, 0, 0);
+  PRINT.set(id, c); return c;
+}
+
+/* ═════════════ 尺寸（世界单位，在桌面处约等于 CSS 像素） ═════════════ */
+const W = 220, H = 330, FH = 118;                 // 信封、封舌
+const LW = 196, LH = 300;                         // 八行笺对折后的一页
+const Z_POCKET = 1.2, Z_LETTER = .6;
+const Y_IN = -H / 2 + 10 + LH / 2;                // 笺在封里的中心
+const PEEK = LH * .42;                            // 窥信时抽出的长度
+const OUT = H / 2 + 10 - (Y_IN - LH / 2) - PEEK;  // 再抽多少才整张离封
+const EK = 512 / W;                               // 信封贴图 px/单位
+const CW = 1280, CH = Math.round(CW * LH / (LW * 2));   // 整张笺（摊开）
+const LM = { x: 54, top: 118, bottom: 72 };       // 笺的天头地脚
+
+/* ───── 信封正面（口袋面）：纸、洒金红签、名字、寄自、骑缝印的下半 ───── */
+function drawPocket(it, r) {
+  const w = 512, h = 768, c = cv(w, h), x = c.getContext('2d');
+  const rc = cv(256, 384), rx = rc.getContext('2d');      // 粗糙度：纸 .92，红签 .7，金点 .24
+  paperFill(x, w, h, '#EFE3C8', { alpha: .55, scale: .9, edge: .16 });
+  rx.fillStyle = 'rgb(235,235,235)'; rx.fillRect(0, 0, 256, 384);
+  // 纸边一圈略深，显出厚度
+  x.strokeStyle = 'rgba(110,84,48,.38)'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2);
+
+  const lw = 58 * EK, lx = (w - lw) / 2, ly = 146 * EK, lh = (H - 22 - 146) * EK;
+  if (it.kind === 'friend') {
+    x.save();
+    x.fillStyle = '#A3322A'; x.fillRect(lx, ly, lw, lh);
+    x.globalCompositeOperation = 'multiply'; x.globalAlpha = .35; x.drawImage(IMG.specks, lx, ly, lw, lh);   // 印泥般的斑驳
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    x.strokeStyle = 'rgba(247,236,218,.5)'; x.lineWidth = 1.6; x.strokeRect(lx + 7, ly + 7, lw - 14, lh - 14);
+    rx.fillStyle = 'rgb(178,178,178)'; rx.fillRect(lx / 2, ly / 2, lw / 2, lh / 2);
+    // 洒金：金箔碎点，大小不一、方向不一
+    for (let i = 0; i < 110; i++) {
+      const fx = lx + r() * lw, fy = ly + r() * lh, s = .7 + r() * r() * 3, a = r() * Math.PI;
+      x.save(); x.translate(fx, fy); x.rotate(a); x.fillStyle = `hsla(${38 + r() * 8},${48 + r() * 16}%,${52 + r() * 16}%,${.7 + r() * .25})`;
+      x.beginPath(); x.moveTo(-s, -s * .6); x.lineTo(s * .9, -s * .8); x.lineTo(s, s * .7); x.lineTo(-s * .7, s); x.closePath(); x.fill(); x.restore();
+      rx.fillStyle = 'rgb(55,55,55)'; rx.fillRect(fx / 2 - s * .5, fy / 2 - s * .5, s, s);
+    }
+    x.restore();
+    vcol(x, it.name, w / 2, ly + 30, ly + lh - 70, { size: 46, color: '#F6EBD6' });
+    vcol(x, '缄', w / 2, ly + lh - 64, ly + lh - 18, { size: 26, color: 'rgba(246,235,214,.82)', at: 'end' });
+    vcol(x, '寄自 ' + it.host, 30 * EK, H * .6 * EK, (H - 18) * EK, { size: 24, color: '#6F6250', at: 'end', rand: r, print: true });
+  } else {
+    // 空信封：红签只有一道朱框
+    x.save(); x.setLineDash([7, 6]); x.strokeStyle = 'rgba(168,53,42,.7)'; x.lineWidth = 2; x.strokeRect(lx + 2, ly + 2, lw - 4, lh - 4); x.restore();
+    vcol(x, '虚席以待', w / 2, ly + 40, ly + lh - 30, { size: 32, color: 'rgba(168,53,42,.85)', gap: 1.4 });
+  }
+  return { map: ctex(c), rough: ctex(rc, { srgb: false }) };
+}
+
+/* 骑缝印：整方印画在口袋面与封舌上各一份，口袋面挖掉封舌盖住的三角，封舌自己的三角外本来就没有 */
+function sealLayer(w, h, apexY, triClip) {
+  const s = IMG.seal, sh = 42 * EK, sw = sh * s.width / s.height;
+  const c = cv(w, h), x = c.getContext('2d');
+  x.globalAlpha = .9; x.drawImage(s, w / 2 - sw / 2, apexY - sh * .52, sw, sh);
+  if (triClip) { x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w / 2, apexY); x.closePath(); x.fill(); }
+  return c;
+}
+
+/* 封舌：外面（纸 + 印的上半）与里子 */
+function drawFlap(it, inner) {
+  const w = 512, h = Math.round(512 * FH / W), c = cv(w, h), x = c.getContext('2d');
+  if (inner) {
+    paperFill(x, w, h, '#DFD0AE', { alpha: .55, scale: .9, edge: 0 });
+    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(70,50,25,.22)'); g.addColorStop(.5, 'rgba(70,50,25,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  } else {
+    paperFill(x, w, h, '#F1E6CC', { alpha: .55, scale: .9, edge: .08 });
+    if (it.kind === 'friend') x.drawImage(sealLayer(w, h + 60, h, false), 0, 0);
+  }
+  // 两道斜边：纸的切口
+  x.strokeStyle = inner ? 'rgba(90,66,36,.35)' : 'rgba(110,84,48,.42)'; x.lineWidth = 2.2;
+  x.beginPath(); x.moveTo(0, 1); x.lineTo(w / 2, h - 1); x.lineTo(w, 1); x.stroke();
+  return ctex(c);
+}
+
+/* ───── 八行笺：笺色、花笺淡印、朱丝栏、字 ───── */
+function motifPlace(kind) {   // 淡印落在左半（后四行），避开落款
+  return { bird: [30, 70, 600, 480], spray: [24, 110, 620, 505], blossom: [40, 60, 560, 553] }[kind];
+}
+function drawLetter(it, r) {
+  const c = cv(CW, CH), x = c.getContext('2d');
+  const tint = mixHex('#FDFAF3', it.color, .11);
+  paperFill(x, CW, CH, tint, { alpha: .12, scale: 1.3, fleck: .07, edge: .06 });
+  // 花笺：木刻淡印，墨色向笺色偏
+  const [px, py, pw, ph] = motifPlace(it.motif);
+  x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .3;
+  x.drawImage(printOf(it.motif, mixHex(it.color, '#5D5041', .45)), px, py, pw, ph); x.restore();
+  // 朱丝栏：木版印的线，深浅不匀
+  const cw = (CW - LM.x * 2) / 8, top = LM.top, bot = CH - LM.bottom;
+  const line = (x0, y0, x1, y1, wdt, a) => {
+    const n = 26;
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 1) / n;
+      x.strokeStyle = `rgba(168,56,42,${a * (.72 + r() * .28)})`; x.lineWidth = wdt * (.85 + r() * .3);
+      x.beginPath(); x.moveTo(lerp(x0, x1, t0) + (r() - .5) * .8, lerp(y0, y1, t0)); x.lineTo(lerp(x0, x1, t1) + (r() - .5) * .8, lerp(y0, y1, t1)); x.stroke();
+    }
+  };
+  for (let j = 0; j <= 8; j++) line(LM.x + cw * j, top, LM.x + cw * j, bot, j === 0 || j === 8 ? 3 : 1.8, .62);
+  line(LM.x - 2, top, CW - LM.x + 2, top, 3, .62); line(LM.x - 2, bot, CW - LM.x + 2, bot, 3, .62);
+  line(LM.x - 12, top - 10, CW - LM.x + 12, top - 10, 1.2, .45); line(LM.x - 12, bot + 10, CW - LM.x + 12, bot + 10, 1.2, .45);
+  // 字：第一行在最右
+  it.cols.forEach((col, i) => {
+    if (!col.t) return;
+    const cx = CW - LM.x - cw * (i + .5);
+    vcol(x, col.t, cx, top + 30, bot - 26, { size: col.small ? 38 : 52, color: col.small ? '#6E6151' : '#2A231B', at: col.at || 'start', rand: r });
+  });
+  return c;
+}
+
+/* 法线：Paper001 的纸面起伏 + 木刻墨版压出的拱花 + 中缝折痕 */
+function letterNormal(it) {
+  const w = CW / 2, h = CH / 2, c = cv(w, h), x = c.getContext('2d');
+  const p = x.createPattern(IMG.paperN, 'repeat'); p.setTransform(new DOMMatrix().scale(.6)); x.fillStyle = p; x.fillRect(0, 0, w, h);
+  const N = x.getImageData(0, 0, w, h), n = N.data;
+  const hc = cv(w, h), hx = hc.getContext('2d', { willReadFrequently: true });
+  hx.fillStyle = '#000'; hx.fillRect(0, 0, w, h); hx.filter = 'blur(2.2px)';
+  const [px, py, pw, ph] = motifPlace(it.motif); hx.drawImage(IMG[it.motif], px / 2, py / 2, pw / 2, ph / 2);
+  const hd = hx.getImageData(0, 0, w, h).data, H8 = (i, j) => hd[(clamp(j, 0, h - 1) * w + clamp(i, 0, w - 1)) * 4];
+  const K = 1.05 / 255, mid = w / 2;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const o = (j * w + i) * 4;
+    let nx = n[o] / 127.5 - 1, ny = n[o + 1] / 127.5 - 1, nz = n[o + 2] / 127.5 - 1;
+    nx += -(H8(i + 1, j) - H8(i - 1, j)) * K;              // 拱花凸起
+    ny += (H8(i, j + 1) - H8(i, j - 1)) * K;
+    const dc = i - mid; if (Math.abs(dc) < 9) nx += -Math.sign(dc) * .14 * (1 - Math.abs(dc) / 9);   // 折痕是一道浅谷
+    const l = Math.hypot(nx, ny, nz) || 1;
+    n[o] = (nx / l + 1) * 127.5; n[o + 1] = (ny / l + 1) * 127.5; n[o + 2] = (nz / l + 1) * 127.5;
+  }
+  x.putImageData(N, 0, 0);
+  return ctex(c, { srgb: false });
+}
+
+/* 影子垫：信封贴桌的那圈柔影（实时阴影负责方向，这一层负责「贴着」） */
+const blobTex = (() => { const c = cv(256, 320), x = c.getContext('2d'); x.filter = 'blur(16px)'; x.fillStyle = 'rgba(40,26,10,1)'; x.fillRect(34, 34, 188, 252); return ctex(c); })();
+
+/* 竹影：窗外的竹子投在桌上（雪窗《风竹图》的叶影），作为天光的遮光片 */
+const cookieTex = (() => {
+  const s = 1024, c = cv(s, s), x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, s, s);
+  const b = IMG.bamboo, t = cv(b.width, b.height), tx = t.getContext('2d');
+  tx.drawImage(b, 0, 0); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = 'rgb(58,66,86)'; tx.fillRect(0, 0, b.width, b.height);
+  x.filter = 'blur(2.5px)'; x.globalAlpha = .74;
+  x.drawImage(t, 150, 120, b.width * 1.05, b.height * 1.05);
+  x.save(); x.translate(s - 60, 60); x.scale(-1, 1); x.globalAlpha = .45; x.drawImage(t, 0, 0, b.width * .8, b.height * .8); x.restore();
+  return ctex(c);
+})();
+
+/* ═════════════ 场景 ═════════════ */
+const groundPaper = (() => { const c = cv(1024, 1024), x = c.getContext('2d'); x.fillStyle = '#F3F0E9'; x.fillRect(0, 0, 1024, 1024); x.globalCompositeOperation = 'multiply'; x.globalAlpha = .42; x.drawImage(IMG.yinshou, 0, 0); return c; })();
+const T = {
+  yinshou: ctex(groundPaper, { repeat: [11, 7.5] }), paperN: ctex(IMG.paperN, { srgb: false, repeat: [32, 22] }),
+  backPaper: ctex(IMG.yinshou), laidN: ctex(IMG.laidN, { srgb: false, repeat: [2, 3] }), laidN2: ctex(IMG.laidN, { srgb: false, repeat: [2, 1] }),
+};
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 6000), new THREE.MeshStandardMaterial({ map: T.yinshou, normalMap: T.paperN, normalScale: new THREE.Vector2(.55, .55), roughness: 1 }));
+ground.receiveShadow = true; scene.add(ground);
+
+const hemi = new THREE.HemisphereLight('#F7F5EF', '#DCD6CA', 1.2); hemi.position.set(0, -.25, 1); scene.add(hemi);   // 本场景 +z 朝上
+const sun = new THREE.SpotLight('#FFF6EA', 2.6, 0, .4, .55, 0);
+sun.map = cookieTex; sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.near = 2000; sun.shadow.camera.far = 5200;
+sun.shadow.bias = -.0004; sun.shadow.normalBias = .8; sun.shadow.focus = 1; sun.shadow.radius = 2.5;
+scene.add(sun, sun.target);
+const candle = new THREE.SpotLight('#FFC690', 0, 0, 1.1, 1, 2);
+candle.castShadow = true; candle.shadow.mapSize.set(2048, 2048); candle.shadow.camera.near = 20; candle.shadow.camera.far = 2400;
+candle.shadow.bias = -.0006; candle.shadow.normalBias = .8; candle.shadow.focus = 1; candle.shadow.radius = 7;
+scene.add(candle, candle.target);
+
+const veil = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#EDE6D6', transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+veil.renderOrder = 5; scene.add(veil);
+
+const triGeo = (() => {   // 封舌：铰链在原点，尖朝 -y
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-W / 2, 0, 0, 0, -FH, 0, W / 2, 0, 0], 3));   // 逆时针：正面朝 +z
+  g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, .5, 0, 1, 1], 2));
+  return g;
+})();
+const panelGeo = half => {   // 笺的半页：uv 只取整张贴图的一半
+  const g = new THREE.PlaneGeometry(LW, LH), uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setX(i, half === 'R' ? .5 + uv.getX(i) * .5 : uv.getX(i) * .5);
+  return g;
+};
+const GEO = { pocket: new THREE.PlaneGeometry(W, H), R: panelGeo('R'), L: panelGeo('L'), back: new THREE.PlaneGeometry(LW, LH), blob: new THREE.PlaneGeometry(1, 1) };
+const backMat = new THREE.MeshStandardMaterial({ map: T.backPaper, color: '#F2EADB', roughness: .95, side: THREE.BackSide });
+
+ITEMS.forEach((it, idx) => {
+  const r = rnd(hash(it.name) + 17);
+  it.idx = idx;
+  it.rot = (r() - .5) * .07; it.enterRot = (idx % 2 ? 1 : -1) * (.18 + r() * .14);
+  it.st = { enter: 1, lift: 0, flap: it.kind === 'vacant' ? 1 : 0, peek: 0, out: 0, fly: 0, unfold: 0 };
+  it.tilt = { x: 0, y: 0, tx: 0, ty: 0 };
+
+  const pocket = drawPocket(it, r);
+  it.env = new THREE.Group(); scene.add(it.env);
+  it.pocketMat = new THREE.MeshStandardMaterial({ map: pocket.map, roughnessMap: pocket.rough, roughness: 1, normalMap: T.laidN, normalScale: new THREE.Vector2(.7, .7) });
+  const pm = new THREE.Mesh(GEO.pocket, it.pocketMat);
+  pm.position.z = Z_POCKET; pm.castShadow = pm.receiveShadow = true; it.env.add(pm);
+  if (it.kind === 'friend') {   // 印的下半盖在口袋面上
+    const sc = sealLayer(512, 768, FH * EK, true), sm = new THREE.Mesh(GEO.pocket, new THREE.MeshStandardMaterial({ map: ctex(sc), transparent: true, roughness: .8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+    sm.position.z = Z_POCKET + .05; sm.receiveShadow = true; it.env.add(sm);
+  }
+  it.flapPivot = new THREE.Group(); it.flapPivot.position.y = H / 2; it.env.add(it.flapPivot);
+  const fo = new THREE.Mesh(triGeo, new THREE.MeshStandardMaterial({ map: drawFlap(it, false), normalMap: T.laidN2, normalScale: new THREE.Vector2(.7, .7), roughness: .92 }));
+  const fi = new THREE.Mesh(triGeo, new THREE.MeshStandardMaterial({ map: drawFlap(it, true), roughness: .95, side: THREE.BackSide }));
+  fo.castShadow = fo.receiveShadow = fi.castShadow = true; it.flapPivot.add(fo, fi);   // 里子不接影：笺贴着它滑出，偏置会把影子描成一道黑边
+
+  // 笺：letter（整体位姿）→ sheet（摊开时整体右移半页，让中缝居中）→ 右半页 R ＋ 铰链 → 左半页 L
+  const lmap = ctex(drawLetter(it, r)), lnorm = letterNormal(it);
+  const lmat = it.letterMat = new THREE.MeshStandardMaterial({ map: lmap, normalMap: lnorm, roughness: .9 });
+  it.letter = new THREE.Group(); it.sheet = new THREE.Group(); it.letter.add(it.sheet); scene.add(it.letter);
+  const R = new THREE.Mesh(GEO.R, lmat), Rb = new THREE.Mesh(GEO.back, backMat);
+  it.hinge = new THREE.Group(); it.hinge.position.set(-LW / 2, 0, -.2);
+  const L = new THREE.Mesh(GEO.L, lmat), Lb = new THREE.Mesh(GEO.back, backMat);
+  L.position.x = Lb.position.x = -LW / 2;
+  it.panels = [R, Rb, L, Lb];
+  for (const m of it.panels) m.castShadow = m.receiveShadow = true;
+  it.sheet.add(R, Rb, it.hinge); it.hinge.add(L, Lb);
+
+  it.blob = new THREE.Mesh(GEO.blob, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: .3 }));
+  it.blob.position.z = .25; it.blob.renderOrder = 1; scene.add(it.blob);
+});
+
+/* ═════════════ 版面：屏幕像素里排，再落到桌面 ═════════════ */
+const V = { w: 1, h: 1, D: 1, phone: false, tilt: .15 };
+const READ = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1, d: 1 };
+const ray = new THREE.Raycaster(), PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), _v = new THREE.Vector3(), _n = new THREE.Vector2();
+const toDesk = (sx, sy, out = new THREE.Vector3()) => { _n.set(sx / V.w * 2 - 1, -(sy / V.h) * 2 + 1); ray.setFromCamera(_n, camera); ray.ray.intersectPlane(PLANE, out); return out; };
+const toScreen = v => { _v.copy(v).project(camera); return { x: (_v.x + 1) / 2 * V.w, y: (1 - _v.y) / 2 * V.h }; };
+const FOCUS = new THREE.Vector3();   // 一排信的中心（无指针时烛停在它左上）
+
+function layout() {
+  V.w = innerWidth; V.h = innerHeight; V.phone = V.w < 700;
+  renderer.setSize(V.w, V.h);
+  camera.aspect = V.w / V.h;
+  V.tilt = V.phone ? .07 : .15;
+  V.D = (V.h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  camera.position.set(0, -V.D * Math.sin(V.tilt), V.D * Math.cos(V.tilt)); camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+
+  const n = ITEMS.length, cols = V.phone ? 2 : Math.min(n, 4), rows = Math.ceil(n / cols);
+  let hs, gx, gy, top;
+  if (V.phone) {   // 两列；行距给开着的封舌（约 0.36 个信封高）留地方，第一行让开页头
+    gx = 22; const ws0 = (V.w - 32 - gx) / 2;
+    top = $('#head').getBoundingClientRect().bottom + 64;
+    hs = Math.min(ws0 * H / W, (V.h - 104 - top - 18 * (rows - 1)) / (rows + (rows - 1) * FH / H));
+    gy = hs * FH / H + 18;
+  } else {
+    hs = clamp(V.h * .4, 240, 380); let ws = hs * W / H; gx = ws * .5;
+    const span = cols * ws + (cols - 1) * gx, maxSpan = V.w - 2 * Math.max(40, V.w * .06);
+    if (span > maxSpan) { const k = maxSpan / span; hs *= k; gx *= k; }
+    gy = hs * .3;
+    top = Math.max(V.h * .3, 250);
+  }
+  const ws = hs * W / H, s = hs / H;
+  const bandH = rows * hs + (rows - 1) * gy, availBottom = V.h - (V.phone ? 104 : 120);
+  const y0 = V.phone ? top + Math.max(0, (availBottom - top - bandH) / 2) : Math.min(top + Math.max(0, (availBottom - top - bandH) / 2), availBottom - bandH);
+  ITEMS.forEach((it, i) => {
+    const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
+    const rowW = inRow * ws + (inRow - 1) * gx, r = rnd(hash(it.name) + 3);
+    const sx = (V.w - rowW) / 2 + col * (ws + gx) + ws / 2 + (r() - .5) * 10, sy = y0 + row * (hs + gy) + hs / 2 + (r() - .5) * 10;
+    const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
+  });
+  toDesk(V.w / 2, y0 + bandH / 2, FOCUS);
+  V.enterDY = toDesk(V.w / 2, -V.h * .15).y - FOCUS.y + H * s;
+
+  // 展读的位姿：笺正对相机，高约屏高一半多
+  const d = .6 * V.D, sheetAR = (2 * LW) / LH;
+  const targetH = Math.min(V.h * (V.phone ? .4 : .56), (V.w * (V.phone ? .92 : .72)) / sheetAR);
+  _n.set(0, V.phone ? .22 : .12); ray.setFromCamera(_n, camera);
+  const fwd = camera.getWorldDirection(new THREE.Vector3());
+  READ.pos.copy(camera.position).addScaledVector(ray.ray.direction, d / ray.ray.direction.dot(fwd));
+  READ.quat.copy(camera.quaternion); READ.scale = targetH * d / (LH * V.D); READ.d = d;
+  veil.position.copy(camera.position).addScaledVector(fwd, d + 80); veil.quaternion.copy(camera.quaternion);
+  veil.scale.setScalar(4 * (d + 80) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.max(1, camera.aspect));
+  placeHits(); placeActs();
+}
+
+/* ═════════════ 热区（DOM） ═════════════ */
+const hits = $('#hits');
+ITEMS.forEach(it => {
+  const el = document.createElement(it.kind === 'friend' ? 'a' : 'button');
+  if (it.kind === 'friend') { el.href = it.url; el.target = '_blank'; el.rel = 'noopener'; el.setAttribute('aria-label', `${it.name} 的来信：${it.desc}。寄自 ${it.host}。回车展读，⌘ 点击直接登门`); }
+  else el.setAttribute('aria-label', '虚席以待：一只空信封。展读回帖，交换友链');
+  it.el = el; hits.appendChild(el);
+});
+function placeHits() {
+  for (const it of ITEMS) {
+    const c = Math.cos(it.rot), sn = Math.sin(it.rot), pts = [];
+    const ext = H / 2 + (it.st.peek > .01 || hover === it.idx ? PEEK + 10 : 0) + (it.st.flap > .5 ? FH : 0);
+    for (const [ax, ay] of [[-W / 2, -H / 2], [W / 2, -H / 2], [W / 2, ext], [-W / 2, ext]]) {
+      const lx = ax * it.s, ly = ay * it.s;
+      pts.push(toScreen(new THREE.Vector3(it.x + lx * c - ly * sn, it.y + lx * sn + ly * c, 2)));
+    }
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    Object.assign(it.el.style, { left: Math.min(...xs) + 'px', top: Math.min(...ys) + 'px', width: Math.max(...xs) - Math.min(...xs) + 'px', height: Math.max(...ys) - Math.min(...ys) + 'px' });
+  }
+}
+
+/* ═════════════ 窥信 / 展读 / 收回 ═════════════ */
+let hover = -1, reading = -1, lastPointer = 'mouse', busy = null;
+const K = RM ? .35 : 1;   // reduced-motion：动作都短
+function setHover(i) {
+  if (reading >= 0 || busy) return;
+  const prev = hover; hover = i;
+  ITEMS.forEach((it, j) => {
+    const on = j === i, was = j === prev; if (on === was) return;
+    it.tl?.kill();
+    it.tl = G.timeline();
+    if (on) {
+      it.tl.to(it.st, { lift: 1, duration: .6 * K, ease: 'power3.out' }, 0);
+      if (it.kind === 'friend') it.tl.to(it.st, { flap: 1, duration: .75 * K, ease: 'paperFlip' }, 0);
+      it.tl.to(it.st, { peek: 1, duration: .8 * K, ease: 'expo.out' }, it.kind === 'friend' ? .42 * K : 0);
+    } else {
+      it.tl.to(it.st, { peek: 0, duration: .45 * K, ease: 'power2.in' }, 0);
+      if (it.kind === 'friend') it.tl.to(it.st, { flap: 0, duration: .6 * K, ease: 'power2.inOut' }, .42 * K);
+      it.tl.to(it.st, { lift: 0, duration: .7 * K, ease: 'power2.out' }, .35 * K);
+      it.tilt.tx = it.tilt.ty = 0;
+    }
+  });
+  placeHits();
+}
+
+const reader = $('#reader');
+function open(i) {
+  if (busy) return;
+  if (reading >= 0) { if (reading !== i) close(() => open(i), true); return; }
+  const it = ITEMS[i]; reading = i; hover = -1;
+  ITEMS.forEach(o => { if (o !== it) { o.tl?.kill(); o.tl = G.timeline().to(o.st, { peek: 0, flap: o.kind === 'vacant' ? 1 : 0, lift: 0, duration: .5 * K, ease: 'power2.inOut' }); } });
+  document.body.classList.add('reading'); reader.classList.add('on'); reader.classList.toggle('vacant', it.kind === 'vacant');
+  fillReader(it);
+  it.tl?.kill();
+  busy = it.tl = G.timeline({ onComplete: () => { busy = null; reader.classList.add('shown'); placeActs(); ($('#goLink')).focus({ preventScroll: true }); } });
+  busy.to(it.st, { lift: 1, flap: 1, duration: .5 * K, ease: 'power2.out' }, 0)
+    .to(it.st, { peek: 1, duration: .45 * K, ease: 'power2.out' }, .4 * K)
+    .to(it.st, { out: 1, duration: .62 * K, ease: 'power2.inOut' }, '>-.06')
+    .to(it.st, { fly: 1, duration: 1.05 * K, ease: 'expo.inOut' }, '>-.28')
+    .to(it.st, { lift: 0, duration: .8 * K, ease: 'power2.out' }, '<.25')
+    .to(VEIL, { o: 1, duration: .9 * K, ease: 'power2.out' }, '<-.25')
+    .to(it.st, { unfold: 1, duration: 1.05 * K, ease: 'unfold' }, '>-.4');
+}
+function close(after, quick) {
+  if (reading < 0 || (busy && !quick)) return;
+  const it = ITEMS[reading]; const k = (quick ? .6 : 1) * K;
+  reader.classList.remove('shown');
+  busy?.kill?.();
+  busy = it.tl = G.timeline({ onComplete: () => {
+    busy = null; reading = -1; reader.classList.remove('on', 'vacant'); document.body.classList.remove('reading');
+    it.el.dataset.quiet = '1'; it.el.focus({ preventScroll: true }); delete it.el.dataset.quiet; placeHits(); after?.();
+  } });
+  busy.to(it.st, { unfold: 0, duration: .6 * k, ease: 'power2.inOut' }, 0)
+    .to(VEIL, { o: 0, duration: .8 * k, ease: 'power2.inOut' }, .3 * k)
+    .to(it.st, { fly: 0, duration: .95 * k, ease: 'expo.inOut' }, .45 * k)
+    .to(it.st, { lift: 1, duration: .4 * k, ease: 'power2.out' }, '<.4')
+    .to(it.st, { out: 0, duration: .55 * k, ease: 'power2.inOut' }, '>-.15')
+    .to(it.st, { peek: 0, duration: .4 * k, ease: 'power2.in' }, '>-.05')
+    .to(it.st, { flap: it.kind === 'vacant' ? 1 : 0, duration: .6 * k, ease: 'power2.inOut' }, '>.02')
+    .to(it.st, { lift: 0, duration: .6 * k, ease: 'power2.out' }, '<.2');
+}
+const VEIL = { o: 0 };
+
+function fillReader(it) {
+  const go = $('#goLink');
+  if (it.kind === 'friend') {
+    go.href = it.url; $('#goTxt').textContent = '登门拜访'; $('#goHost').textContent = it.host; $('#copyBtn').hidden = true;
+    $('#readerTitle').textContent = `${it.name} 的来信。见字如面。${it.desc}。${it.name}，${dateLine(it.since)}结邻，寄自 ${it.host}。`;
+  } else {
+    go.href = `mailto:${SELF.mail}?subject=${encodeURIComponent('交换友链')}`; $('#goTxt').textContent = '来信'; $('#copyBtn').hidden = false; $('#copyBtn').textContent = '复制名帖';
+    $('#mtLine').innerHTML = `${SELF.name} ／ <code>${hostOf(SELF.url)}</code> ／ ${SELF.desc}`;
+    $('#readerTitle').textContent = `回帖。灯火常新，想把你的花园连过来？来信。名帖：${SELF.name}，${SELF.url}，${SELF.desc}`;
+  }
+  $('#prevBtn').disabled = it.idx === 0; $('#nextBtn').disabled = it.idx === ITEMS.length - 1;
+}
+function placeActs() {
+  if (reading < 0) return;
+  const fwdUp = new THREE.Vector3(0, 1, 0).applyQuaternion(READ.quat);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(READ.quat);
+  const b = toScreen(READ.pos.clone().addScaledVector(fwdUp, -LH / 2 * READ.scale)), c = toScreen(READ.pos);
+  const l = toScreen(READ.pos.clone().addScaledVector(right, -LW * READ.scale)), r = toScreen(READ.pos.clone().addScaledVector(right, LW * READ.scale));
+  Object.assign($('#reader .acts').style, { left: c.x + 'px', top: b.y + (V.phone ? 20 : 26) + 'px' });
+  // 换一封：桌面放在笺的左右两侧；手机横排在按钮下面两角
+  const sideY = V.phone ? $('#reader .acts').getBoundingClientRect().bottom + 22 : c.y, inset = V.phone ? 36 : -34;
+  Object.assign($('#prevBtn').style, { left: l.x + inset + 'px', top: sideY + 'px' });
+  Object.assign($('#nextBtn').style, { left: r.x - inset + 'px', top: sideY + 'px' });
+}
+$('#copyBtn').addEventListener('click', async () => {
+  const txt = `站名：${SELF.name}\n地址：${SELF.url}\n简介：${SELF.desc}\n头像：${new URL('/miku.jpg', SELF.url).href}`;
+  try { await navigator.clipboard.writeText(txt); $('#copyBtn').textContent = '已复制'; } catch { $('#copyBtn').textContent = '复制不了，请手抄'; }
+  setTimeout(() => { $('#copyBtn').textContent = '复制名帖'; }, 1800);
+});
+$$('[data-close]').forEach(b => b.addEventListener('click', () => close()));
+$('#prevBtn').addEventListener('click', () => reading > 0 && open(reading - 1));
+$('#nextBtn').addEventListener('click', () => reading < ITEMS.length - 1 && open(reading + 1));
+
+ITEMS.forEach((it, i) => {
+  const el = it.el;
+  el.addEventListener('pointerenter', e => { lastPointer = e.pointerType; if (e.pointerType === 'mouse') setHover(i); });
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && hover === i) setHover(-1); });
+  el.addEventListener('pointerdown', e => { lastPointer = e.pointerType; });
+  el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect();
+    it.tilt.tx = ((e.clientY - r.top) / r.height - .5) * -1; it.tilt.ty = ((e.clientX - r.left) / r.width - .5);
+  });
+  el.addEventListener('focus', () => { if (lastPointer !== 'touch' && !el.dataset.quiet) setHover(i); });
+  el.addEventListener('blur', () => { if (hover === i && reading < 0) setHover(-1); });
+  el.addEventListener('click', e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // 熟客：普通链接，直接登门
+    e.preventDefault();
+    if (lastPointer === 'touch' && hover !== i) { setHover(i); return; }   // 触屏：先拆封
+    open(i);
+  });
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if ($('#notes').classList.contains('on')) toggleNotes(false); else close(); }
+  if (reading >= 0 && !busy) {
+    if (e.key === 'ArrowLeft' && reading > 0) open(reading - 1);
+    if (e.key === 'ArrowRight' && reading < ITEMS.length - 1) open(reading + 1);
+  }
+});
+document.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && hover >= 0 && !e.target.closest('#hits')) setHover(-1); });
+
+/* 指针 → 桌面上的点（夜里烛跟着它） */
+const PTR = { on: false, p: new THREE.Vector3() };
+addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; PTR.on = true; toDesk(e.clientX, e.clientY, PTR.p); });
+document.documentElement.addEventListener('pointerleave', () => { PTR.on = false; });
+
+/* ═════════════ 昼夜 ═════════════ */
+const MODE = { n: 0 };
+const C_DAY = { hemiSky: new THREE.Color('#F7F5EF'), hemiGround: new THREE.Color('#DCD6CA'), veil: new THREE.Color('#EDE6D6') };
+const C_NIGHT = { hemiSky: new THREE.Color('#25304A'), hemiGround: new THREE.Color('#0B0B0C'), veil: new THREE.Color('#050506') };
+function setTime(t, instant) {
+  document.documentElement.dataset.time = t;
+  $$('.pill.sw button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.time === t)));
+  G.to(MODE, { n: t === 'night' ? 1 : 0, duration: instant ? 0 : 1.6, ease: 'power2.inOut' });
+}
+$$('.pill.sw button').forEach(b => b.addEventListener('click', () => setTime(b.dataset.time)));
+const hr = new Date().getHours();
+setTime(hr >= 18 || hr < 6 ? 'night' : 'day', true);
+
+/* ═════════════ 每帧 ═════════════ */
+const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _e = new THREE.Euler();
+const CANDLE = new THREE.Vector3(), CT = new THREE.Vector3(), camRight = new THREE.Vector3(), camUp = new THREE.Vector3(), camBack = new THREE.Vector3();
+let started = false, tPrev = 0;
+
+function pose(it, t) {
+  const st = it.st, s = it.s, e = st.enter;
+  const arc = Math.sin(clamp(e, 0, 1) * Math.PI) * 60 * s;
+  it.tilt.x += (it.tilt.tx * st.lift - it.tilt.x) * .12; it.tilt.y += (it.tilt.ty * st.lift - it.tilt.y) * .12;
+  it.env.position.set(it.x, it.y + (1 - e) * V.enterDY, st.lift * 16 * s + arc);
+  it.env.rotation.set(it.tilt.x * .07, it.tilt.y * .09, it.rot + (1 - e) * it.enterRot);
+  it.env.scale.setScalar(s);
+  // 封舌：0 合上（盖在口袋面上）… 1 翻到底（平躺在信封上方，比笺低）；越过 1 是落桌后的回弹
+  // 不回弹：笺躺在它上面，尖一翘就戳穿笺
+  const a = Math.PI * clamp(st.flap, 0, 1);
+  it.flapPivot.rotation.x = -a;
+  // 铰链：盖着口袋面时高于口袋面；过了竖直才落到笺下面（早落会让封舌根部陷进口袋面）
+  const fall = clamp((a / Math.PI - .5) / .5, 0, 1);
+  it.flapPivot.position.z = lerp(Z_POCKET + .5, .1, fall * fall * (3 - 2 * fall));
+
+  // 笺：先在封里按 peek/out 抽出，再按 fly 飞到展读位
+  it.env.updateMatrixWorld();
+  let rise = PEEK * st.peek + OUT * st.out;
+  if (st.fly <= 0) {
+    const room = H / 2 - (Y_IN + LH / 2) - 2, flat = clamp((a / Math.PI - .86) / .12, 0, 1);
+    rise = Math.min(rise, room + flat * (PEEK + OUT));
+  }
+  _m.makeTranslation(0, Y_IN + rise, Z_LETTER).premultiply(it.env.matrixWorld);
+  _m.decompose(_p, _q, _s);
+  if (st.fly > 0) {
+    const f = clamp(st.fly, 0, 1);
+    _p.lerp(READ.pos, f); _p.z += Math.sin(f * Math.PI) * 50;
+    _q.slerp(READ.quat, f); _s.setScalar(lerp(s, READ.scale, f));
+  }
+  it.letter.position.copy(_p); it.letter.quaternion.copy(_q); it.letter.scale.copy(_s);
+  const u = st.unfold;
+  it.hinge.rotation.y = -Math.PI * (1 - u) - .07 * clamp(u, 0, 1);   // 摊开后中缝留一点折角
+  it.sheet.position.x = LW / 2 * clamp(u, 0, 1.05);
+  it.letter.visible = st.peek > .001 || st.out > 0 || st.fly > 0;
+  const cast = st.fly < .4;   // 举到眼前时不再往桌上投影（烛太近，影子会铺满半张桌）
+  if (it.cast !== cast) { it.cast = cast; for (const m of it.panels) m.castShadow = cast; }
+
+  // 影子垫：抬起越高越淡越散
+  const h = st.lift * 16 + arc / s;
+  const dirX = lerp(.55, (it.x - CANDLE.x) / 600, MODE.n), dirY = lerp(-.62, (it.y - CANDLE.y) / 600, MODE.n);
+  it.blob.position.set(it.x + dirX * h * s * .9, it.y + (1 - e) * V.enterDY + dirY * h * s * .9, .25);
+  it.blob.rotation.z = it.rot + (1 - e) * it.enterRot;
+  it.blob.scale.set(W * s * 1.12 * (1 + h * .006), H * s * 1.1 * (1 + h * .005), 1);
+  it.blob.material.opacity = lerp(.34, .42, MODE.n) * (1 - .45 * clamp(h / 24, 0, 1)) * e * e;
+}
+
+G.ticker.add((time, dms) => {
+  if (!started) return;
+  const dt = Math.min(dms / 1000, .05), t = time, n = MODE.n;
+  // 天光：窗外竹影随风（风有阵）
+  const gust = RM ? 0 : (Math.sin(t * .37) * .5 + .5) * (Math.sin(t * .11 + 1) * .5 + .5);
+  const sway = RM ? 0 : Math.sin(t * .9) * (6 + 12 * gust) + Math.sin(t * 2.3 + 1) * 3 * gust;
+  sun.position.set(FOCUS.x - 1500, FOCUS.y + 1750, 2600);
+  sun.target.position.set(FOCUS.x + sway, FOCUS.y + sway * .4, 0);
+  sun.intensity = 3.1 * (1 - n);
+  hemi.color.lerpColors(C_DAY.hemiSky, C_NIGHT.hemiSky, n); hemi.groundColor.lerpColors(C_DAY.hemiGround, C_NIGHT.hemiGround, n);
+  hemi.intensity = lerp(1.25, .42, n);
+  // 烛：跟指针（略在左上，好斜照），读信时挪到信边
+  if (reading >= 0 && ITEMS[reading].st.fly > .3) {
+    camRight.set(1, 0, 0).applyQuaternion(READ.quat); camUp.set(0, 1, 0).applyQuaternion(READ.quat); camBack.set(0, 0, 1).applyQuaternion(READ.quat);
+    CT.copy(READ.pos).addScaledVector(camRight, -LW * READ.scale * 1.1).addScaledVector(camUp, LH * READ.scale * .45).addScaledVector(camBack, 300);
+  } else if (PTR.on) {   // 烛不离信太远：指针跑到 Dock 上，烛停在一排信的边上
+    const dx = PTR.p.x - FOCUS.x, dy = PTR.p.y - FOCUS.y, k = Math.min(1, 1 / Math.hypot(dx / (V.w * .42), dy / (V.h * .3)));
+    CT.set(FOCUS.x + dx * k - 60, FOCUS.y + dy * k + 90, 430);
+  }
+  else CT.set(FOCUS.x - 260, FOCUS.y + 220, 430);
+  if (!tPrev) CANDLE.copy(CT);
+  CANDLE.lerp(CT, 1 - Math.exp(-dt * 3.2)); tPrev = t;
+  const fl = RM ? 1 : 1 + .05 * Math.sin(t * 9.1 + Math.sin(t * 2.3) * 2) + .03 * Math.sin(t * 23.7) + .02 * Math.sin(t * 4.1 + 1.3);
+  const jit = RM ? 0 : 1.6;
+  candle.position.set(CANDLE.x + Math.sin(t * 7.3) * jit, CANDLE.y + Math.sin(t * 5.1 + 1) * jit, CANDLE.z);
+  if (reading >= 0 && ITEMS[reading].st.fly > .3) candle.target.position.copy(READ.pos);
+  else candle.target.position.set(CANDLE.x + 40, CANDLE.y - 60, 0);
+  candle.intensity = 5.6e5 * n * fl * (reading >= 0 ? lerp(1, .72, ITEMS[reading].st.fly) : 1);
+  sun.shadow.autoUpdate = n < .995; candle.shadow.autoUpdate = n > .005;
+  renderer.toneMappingExposure = lerp(1, 1.12, n);
+  ground.material.color.setScalar(lerp(1, .9, n));
+
+  for (const it of ITEMS) pose(it, t);
+  veil.material.color.lerpColors(C_DAY.veil, C_NIGHT.veil, n);
+  veil.material.opacity = VEIL.o * lerp(.5, .62, n);
+  veil.visible = VEIL.o > .001;
+  renderer.render(scene, camera);
+});
+G.ticker.lagSmoothing(0);
+
+/* ═════════════ 进场：信一封封落到桌上 ═════════════ */
+function enter() {
+  if (reading >= 0) return;
+  ITEMS.forEach((it, i) => {
+    it.tl?.kill(); Object.assign(it.st, { lift: 0, peek: 0, out: 0, fly: 0, unfold: 0, flap: it.kind === 'vacant' ? 1 : 0 });
+    if (RM) { it.st.enter = 1; return; }
+    it.st.enter = 0;
+    G.to(it.st, { enter: 1, duration: 1.25, delay: .2 + i * .14, ease: 'expo.out' });
+  });
+  if (!RM) {
+    const sp = new SplitText('#lede', { type: 'chars' });
+    G.from('.head .kick, .head h1', { opacity: 0, y: 12, duration: 1, stagger: .1, ease: 'expo.out' });
+    G.from(sp.chars, { opacity: 0, y: 6, filter: 'blur(4px)', duration: .8, stagger: .012, delay: .25, ease: 'power2.out', onComplete: () => sp.revert() });
+  }
+}
+
+addEventListener('resize', () => { layout(); });
+layout();
+started = true;
+document.body.dataset.ready = '';
+document.fonts.ready.then(enter);
+
+/* 演示用：换信上的字，重画口袋面与笺（随机数按建时的顺序重放，金点与墨色不变） */
+async function swapHand(k) {
+  setHand(k);
+  $$('.demo-r .hand button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hand === k)));
+  await withTimeout(Promise.all([document.fonts.load(`400 52px ${KAI}`, ALL_TEXT), document.fonts.load(`${HAND.latStyle} 40px ${LAT}`, LAT_TEXT)]), 4000);
+  for (const it of ITEMS) {
+    const r = rnd(hash(it.name) + 17); r(); r();
+    const pocket = drawPocket(it, r), lmap = ctex(drawLetter(it, r));
+    it.pocketMat.map.dispose(); it.pocketMat.roughnessMap.dispose(); it.letterMat.map.dispose();
+    Object.assign(it.pocketMat, { map: pocket.map, roughnessMap: pocket.rough }); it.letterMat.map = lmap;
+  }
+}
+$$('.demo-r .hand button').forEach(b => b.addEventListener('click', () => swapHand(b.dataset.hand)));
+$('#replay').addEventListener('click', () => { if (reading >= 0) close(enter); else enter(); });
+function toggleNotes(on) { $('#notes').classList.toggle('on', on); }
+$('#openNotes').addEventListener('click', () => toggleNotes(true));
+$('#closeNotes').addEventListener('click', () => toggleNotes(false));
+window.__chidu = { open, close, setHover, setTime, swapHand, ITEMS, MODE, VEIL, READ, step: (n = 1) => { for (let i = 0; i < n; i++) G.ticker.tick(); } };
+</script>
+</body>
+</html>

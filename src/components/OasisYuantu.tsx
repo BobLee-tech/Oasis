@@ -127,8 +127,8 @@ export const OasisYuantu = ({ from, scene, posts, isDark, onEnter, onBack }: Oas
       case 'garden': return latest ? <>新近一篇：<em>{latest.title}</em> · {md(latest.createdAt)}</> : '还没有种下文章。';
       case 'atelier': return <>{cn(PROJECTS.length)}件作品：{PROJECTS.map((p) => p.title).join(' · ')}</>;
       case 'lights': {
-        const real = FRIENDS.filter((f) => !/example\.(org|net|com)/.test(f.url)).length;
-        return <>邻家<em>{cn(real)}</em>位{real < FRIENDS.length ? '，虚一席以待' : ''}</>;
+        // 灯火页总留一只空信封（虚席以待）
+        return <>邻家来信<em>{cn(FRIENDS.length)}</em>封，虚一席以待</>;
       }
       case 'orchard': return <>登台望全园：{cn(posts.length)}块石，{cn(new Set(posts.map((p) => p.type)).size)}处庭</>;
       default: return '尚未开园。';
