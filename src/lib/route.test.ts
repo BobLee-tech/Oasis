@@ -11,7 +11,8 @@ describe('parseHash', () => {
     expect(parseHash('#/garden')).toEqual({ view: 'garden' });
     expect(parseHash('#/resonance')).toEqual({ view: 'soundscape' });
     expect(parseHash('#/constellation')).toEqual({ view: 'orchard' });
-    expect(parseHash('#/lanterns')).toEqual({ view: 'lights' });
+    expect(parseHash('#/letters')).toEqual({ view: 'lights' });
+    expect(parseHash('#/lanterns')).toEqual({ view: 'lights' });   // 旧地址仍可进
     expect(parseHash('#/atelier')).toEqual({ view: 'atelier' });
     expect(parseHash('#/yuantu')).toEqual({ view: 'yuantu' });
   });
@@ -29,7 +30,7 @@ describe('parseHash', () => {
   });
 
   it('ignores a trailing segment on non-garden views', () => {
-    expect(parseHash('#/lanterns/extra')).toEqual({ view: 'lights' });
+    expect(parseHash('#/letters/extra')).toEqual({ view: 'lights' });
   });
 });
 
@@ -42,7 +43,7 @@ describe('formatHash', () => {
     expect(formatHash('garden')).toBe('#/garden');
     expect(formatHash('soundscape')).toBe('#/resonance');
     expect(formatHash('orchard')).toBe('#/constellation');
-    expect(formatHash('lights')).toBe('#/lanterns');
+    expect(formatHash('lights')).toBe('#/letters');
     expect(formatHash('atelier')).toBe('#/atelier');
     expect(formatHash('yuantu')).toBe('#/yuantu');
   });

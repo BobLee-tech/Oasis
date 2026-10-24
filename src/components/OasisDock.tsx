@@ -54,11 +54,12 @@ const AtelierIcon = () => (
   </svg>
 );
 
-const LanternIcon = () => (
+const LetterIcon = () => (
   <svg {...svgProps}>
-    <path d="M12 3v2.3M7.2 5.6h9.6" />
-    <path d="M15.3 5.6c2.9 1.3 4.5 3.6 4.5 6.2s-1.6 4.9-4.5 6.2H8.7c-2.9-1.3-4.5-3.6-4.5-6.2s1.6-4.9 4.5-6.2Z" />
-    <path d="M7.2 18h9.6M12 18v3" />
+    {/* 尺牍：竖式信封，封舌合着，正中一道红签 */}
+    <rect x="6" y="3.5" width="12" height="17" rx="1.2" />
+    <path d="M6 4.2 12 9.6l6-5.4" />
+    <path d="M12 12.2v5.6" />
   </svg>
 );
 
@@ -66,7 +67,7 @@ const DOCK_ITEMS: DockItem[] = [
   { view: 'soundscape', label: 'Resonance', shortLabel: PLACE_NAME.soundscape, icon: <ResonanceIcon /> },
   { view: 'garden', label: 'Garden', shortLabel: PLACE_NAME.garden, icon: <GardenIcon /> },
   { view: 'atelier', label: 'Atelier', shortLabel: PLACE_NAME.atelier, icon: <AtelierIcon /> },
-  { view: 'lights', label: 'Lanterns', shortLabel: PLACE_NAME.lights, icon: <LanternIcon /> },
+  { view: 'lights', label: 'Letters', shortLabel: PLACE_NAME.lights, icon: <LetterIcon /> },
 ];
 
 // 🪄 场所预取：手指/光标刚落到某个目的地图标上就提前拉取对应 chunk（与 App.tsx 的

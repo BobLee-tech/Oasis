@@ -65,6 +65,6 @@ export const buildLetters = (friends: FriendLink[], selfUrl: string): Letter[] =
   })),
   {
     kind: 'vacant', name: '虚席以待', url: selfUrl, host: hostOf(selfUrl), desc: SELF.desc, color: SELF.color, motif: 'blossom',
-    cols: [{ t: '灯火常新' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: '绿洲园丁 Bob Lee', at: 'end' }, { t: dateLine(), at: 'end', small: true }],
+    cols: [{ t: '园门常开' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: '绿洲园丁 Bob Lee', at: 'end' }, { t: dateLine(), at: 'end', small: true }],
   },
 ];

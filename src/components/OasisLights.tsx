@@ -1,5 +1,5 @@
 // src/components/OasisLights.tsx
-// ✉️ 灯火 · 邻家尺牍：一位邻居一封信。移近信封会自己拆开、八行笺抽出半截；点一下抽出来、摊开读；
+// ✉️ 尺牍 · 邻家来信：一位邻居一封信。移近信封会自己拆开、八行笺抽出半截；点一下抽出来、摊开读；
 //   ⌘ / Ctrl 点击直接登门（热区本身就是普通链接）。最后一只没封口的空信封是「虚席以待」：回帖里有可复制的名帖与来信。
 //   信、封舌、烛与竹影在 lights/letterScene.ts（WebGL，不进 React）；这里只管页头、热区、展读的按钮与建不起 WebGL 时的退路。
 //   数据：src/data/friends.ts（color 是笺色，since 是落款的结邻日）。演示稿与取舍：docs/chidu-demo.html。
@@ -100,7 +100,7 @@ export const OasisLights = ({ isDark }: OasisLightsProps) => {
       <div ref={stageRef} className="lt-stage" aria-hidden />
 
       <header ref={headRef} className="lt-head">
-        <div className="lt-kick lt-rise"><b>{PLACE_NAME.lights}</b><i /><span>Neighboring Lights</span></div>
+        <div className="lt-kick lt-rise"><b>{PLACE_NAME.lights}</b><i /><span>Letters from Neighbors</span></div>
         <h1 className="lt-rise" style={{ '--d': 1 } as CSSProperties}>邻家尺牍</h1>
         <p>
           <span className="sr-only">{lede}</span>
@@ -153,7 +153,7 @@ export const OasisLights = ({ isDark }: OasisLightsProps) => {
             <button ref={nextRef} type="button" className="lt-side lt-next" disabled={reading < 0 || reading >= letters.length - 1} onClick={() => engine.current?.open(reading + 1)}>下一封</button>
             <p className="sr-only" aria-live="polite">
               {cur && (vacant
-                ? `回帖。灯火常新，想把你的花园连过来？来信。名帖：${SELF.name}，${selfUrl}，${SELF.desc}`
+                ? `回帖。园门常开，想把你的花园连过来？来信。名帖：${SELF.name}，${selfUrl}，${SELF.desc}`
                 : `${cur.name} 的来信。见字如面。${cur.desc}。${cur.name}，${dateLine(FRIENDS[reading]?.since)}结邻，寄自 ${cur.host}。`)}
             </p>
           </div>

@@ -24,7 +24,7 @@ const VIEW_META: Record<PaletteView, { label: string; icon: string }> = {
   garden: { label: `${PLACE_NAME.garden} · Garden`, icon: '🌱' },
   soundscape: { label: `${PLACE_NAME.soundscape} · Soundscape`, icon: '🎧' },
   orchard: { label: `${PLACE_NAME.orchard} · Orchard`, icon: '🪐' },
-  lights: { label: `${PLACE_NAME.lights} · Lanterns`, icon: '🏮' },
+  lights: { label: `${PLACE_NAME.lights} · Letters`, icon: '✉️' },
   atelier: { label: `${PLACE_NAME.atelier} · Atelier`, icon: '🪵' },
   yuantu: { label: '园图 · 园中七景', icon: '📜' },
 };

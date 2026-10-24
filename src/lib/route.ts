@@ -8,7 +8,7 @@ const VIEW_TO_SEG: Partial<Record<AppView, string>> = {
   soundscape: 'resonance',
   garden: 'garden',
   orchard: 'constellation',
-  lights: 'lanterns',
+  lights: 'letters',
   atelier: 'atelier',
   yuantu: 'yuantu',
 };
@@ -16,7 +16,8 @@ const SEG_TO_VIEW: Record<string, AppView> = {
   resonance: 'soundscape',
   garden: 'garden',
   constellation: 'orchard',
-  lanterns: 'lights',
+  letters: 'lights',
+  lanterns: 'lights',   // 旧名「灯火」时的地址，分享出去的链接照样能进
   atelier: 'atelier',
   yuantu: 'yuantu',
 };

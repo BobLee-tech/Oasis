@@ -7,5 +7,5 @@ export const PLACE_NAME: Record<Place, string> = {
   garden: '花园',
   orchard: '星图',
   atelier: '工坊',
-  lights: '灯火',
+  lights: '尺牍',
 };
