@@ -246,6 +246,8 @@ interface Tween { get: () => number; set: (v: number) => void; to: number; from:
 
 export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const { root, dust, band, track, mini, miniWin, base, reduce: RM, coarse } = o;
+  // 画的节制：卷静止、没有补间、烛没挪时不 render（frame() 末尾比一串状态签名）；尺寸变了就记一笔
+  let dirty = true;
   // 画布每次建卷都新开一块、拆卷时连同上下文一起丢掉：React 开发模式会「挂载 → 卸载 → 再挂载」，
   //   复用同一块画布会拿到已经 forceContextLoss 的上下文（three 读 precision 时直接崩）
   const canvas = document.createElement('canvas');
@@ -507,7 +509,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     const side = clamp(S.vw * 0.03, 16, 56);
     S.Lr = side + S.rmax; S.Rr = S.vw - side - S.rmax * 0.7;
     S.Lc = S.vw / 2 - S.rmax * 0.45; S.Rc = S.Lc + S.rmax * 0.95;
-    renderer.setSize(S.vw, S.vh, false);
+    renderer.setSize(S.vw, S.vh, false); dirty = true;
     camera.left = 0; camera.right = S.vw; camera.top = 0; camera.bottom = -S.vh; camera.updateProjectionMatrix();
     U.uTop.value = S.Bt; U.uH.value = S.Hs; U.uK.value = S.k; U.uLRad.value = S.Hs * 0.95;
     shadow.scale.set(S.vw, S.Hs + S.hk * 2 + 300, 1); shadow.position.set(S.vw / 2, -(S.Bt + S.Hs / 2), -50);
@@ -596,6 +598,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
 
   /* ───── 每帧 ───── */
   let raf = 0, last = performance.now(), LX = 0, LY = 0, lx = 0, ly = 0, flickN = 0;
+  let lastSig = '', lastRender = 0;
   const hiT = { x: 0, y: 0, r: 100, w: 0 };
   const frame = (now: number) => {
     raf = requestAnimationFrame(frame);
@@ -654,7 +657,13 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     const mw = mini.clientWidth;
     miniWin.style.left = `${((S.L + S.rL - S.trackX) / S.trackW) * mw}px`;
     miniWin.style.width = `${((S.R - S.rR - S.L - S.rL) / S.trackW) * mw}px`;
-    renderer.render(scene, camera);
+    // 画的节制：卷、烛、高亮、切片都没变就不画——昼里静着是 0 帧；夜里烛闪降到 15 帧（看不出差别）
+    const sig = [S.trackX, S.rL, S.rR, S.L, S.R, U.uCord.value, U.uNight.value, hi.x, hi.y, hi.z, hi.w, lx, ly,
+      U.uSlotI.value.x, U.uSlotOn.value.x, U.uSlotOn.value.y, U.uSlotOn.value.z, U.uSlotOn.value.w].map((v) => v.toFixed(2)).join();
+    const flickDue = U.uNight.value > 0.02 && now - lastRender > 1000 / 15;
+    if (dirty || tweens.length > 0 || sig !== lastSig || flickDue) {
+      renderer.render(scene, camera); lastSig = sig; lastRender = now; dirty = false;
+    }
     drawDust(dt);
   };
 
@@ -703,7 +712,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     sealOv.el.innerHTML = `<span class="yt-stamp" style="width:${s}px;height:${s}px;margin:${-s / 2}px 0 0 ${-s / 2}px;font-size:${s * 0.34}px">曾游</span>`;
     const finish = () => {
       sealOv.el.innerHTML = '';
-      paintTail(); U.uTail.value.needsUpdate = true;
+      paintTail(); U.uTail.value.needsUpdate = true; dirty = true;
       o.onToast('印落在卷尾了。下次来，它还在。');
     };
     if (RM) finish(); else window.setTimeout(finish, 950);
