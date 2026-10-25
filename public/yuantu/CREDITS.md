@@ -14,6 +14,8 @@
 | `tex/silk-n.webp` | ambientCG Fabric036 NormalGL | CC0 | 绢面细部法线 |
 | `tex/paper-n.webp` | ambientCG Paper001 NormalGL | CC0 | 卷背与拖尾纸的起伏 |
 | `tex/jade.webp` | ambientCG Onyx004 Color | CC0 | 左轴玉轴头 |
+| `scroll/t*.ktx2` | 同上切片经 `npm run yuantu:ktx2` 转成 Basis ETC1S（质量 200） | CC0 | 显卡里一片约 1.5 MB（webp 解开 12 MB）；t17、t18 要题字不转 |
+| `basis/basis_transcoder.{js,wasm}` | three.js 自带的 Basis Universal 转码器（Binomial） | Apache-2.0 | KTX2Loader 在 worker 里转码 |
 | `fonts/qiji.woff2` | 齐伋体 Qiji（LingDong-/qiji-font，据明代闵齐伋刻本） | OFL-1.1 | 只含「绿洲园图题跋」等少数大字，15 KB |
 
 印泥斑驳沿用全站的 `public/textures/inkpad-specks.webp`（乾隆「鉴赏」印的漏墨小斑）。

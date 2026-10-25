@@ -14,6 +14,7 @@ import { PROJECTS, ganzhiYear, leafOrdinal, type Project, type Stone, type Stone
 import { currentSolarTerm } from '../lib/solarTerms';
 import { useHashRoute } from '../lib/route';
 import { emitMikuSignal } from '../lib/mikuSignal';
+import { playPaper } from '../lib/paperSound';
 import './atelier/atelier.css';
 
 type CSSVars = React.CSSProperties & Record<`--${string}`, string | number>;
@@ -479,6 +480,7 @@ export const OasisAtelier: React.FC = () => {
       ? { id, rect: mountEl.getBoundingClientRect(), x: keyboard ? null : e.clientX, y: keyboard ? null : e.clientY }
       : null);
     setClosing(false);
+    playPaper('leaf');   // 纸声（默认关）：册页翻开
     navigate('atelier', id);
   }, [navigate]);
 
@@ -491,6 +493,7 @@ export const OasisAtelier: React.FC = () => {
       navigate('atelier');
       lastFocus.current?.focus({ preventScroll: true });
     };
+    playPaper('tuck');
     if (reduce) { finish(); return; }
     setClosing(true);
     closeTimer.current = window.setTimeout(finish, 320);
@@ -501,6 +504,7 @@ export const OasisAtelier: React.FC = () => {
     if (!activeId) return;
     const i = PROJECTS.findIndex((p) => p.id === activeId);
     setFrom(null); // 翻页没有点击落点：主色光居中晕开，不做 FLIP
+    playPaper('leaf');
     navigate('atelier', PROJECTS[(i + delta + PROJECTS.length) % PROJECTS.length].id);
   }, [activeId, navigate]);
 

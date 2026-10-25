@@ -21,6 +21,7 @@
 | `npm run live2d:texture` | Miku 母版贴图降到 1024² WebP | `public/live2d/miku/miku_sample_t04.1024/` |
 | `npm run live2d:patch` | 把六段手势动作修成一次性播放 | `public/live2d/miku/motion/` |
 | `npm run noise` | 烘焙全站静态可平铺噪点 | `public/textures/noise-128.png` |
+| `npm run yuantu:ktx2` | 园图卷切片转 KTX2（Basis ETC1S，质量 200；卷首 t17、t18 要题字仍用 webp） | `public/yuantu/scroll/t*.ktx2` |
 | `bash scripts/transcode-audio.sh` | 全量重转 `public/audio/` （`song` 的批量版） | `dist-audio/` |
 
 ## 怎么用

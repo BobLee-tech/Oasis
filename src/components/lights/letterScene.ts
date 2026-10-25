@@ -15,10 +15,18 @@
 //     同一段挂到 customDepthMaterial，影子也跟着弯。笺还有一截在封里时不许弯（拱起的边会顶穿口袋面）。
 //   · 洒金会闪：金箔单成一层（金属度 1、每片法线随机偏），环境是离屏摆的一间左上开窗的屋（与竹影的天光同向），不下载 HDR。
 //   · 一阵风：同一个 gust 摇竹影、掀没封口的封舌（封了口、或笺正躺在上面的不动）、吹偏烛焰、让手里的笺微颤。
+//   · 读信景深：桌面渲到离屏、两遍可分离高斯、略压暗，手里的笺（layer 1）另画在上面；合上就还离屏。
+//   · 信多了（超过四封、非手机）错落叠放：两行、互压不过三分之一（红签在正中压不住名字）、越新越在上，
+//     第一排让开页头、行距容得下一只敞开的封舌；移近一封，同排右边的整体让开。口袋面这时也投影，上下才分得清。
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 import type { Letter } from './letters';
+import { ctx2d, loadImg, mk, paperFill as fillPaper, printOf, withTimeout, type PaperOpts } from '../../lib/paper/canvas';
+import { hash, rnd, type Rand } from '../../lib/paper/rand';
+import { bendify, type BendU } from '../../lib/paper/bend';
+import { playPaper } from '../../lib/paperSound';
+import { gust as windGust } from '../../lib/wind';
 
 gsap.registerPlugin(CustomEase);
 // 纸的手感：封舌先被纸的硬挺拖住一下再翻；笺摊开时回一点
@@ -81,20 +89,7 @@ const PRINT_LAT = '"IM Fell English", Georgia, serif';
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-const ctx2d = (c: HTMLCanvasElement, read = false) => c.getContext('2d', read ? { willReadFrequently: true } : undefined)!;
-const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
-  const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src;
-});
-const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]);
-const rnd = (seed: number): Rand => {
-  let s = seed >>> 0 || 1;
-  return Object.assign(() => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296), { fork: () => rnd(s) });
-};
-const hash = (str: string) => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const mixHex = (a: string, b: string, t: number) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
-/** 种子随机；fork() 从此刻的状态另起一支（笺晚些画，也与当场画同一串随机） */
-interface Rand { (): number; fork(): Rand }
 
 /* 竖排一列：汉字直立、西文整段侧躺（同 vertical-rl），句读挪到右上 */
 const PUNC_TR = '，。、；：';
@@ -141,43 +136,6 @@ const vcol = (x: CanvasRenderingContext2D, str: string, cx: number, y0: number, 
   x.restore();
 };
 
-/* 纸会弯：uRole 0＝右半页（离折痕的距离 d，整张同一曲率 κ）；1＝左半页（弧长 s 处的切角 ψ(s)）。
-   ψ(s) = θ·min(1, s/w)   折痕是宽 w 的圆弧
-        + lag·(s/LW)^1.6   边角按角速度滞后
-        + κ·s·cosθ         整张微拱（对折时朝向跟着翻，两层才套得住）
-   w = lag = κ = 0 时就是原先绕铰链的刚体转动。 */
-const BEND = /* glsl */ `
-uniform float uRole, uTheta, uW, uLag, uKappa, uLW;
-float ltPsi(float s) {
-  float ramp = uW > 0.001 ? min(1.0, s / uW) : 1.0;
-  return uTheta * ramp + uLag * pow(s / uLW, 1.6) + uKappa * s * cos(uTheta);
-}
-void ltBend(inout vec3 p, out vec3 n) {
-  if (uRole < 0.5) {
-    float d = p.x + uLW * 0.5, c = uKappa * d;
-    if (abs(uKappa) > 1e-6) { p.x = sin(c) / uKappa - uLW * 0.5; p.z += (1.0 - cos(c)) / uKappa; }
-    n = vec3(-sin(c), 0.0, cos(c));
-  } else {
-    float s = max(0.0, uLW * 0.5 - p.x), ds = s / 20.0;
-    vec2 P = vec2(0.0);
-    for (int i = 0; i < 20; i++) { float q = ltPsi((float(i) + 0.5) * ds); P += vec2(-cos(q), sin(q)) * ds; }
-    float q = ltPsi(s);
-    p.x = P.x + uLW * 0.5; p.z += P.y;
-    n = vec3(sin(q), 0.0, cos(q));
-  }
-}`;
-type BendU = Record<'uTheta' | 'uW' | 'uLag' | 'uKappa' | 'uLW', { value: number }>;
-const bendify = <M extends THREE.Material>(m: M, U: BendU, role: 0 | 1) => {
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, U, { uRole: { value: role } });
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\n' + BEND)
-      .replace('#include <beginnormal_vertex>', 'vec3 objectNormal; { vec3 q0 = position; ltBend(q0, objectNormal); }\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3( tangent.xyz );\n#endif')
-      .replace('#include <begin_vertex>', 'vec3 transformed = position; { vec3 n0; ltBend(transformed, n0); }');
-  };
-  return m;
-};
-
 interface Item extends Letter {
   idx: number;
   el: HTMLElement;
@@ -195,6 +153,10 @@ interface Item extends Letter {
   U: BendU; bend: { prev: number; lag: number; lagV: number; k: number; kV: number };
   /** 洒金那一层（只有邻居的信有） */
   gold?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  pocket: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  /** 错落叠放：自己的歪法、第几排、与右邻的间距（信封单位）、叠的高度、让开的位移；px/py/pr 是此刻的位姿 */
+  rotS: number; row: number; stepW: number; stackZ: number; sp: { x: number };
+  px: number; py: number; pr: number;
 }
 
 export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
@@ -264,14 +226,76 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   candle.castShadow = true; candle.shadow.mapSize.set(SHADOW, SHADOW); candle.shadow.camera.near = 20; candle.shadow.camera.far = 2400;
   candle.shadow.bias = -0.0006; candle.shadow.normalBias = 0.8; candle.shadow.focus = 1; candle.shadow.radius = 7;
   scene.add(hemi, sun, sun.target, candle, candle.target);
+  for (const l of [hemi, sun, candle]) l.layers.enable(1);   // 读信时手里的笺在 layer 1 另画，灯要照得到
   const C_DAY = { sky: new THREE.Color('#F7F5EF'), ground: new THREE.Color('#DCD6CA'), veil: new THREE.Color('#EDE6D6') };
   const C_NIGHT = { sky: new THREE.Color('#25304A'), ground: new THREE.Color('#0B0B0C'), veil: new THREE.Color('#050506') };
-
-  const veilMat = own(new THREE.MeshBasicMaterial({ color: '#EDE6D6', transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-  const veilGeo = own(new THREE.PlaneGeometry(1, 1));
-  const veil = new THREE.Mesh(veilGeo, veilMat);
-  veil.renderOrder = 5; scene.add(veil);
   let ground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null;
+
+  /* ───── 读信景深：桌面离屏 → 两遍可分离高斯 → 合成（略压暗），笺另画在上面 ───── */
+  const DOF: { rt: THREE.WebGLRenderTarget | null; a: THREE.WebGLRenderTarget | null; b: THREE.WebGLRenderTarget | null; w: number; h: number } = { rt: null, a: null, b: null, w: 0, h: 0 };
+  const HDR = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
+  const freeDof = () => { DOF.rt?.dispose(); DOF.a?.dispose(); DOF.b?.dispose(); DOF.rt = DOF.a = DOF.b = null; DOF.w = DOF.h = 0; };
+  const dofTargets = () => {
+    // 1× 分辨率就够：桌面马上要糊掉；烛的高光会过 1，能用半浮点就用（不然色调映射前就削平了）
+    const w = Math.max(2, Math.round(V.w)), h = Math.max(2, Math.round(V.h));
+    if (DOF.rt && DOF.w === w && DOF.h === h) return;
+    freeDof();
+    const type = HDR ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    DOF.rt = new THREE.WebGLRenderTarget(w, h, { type });
+    DOF.a = new THREE.WebGLRenderTarget(w >> 1, h >> 1, { type, depthBuffer: false });
+    DOF.b = new THREE.WebGLRenderTarget(w >> 1, h >> 1, { type, depthBuffer: false });
+    DOF.w = w; DOF.h = h;
+  };
+  const quadScene = new THREE.Scene(), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const quad = new THREE.Mesh(own(new THREE.PlaneGeometry(2, 2))); quad.frustumCulled = false; quadScene.add(quad);
+  const VQ = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const blurMat = own(new THREE.ShaderMaterial({
+    uniforms: { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: VQ, depthTest: false, depthWrite: false, toneMapped: false,
+    fragmentShader: /* glsl */ `uniform sampler2D tSrc; uniform vec2 uDir; varying vec2 vUv;
+      void main() {
+        vec4 c = texture2D(tSrc, vUv) * 0.2270270270;
+        vec2 o1 = uDir * 1.3846153846, o2 = uDir * 3.2307692308;
+        c += (texture2D(tSrc, vUv + o1) + texture2D(tSrc, vUv - o1)) * 0.3162162162;
+        c += (texture2D(tSrc, vUv + o2) + texture2D(tSrc, vUv - o2)) * 0.0702702703;
+        gl_FragColor = c;
+      }`,
+  }));
+  const compMat = own(new THREE.ShaderMaterial({
+    uniforms: { tSharp: { value: null }, tBlur: { value: null }, uMix: { value: 0 }, uDim: { value: 0 }, uDimColor: { value: new THREE.Color() } }, vertexShader: VQ, depthTest: false, depthWrite: false,
+    fragmentShader: /* glsl */ `uniform sampler2D tSharp, tBlur; uniform float uMix, uDim; uniform vec3 uDimColor; varying vec2 vUv;
+      void main() {
+        vec3 c = mix(texture2D(tSharp, vUv).rgb, texture2D(tBlur, vUv).rgb, uMix);
+        gl_FragColor = vec4(mix(c, uDimColor, uDim), 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  }));
+  const pass = (m: THREE.ShaderMaterial, target: THREE.WebGLRenderTarget | null) => { quad.material = m; renderer.setRenderTarget(target); renderer.render(quadScene, quadCam); };
+  const draw = () => {
+    const it = reading >= 0 ? items[reading] : null, dof = it ? VEIL.o : 0;
+    if (!it || dof < 0.003) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }
+    dofTargets();
+    const { rt, a, b } = DOF as { rt: THREE.WebGLRenderTarget; a: THREE.WebGLRenderTarget; b: THREE.WebGLRenderTarget };
+    it.letter.traverse((x) => x.layers.set(1));
+    renderer.setRenderTarget(rt); renderer.render(scene, camera);   // 桌面（阴影图在这一遍更新）
+    const auto = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = false;
+    const r = 0.6 + dof * 2.6, iw = 1 / a.width, ih = 1 / a.height, B = blurMat.uniforms;
+    B.tSrc.value = rt.texture; B.uDir.value.set(r * iw, 0); pass(blurMat, a);
+    B.tSrc.value = a.texture; B.uDir.value.set(0, r * ih); pass(blurMat, b);
+    B.tSrc.value = b.texture; B.uDir.value.set(r * 2 * iw, 0); pass(blurMat, a);
+    B.tSrc.value = a.texture; B.uDir.value.set(0, r * 2 * ih); pass(blurMat, b);
+    const C = compMat.uniforms;
+    C.tSharp.value = rt.texture; C.tBlur.value = b.texture;
+    C.uMix.value = Math.min(1, dof * 1.6); C.uDim.value = dof * lerp(0.2, 0.4, MODE.n);
+    C.uDimColor.value.lerpColors(C_DAY.veil, C_NIGHT.veil, MODE.n);
+    pass(compMat, null);
+    renderer.autoClear = false; renderer.clearDepth();
+    camera.layers.set(1); renderer.render(scene, camera);   // 手里的笺
+    renderer.autoClear = true; camera.layers.set(0);
+    renderer.shadowMap.autoUpdate = auto;
+    it.letter.traverse((x) => x.layers.set(0));
+  };
 
   /* ───── 版面：屏幕像素里排，再落到桌面 ───── */
   const layout = () => {
@@ -283,31 +307,59 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     camera.position.set(0, -V.D * Math.sin(V.tilt), V.D * Math.cos(V.tilt)); camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
 
-    const n = items.length, cols = V.phone ? 2 : Math.min(n, 4), rows = Math.ceil(n / cols);
-    let hs: number, gx: number, gy: number, top: number;
-    if (V.phone) {   // 两列；行距给开着的封舌（约 0.36 个信封高）留地方，第一行让开页头
-      gx = 22; const ws0 = (V.w - 32 - gx) / 2;
-      top = o.head.getBoundingClientRect().bottom - root.getBoundingClientRect().top + 64;
-      hs = Math.min((ws0 * H) / W, (V.h - 104 - top - 18 * (rows - 1)) / (rows + ((rows - 1) * FH) / H));
-      gy = (hs * FH) / H + 18;
+    const n = items.length, sc = scatterOn(), headBottom = o.head.getBoundingClientRect().bottom - root.getBoundingClientRect().top;
+    let hs: number, y0: number, bandH: number;
+    if (sc) {
+      // 错落：两行（十四封以上三行）；行距容得下一只敞开的封舌（虚席那只常开，不能盖住上一排的名字）
+      const rows = n > 14 ? 3 : 2, per = Math.ceil(n / rows), GY = (FH / H) * 0.95;
+      const top = Math.max(V.h * 0.3, 250, headBottom + 28), availH = V.h - 120 - top;
+      hs = Math.min(clamp(V.h * 0.4, 240, 380), availH / (rows + GY * (rows - 1)));
+      const ws = (hs * W) / H, gy = hs * GY, maxSpan = V.w - 2 * Math.max(40, V.w * 0.06);
+      // 宽裕时留缝，挤了才互压，压到三分之一为止
+      const step = Math.min(ws * 1.22, Math.max(ws * 0.66, (maxSpan - ws) / Math.max(1, per - 1)));
+      bandH = rows * hs + (rows - 1) * gy; y0 = top + Math.max(0, (availH - bandH) / 2);
+      const s = hs / H;
+      items.forEach((it, i) => {
+        const row = Math.floor(i / per), col = i % per, inRow = Math.min(per, n - row * per);
+        const rowW = ws + (inRow - 1) * step, r = rnd(hash(it.name) + 5);
+        const sx = (V.w - rowW) / 2 + ws / 2 + col * step + (row % 2 ? 1 : -1) * step * 0.16 + (r() - 0.5) * 14;
+        const sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 16;
+        const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
+        it.row = row; it.stepW = step / s; it.stackZ = i * 1.4;   // 越新（越靠后）越在上
+      });
     } else {
-      hs = clamp(V.h * 0.4, 240, 380); const ws = (hs * W) / H; gx = ws * 0.5;
-      const span = cols * ws + (cols - 1) * gx, maxSpan = V.w - 2 * Math.max(40, V.w * 0.06);
-      if (span > maxSpan) { const k = maxSpan / span; hs *= k; gx *= k; }
-      gy = hs * 0.3;
-      top = Math.max(V.h * 0.3, 250);
+      const cols = V.phone ? 2 : Math.min(n, 4), rows = Math.ceil(n / cols);
+      let gx: number, gy: number, top: number;
+      if (V.phone) {   // 两列；行距给开着的封舌（约 0.36 个信封高）留地方，第一行让开页头
+        gx = 22; const ws0 = (V.w - 32 - gx) / 2;
+        top = headBottom + 64;
+        hs = Math.min((ws0 * H) / W, (V.h - 104 - top - 18 * (rows - 1)) / (rows + ((rows - 1) * FH) / H));
+        gy = (hs * FH) / H + 18;
+      } else {
+        hs = clamp(V.h * 0.4, 240, 380); const ws = (hs * W) / H; gx = ws * 0.5;
+        const span = cols * ws + (cols - 1) * gx, maxSpan = V.w - 2 * Math.max(40, V.w * 0.06);
+        if (span > maxSpan) { const k = maxSpan / span; hs *= k; gx *= k; }
+        gy = hs * 0.3;
+        top = Math.max(V.h * 0.3, 250);
+      }
+      const ws = (hs * W) / H, s = hs / H;
+      bandH = rows * hs + (rows - 1) * gy; const availBottom = V.h - (V.phone ? 104 : 120);
+      y0 = V.phone ? top + Math.max(0, (availBottom - top - bandH) / 2) : Math.min(top + Math.max(0, (availBottom - top - bandH) / 2), availBottom - bandH);
+      items.forEach((it, i) => {
+        const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
+        const rowW = inRow * ws + (inRow - 1) * gx, r = rnd(hash(it.name) + 3);
+        const sx = (V.w - rowW) / 2 + col * (ws + gx) + ws / 2 + (r() - 0.5) * 10, sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 10;
+        const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
+        it.row = row; it.stepW = W * 2; it.stackZ = 0;
+      });
     }
-    const ws = (hs * W) / H, s = hs / H;
-    const bandH = rows * hs + (rows - 1) * gy, availBottom = V.h - (V.phone ? 104 : 120);
-    const y0 = V.phone ? top + Math.max(0, (availBottom - top - bandH) / 2) : Math.min(top + Math.max(0, (availBottom - top - bandH) / 2), availBottom - bandH);
-    items.forEach((it, i) => {
-      const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
-      const rowW = inRow * ws + (inRow - 1) * gx, r = rnd(hash(it.name) + 3);
-      const sx = (V.w - rowW) / 2 + col * (ws + gx) + ws / 2 + (r() - 0.5) * 10, sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 10;
-      const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
-    });
+    for (const it of items) {
+      gsap.killTweensOf(it.sp); it.sp.x = 0;
+      it.px = it.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot;
+      it.pocket.material.shadowSide = sc ? THREE.FrontSide : null;   // 叠起来才要口袋面投影（three 默认往阴影图里画背面，单面纸就没了）
+    }
     toDesk(V.w / 2, y0 + bandH / 2, FOCUS);
-    V.enterDY = toDesk(V.w / 2, -V.h * 0.15).y - FOCUS.y + H * s;
+    V.enterDY = toDesk(V.w / 2, -V.h * 0.15).y - FOCUS.y + hs;
 
     // 展读的位姿：笺正对相机，高约屏高一半多
     const d = 0.6 * V.D, sheetAR = (2 * LW) / LH;
@@ -316,19 +368,18 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const fwd = camera.getWorldDirection(new THREE.Vector3());
     READ.pos.copy(camera.position).addScaledVector(ray.ray.direction, d / ray.ray.direction.dot(fwd));
     READ.quat.copy(camera.quaternion); READ.scale = (targetH * d) / (LH * V.D);
-    veil.position.copy(camera.position).addScaledVector(fwd, d + 80); veil.quaternion.copy(camera.quaternion);
-    veil.scale.setScalar(4 * (d + 80) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.max(1, camera.aspect));
     placeHits(); placeActs();
   };
+  const scatterOn = () => !V.phone && items.length > 4;
 
   /* ───── 热区（DOM）：按信封此刻的投影摆，拆封时往上让出窥信与封舌的地方 ───── */
   const placeHits = () => {
     for (const it of items) {
-      const c = Math.cos(it.rot), sn = Math.sin(it.rot), pts: { x: number; y: number }[] = [];
+      const c = Math.cos(it.pr), sn = Math.sin(it.pr), pts: { x: number; y: number }[] = [];
       const ext = H / 2 + (it.st.peek > 0.01 || hover === it.idx ? PEEK + 10 : 0) + (it.st.flap > 0.5 ? FH : 0);
       for (const [ax, ay] of [[-W / 2, -H / 2], [W / 2, -H / 2], [W / 2, ext], [-W / 2, ext]]) {
         const lx = ax * it.s, ly = ay * it.s;
-        pts.push(toScreen(new THREE.Vector3(it.x + lx * c - ly * sn, it.y + lx * sn + ly * c, 2)));
+        pts.push(toScreen(new THREE.Vector3(it.px + lx * c - ly * sn, it.py + lx * sn + ly * c, 2)));
       }
       const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
       Object.assign(it.el.style, {
@@ -355,7 +406,13 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (reading >= 0 || busy) return;
     const prev = hover; hover = i;
     if (i >= 0) drawSheet(items[i]);
+    const sc = scatterOn();
     items.forEach((it, j) => {
+      if (sc) {   // 错落：同排右边的信整体让开，像摊开一手牌（不压着才不用让）
+        const ov = W - it.stepW, x = i >= 0 && j > i && it.row === items[i].row && ov > -12 ? (ov + 18) * it.s : 0;
+        gsap.to(it.sp, { x, duration: 0.55 * K, ease: 'power3.out', overwrite: true });
+      }
+      it.el.style.zIndex = j === i ? '1' : '';   // 拿起来的那封，热区也在最上
       const on = j === i, was = j === prev;
       if (on === was) return;
       it.tl?.kill();
@@ -364,6 +421,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         it.tl.to(it.st, { lift: 1, duration: 0.6 * K, ease: 'power3.out' }, 0);
         if (it.kind === 'friend') it.tl.to(it.st, { flap: 1, duration: 0.75 * K, ease: 'paperFlip' }, 0);
         it.tl.to(it.st, { peek: 1, duration: 0.8 * K, ease: 'expo.out' }, it.kind === 'friend' ? 0.42 * K : 0);
+        if (it.kind === 'friend') playPaper('flap');
+        it.tl.call(() => playPaper('slide', 0.5), undefined, it.kind === 'friend' ? 0.42 * K : 0);   // 纸声最后挂，免得挪动上面的相对位置
       } else {
         it.tl.to(it.st, { peek: 0, duration: 0.45 * K, ease: 'power2.in' }, 0);
         if (it.kind === 'friend') it.tl.to(it.st, { flap: 0, duration: 0.6 * K, ease: 'power2.inOut' }, 0.42 * K);
@@ -383,6 +442,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       if (x === it) return;
       x.tl?.kill();
       x.tl = gsap.timeline().to(x.st, { peek: 0, flap: x.kind === 'vacant' ? 1 : 0, lift: 0, duration: 0.5 * K, ease: 'power2.inOut' });
+      gsap.to(x.sp, { x: 0, duration: 0.5 * K, ease: 'power2.inOut', overwrite: true });
     });
     o.onRead(i);
     it.tl?.kill();
@@ -394,7 +454,11 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       .to(it.st, { fly: 1, duration: 1.05 * K, ease: 'expo.inOut' }, '>-.28')
       .to(it.st, { lift: 0, duration: 0.8 * K, ease: 'power2.out' }, '<.25')
       .to(VEIL, { o: 1, duration: 0.9 * K, ease: 'power2.out' }, '<-.25')
-      .to(it.st, { unfold: 1, duration: 1.05 * K, ease: 'unfold' }, '>-.4');
+      .addLabel('uf', '>-.4')
+      .to(it.st, { unfold: 1, duration: 1.05 * K, ease: 'unfold' }, 'uf')
+      // 纸声最后挂：'>' 指最近加入的一段，插在中间会挪动后面的相对位置
+      .call(() => playPaper('slide', 0.9), undefined, 0.4 * K)
+      .call(() => playPaper('unfold'), undefined, 'uf');
   };
   const close = (after?: () => void, quick = false) => {
     if (reading < 0 || (busy && !quick)) return;
@@ -403,20 +467,23 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     busy?.kill();
     const tl = gsap.timeline({
       onComplete: () => {
-        busy = null; reading = -1; o.onRead(-1);
+        busy = null; reading = -1; o.onRead(-1); freeDof();
         it.el.dataset.quiet = '1'; it.el.focus({ preventScroll: true }); delete it.el.dataset.quiet;
         placeHits(); after?.();
       },
     });
     busy = it.tl = tl;
+    playPaper('tuck');
     tl.to(it.st, { unfold: 0, duration: 0.6 * k, ease: 'power2.inOut' }, 0)
       .to(VEIL, { o: 0, duration: 0.8 * k, ease: 'power2.inOut' }, 0.3 * k)
       .to(it.st, { fly: 0, duration: 0.95 * k, ease: 'expo.inOut' }, 0.45 * k)
       .to(it.st, { lift: 1, duration: 0.4 * k, ease: 'power2.out' }, '<.4')
-      .to(it.st, { out: 0, duration: 0.55 * k, ease: 'power2.inOut' }, '>-.15')
+      .addLabel('in', '>-.15')
+      .to(it.st, { out: 0, duration: 0.55 * k, ease: 'power2.inOut' }, 'in')
       .to(it.st, { peek: 0, duration: 0.4 * k, ease: 'power2.in' }, '>-.05')
       .to(it.st, { flap: it.kind === 'vacant' ? 1 : 0, duration: 0.6 * k, ease: 'power2.inOut' }, '>.02')
-      .to(it.st, { lift: 0, duration: 0.6 * k, ease: 'power2.out' }, '<.2');
+      .to(it.st, { lift: 0, duration: 0.6 * k, ease: 'power2.out' }, '<.2')
+      .call(() => playPaper('slide', 0.5), undefined, 'in');
   };
 
   /* ───── 事件 ───── */
@@ -468,8 +535,10 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const st = it.st, s = it.s, e = st.enter;
     const arc = Math.sin(clamp(e, 0, 1) * Math.PI) * 60 * s;
     it.tilt.x += (it.tilt.tx * st.lift - it.tilt.x) * 0.12; it.tilt.y += (it.tilt.ty * st.lift - it.tilt.y) * 0.12;
-    it.env.position.set(it.x, it.y + (1 - e) * V.enterDY, st.lift * 16 * s + arc);
-    it.env.rotation.set(it.tilt.x * 0.07, it.tilt.y * 0.09, it.rot + (1 - e) * it.enterRot);
+    const sc = scatterOn(), liftH = 16 + (sc ? items.length * 1.4 + 6 : 0);   // 叠着时要抬过上面那几封
+    it.px = it.x + it.sp.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot;
+    it.env.position.set(it.px, it.py + (1 - e) * V.enterDY, it.stackZ * s + st.lift * liftH * s + arc);
+    it.env.rotation.set(it.tilt.x * 0.07, it.tilt.y * 0.09, it.pr + (1 - e) * it.enterRot);
     it.env.scale.setScalar(s);
     // 封舌：0 盖在口袋面上 … 1 平躺在信封上方（比笺低）；不回弹，尖一翘就戳穿躺在上面的笺
     const a = Math.PI * clamp(st.flap, 0, 1);
@@ -512,10 +581,10 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (it.cast !== cast) { it.cast = cast; for (const m of it.panels) m.castShadow = cast; }
 
     // 影子垫：抬起越高越淡越散
-    const h = st.lift * 16 + arc / s;
-    const dirX = lerp(0.55, (it.x - CANDLE.x) / 600, MODE.n), dirY = lerp(-0.62, (it.y - CANDLE.y) / 600, MODE.n);
-    it.blob.position.set(it.x + dirX * h * s * 0.9, it.y + (1 - e) * V.enterDY + dirY * h * s * 0.9, 0.25);
-    it.blob.rotation.z = it.rot + (1 - e) * it.enterRot;
+    const h = st.lift * liftH + arc / s;
+    const dirX = lerp(0.55, (it.px - CANDLE.x) / 600, MODE.n), dirY = lerp(-0.62, (it.py - CANDLE.y) / 600, MODE.n);
+    it.blob.position.set(it.px + dirX * h * s * 0.9, it.py + (1 - e) * V.enterDY + dirY * h * s * 0.9, 0.25 + it.stackZ * s * 0.5);
+    it.blob.rotation.z = it.pr + (1 - e) * it.enterRot;
     it.blob.scale.set(W * s * 1.12 * (1 + h * 0.006), H * s * 1.1 * (1 + h * 0.005), 1);
     it.blob.material.opacity = lerp(0.34, 0.42, MODE.n) * (1 - 0.45 * clamp(h / 24, 0, 1)) * e * e;
   };
@@ -524,7 +593,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (!started || !ground) return;
     const dt = Math.min(dms / 1000, 0.05), t = time, n = MODE.n;
     // 风有阵：同一阵风摇竹影、掀封舌、吹烛、让手里的笺微颤；夜里关了窗，封舌只掀四成
-    const gust = RM ? 0 : (Math.sin(t * 0.37) * 0.5 + 0.5) * (Math.sin(t * 0.11 + 1) * 0.5 + 0.5);
+    const gust = RM ? 0 : windGust();   // 全站同一只风钟（lib/wind.ts）：从这里切去花园，樱瓣还在同一阵风里
     WIND.g = gust; WIND.flap = Math.pow(gust, 1.6) * 0.2 * lerp(1, 0.4, n);
     const sway = RM ? 0 : Math.sin(t * 0.9) * (6 + 12 * gust) + Math.sin(t * 2.3 + 1) * 3 * gust;
     sun.position.set(FOCUS.x - 1500, FOCUS.y + 1750, 2600);
@@ -555,19 +624,18 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     ground.material.color.setScalar(lerp(1, 0.9, n));
 
     for (const it of items) pose(it, t, dt);
-    veilMat.color.lerpColors(C_DAY.veil, C_NIGHT.veil, n);
-    veilMat.opacity = VEIL.o * lerp(0.5, 0.62, n);
-    veil.visible = VEIL.o > 0.001;
+    const spreading = items.some((it) => gsap.isTweening(it.sp));
+    if (spreading) placeHits();   // 让开的信，热区跟着走
     // 闲时降帧：指针 1.2 s 没动、也没有补间在走，就只画 30 帧、阴影图 15 次/秒；一有动静当帧回满
     const now = performance.now();
-    if (busy || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st) || Math.abs(it.bend.lagV) > 0.01 || Math.abs(it.bend.kV) > 1e-5)) lastActive = now;
+    if (busy || spreading || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st) || Math.abs(it.bend.lagV) > 0.01 || Math.abs(it.bend.kV) > 1e-5)) lastActive = now;
     const idle = now - lastActive > 600;
     if (idle && t - lastRender < 1 / 30 - 0.003) return;
     renderer.shadowMap.autoUpdate = !idle;
     if (idle && t - lastShadow >= 1 / 15 - 0.003) renderer.shadowMap.needsUpdate = true;
     if (renderer.shadowMap.autoUpdate || renderer.shadowMap.needsUpdate) lastShadow = t;
     lastRender = t;
-    renderer.render(scene, camera);
+    draw();
   };
 
   /* ───── 启动：素材与字到齐再画 ───── */
@@ -593,32 +661,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (!alive) return;
 
     /* 纸：底色 × 引首纸纹 × 纸屑；四边做旧 */
-    const paperFill = (x: CanvasRenderingContext2D, w: number, h: number, baseCol: string, p: { alpha?: number; scale?: number; fleck?: number; edge?: number } = {}) => {
-      const { alpha = 0.6, scale = 1, fleck = 0, edge = 0.1 } = p;
-      x.fillStyle = baseCol; x.fillRect(0, 0, w, h);
-      x.save(); x.globalCompositeOperation = 'multiply';
-      const pat = x.createPattern(IMG.yinshou, 'repeat')!; pat.setTransform(new DOMMatrix().scale(scale)); x.globalAlpha = alpha; x.fillStyle = pat; x.fillRect(0, 0, w, h);
-      if (fleck) { const q = x.createPattern(IMG.fleck, 'repeat')!; q.setTransform(new DOMMatrix().scale(scale * 0.7)); x.globalAlpha = fleck; x.fillStyle = q; x.fillRect(0, 0, w, h); }
-      if (edge) {
-        x.globalAlpha = 1;
-        const m = Math.min(w, h) * 0.09;
-        for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, m, 0, 0, w, m], [0, h, 0, h - m, 0, h - m, w, m], [0, 0, m, 0, 0, 0, m, h], [w, 0, w - m, 0, w - m, 0, m, h]]) {
-          const g = x.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, `rgba(120,90,50,${edge})`); g.addColorStop(1, 'rgba(120,90,50,0)'); x.fillStyle = g; x.fillRect(rx, ry, rw, rh);
-        }
-      }
-      x.restore();
-    };
-
-    /* 木刻墨版 → 有颜色有透明度的印样（花笺淡印） */
-    const printOf = (img: HTMLImageElement, color: string) => {
-      const c = mk(img.width, img.height), x = ctx2d(c, true);
-      x.drawImage(img, 0, 0);
-      const d = x.getImageData(0, 0, c.width, c.height), p = d.data, col = new THREE.Color(color);
-      const r = col.r * 255, g = col.g * 255, b = col.b * 255;
-      for (let i = 0; i < p.length; i += 4) { const a = p[i]; p[i] = r; p[i + 1] = g; p[i + 2] = b; p[i + 3] = a; }
-      x.putImageData(d, 0, 0);
-      return c;
-    };
+    const paperFill = (x: CanvasRenderingContext2D, w: number, h: number, baseCol: string, p: PaperOpts = {}) => fillPaper(x, w, h, baseCol, { paper: IMG.yinshou, fleck: IMG.fleck }, p);
 
     /* 信封正面（口袋面）：纸、洒金红签、名字、寄自 */
     const drawPocket = (it: Letter, r: Rand) => {
@@ -867,7 +910,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         st: { enter: RM ? 1 : 0, lift: 0, flap: L0.kind === 'vacant' ? 1 : 0, peek: 0, out: 0, fly: 0, unfold: 0 },
         tilt: { x: 0, y: 0, tx: 0, ty: 0 },
         env, flapPivot, letter, sheet, hinge, panels, blob, cast: true, fronts, paper,
-        U, bend: { prev: -Math.PI, lag: 0, lagV: 0, k: 0, kV: 0 }, gold,
+        U, bend: { prev: -Math.PI, lag: 0, lagV: 0, k: 0, kV: 0 }, gold, pocket: pm,
+        rotS: (rnd(hash(L0.name) + 29)() - 0.5) * 0.17, row: 0, stepW: W * 2, stackZ: 0, sp: { x: 0 }, px: 0, py: 0, pr: rot,
       };
     });
     drawSheet = (it) => {
@@ -897,8 +941,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     destroy() {
       alive = false; started = false;
       gsap.ticker.remove(tick);
-      for (const it of items) { it.tl?.kill(); gsap.killTweensOf(it.st); }
+      for (const it of items) { it.tl?.kill(); gsap.killTweensOf([it.st, it.sp]); }
       gsap.killTweensOf([MODE, VEIL]);
+      freeDof();
       busy = null;
       ro.disconnect();
       offs.forEach((f) => f());

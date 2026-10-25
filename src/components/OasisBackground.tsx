@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { BgPhase } from '../types/auth';
 import { currentSeason, type Season } from '../lib/solarTerms';
+import { breath, gust } from '../lib/wind';
 
 interface OasisBackgroundProps { phase: BgPhase; isDark: boolean; }
 
@@ -244,9 +245,10 @@ export const OasisBackground: React.FC<OasisBackgroundProps> = ({ phase, isDark 
         globalNightFactor += (targetNight - globalNightFactor) * 0.02;
       }
 
-      // 🍃 双频叠加的呼吸风 + 偶发的温柔阵风，告别单调正弦
-      const gust = Math.max(0, Math.sin(time * 0.000037)) ** 3 * 0.45;
-      const globalWind = Math.sin(time * 0.0001) * 0.15 + Math.sin(time * 0.00023 + 2) * 0.1 + gust;
+      // 🍃 双频叠加的呼吸风 + 偶发的温柔阵风；读全站同一只风钟（lib/wind.ts）——
+      //   尺牍里竹影摇得最狠的那一阵，这里的樱瓣也正被吹偏。取立方：只有最强的几阵推得动花瓣
+      const t = time / 1000;
+      const globalWind = breath(t) + gust(t) ** 3 * 0.45;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.globalCompositeOperation = globalNightFactor > 0.5 ? 'screen' : 'source-over';

@@ -11,6 +11,7 @@ import { useCoarsePointer } from '../hooks/useCoarsePointer';
 import { emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
 import { PLACE_NAME } from '../lib/places';
+import { paperSoundOn, setPaperSound } from '../lib/paperSound';
 
 // 🔔 跨组件唤起：与 Markdown.tsx 的 LIGHTBOX_EVENT 同一种约定——
 //   任何深处的组件（如 Gallery 的搜索图标）都能 dispatch 这个事件唤起面板，
@@ -31,7 +32,7 @@ const VIEW_META: Record<PaletteView, { label: string; icon: string }> = {
 
 interface PostHit { kind: 'post'; id: string; title: string; color: string; snippet: string }
 interface GoHit { kind: 'go'; view: PaletteView; label: string; icon: string }
-interface DoHit { kind: 'do'; label: string }
+interface DoHit { kind: 'do'; act: 'theme' | 'paper'; label: string }
 type Hit = PostHit | GoHit | DoHit;
 
 const hitKey = (h: Hit) => (h.kind === 'post' ? `p-${h.id}` : h.kind === 'go' ? `g-${h.view}` : `d-${h.label}`);
@@ -101,12 +102,17 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
     [posts]
   );
 
+  const paperOn = open && paperSoundOn();   // 每次打开重读纸声开关（存在 localStorage，不进 React）
   const hits = useMemo<Hit[]>(() => {
     const q = query.trim().toLowerCase();
     const goHits: GoHit[] = (Object.keys(VIEW_META) as PaletteView[])
       .filter((v) => v !== currentView)
       .map((v) => ({ kind: 'go', view: v, label: VIEW_META[v].label, icon: VIEW_META[v].icon }));
-    const doHits: DoHit[] = [{ kind: 'do', label: `切换日夜 · 当前 ${themeLabel}` }];
+    const doHits: DoHit[] = [
+      { kind: 'do', act: 'theme', label: `切换日夜 · 当前 ${themeLabel}` },
+      // 纸声：拆信、翻册页、展卷时一点纸响（默认关；放歌时让位）
+      { kind: 'do', act: 'paper', label: `纸声 · ${paperOn ? '开着，点一下关' : '关着，点一下开'}` },
+    ];
 
     if (!q) return [...goHits, ...doHits]; // 空查询不刷屏文章列表，只给「去往」与「动作」
 
@@ -132,13 +138,14 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
     const filteredDo = doHits.filter((d) => d.label.toLowerCase().includes(q));
 
     return [...postHits, ...filteredGo, ...filteredDo];
-  }, [query, searchable, currentView, themeLabel]);
+  }, [query, searchable, currentView, themeLabel, paperOn]);
 
   useEffect(() => setCursor(0), [query, hits.length]);
 
   const commit = (hit: Hit) => {
     if (hit.kind === 'post') onOpenPost(hit.id);
     else if (hit.kind === 'go') onGo(hit.view);
+    else if (hit.act === 'paper') setPaperSound(!paperSoundOn());
     else onToggleTheme();
     setOpen(false);
     // 🫧 ⌘K 执行一条命令：有后果的动作，值得一圈涟漪；面板即将合上，落点用面板自己的中心

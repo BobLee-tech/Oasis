@@ -7,8 +7,14 @@
 //   · 输入只改目标值（P.tp），位置按指数追随（时间常数约 140ms），滚轮、拖动、键盘、缩略条手感一致。
 //   · 卷的纸坐标 P（切片像素，高 1100）：[0, TUO) 拖尾纸（我们自己的，画题跋）→ [TUO, TOT) 原卷切片（左起《七咏》，右止包首）。
 //   · 坑：GLSL 里 pow(负数, 2.) 在部分 GPU 出 NaN（卷筒整片发黑），一律用 sq()；if 分支里采样带 mipmap 会出贴图边框线。
+//   · 切片优先读 KTX2（Basis ETC1S，scripts/yuantu-ktx2.mjs 生成）：显卡里一片约 1.5 MB，webp 解开是 12 MB；
+//     转码器在 public/yuantu/basis/（three 自带那份）。读不到、建不起转码器，就退回 webp。卷首两片要在画布上题字，仍走 webp。
 import * as THREE from 'three';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SCENES, yStore, type Scene } from './scenes';
+import { loadImg, mk } from '../../lib/paper/canvas';   // 纸的工具箱：与尺牍共用
+import { playPaper } from '../../lib/paperSound';
+import { gust } from '../../lib/wind';
 
 export type RollState = 'closed' | 'opening' | 'open' | 'closing';
 
@@ -61,11 +67,7 @@ const FRONT_DECOR: [number, number] = [35600, 37150];
 const TB_ACT = { Pt: 1240, ty: 560 }, TB_SEAL = { Pt: 1740, ty: 470 };
 
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
-const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
-  const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = rej; im.src = src;
-});
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 
 /* ───── 缓动 ───── */
 type Ease = (t: number) => number;
@@ -405,14 +407,32 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const tiles: Tile[] = SC.tiles.map((w, i) => ({ i, x: i * 2048, w, tex: null, st: 0, used: 0 }));
   const needsDecor = (t: Tile) => t.x < FRONT_DECOR[1] && t.x + t.w > FRONT_DECOR[0];
   let fontsReady: Promise<unknown> = Promise.resolve();
+  let ktx2: KTX2Loader | null = null;
+  try { ktx2 = new KTX2Loader().setTranscoderPath(`${base}/basis/`).detectSupport(renderer); } catch { ktx2 = null; }
+  const ktx2Tex = (url: string) => new Promise<THREE.Texture>((res, rej) => {
+    if (!ktx2) { rej(new Error('no ktx2')); return; }
+    ktx2.load(url, (t) => {
+      // 与 webp 那条路一样把原值交给着色器（不让显卡按 sRGB 解码），方向也一样（首行在 v=0）
+      t.colorSpace = THREE.NoColorSpace; t.anisotropy = MAXANISO; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true;
+      res(t);
+    }, undefined, rej);
+  });
   const wantTile = (i: number) => {
     const t = tiles[i]; if (!t || t.st) return; t.st = 1;
-    loadImg(`${base}/scroll/t${String(i).padStart(2, '0')}.webp`).then(async (im) => {
+    const stem = `${base}/scroll/t${String(i).padStart(2, '0')}`;
+    const viaKtx2 = needsDecor(t) ? Promise.reject(new Error('decor')) : ktx2Tex(`${stem}.ktx2`);
+    viaKtx2.then((tex) => {
+      if (!alive) { tex.dispose(); return; }
+      owned.push(tex); return tex;
+    }, () => loadImg(`${stem}.webp`).then(async (im) => {
       if (!alive) return;
       let src: TexImageSource = im;
       if (needsDecor(t)) { await fontsReady; const cv = mk(t.w, SC.h), c = cv.getContext('2d')!; c.drawImage(im, 0, 0); drawFront(c, t.x); src = cv; }
       if (!alive) return;
-      t.tex = texOf(src); renderer.initTexture(t.tex); t.st = 2; t.used = performance.now();
+      return texOf(src);
+    })).then((tex) => {
+      if (!alive || !tex) return;
+      t.tex = tex; renderer.initTexture(t.tex); t.st = 2; t.used = performance.now();
       const live = tiles.filter((x) => x.st === 2);
       if (live.length > 9) {
         live.sort((a, b) => a.used - b.used);
@@ -548,9 +568,10 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     dctx.beginPath(); dctx.moveTo(ax - 120, ay); dctx.lineTo(ax + 300, ay); dctx.lineTo(bx + 380, by); dctx.lineTo(bx - 140, by); dctx.closePath();
     g.addColorStop(0, 'rgba(255,246,220,0)'); g.addColorStop(0.5, 'rgba(255,246,220,1)'); g.addColorStop(1, 'rgba(255,246,220,0)');
     dctx.fillStyle = g; dctx.fill(); dctx.restore();
+    const wg = gust();   // 全站同一只风钟：起风时光柱里的浮尘也往下风飘一点
     for (const m of motes) {
       m.s += step * (0.3 + m.v * 0.4);
-      m.y -= step * (0.006 + m.z * 0.01) * m.v; m.x += step * (0.004 * Math.sin(m.s) + 0.002);
+      m.y -= step * (0.006 + m.z * 0.01) * m.v; m.x += step * (0.004 * Math.sin(m.s) + 0.002 + wg * wg * 0.012 * (0.4 + m.z));
       if (m.y < -0.05) { m.y = 1.05; m.x = Math.random(); } if (m.x > 1.05) m.x = -0.05;
       const X = m.x * W, Y = m.y * H;
       const tY = (Y - ay) / (by - ay), cx = ax + 90 + (bx + 120 - ax - 90) * tY, dd = Math.abs(X - cx) / 230;
@@ -653,6 +674,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
       instantOpen = false; S.open = 1; U.uCord.value = 0; P.p = P.tp = target; sceneStart = false; afterOpen(); return;
     }
     setState('opening'); P.locked = true; P.v = 0;
+    playPaper('unroll', 2.4);   // 纸声（默认关）：系带滑开、绢擦过纸
     // 系带先滑开，再两手往两边一分（起得慢、收得长），然后顺势展到引首
     void Promise.all([
       tween(() => U.uCord.value, (x) => { U.uCord.value = x; }, 0, 0.7, 0, power2InOut),
@@ -663,6 +685,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const rollUp = () => {
     if (state !== 'open') return;
     yStore.set('rolled', true); setState('closing'); P.v = 0; P.locked = true;
+    playPaper('roll', 2.6);
     focus = null; rigs.forEach((r) => r.slip.el.classList.remove('on')); o.onFocus(null);
     void Promise.all([
       tween(() => P.p, (x) => { P.p = x; P.tp = x; }, 0, 2.2, 0, power3InOut),
@@ -675,6 +698,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const stamp = () => {
     if (yStore.get('stamped', false)) { o.onToast('你已经在这卷上留过印了。'); return; }
     yStore.set('stamped', true);
+    window.setTimeout(() => playPaper('stamp'), RM ? 0 : 420);   // 印落到纸上那一下
     const s = 120 * S.k;
     sealOv.el.innerHTML = `<span class="yt-stamp" style="width:${s}px;height:${s}px;margin:${-s / 2}px 0 0 ${-s / 2}px;font-size:${s * 0.34}px">曾游</span>`;
     const finish = () => {
@@ -833,6 +857,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
       markEls.forEach((m) => m.remove());
       tiles.forEach((t) => t.tex?.dispose());
       owned.forEach((t) => t.dispose());
+      ktx2?.dispose();   // 转码器的 worker 一并收掉
       [stripGeo, knobGeo, shadowGeo].forEach((g) => g.dispose());
       [stripMat, knobMat, shadowMat].forEach((m) => m.dispose());
       renderer.dispose();
