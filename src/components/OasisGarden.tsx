@@ -1,5 +1,5 @@
 // src/components/OasisGarden.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { currentSolarTerm, daysIntoTerm, termNoteOfDay } from '../lib/solarTerms';
 import { isLateNight } from '../lib/timeContext';
@@ -29,8 +29,44 @@ export const OasisGarden: React.FC<OasisGardenProps> = ({ visitorName, isReturni
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 🌊 水下的字：进园那一下，涟漪从点击处荡开，波前扫到哪个字，那个字就被水面折偏一下再回正
+  //    （docs/site-next.html「入口」）。五个字母各自取同一条渐变的那一段（--ww / --lx），静止时与整词渐变一致。
+  const wordRef = useRef<HTMLSpanElement>(null);
+  const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  useEffect(() => {
+    const word = wordRef.current; if (!word) return;
+    const measure = () => {
+      const w = word.getBoundingClientRect();
+      word.style.setProperty('--ww', `${w.width.toFixed(1)}px`);
+      letterRefs.current.forEach((l) => { if (l) l.style.setProperty('--lx', `${(l.getBoundingClientRect().left - w.left).toFixed(1)}px`); });
+    };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(word);
+    void document.fonts?.ready.then(measure);
+    return () => ro.disconnect();
+  }, []);
+  const ripple = (x?: number, y?: number) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const w = wordRef.current?.getBoundingClientRect();
+    if (!w) return;
+    const ox = x ?? w.left + w.width / 2, oy = y ?? w.top + w.height / 2;
+    letterRefs.current.forEach((l) => {
+      if (!l) return;
+      const r = l.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const d = Math.hypot(cx - ox, cy - oy) || 1, ux = (cx - ox) / d, uy = (cy - oy) / d;
+      const A = 4 + 12 * Math.exp(-d / 900);
+      l.animate([
+        { transform: 'translate(0, 0) scale(1)' },
+        { transform: `translate(${(ux * A).toFixed(1)}px, ${(uy * A).toFixed(1)}px) scale(1.06, 0.95)`, offset: 0.35 },
+        { transform: `translate(${(-ux * A * 0.4).toFixed(1)}px, ${(-uy * A * 0.4).toFixed(1)}px) scale(0.98, 1.02)`, offset: 0.7 },
+        { transform: 'translate(0, 0) scale(1)' },
+      ], { duration: 520, delay: (d / 1500) * 1000, easing: 'cubic-bezier(.2, 0, .2, 1)' });
+    });
+  };
+  const enter = (e?: React.MouseEvent) => { ripple(e?.clientX, e?.clientY); onEnterGarden(); };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEnterGarden(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(); }
   };
 
 return (
@@ -41,7 +77,7 @@ return (
       aria-label="进入绿洲"
       onKeyDown={handleKeyDown}
       className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer select-none outline-none"
-      onClick={onEnterGarden}
+      onClick={enter}
       initial={{ opacity: 0, y: 30, filter: 'blur(20px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       exit={{ opacity: 0, transition: { duration: 0.6 } }} // ✨ 修复：极速退场，解除等待阻塞
@@ -75,11 +111,17 @@ return (
         {/* 呼吸的光晕：预先用 blur 栅格化好的发光副本，循环里只动 opacity（合成器友好），
             不再逐帧对 text-shadow 重新走 paint 管线 —— 首屏动画对移动端 GPU 更友好。 */}
         <span className="relative inline-block">
-          <span
-            className="text-[15vw] md:text-[180px] font-black tracking-[0.3em] ml-[0.3em] leading-none text-transparent bg-clip-text"
-            style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(57,197,187,0.6) 50%, rgba(255,183,197,0.6) 100%)' }}
-          >
-            OASIS
+          <span ref={wordRef} aria-label="OASIS" className="text-[15vw] md:text-[180px] font-black tracking-[0.3em] ml-[0.3em] leading-none">
+            {'OASIS'.split('').map((ch, i) => (
+              <span
+                key={i} aria-hidden ref={(el) => { letterRefs.current[i] = el; }}
+                className="inline-block text-transparent bg-clip-text will-change-transform"
+                style={{
+                  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(57,197,187,0.6) 50%, rgba(255,183,197,0.6) 100%)',
+                  backgroundSize: 'var(--ww, 100%) 100%', backgroundPosition: 'calc(var(--lx, 0px) * -1) 0', backgroundRepeat: 'no-repeat',
+                }}
+              >{ch}</span>
+            ))}
           </span>
           <motion.span
             aria-hidden
