@@ -462,7 +462,8 @@ function App() {
       </AnimatePresence>
 
       <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_150px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] transition-shadow duration-[1500ms]" />
-      <OasisBackground phase={bgPhase} isDark={isDarkMode} />
+      {/* 尺牍与园图自带不透明的地，樱瓣在底下一瓣也看不见：淡出后停画 */}
+      <OasisBackground phase={bgPhase} isDark={isDarkMode} covered={appView === 'lights' || appView === 'yuantu'} />
       {terminalStatus === 'granted' && <NightWhisper />}
       <div className="relative w-full h-full flex items-center justify-center z-10">
         <AnimatePresence mode="wait">
