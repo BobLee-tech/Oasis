@@ -2,10 +2,10 @@
 //    共用 Gallery 的沉浸阅读层，气质统一：安静的线、克制的光、一物多用。
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, useMotionValueEvent, useTransform, useScroll, useSpring, type MotionValue } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValueEvent, useReducedMotion, useTransform, useScroll, useSpring, type MotionValue } from 'framer-motion';
 import type { TocItem } from '../lib/reading';
 import { LIGHTBOX_EVENT } from './Markdown';
-import { currentSolarTerm } from '../lib/solarTerms';
+import { colophonOf, HOU_ORDINAL } from '../lib/hou';
 import { PROJECTS } from '../data/projects';
 import type { Backlink } from '../lib/wikilinks';
 
@@ -321,26 +321,75 @@ export const ReaderToc: React.FC<ReaderTocProps> = ({ items, color, containerRef
 };
 
 // ══════════════════════════════════════════════════════════════
-// 🖋️ 文末落款：正文读完，一条渐弱的水波细线 + 写作日期与当时的节气，
+// 🖋️ 文末落款：正文读完，一条渐弱的水波细线 + 一列竖排落款 + 一方园主印，
 //    给每篇文章一个统一的收束仪式（峰终体验里，离开前的最后印象）。
-//    节气按 createdAt 换算，而非「今天」——落款记的是「写于」那一刻的时节。
+//    写法与尺牍邻居信的落款同一套：干支纪年 · 节气 · 七十二候（lib/hou.ts），都按 createdAt 推——
+//    落款记的是「写于」那一刻的时节，而非今天。印是园图卷尾那方（克利夫兰 1978.67，CC0），
+//    读到文末时落、压、起三拍钤上；同一篇只演第一次，之后静静印在那里（本机记一笔）。
 // ══════════════════════════════════════════════════════════════
-interface ColophonProps { date: string; createdAt: number; updatedAt: number; color: string }
-export const Colophon: React.FC<ColophonProps> = ({ date, createdAt, updatedAt, color }) => {
-  // 🌿 只有真被「照料」过（而非发完顺手改错别字）才多长一行——48h 阈值，与列表页「最近照料」一致
+const SEAL_SRC = `${((import.meta.env.VITE_YUANTU_BASE as string | undefined) || '/yuantu').replace(/\/$/, '')}/seals/s00.webp`;
+const SEALED_KEY = 'oasis_sealed_posts';
+const readSealed = (): string[] => { try { return JSON.parse(localStorage.getItem(SEALED_KEY) || '[]'); } catch { return []; } };
+const markSealed = (id: string) => {
+  try { localStorage.setItem(SEALED_KEY, JSON.stringify([...readSealed().filter(x => x !== id), id].slice(-300))); } catch { /* 隐私模式不记，下次再钤一次也无妨 */ }
+};
+
+interface ColophonProps { postId: string; createdAt: number; updatedAt: number; color: string }
+export const Colophon: React.FC<ColophonProps> = ({ postId, createdAt, updatedAt, color }) => {
+  // 🌿 只有真被「照料」过（而非发完顺手改错别字）才多长一列——48h 阈值，与列表页「最近照料」一致
   const tended = updatedAt - createdAt > 48 * 3600 * 1000;
-  const tendedDate = tended
-    ? new Date(updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : null;
+  const c = colophonOf(new Date(createdAt));
+  const u = tended ? colophonOf(new Date(updatedAt)) : null;
+  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  // idle：还没读到这里（印先不出）；press：正在钤；done：已经印着
+  const [seal, setSeal] = useState<'idle' | 'press' | 'done'>(() => (readSealed().includes(postId) ? 'done' : 'idle'));
+  useEffect(() => {
+    if (seal !== 'idle' || !ref.current) return;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some(e => e.isIntersecting)) return;
+      io.disconnect(); markSealed(postId); setSeal(reduce ? 'done' : 'press');
+    }, { threshold: 0.6 });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [seal, postId, reduce]);
+
+  const label = `写于${c.year}年${c.term}，${HOU_ORDINAL[c.houIndex]}${c.hou}${u ? `；照料于${u.term}，${HOU_ORDINAL[u.houIndex]}${u.hou}` : ''}`;
   return (
-    <div className="mt-16 mb-6 flex flex-col items-center gap-3 select-none">
+    <div ref={ref} className="mt-16 mb-6 flex flex-col items-center gap-4 select-none" aria-label={label} role="note">
       <svg width="120" height="10" viewBox="0 0 120 10" aria-hidden>
         <path d="M0 5 Q15 0 30 5 T60 5 T90 5 T120 5" fill="none" stroke={color} strokeWidth="1" opacity="0.55" />
       </svg>
-      <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500 tracking-wide text-center leading-relaxed">
-        写于 {date} · {currentSolarTerm(new Date(createdAt)).name}
-        {tended && <><br />照料于 {tendedDate} · {currentSolarTerm(new Date(updatedAt)).name}</>}
-      </span>
+      <div className="flex flex-row-reverse items-start gap-4" aria-hidden>
+        <div className="flex flex-col items-center gap-3">
+          <span className="[writing-mode:vertical-rl] font-zh text-[15px] leading-[1.9] tracking-[0.32em] text-slate-500 dark:text-slate-400">
+            {c.year}年{c.term}<span className="text-xs tracking-[0.24em] text-slate-400 dark:text-slate-500">{'\u3000'}{HOU_ORDINAL[c.houIndex]}{'\u3000'}{c.hou}</span>
+          </span>
+          <div className="relative w-[58px] h-[55px] mt-1">
+            {seal !== 'idle' && (
+              <motion.img
+                src={SEAL_SRC} alt="" draggable={false}
+                className="absolute inset-0 w-full h-full mix-blend-multiply dark:mix-blend-screen dark:opacity-80"
+                initial={seal === 'press' ? { opacity: 0, scale: 1.35, y: -26, rotate: -9, filter: 'blur(2px)' } : false}
+                animate={{ opacity: 0.92, scale: [null, 1.08, 0.97, 1], y: [null, -4, 0, 0], rotate: [null, -4, -2, -2], filter: 'blur(0px)' }}
+                transition={{ duration: 1.05, times: [0, 0.42, 0.55, 1], ease: ['easeIn', 'easeOut', 'easeOut'] }}
+              />
+            )}
+            {/* 印泥斑：压下那一瞬闪一下 */}
+            {seal === 'press' && (
+              <motion.i
+                className="absolute -inset-[30%] bg-[url(/textures/inkpad-specks.webp)] bg-center bg-[length:80px] mix-blend-multiply pointer-events-none"
+                initial={{ opacity: 0 }} animate={{ opacity: [0, 0, 0.35, 0] }} transition={{ duration: 1.6, times: [0, 0.4, 0.48, 1] }}
+              />
+            )}
+          </div>
+        </div>
+        {u && (
+          <span className="[writing-mode:vertical-rl] font-zh text-[13px] leading-[1.9] tracking-[0.3em] text-slate-400 dark:text-slate-500">
+            照料于{u.term}{'\u3000'}{HOU_ORDINAL[u.houIndex]} {u.hou}
+          </span>
+        )}
+      </div>
     </div>
   );
 };

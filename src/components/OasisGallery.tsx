@@ -9,6 +9,8 @@ import { usePostResonance } from '../hooks/usePostResonance';
 import { PLAYLIST, switchTrack } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
 import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter, WorkshopNote } from './OasisReader';
+import { CoverPaper } from './garden/CoverPaper';
+import { coverKindOf } from './garden/paperKind';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
 import { buildTitleIndex, resolveWikiLinks, buildBacklinkIndex, extractWikiLinks } from '../lib/wikilinks';
@@ -1437,17 +1439,23 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           // 📍 续读进度：2%~92% 之间视为「读到一半」，读完或未读都不打扰
                           const progress = readProgressByPost[post.id]?.pct ?? 0;
                           const isOngoing = progress > 0.02 && progress < 0.92;
+                          // 📜 封面条是一条纸（随笔＝花笺、学习笔记＝帘纹界格、项目复盘＝云纹缎，见 garden/CoverPaper.tsx）；
+                          //    自定义分类没有对应的纸，仍是情绪色渐变 + 图标。这一月只有一篇就占满两列，右列不再空着
+                          const paper = coverKindOf(post.type);
+                          const wide = group.posts.length === 1;
                           return (
                             // ✨ 优化卡片背景：夜间采用纯白微透明度，透出深色星河底色，绝对不会发黑模糊
                             // 🌗 明暗两态走不同的建立层次的手法：暗色靠提高白度制造深浅（背景本就近黑，
                             //    提亮即分层）；浅色靠投影 + 更饱和的底色——白边在暖纸白背景上几乎隐形，
                             //    只提高透明度不够，边框改极淡墨色、配一层克制的静态阴影，卡片才立得起来。
-                            <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none bg-white/[0.82] dark:bg-white/[0.06] ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'}`} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
-                              <div className="h-28 w-full relative overflow-hidden">
-                                {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
-                                <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
-                                {/* 大类型图标水印：淡化的情绪色，去占位感 */}
-                                <div className="absolute -right-3 -bottom-6 w-28 h-28 opacity-[0.13] dark:opacity-[0.16] pointer-events-none transition-opacity duration-[1500ms]" style={{ color: post.color }}><CategoryIcon name={meta.icon} /></div>
+                            <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl ${wide ? 'xl:col-span-2' : ''} cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none bg-white/[0.82] dark:bg-white/[0.06] ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'}`} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
+                              <div className={`${wide ? 'h-28 xl:h-32' : 'h-28'} w-full relative overflow-hidden`}>
+                                {paper ? <CoverPaper kind={paper} color={post.color} /> : <>
+                                  {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
+                                  <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
+                                  {/* 大类型图标水印：淡化的情绪色，去占位感 */}
+                                  <div className="absolute -right-3 -bottom-6 w-28 h-28 opacity-[0.13] dark:opacity-[0.16] pointer-events-none transition-opacity duration-[1500ms]" style={{ color: post.color }}><CategoryIcon name={meta.icon} /></div>
+                                </>}
                                 {/* 类型徽章：左上角，图标 + 名称，染类型微光色 */}
                                 <div className="absolute top-4 left-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-black/50 backdrop-blur-sm border border-white/60 dark:border-white/10 oasis-accent-ink" style={{ '--accent': meta.color } as React.CSSProperties}>
                                   <span className="w-3 h-3"><CategoryIcon name={meta.icon} /></span>
@@ -1819,7 +1827,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 <Markdown className={`${PROSE_CLASS} leading-[2.2] prose-img:my-12 prose-headings:scroll-mt-24 transition-colors duration-[1500ms] ease-in-out`}>{resolvedContent}</Markdown>
 
                 {/* 🖋️ 文末落款：每篇文章统一的收束仪式 */}
-                <Colophon date={activePost.date} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
+                <Colophon postId={activePost.id} createdAt={activePost.createdAt} updatedAt={activePost.updatedAt} color={activePost.color} />
                 <WorkshopNote postId={activePost.id} />
 
                 <PostFooter
