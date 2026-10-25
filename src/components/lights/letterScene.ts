@@ -11,6 +11,10 @@
 //   · 省：阴影图 1024；骑缝印的下半是各封共用的一小块贴花；笺第一次移近才画（材质先挂占位贴图，换图不重编着色器）。
 //     没人动、也没有补间时只画 30 帧、阴影图 15 次/秒（竹影、烛闪是背景里的动，30 帧够），一有动静当帧回满。
 //     验收数字与对照见 docs/chidu-next.html 的实验台。
+//   · 纸会弯：笺的截面在顶点着色器里按弧长积分（BEND），折痕是小圆弧、摊开时边角滞后再回弹、拿在手里整张微拱；
+//     同一段挂到 customDepthMaterial，影子也跟着弯。笺还有一截在封里时不许弯（拱起的边会顶穿口袋面）。
+//   · 洒金会闪：金箔单成一层（金属度 1、每片法线随机偏），环境是离屏摆的一间左上开窗的屋（与竹影的天光同向），不下载 HDR。
+//   · 一阵风：同一个 gust 摇竹影、掀没封口的封舌（封了口、或笺正躺在上面的不动）、吹偏烛焰、让手里的笺微颤。
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
@@ -137,6 +141,43 @@ const vcol = (x: CanvasRenderingContext2D, str: string, cx: number, y0: number, 
   x.restore();
 };
 
+/* 纸会弯：uRole 0＝右半页（离折痕的距离 d，整张同一曲率 κ）；1＝左半页（弧长 s 处的切角 ψ(s)）。
+   ψ(s) = θ·min(1, s/w)   折痕是宽 w 的圆弧
+        + lag·(s/LW)^1.6   边角按角速度滞后
+        + κ·s·cosθ         整张微拱（对折时朝向跟着翻，两层才套得住）
+   w = lag = κ = 0 时就是原先绕铰链的刚体转动。 */
+const BEND = /* glsl */ `
+uniform float uRole, uTheta, uW, uLag, uKappa, uLW;
+float ltPsi(float s) {
+  float ramp = uW > 0.001 ? min(1.0, s / uW) : 1.0;
+  return uTheta * ramp + uLag * pow(s / uLW, 1.6) + uKappa * s * cos(uTheta);
+}
+void ltBend(inout vec3 p, out vec3 n) {
+  if (uRole < 0.5) {
+    float d = p.x + uLW * 0.5, c = uKappa * d;
+    if (abs(uKappa) > 1e-6) { p.x = sin(c) / uKappa - uLW * 0.5; p.z += (1.0 - cos(c)) / uKappa; }
+    n = vec3(-sin(c), 0.0, cos(c));
+  } else {
+    float s = max(0.0, uLW * 0.5 - p.x), ds = s / 20.0;
+    vec2 P = vec2(0.0);
+    for (int i = 0; i < 20; i++) { float q = ltPsi((float(i) + 0.5) * ds); P += vec2(-cos(q), sin(q)) * ds; }
+    float q = ltPsi(s);
+    p.x = P.x + uLW * 0.5; p.z += P.y;
+    n = vec3(sin(q), 0.0, cos(q));
+  }
+}`;
+type BendU = Record<'uTheta' | 'uW' | 'uLag' | 'uKappa' | 'uLW', { value: number }>;
+const bendify = <M extends THREE.Material>(m: M, U: BendU, role: 0 | 1) => {
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U, { uRole: { value: role } });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + BEND)
+      .replace('#include <beginnormal_vertex>', 'vec3 objectNormal; { vec3 q0 = position; ltBend(q0, objectNormal); }\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3( tangent.xyz );\n#endif')
+      .replace('#include <begin_vertex>', 'vec3 transformed = position; { vec3 n0; ltBend(transformed, n0); }');
+  };
+  return m;
+};
+
 interface Item extends Letter {
   idx: number;
   el: HTMLElement;
@@ -148,8 +189,12 @@ interface Item extends Letter {
   env: THREE.Group; flapPivot: THREE.Group; letter: THREE.Group; sheet: THREE.Group; hinge: THREE.Group;
   panels: THREE.Mesh[]; blob: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   cast: boolean;
-  /** 笺的正面材质；paper 是留给笺的那支随机，笺画好就清掉 */
-  lmat: THREE.MeshStandardMaterial; paper?: Rand;
+  /** 笺的正面（右、左半页弯法不同，各一份）；paper 是留给笺的那支随机，笺画好就清掉 */
+  fronts: THREE.MeshStandardMaterial[]; paper?: Rand;
+  /** 纸会弯的参数，与边角滞后、整张微拱两根弹簧 */
+  U: BendU; bend: { prev: number; lag: number; lagV: number; k: number; kV: number };
+  /** 洒金那一层（只有邻居的信有） */
+  gold?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
 }
 
 export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
@@ -193,6 +238,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   const READ = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 };
   const MODE = { n: o.night ? 1 : 0 };
   const VEIL = { o: 0 };
+  const WIND = { g: 0, flap: 0 };
   const FOCUS = new THREE.Vector3();
   const PTR = { on: false, p: new THREE.Vector3(), t: 0 };
   const CANDLE = new THREE.Vector3(), CT = new THREE.Vector3();
@@ -418,7 +464,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   /* ───── 每帧 ───── */
   const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
   const camRight = new THREE.Vector3(), camUp = new THREE.Vector3(), camBack = new THREE.Vector3();
-  const pose = (it: Item) => {
+  const pose = (it: Item, t: number, dt: number) => {
     const st = it.st, s = it.s, e = st.enter;
     const arc = Math.sin(clamp(e, 0, 1) * Math.PI) * 60 * s;
     it.tilt.x += (it.tilt.tx * st.lift - it.tilt.x) * 0.12; it.tilt.y += (it.tilt.ty * st.lift - it.tilt.y) * 0.12;
@@ -427,7 +473,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     it.env.scale.setScalar(s);
     // 封舌：0 盖在口袋面上 … 1 平躺在信封上方（比笺低）；不回弹，尖一翘就戳穿躺在上面的笺
     const a = Math.PI * clamp(st.flap, 0, 1);
-    it.flapPivot.rotation.x = -a;
+    // 一阵风只掀没封口、上面也没躺着笺的封舌（虚席那只）
+    const free = !RM && st.flap > 0.97 && st.peek < 0.02 && st.out <= 0 && st.fly <= 0;
+    it.flapPivot.rotation.x = -a + (free ? WIND.flap * (0.62 + 0.38 * Math.sin(t * 5.3 + it.idx * 1.7)) : 0);
     // 铰链：立起来之前高于口袋面，过了竖直才落到笺下面（早落会让封舌根部陷进口袋面）
     const fall = clamp((a / Math.PI - 0.5) / 0.5, 0, 1);
     it.flapPivot.position.z = lerp(Z_POCKET + 0.5, 0.1, fall * fall * (3 - 2 * fall));
@@ -447,9 +495,18 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       _q.slerp(READ.quat, f); _s.setScalar(lerp(s, READ.scale, f));
     }
     it.letter.position.copy(_p); it.letter.quaternion.copy(_q); it.letter.scale.copy(_s);
-    const u = st.unfold;
-    it.hinge.rotation.y = -Math.PI * (1 - u) - 0.07 * clamp(u, 0, 1);   // 摊开后中缝留一点折角
+    const u = st.unfold, uc = clamp(u, 0, 1), f = clamp(st.fly, 0, 1);
     it.sheet.position.x = (LW / 2) * clamp(u, 0, 1.05);
+    // 纸会弯：折角 θ 与原先的铰链同（摊开后中缝留一点折角），怎么弯交给着色器
+    const theta = -Math.PI * (1 - u) - 0.07 * uc, B = it.bend;
+    const vTh = dt > 0 ? (theta - B.prev) / dt : 0; B.prev = theta;
+    B.lagV += (110 * (clamp(-vTh * 0.085, -0.7, 0.7) - B.lag) - 12 * B.lagV) * dt; B.lag += B.lagV * dt;   // 边角跟着角速度慢半拍，停下回弹
+    const kT = 0.001 * Math.sin(Math.PI * f) + 0.00045 * uc + (RM ? 0 : WIND.g * 0.00024 * Math.sin(t * 1.9) * f);   // 飞起时兜风、读时微拱、风来微颤
+    B.kV += (140 * (kT - B.k) - 7 * B.kV) * dt; B.k += B.kV * dt;
+    const clear = clamp((f - 0.04) / 0.2, 0, 1);   // 还有一截在封里时不许弯：拱起的边会顶穿口袋面（弹簧余振一并压住）
+    it.U.uTheta.value = theta; it.U.uW.value = lerp(1.2, 24, Math.sin(Math.PI * uc));
+    it.U.uLag.value = RM ? 0 : B.lag * clear; it.U.uKappa.value = B.k * clear;
+    if (it.gold) it.gold.material.envMapIntensity = lerp(1.15, 0.1, MODE.n);   // 夜里屋子暗了，金点只认烛
     it.letter.visible = st.peek > 0.001 || st.out > 0 || st.fly > 0;
     const cast = st.fly < 0.4;   // 举到眼前时不再往桌上投影（烛太近，影子会铺满半张桌）
     if (it.cast !== cast) { it.cast = cast; for (const m of it.panels) m.castShadow = cast; }
@@ -466,8 +523,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   const tick = (time: number, dms: number) => {
     if (!started || !ground) return;
     const dt = Math.min(dms / 1000, 0.05), t = time, n = MODE.n;
-    // 天光：窗外竹影随风（风有阵）
+    // 风有阵：同一阵风摇竹影、掀封舌、吹烛、让手里的笺微颤；夜里关了窗，封舌只掀四成
     const gust = RM ? 0 : (Math.sin(t * 0.37) * 0.5 + 0.5) * (Math.sin(t * 0.11 + 1) * 0.5 + 0.5);
+    WIND.g = gust; WIND.flap = Math.pow(gust, 1.6) * 0.2 * lerp(1, 0.4, n);
     const sway = RM ? 0 : Math.sin(t * 0.9) * (6 + 12 * gust) + Math.sin(t * 2.3 + 1) * 3 * gust;
     sun.position.set(FOCUS.x - 1500, FOCUS.y + 1750, 2600);
     sun.target.position.set(FOCUS.x + sway, FOCUS.y + sway * 0.4, 0);
@@ -485,9 +543,10 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     } else CT.set(FOCUS.x - 260, FOCUS.y + 220, 430);
     if (!tPrev) CANDLE.copy(CT);
     CANDLE.lerp(CT, 1 - Math.exp(-dt * 3.2)); tPrev = t;
-    const fl = RM ? 1 : 1 + 0.05 * Math.sin(t * 9.1 + Math.sin(t * 2.3) * 2) + 0.03 * Math.sin(t * 23.7) + 0.02 * Math.sin(t * 4.1 + 1.3);
-    const jit = RM ? 0 : 1.6;
-    candle.position.set(CANDLE.x + Math.sin(t * 7.3) * jit, CANDLE.y + Math.sin(t * 5.1 + 1) * jit, CANDLE.z);
+    const amp = 0.55 + 1.1 * gust;   // 风来烛焰摇得勤、也往下风偏一点
+    const fl = RM ? 1 : 1 + amp * (0.05 * Math.sin(t * 9.1 + Math.sin(t * 2.3) * 2) + 0.03 * Math.sin(t * 23.7) + 0.02 * Math.sin(t * 4.1 + 1.3));
+    const jit = RM ? 0 : 1.6, lean = gust * 16;
+    candle.position.set(CANDLE.x + Math.sin(t * 7.3) * jit + lean, CANDLE.y + Math.sin(t * 5.1 + 1) * jit - lean * 0.3, CANDLE.z);
     if (readingNear) candle.target.position.copy(READ.pos);
     else candle.target.position.set(CANDLE.x + 40, CANDLE.y - 60, 0);
     candle.intensity = 5.6e5 * n * fl * (reading >= 0 ? lerp(1, 0.72, items[reading].st.fly) : 1);
@@ -495,13 +554,13 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     renderer.toneMappingExposure = lerp(1, 1.12, n);
     ground.material.color.setScalar(lerp(1, 0.9, n));
 
-    for (const it of items) pose(it);
+    for (const it of items) pose(it, t, dt);
     veilMat.color.lerpColors(C_DAY.veil, C_NIGHT.veil, n);
     veilMat.opacity = VEIL.o * lerp(0.5, 0.62, n);
     veil.visible = VEIL.o > 0.001;
     // 闲时降帧：指针 1.2 s 没动、也没有补间在走，就只画 30 帧、阴影图 15 次/秒；一有动静当帧回满
     const now = performance.now();
-    if (busy || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st))) lastActive = now;
+    if (busy || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st) || Math.abs(it.bend.lagV) > 0.01 || Math.abs(it.bend.kV) > 1e-5)) lastActive = now;
     const idle = now - lastActive > 600;
     if (idle && t - lastRender < 1 / 30 - 0.003) return;
     renderer.shadowMap.autoUpdate = !idle;
@@ -569,6 +628,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       rx.fillStyle = 'rgb(235,235,235)'; rx.fillRect(0, 0, 256, 384);
       x.strokeStyle = 'rgba(110,84,48,.38)'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2);   // 纸边一圈略深，显出厚度
       const lw = 58 * EK, lx = (w - lw) / 2, ly = 146 * EK, lh = (H - 22 - 146) * EK;
+      const flakes: { x: number; y: number; s: number; a: number }[] = [];   // 记下每片金箔，洒金那层照着画
       if (it.kind === 'friend') {
         x.save();
         x.fillStyle = '#A3322A'; x.fillRect(lx, ly, lw, lh);
@@ -578,6 +638,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         rx.fillStyle = 'rgb(178,178,178)'; rx.fillRect(lx / 2, ly / 2, lw / 2, lh / 2);
         for (let i = 0; i < 110; i++) {   // 洒金：金箔碎点，大小不一、方向不一
           const fx = lx + r() * lw, fy = ly + r() * lh, s = 0.7 + r() * r() * 3, a = r() * Math.PI;
+          flakes.push({ x: fx, y: fy, s, a });
           x.save(); x.translate(fx, fy); x.rotate(a); x.fillStyle = `hsla(${38 + r() * 8},${48 + r() * 16}%,${52 + r() * 16}%,${0.7 + r() * 0.25})`;
           x.beginPath(); x.moveTo(-s, -s * 0.6); x.lineTo(s * 0.9, -s * 0.8); x.lineTo(s, s * 0.7); x.lineTo(-s * 0.7, s); x.closePath(); x.fill(); x.restore();
           rx.fillStyle = 'rgb(55,55,55)'; rx.fillRect(fx / 2 - s * 0.5, fy / 2 - s * 0.5, s, s);
@@ -590,7 +651,47 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         x.save(); x.setLineDash([7, 6]); x.strokeStyle = 'rgba(168,53,42,.7)'; x.lineWidth = 2; x.strokeRect(lx + 2, ly + 2, lw - 4, lh - 4); x.restore();
         vcol(x, '虚席以待', w / 2, ly + 40, ly + lh - 30, { size: 32, color: 'rgba(168,53,42,.85)', gap: 1.4 });
       }
-      return { map: ctex(c), rough: ctex(rc, false) };
+      return { map: ctex(c), rough: ctex(rc, false), flakes, label: { lx, ly, lw, lh } };
+    };
+
+    /* 洒金的环境：离屏摆一间屋，左上一扇窗（与竹影的天光同向；+z 朝上），近处桌沿一点暖反光。
+       PMREM 一张约 6 MB，全桌共用；夜里压暗，金点只剩烛的高光 */
+    const goldEnv = (() => {
+      const s = new THREE.Scene(), junk: { dispose(): void }[] = [];
+      const add = (geo: THREE.BufferGeometry, col: string, k: number, side: THREE.Side) => {
+        const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side }));
+        junk.push(geo, m.material); s.add(m); return m;
+      };
+      add(new THREE.BoxGeometry(10, 10, 10), '#5A5044', 1, THREE.BackSide);
+      const win = add(new THREE.PlaneGeometry(3.2, 2.4), '#FFF3E0', 9, THREE.DoubleSide); win.position.set(-2.2, 2.6, 4.6); win.lookAt(0, 0, 0);
+      const sill = add(new THREE.PlaneGeometry(6, 1.2), '#FFE2B8', 1.3, THREE.DoubleSide); sill.position.set(0, -4.6, 2.2); sill.lookAt(0, 0, 0);
+      const lamp = add(new THREE.PlaneGeometry(1.4, 1.4), '#FFF1DE', 2.4, THREE.DoubleSide); lamp.position.set(3.5, 1, 4.5); lamp.lookAt(0, 0, 0);
+      const pm = new THREE.PMREMGenerator(renderer), rt = own(pm.fromScene(s, 0.035));
+      pm.dispose(); junk.forEach((x) => x.dispose());
+      return rt.texture;
+    })();
+    /* 洒金那一层：只盖红签那一条，每片金箔金属度 1、法线随机偏 ±25°（金箔本来就皱），挪烛就一粒粒亮 */
+    const goldLayer = (name: string, flakes: { x: number; y: number; s: number; a: number }[], L: { lx: number; ly: number; lw: number; lh: number }) => {
+      const r = rnd(hash(name) + 91), w = Math.ceil(L.lw), h = Math.ceil(L.lh);
+      const c = mk(w, h), x = ctx2d(c), nc = mk(w, h), nx = ctx2d(nc);
+      nx.fillStyle = 'rgb(128,128,255)'; nx.fillRect(0, 0, w, h);
+      for (const f of flakes) {
+        const tx = (r() - 0.5) * 0.95, ty = (r() - 0.5) * 0.95, tz = Math.sqrt(Math.max(0.1, 1 - tx * tx - ty * ty));
+        const path = (g: CanvasRenderingContext2D) => {
+          const s = f.s * 1.15;
+          g.save(); g.translate(f.x - L.lx, f.y - L.ly); g.rotate(f.a);
+          g.beginPath(); g.moveTo(-s, -s * 0.6); g.lineTo(s * 0.9, -s * 0.8); g.lineTo(s, s * 0.7); g.lineTo(-s * 0.7, s); g.closePath(); g.fill(); g.restore();
+        };
+        x.fillStyle = `hsl(${40 + r() * 10},${45 + r() * 20}%,${70 + r() * 16}%)`; path(x);
+        nx.fillStyle = `rgb(${Math.round((tx * 0.5 + 0.5) * 255)},${Math.round((ty * 0.5 + 0.5) * 255)},${Math.round((tz * 0.5 + 0.5) * 255)})`; path(nx);
+      }
+      const m = new THREE.Mesh(own(new THREE.PlaneGeometry(w / EK, h / EK)), own(new THREE.MeshStandardMaterial({
+        map: ctex(c), normalMap: ctex(nc, false), color: '#EBC77E', metalness: 1, roughness: 0.3, envMap: goldEnv,
+        transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      })));
+      m.position.set(((L.lx + w / 2) / 512 - 0.5) * W, (0.5 - (L.ly + h / 2) / 768) * H, Z_POCKET + 0.08);
+      m.renderOrder = 2; m.receiveShadow = true;
+      return m;
     };
 
     /* 骑缝印：封舌与口袋面各一份，口袋面挖掉封舌盖住的三角——拆开时一分为二 */
@@ -707,13 +808,13 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     triGeo.setAttribute('position', new THREE.Float32BufferAttribute([-W / 2, 0, 0, 0, -FH, 0, W / 2, 0, 0], 3));
     triGeo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
     triGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 0.5, 0, 1, 1], 2));
-    const panelGeo = (half: 'R' | 'L') => {   // 笺的半页：uv 只取整张贴图的一半
-      const g = own(new THREE.PlaneGeometry(LW, LH)), uv = g.attributes.uv;
-      for (let i = 0; i < uv.count; i++) uv.setX(i, half === 'R' ? 0.5 + uv.getX(i) * 0.5 : uv.getX(i) * 0.5);
+    // 笺的半页：正面 uv 只取整张贴图的一半；横向分段给弯纸用（折痕与边角滞后都在左半页上，分得细些）
+    const panelGeo = (half: 'R' | 'L' | null, segs: number) => {
+      const g = own(new THREE.PlaneGeometry(LW, LH, segs, 1)), uv = g.attributes.uv;
+      if (half) for (let i = 0; i < uv.count; i++) uv.setX(i, half === 'R' ? 0.5 + uv.getX(i) * 0.5 : uv.getX(i) * 0.5);
       return g;
     };
-    const GEO = { pocket: own(new THREE.PlaneGeometry(W, H)), R: panelGeo('R'), L: panelGeo('L'), back: own(new THREE.PlaneGeometry(LW, LH)), blob: own(new THREE.PlaneGeometry(1, 1)) };
-    const backMat = own(new THREE.MeshStandardMaterial({ map: T.back, color: '#F2EADB', roughness: 0.95, side: THREE.BackSide }));
+    const GEO = { pocket: own(new THREE.PlaneGeometry(W, H)), R: panelGeo('R', 24), L: panelGeo('L', 64), bR: panelGeo(null, 24), bL: panelGeo(null, 64), blob: own(new THREE.PlaneGeometry(1, 1)) };
     const mat = <M extends THREE.Material>(m: M) => own(m);
     /* 占位贴图：笺画好之前先挂上（笺这时藏在封里看不见），换真图时着色器不用重编 */
     const solid = (col: string) => { const c = mk(2, 2), x = ctx2d(c); x.fillStyle = col; x.fillRect(0, 0, 2, 2); return c; };
@@ -724,6 +825,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       const rot = (r() - 0.5) * 0.07, enterRot = (idx % 2 ? 1 : -1) * (0.18 + r() * 0.14);
       const pocket = drawPocket(L0, r);
       const env = new THREE.Group(); scene.add(env);
+      const gold = L0.kind === 'friend' ? goldLayer(L0.name, pocket.flakes, pocket.label) : undefined;
+      if (gold) env.add(gold);
       const pm = new THREE.Mesh(GEO.pocket, mat(new THREE.MeshStandardMaterial({ map: pocket.map, roughnessMap: pocket.rough, roughness: 1, normalMap: T.laidN, normalScale: new THREE.Vector2(0.7, 0.7) })));
       pm.position.z = Z_POCKET; pm.castShadow = pm.receiveShadow = true; env.add(pm);
       if (L0.kind === 'friend') {   // 印的下半盖在口袋面上
@@ -738,13 +841,19 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
 
       // 笺：letter（整体位姿）→ sheet（摊开时整体右移半页，让中缝居中）→ 右半页 R ＋ 铰链 → 左半页 L
       // 笺第一次移近才画（drawSheet）：先挂占位贴图，r 在这里分一支留给它，画出来与当场画一模一样
-      const lmat = mat(new THREE.MeshStandardMaterial({ map: PH.map, normalMap: PH.normal, roughness: 0.9 }));
+      //   弯纸的参数各封一份，所以正面、背面、投影的材质都按封、按半页各建一份（着色器同一套，只编一次）
       const paper = r.fork();
+      const U: BendU = { uTheta: { value: -Math.PI }, uW: { value: 0 }, uLag: { value: 0 }, uKappa: { value: 0 }, uLW: { value: LW } };
+      const front = (role: 0 | 1) => mat(bendify(new THREE.MeshStandardMaterial({ map: PH.map, normalMap: PH.normal, roughness: 0.9 }), U, role));
+      const back = (role: 0 | 1) => mat(bendify(new THREE.MeshStandardMaterial({ map: T.back, color: '#F2EADB', roughness: 0.95, side: THREE.BackSide }), U, role));
+      const depth = (role: 0 | 1) => mat(bendify(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), U, role));
+      const fronts = [front(0), front(1)], dR = depth(0), dL = depth(1);
       const letter = new THREE.Group(), sheet = new THREE.Group(); letter.add(sheet); scene.add(letter);
-      const R = new THREE.Mesh(GEO.R, lmat), Rb = new THREE.Mesh(GEO.back, backMat);
-      const hinge = new THREE.Group(); hinge.position.set(-LW / 2, 0, -0.2);
-      const Lm = new THREE.Mesh(GEO.L, lmat), Lb = new THREE.Mesh(GEO.back, backMat);
+      const R = new THREE.Mesh(GEO.R, fronts[0]), Rb = new THREE.Mesh(GEO.bR, back(0));
+      const hinge = new THREE.Group(); hinge.position.set(-LW / 2, 0, -0.2);   // 铰链不再转：折由着色器算
+      const Lm = new THREE.Mesh(GEO.L, fronts[1]), Lb = new THREE.Mesh(GEO.bL, back(1));
       Lm.position.x = Lb.position.x = -LW / 2;
+      R.customDepthMaterial = Rb.customDepthMaterial = dR; Lm.customDepthMaterial = Lb.customDepthMaterial = dL;
       const panels = [R, Rb, Lm, Lb];
       for (const m of panels) m.castShadow = m.receiveShadow = true;
       sheet.add(R, Rb, hinge); hinge.add(Lm, Lb);
@@ -757,12 +866,14 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         ...L0, idx, el: o.hits[idx], rot, enterRot, x: 0, y: 0, s: 1,
         st: { enter: RM ? 1 : 0, lift: 0, flap: L0.kind === 'vacant' ? 1 : 0, peek: 0, out: 0, fly: 0, unfold: 0 },
         tilt: { x: 0, y: 0, tx: 0, ty: 0 },
-        env, flapPivot, letter, sheet, hinge, panels, blob, cast: true, lmat, paper,
+        env, flapPivot, letter, sheet, hinge, panels, blob, cast: true, fronts, paper,
+        U, bend: { prev: -Math.PI, lag: 0, lagV: 0, k: 0, kV: 0 }, gold,
       };
     });
     drawSheet = (it) => {
       if (!it.paper) return;
-      it.lmat.map = ctex(drawLetter(it, it.paper)); it.lmat.normalMap = letterNormal(it);
+      const map = ctex(drawLetter(it, it.paper)), normal = letterNormal(it);
+      for (const m of it.fronts) { m.map = map; m.normalMap = normal; }
       it.paper = undefined;
     };
     items.forEach(bindHit);
@@ -772,6 +883,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     started = true;
     gsap.ticker.add(tick);
     o.onReady?.();
+    // 笺藏在封里还没露过面：趁进场把弯纸的着色器编好（不传贴图），免得第一次移近卡一下
+    renderer.compileAsync(scene, camera).catch(() => {});
     // 进场：信一封封落到桌上（每次进来都演；reduced-motion 直接摆好）
     if (!RM) items.forEach((it, i) => { gsap.to(it.st, { enter: 1, duration: 1.25, delay: 0.25 + i * 0.14, ease: 'expo.out' }); });
   };

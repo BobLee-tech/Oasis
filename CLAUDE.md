@@ -32,7 +32,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ### 尺牍 · 邻家来信(友链,原名灯火)
 - [OasisLights.tsx](src/components/OasisLights.tsx) — 一位邻居一封信：移近拆封窥信、点击抽出摊开读、⌘/Ctrl 点击直达（热区就是普通链接）；末尾一只「虚席以待」空信封，回帖里有可复制名帖与来信。数据 `src/data/friends.ts`（`color`=笺色，`since`=结邻日，落款写成干支节气），别再放占位邻居。演示稿 `docs/chidu-demo.html`。
-  - [lights/letterScene.ts](src/components/lights/letterScene.ts) — 引擎，**全程不进 React**：three.js 信封/封舌/对折八行笺 + GSAP 时间线；昼=竹影天光、夜=秉烛跟指针。可点之物是 React 渲染的 DOM，引擎只写位置、挂事件。防穿模三条（铰链过竖直才下沉、封舌不回弹、封舌躺平前笺不出封口）写在文件头，改开合时别破。画布每次自建自拆。省电省显存：阴影图 1024、骑缝印下半是共用贴花、笺第一次移近才画（`drawSheet`，随机数 `fork` 保证与当场画一样）、闲时 30 帧＋阴影 15 次/秒；验收数字与下一步提案在实验台 `docs/chidu-next.html`。
+  - [lights/letterScene.ts](src/components/lights/letterScene.ts) — 引擎，**全程不进 React**：three.js 信封/封舌/对折八行笺 + GSAP 时间线；昼=竹影天光、夜=秉烛跟指针。可点之物是 React 渲染的 DOM，引擎只写位置、挂事件。防穿模三条（铰链过竖直才下沉、封舌不回弹、封舌躺平前笺不出封口）写在文件头，改开合时别破。画布每次自建自拆。省电省显存：阴影图 1024、骑缝印下半是共用贴花、笺第一次移近才画（`drawSheet`，随机数 `fork` 保证与当场画一样）、闲时 30 帧＋阴影 15 次/秒；纸会弯（顶点着色器 `BEND` 按弧长积分，customDepthMaterial 让影子同弯；笺还有一截在封里时不许弯）、洒金会闪（金箔层 + 离屏开窗屋 PMREM）、一阵风（同一 gust 摇竹影、掀没封口的封舌、吹烛、颤笺）。验收数字与下一步提案在实验台 `docs/chidu-next.html`。
   - 写什么在 [lights/letters.ts](src/components/lights/letters.ts)；样式 `lights/lights.css`；素材 `public/lights/`（出处见 CREDITS.md），纸色与纸面法线借园图的 `public/yuantu/tex/`。字随本 chunk 自托管（朱雀仿宋、志莽行书、Homemade Apple、IM Fell），`vite.config.ts` 里这两套中文字的切片不内联进 CSS。
 
 ### 园图(一图 · 四处 · 一伴)
