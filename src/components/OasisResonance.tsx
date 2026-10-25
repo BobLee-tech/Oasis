@@ -38,6 +38,7 @@ import { LinerSlip } from './resonance/LinerSlip';
 import { RippleReveal } from './resonance/RippleReveal';
 import { ProgressArc } from './resonance/ProgressArc';
 import { CloseUpTransport } from './resonance/CloseUpTransport';
+import { createVinylSurface, type VinylSurface } from './resonance/vinylSurface';
 import { VolumeIcon, VolumePopover } from './resonance/VolumePopover';
 import { getTrackProfile, loadTrackProfiles, useTrackProfilesReady } from '../lib/trackProfile';
 
@@ -230,8 +231,71 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
     const state = spin.current;
     state.vel += (targetVel.current - state.vel) * (1 - Math.exp(-dt / 1.4));
     state.angle = (state.angle + state.vel * dt) % 360;
-    if (discRef.current) discRef.current.style.transform = `rotate(${state.angle}deg)`;
+    // 桌面的盘面是着色器：转的是声槽与贴纸，光不转，所以角度交给它、容器不转
+    if (vinylRef.current) vinylRef.current.setAngle(state.angle);
+    else if (discRef.current) discRef.current.style.transform = `rotate(${state.angle}deg)`;
   }, active && motionEnabled);
+
+  // 💿 盘面着色器（桌面）：光不随盘转、同一张专辑的几首按真实时长排成声槽带（resonance/vinylSurface.ts）。
+  //    拿不到 WebGL2 就留 CSS 盘；手机仍是 CSS 盘（移动端性能敏感）。
+  const vinylRef = useRef<VinylSurface | null>(null);
+  const armWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const disc = discRef.current;
+    if (!isDesktop || !disc) return;
+    const surface = createVinylSurface(disc, (dx, dy) => {
+      // 影子随光：昼往右下（窗在左上），夜里离烛而去
+      deckRef.current?.style.setProperty('--vsx', `${(dx * 14).toFixed(1)}px`);
+      deckRef.current?.style.setProperty('--vsy', `${(dy * 16).toFixed(1)}px`);
+      armWrapRef.current?.style.setProperty('--asx', `${(dx * 3).toFixed(1)}px`);
+      armWrapRef.current?.style.setProperty('--asy', `${(dy * 3).toFixed(1)}px`);
+    });
+    if (!surface) return;
+    vinylRef.current = surface;
+    disc.dataset.gl = 'on'; disc.style.transform = '';
+    surface.setAngle(spin.current.angle);
+    return () => { surface.destroy(); vinylRef.current = null; delete disc.dataset.gl; };
+  }, [isDesktop]);
+  // 盘上是哪一张专辑：曲库按专辑顺序排，同一文件夹的几首就是这张碟的声槽带；专辑名与年份档案到了用档案
+  const vinylAlbum = useMemo(() => {
+    const guessed = albumOf(currentTrack.url);
+    const tracks = PLAYLIST.filter(track => albumOf(track.url).key === guessed.key);
+    const profile = profilesReady ? getTrackProfile(currentTrack.id) : undefined;
+    return {
+      album: {
+        key: guessed.key, artist: currentTrack.artist, color: currentTrack.color,
+        title: profile?.album ?? guessed.name, year: profile?.year ? String(profile.year) : guessed.year,
+        tracks: tracks.map(track => ({ id: track.id })),
+      },
+      index: Math.max(0, tracks.findIndex(track => track.id === currentTrack.id)),
+    };
+  }, [currentTrack, profilesReady]);
+  const vinylIndex = useRef(vinylAlbum.index);
+  useEffect(() => {
+    vinylIndex.current = vinylAlbum.index;
+    vinylRef.current?.setAlbum(vinylAlbum.album);
+  }, [vinylAlbum, isDesktop]);
+  // 台面尺寸（唱针几何用）：只在尺寸变时量，ticker 里不读布局
+  const plinthSize = useRef({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = plinthRef.current; if (!el) return;
+    const ro = new ResizeObserver(() => { plinthSize.current = { w: el.offsetWidth, h: el.offsetHeight }; });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isDesktop]);
+  // 🎯 唱针落在当前曲目那条带里：给定半径反求唱臂角度。几何与版面同：轴在台面 right 9% / top 13%，
+  //    臂长 62% 台高；盘心在 left 6% + 71%/2、竖直居中。一首歌只走一条带的宽度。
+  const armTarget = (ratio: number) => {
+    const v = vinylRef.current, { w: W, h: H } = plinthSize.current;
+    if (!v || !W) return ARM_START + ratio * ARM_SWEEP;
+    const r = v.needleRadius(vinylIndex.current, ratio);
+    const px = W * 0.91 - 4, py = H * 0.13, len = H * 0.62 * 0.97;
+    const cx = W * 0.06 + W * 0.355, cy = H / 2, R = W * 0.355;
+    const dist = (deg: number) => { const a = deg * Math.PI / 180; return Math.hypot(px - len * Math.sin(a) - cx, py + len * Math.cos(a) - cy) / R; };
+    let lo = 0, hi = 60;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (dist(m) > r) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  };
 
   // 🦾 唱臂随播放进度内移：进度每帧在变，所以由 ticker 推弹簧、直接写 transform。
   //    同样从快照起步：在放就直接落在进度位置，抬落的弹簧只留给你按下播放 / 暂停的那一下。
@@ -245,7 +309,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
   useTicker((_now, dt) => {
     const { duration } = getPlayerSnapshot();
     const ratio = duration > 0 ? Math.min(1, getPlaybackTime() / duration) : 0;
-    const target = isPlaying ? ARM_START + ratio * ARM_SWEEP : ARM_REST;
+    const target = isPlaying ? armTarget(ratio) : ARM_REST;
     const state = arm.current;
     if (reduceMotion) {
       state.angle = target;
@@ -259,7 +323,8 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
         state.angle += state.vel * h;
       }
     }
-    if (Math.abs(state.angle - state.written) > 0.01 && armRef.current) {
+    // written 初值是 NaN：NaN 参与比较恒为假，所以第一笔要单独放行（否则唱臂进页后再也不动）
+    if ((Number.isNaN(state.written) || Math.abs(state.angle - state.written) > 0.01) && armRef.current) {
       state.written = state.angle;
       armRef.current.style.transform = `rotate(${state.angle}deg)`;
     }
@@ -660,8 +725,10 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
 
               <div
                 ref={discRef}
-                className="relative w-full h-full rounded-full shadow-[0_18px_45px_rgba(0,0,0,0.25)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.7)] overflow-hidden border border-slate-500/20 dark:border-white/10 will-change-transform"
+                className="group/disc relative w-full h-full rounded-full shadow-[0_18px_45px_rgba(0,0,0,0.25)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.7)] data-[gl=on]:shadow-[var(--vsx,0px)_var(--vsy,18px)_45px_rgba(0,0,0,0.25)] dark:data-[gl=on]:shadow-[var(--vsx,0px)_var(--vsy,18px)_45px_rgba(0,0,0,0.7)] overflow-hidden border border-slate-500/20 dark:border-white/10 will-change-transform"
               >
+                {/* 盘面着色器由引擎自建画布插在最前（data-gl=on 时下面这几层 CSS 盘就藏起来） */}
+                <div className="contents group-data-[gl=on]/disc:hidden">
                 {/* 黑胶纹理 */}
                 <div className="absolute inset-0" style={{ background: VINYL_GROOVES }} />
                 {/* 反光弧 */}
@@ -682,6 +749,7 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                 </div>
                 {/* 中轴 */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[4.5%] h-[4.5%] bg-[#FAF8F3] dark:bg-[#0A0F1D] rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] z-20" />
+                </div>
               </div>
 
               {/* ⭕ 近景进度：画在露出来的右半圈边上 */}
@@ -690,27 +758,18 @@ export const OasisResonance: React.FC<{ isOwner?: boolean }> = ({ isOwner = fals
                 className={`pointer-events-none absolute -left-[3.5%] -top-[3.5%] z-10 h-[107%] w-[107%] transition-opacity duration-500 ${closeUp ? 'opacity-100' : 'opacity-0'}`}
               />
 
-              {/* 悬停播放/暂停提示：只罩声槽（中间挖空给贴纸），悬停贴纸时让位给「内页」 */}
-              <div
-                className="absolute inset-0 rounded-full flex items-start justify-center pt-[9%] bg-black/0 group-hover:bg-black/25 opacity-0 group-hover:opacity-100 group-has-[.notes-label:hover]:opacity-0 transition-all duration-500 z-30 pointer-events-none"
-                style={{ maskImage: 'radial-gradient(circle, transparent 19.5%, #000 20.5%)', WebkitMaskImage: 'radial-gradient(circle, transparent 19.5%, #000 20.5%)' }}
-              >
-                <span className="text-white/90 drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] scale-[1.5]">
-                  {isPlaying ? Icons.pause : Icons.play}
-                </span>
-              </div>
               {notesLabel(false)}
             </div>
 
             {/* 🦾 唱臂 Tonearm：随播放状态落针/抬臂，并随进度缓缓内移（ticker 驱动） */}
-            <div className={`absolute right-[9%] top-[13%] h-[62%] z-30 pointer-events-none ${CAMERA} ${closeUp ? 'opacity-0' : ''}`}>
+            <div ref={armWrapRef} className={`absolute right-[9%] top-[13%] h-[62%] z-30 pointer-events-none ${CAMERA} ${closeUp ? 'opacity-0' : ''}`} style={{ filter: 'drop-shadow(var(--asx, 1px) var(--asy, 2px) 2px rgba(15, 23, 42, 0.2))' }}>
               {/* 轴座 */}
               <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[15%] min-w-9 aspect-square rounded-full bg-gradient-to-br from-slate-100 to-slate-300 dark:from-slate-600 dark:to-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.25)] border border-white/60 dark:border-white/10 z-20" />
               <div ref={armRef} className="relative h-full w-2 origin-top will-change-transform" style={{ transform: `rotate(${armStart}deg)` }}>
                 {/* 配重锤：枢轴上方 */}
                 <div className="absolute -top-[9%] left-1/2 -translate-x-1/2 w-4 h-[10%] rounded-md bg-gradient-to-b from-slate-300 to-slate-400 dark:from-slate-500 dark:to-slate-700 shadow-md" />
                 {/* 臂杆 */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[4px] h-[88%] rounded-full bg-gradient-to-b from-slate-300 via-slate-200 to-slate-300 dark:from-slate-500 dark:via-slate-400 dark:to-slate-500 shadow-[1px_2px_4px_rgba(0,0,0,0.2)]" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[4px] h-[88%] rounded-full bg-gradient-to-b from-slate-300 via-slate-200 to-slate-300 dark:from-slate-500 dark:via-slate-400 dark:to-slate-500" />
                 {/* 唱头壳 + 针尖 */}
                 <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ transform: 'translateX(-50%) rotate(14deg)' }}>
                   <div className="w-3 h-6 rounded-[3px] bg-gradient-to-b from-slate-400 to-slate-600 dark:from-slate-400 dark:to-slate-700 shadow-md" />

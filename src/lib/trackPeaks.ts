@@ -8,6 +8,8 @@ interface TrackPeaksDocument {
   version: 1;
   count: number;
   tracks: Record<string, string>;
+  /** 时长（秒），唱片按专辑分声槽带用；老文件没有这一项 */
+  durations?: Record<string, number>;
 }
 
 let documentCache: TrackPeaksDocument | null = null;
@@ -26,7 +28,7 @@ export const loadTrackPeaks = () => {
 };
 
 /** 同一首歌的数组只解一次，所以引用稳定，可以直接作为 useSyncExternalStore 的快照 */
-const peaksOf = (id: string): number[] | undefined => {
+export const peaksOf = (id: string): number[] | undefined => {
   const text = documentCache?.tracks[id];
   if (!text) return undefined;
   let values = decoded.get(id);
@@ -45,3 +47,15 @@ const subscribe = (listener: () => void) => {
 
 export const useTrackPeaks = (id: string): number[] | undefined =>
   useSyncExternalStore(subscribe, () => peaksOf(id));
+
+/** 时长（秒）；文件没到或没有这首时 undefined */
+export const durationOf = (id: string): number | undefined => documentCache?.durations?.[id];
+
+/** 文件到了（或已经在）时回调一次；返回取消订阅 */
+export const onTrackPeaksReady = (fn: () => void) => {
+  if (documentCache) { fn(); return () => {}; }
+  const once = () => { listeners.delete(once); fn(); };
+  listeners.add(once);
+  void loadTrackPeaks();
+  return () => { listeners.delete(once); };
+};

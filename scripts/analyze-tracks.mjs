@@ -175,6 +175,10 @@ const main = async () => {
     tracks: Object.fromEntries(playlist
       .map(track => [track.id, freshPeaks[track.id] ?? previousPeaks[track.id]])
       .filter(([, peaks]) => peaks)),
+    // 时长（秒）：音乐页唱片的声槽按专辑里各首的真实时长分带（resonance/VinylSurface.tsx）
+    durations: Object.fromEntries(playlist
+      .map(track => [track.id, (fresh[track.id] ?? previous.tracks[track.id])?.raw?.durationSec])
+      .filter(([, sec]) => sec)),
   };
   await writeFile(PEAKS_FILE, `${JSON.stringify(peaksOut, null, 1)}\n`, 'utf8');
   console.log(`写出 ${path.relative(ROOT, PEAKS_FILE)}：${Object.keys(peaksOut.tracks).length} / ${playlist.length} 首有声波`);
