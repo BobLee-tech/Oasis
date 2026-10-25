@@ -6,6 +6,8 @@ export interface FriendLink {
   url: string;
   /** 邻居自己的一句话：写在信上「见字如面」之后 */
   desc: string;
+  /** 还想多说的几句：接在 desc 后面，一句一行（八行笺空着的行最多四行） */
+  lines?: string[];
   color: string;
   /** 结邻那天（YYYY-MM-DD）：信末落款写成干支与节气，如「丙午寒露」；不填就落今天 */
   since?: string;
@@ -23,6 +25,7 @@ export const FRIENDS: FriendLink[] = [
     name: "hejiac",
     url: "https://hejiac.com",
     desc: "Made with curiosity.",
+    lines: ["你如何留下春天？", "过一个美好的春天。"],
     color: "#7DD3FC",
     since: "2026-10-24",
   },

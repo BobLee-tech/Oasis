@@ -61,7 +61,11 @@ const MOTIFS: Motif[] = ['bird', 'spray'];
 export const buildLetters = (friends: FriendLink[], selfUrl: string): Letter[] => [
   ...friends.map((f, i): Letter => ({
     kind: 'friend', name: f.name, url: f.url, host: hostOf(f.url), desc: f.desc, color: f.color, motif: MOTIFS[i % MOTIFS.length],
-    cols: [{ t: '见字如面' }, { t: f.desc }, {}, {}, {}, {}, { t: f.name, at: 'end' }, { t: dateLine(f.since), at: 'end', small: true }],
+    cols: [
+      { t: '见字如面' }, { t: f.desc },
+      ...[0, 1, 2, 3].map((k): LetterCol => (f.lines?.[k] ? { t: f.lines[k] } : {})),
+      { t: f.name, at: 'end' }, { t: dateLine(f.since), at: 'end', small: true },
+    ],
   })),
   {
     kind: 'vacant', name: '虚席以待', url: selfUrl, host: hostOf(selfUrl), desc: SELF.desc, color: SELF.color, motif: 'blossom',

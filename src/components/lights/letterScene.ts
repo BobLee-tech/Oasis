@@ -78,7 +78,8 @@ const Y_IN = -H / 2 + 10 + LH / 2;                // 笺在封里的中心
 const PEEK = LH * 0.42;                           // 窥信时抽出的长度
 const OUT = H / 2 + 10 - (Y_IN - LH / 2) - PEEK;  // 再抽多少才整张离封
 const EK = 512 / W;                               // 信封贴图 px/单位
-const CW = 1280, CH = Math.round(CW * LH / (LW * 2));   // 整张笺（摊开）
+const CW = 1280, CH = Math.round(CW * LH / (LW * 2));   // 整张笺（摊开），版面坐标
+const SS = 1.6;                                    // 笺贴图按版面坐标的几倍画：展读时笺放得比 1280 宽，字才不糊
 const LM = { x: 54, top: 118, bottom: 72 };       // 笺的天头地脚
 
 /* 信上的字：尺牍多是行书（志莽行书）；西文跟同一支笔（Homemade Apple）；地址是「印上去」的，用 Fell 斜体 */
@@ -120,7 +121,7 @@ const vcol = (x: CanvasRenderingContext2D, str: string, cx: number, y0: number, 
   x.save(); x.fillStyle = o.color; x.textBaseline = 'middle';
   toks.forEach((t, i) => {
     const jx = rand ? (rand() - 0.5) * size * 0.05 : 0, jr = rand ? (rand() - 0.5) * 0.035 : 0;
-    x.globalAlpha = rand ? 0.86 + rand() * 0.14 : 1;
+    x.globalAlpha = rand ? 0.94 + rand() * 0.06 : 1;   // 墨色略有浓淡，但不淡到看不清
     if (t.lat !== null) {
       x.font = latFont; x.textAlign = 'left';
       x.save(); x.translate(cx + jx - size * 0.04, y + size * 0.12); x.rotate(Math.PI / 2); x.fillText(t.lat, 0, 0); x.restore();
@@ -776,7 +777,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     /* 八行笺：笺色、花笺淡印、朱丝栏、字 */
     const MOTIF_AT = { bird: [30, 70, 600, 480], spray: [24, 110, 620, 505], blossom: [40, 60, 560, 553] } as const;   // 淡印落在左半，避开落款
     const drawLetter = (it: Letter, r: Rand) => {
-      const c = mk(CW, CH), x = ctx2d(c);
+      const c = mk(Math.round(CW * SS), Math.round(CH * SS)), x = ctx2d(c);
+      x.scale(SS, SS);
       paperFill(x, CW, CH, mixHex('#FDFAF3', it.color, 0.11), { alpha: 0.12, scale: 1.3, fleck: 0.07, edge: 0.06 });
       const [px, py, pw, ph] = MOTIF_AT[it.motif];
       x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.3;
@@ -795,7 +797,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       line(LM.x - 12, top - 10, CW - LM.x + 12, top - 10, 1.2, 0.45); line(LM.x - 12, bot + 10, CW - LM.x + 12, bot + 10, 1.2, 0.45);
       it.cols.forEach((col, i) => {   // 第一行在最右
         if (!col.t) return;
-        vcol(x, col.t, CW - LM.x - cw * (i + 0.5), top + 30, bot - 26, { size: col.small ? 38 : 52, color: col.small ? '#6E6151' : '#2A231B', at: col.at ?? 'start', rand: r });
+        vcol(x, col.t, CW - LM.x - cw * (i + 0.5), top + 30, bot - 26, { size: col.small ? 38 : 52, color: col.small ? '#54493C' : '#211B14', at: col.at ?? 'start', rand: r });
       });
       return c;
     };

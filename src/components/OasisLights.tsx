@@ -154,7 +154,7 @@ export const OasisLights = ({ isDark }: OasisLightsProps) => {
             <p className="sr-only" aria-live="polite">
               {cur && (vacant
                 ? `回帖。园门常开，想把你的花园连过来？来信。名帖：${SELF.name}，${selfUrl}，${SELF.desc}`
-                : `${cur.name} 的来信。见字如面。${cur.desc}。${cur.name}，${dateLine(FRIENDS[reading]?.since)}结邻，寄自 ${cur.host}。`)}
+                : `${cur.name} 的来信。见字如面。${cur.desc}。${(FRIENDS[reading]?.lines ?? []).join('')}${cur.name}，${dateLine(FRIENDS[reading]?.since)}结邻，寄自 ${cur.host}。`)}
             </p>
           </div>
         </>
