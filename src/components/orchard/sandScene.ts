@@ -15,6 +15,7 @@ import {
   stonePath, tagFrequency, type Garden, type Neighbors, type Seg, type Stone,
 } from '../../lib/sandGarden';
 import { BSC5 } from '../../data/bsc5';
+import { createSandSurface, type SandSurface } from './sandSurface';
 
 const NS = 'http://www.w3.org/2000/svg';
 type Attrs = Record<string, string | number | null | undefined>;
@@ -233,6 +234,10 @@ export class SandScene {
   private themeObs: MutationObserver;
   private night: boolean;
   private off: (() => void)[] = [];
+  /** 砂面浮雕（WebGL，垫在 SVG 底下）；建不起时为 null，SVG 的线照旧 */
+  private surf: SandSurface | null = null;
+  /** 砂面的光向（屏幕坐标、指向光源）：石色渐变跟着转，受光一侧在太阳那边 */
+  private lightDir = { x: -.7071, y: -.7071 };
 
   constructor(svg: SVGSVGElement, sky: HTMLCanvasElement | null, cb: Callbacks, reduce: boolean) {
     this.svg = svg; this.sky = sky; this.cb = cb; this.reduce = reduce;
@@ -244,7 +249,25 @@ export class SandScene {
       if (n !== this.night) { this.night = n; this.themeSwap(); }
     });
     this.themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    const root = svg.parentElement;
+    if (root) this.surf = createSandSurface(root, root.querySelector('.sky') ?? svg, (lx, ly) => { this.lightDir = { x: lx, y: ly }; this.tiltStones(); });
     this.bindInput();
+  }
+
+  /** 浮雕显出：SVG 的等值线、直纹、固定偏移的石影与石下的纸色圆淡去（sand.css 的 .sand-relief） */
+  private setRelief(on: boolean) {
+    if (!this.surf) return;
+    this.surf.setShown(on);
+    this.svg.parentElement?.classList.toggle('sand-relief', on);
+  }
+
+  /** 石色渐变的受光一侧转到太阳那边（defs 每次 setData 会重建，所以重建后也调一次） */
+  private tiltStones() {
+    const { x, y } = this.lightDir;
+    this.G.defs.querySelectorAll('linearGradient[id^="sand-st-"]').forEach(lg => {
+      lg.setAttribute('x1', (.5 + .5 * x).toFixed(3)); lg.setAttribute('y1', (.5 + .5 * y).toFixed(3));
+      lg.setAttribute('x2', (.5 - .5 * x).toFixed(3)); lg.setAttribute('y2', (.5 - .5 * y).toFixed(3));
+    });
   }
 
   destroy() {
@@ -254,6 +277,7 @@ export class SandScene {
     clearTimeout(this.settleT); clearTimeout(this.heavyT); clearTimeout(this.themeT); clearTimeout(this.ringT);
     this.themeObs.disconnect();
     this.off.forEach(f => f());
+    this.surf?.destroy(); this.surf = null;
   }
 
   private later(fn: () => void, ms: number) {
@@ -299,6 +323,7 @@ export class SandScene {
     this.flyId++;
     this.g = g; this.cats = cats; this.tf = tagFrequency(g);
     buildDefs(this.G.defs, [...cats.values()]);
+    this.tiltStones();
     const G = this.G;
     for (const k of ['rel', 'nodes', 'lanterns', 'spokes', 'topic'] as const) G[k].replaceChildren();
     this.nodes.clear(); this.paths.clear(); this.bridges = [];
@@ -363,6 +388,8 @@ export class SandScene {
 
     this.entering = doEnter;
     this.svg.classList.toggle('entering', doEnter);
+    // 进场时先让 SVG 的线一圈圈耙出来，耙完再沉成浮雕；不进场就直接是浮雕
+    this.setRelief(!doEnter);
     if (doEnter) {
       const orderEnd = 360 + order.length * stepMs;
       // 注记必须等相机落定再出：它们按落定后的倍率择位，早出来会先错位再跳。
@@ -390,6 +417,7 @@ export class SandScene {
       this.enterEndT = this.later(() => {
         this.entering = false;
         this.svg.classList.remove('entering');
+        this.setRelief(true);
         G.rings.querySelectorAll('[pathLength]').forEach(p => p.removeAttribute('pathLength'));
         this.labels();
       }, Math.max(orderEnd + 1900, 2400) - elapsed);
@@ -425,6 +453,7 @@ export class SandScene {
   private write() {
     const v = this.view;
     this.G.cam.setAttribute('transform', `translate(${v.x.toFixed(2)} ${v.y.toFixed(2)}) scale(${v.k.toFixed(5)})`);
+    this.surf?.setView(v.k, v.x, v.y);
     const inv = `scale(${(1 / v.k).toFixed(5)})`, gly = `scale(${(this.gs / v.k).toFixed(5)})`;
     const lan = `scale(${((1 + (this.gs - 1) * .6) / v.k).toFixed(5)})`;
     for (const e of this.symEls) e.setAttribute('transform', gly);
@@ -589,7 +618,7 @@ export class SandScene {
     const kT = this.fitK * [1, 1.8, 3.2, 5.6][this.tierK];
     for (const x of [G.rings, G.pool, G.maskHole]) x.replaceChildren();
     const vis = this.visible();
-    if (!g || !vis.length) { G.rake.setAttribute('d', ''); return; }
+    if (!g || !vis.length) { G.rake.setAttribute('d', ''); this.surf?.setField(null, kT); return; }
     const dp = kT > 2 ? 2 : 1;
     // 整座庭一张距离场：石是圆，合集相邻两章之间是一段线段（枯流れ的河床）。
     // 河床 r=-12：河心的场值恒大于最内一圈的 9（留 3px 余量，免得在石边鼓出一个尖），所以沿河只耙出外两圈——两道岸夹一条窄溪，
@@ -601,6 +630,11 @@ export class SandScene {
     });
     const F = sandField(vis.map(s => ({ x: s.x, y: s.y, r: RS[s.mag - 1] * this.gs })), kT, undefined, undefined, segs)!;
     const levels = LV.map(l => iso(F, l / kT).filter(p => p.length > 3));
+    // 砂面浮雕用同一张场；石影的长短按石高（RH，文章越长越高）
+    this.surf?.setField(F, kT);
+    this.surf?.setStones(vis.map(s => ({
+      x: s.x, y: s.y, R: RS[s.mag - 1] * this.gs, H: RH[s.mag - 1] * this.gs * 2.2 + 2, seed: s.p.growth === 'seedling',
+    })));
     // 进场时一段段耙出来：从左往右，像耙子走过砂面；内圈先、外圈后
     let lo = Infinity, hi = -Infinity;
     const cxOf = (p: [number, number][]) => p.reduce((a, q) => a + q[0], 0) / p.length;
@@ -619,6 +653,7 @@ export class SandScene {
     let d = '';
     for (let y = y0; y <= y1; y += gap) d += `M${x0.toFixed(1)} ${y.toFixed(1)}H${x1.toFixed(1)}`;
     G.rake.setAttribute('d', d);
+    this.surf?.setRake(x0, y0, x1, y1);
     for (const [k, v] of Object.entries({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 })) {
       G.maskBase.setAttribute(k, String(v)); G.mask.setAttribute(k, String(v));
     }

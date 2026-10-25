@@ -517,3 +517,13 @@
     }
     .oasis-sand .fresh, .oasis-sand .bloom, .oasis-sand .land { display: none !important; }
 }
+
+/* ══ 砂面浮雕（sandSurface.ts）：同一张距离场耙成沟，光从悉尼的太阳来 ══════════════════
+   画布垫在 .sky 与 SVG 底下；进场耙纹演完才淡入（.on），同时 SVG 的线、固定偏移的石影、
+   石下那圈纸色淡去——石、注记、灯笼、桥、拾取仍是 SVG。建不起 WebGL 就没有这块画布，一切照旧。 */
+.oasis-sand .sand-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; opacity: 0; transition: opacity 900ms var(--ease-io); }
+.oasis-sand .sand-gl.on { opacity: 1; }
+.oasis-sand.sand-relief .rg, .oasis-sand.sand-relief .rk { stroke-opacity: 0; }
+.oasis-sand.sand-relief .st-sh { opacity: 0; }
+.oasis-sand.sand-relief .land { fill: transparent; }
+.oasis-sand .land { transition: fill 900ms var(--ease-io); }
