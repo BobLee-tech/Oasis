@@ -8,6 +8,9 @@
 //   · 昼＝窗下天光 + 雪窗《风竹图》竹影（SpotLight.map 作遮光片）；夜＝秉烛，烛跟指针，读信时挪到信边。
 //   · 软影要用 PCFShadowMap（PCFSoft 不认 radius）；笺举到眼前就不再往桌上投影。
 //   · 画布每次自建自拆：React 开发模式会挂载两次，复用画布会拿到已丢失的上下文。
+//   · 省：阴影图 1024；骑缝印的下半是各封共用的一小块贴花；笺第一次移近才画（材质先挂占位贴图，换图不重编着色器）。
+//     没人动、也没有补间时只画 30 帧、阴影图 15 次/秒（竹影、烛闪是背景里的动，30 帧够），一有动静当帧回满。
+//     验收数字与对照见 docs/chidu-next.html 的实验台。
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
@@ -80,10 +83,14 @@ const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
   const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src;
 });
 const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]);
-const rnd = (seed: number) => { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+const rnd = (seed: number): Rand => {
+  let s = seed >>> 0 || 1;
+  return Object.assign(() => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296), { fork: () => rnd(s) });
+};
 const hash = (str: string) => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const mixHex = (a: string, b: string, t: number) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
-type Rand = () => number;
+/** 种子随机；fork() 从此刻的状态另起一支（笺晚些画，也与当场画同一串随机） */
+interface Rand { (): number; fork(): Rand }
 
 /* 竖排一列：汉字直立、西文整段侧躺（同 vertical-rl），句读挪到右上 */
 const PUNC_TR = '，。、；：';
@@ -141,6 +148,8 @@ interface Item extends Letter {
   env: THREE.Group; flapPivot: THREE.Group; letter: THREE.Group; sheet: THREE.Group; hinge: THREE.Group;
   panels: THREE.Mesh[]; blob: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   cast: boolean;
+  /** 笺的正面材质；paper 是留给笺的那支随机，笺画好就清掉 */
+  lmat: THREE.MeshStandardMaterial; paper?: Rand;
 }
 
 export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
@@ -162,7 +171,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;   // PCF 才认 radius：烛焰有大小，影边是软的
   const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const SHADOW = o.coarse ? 1024 : 2048;
+  // 2048 时一盏灯的阴影图（颜色＋深度）约 33 MB；影边本来就靠 PCF 半径做虚，1024 只要 8 MB
+  const SHADOW = 1024;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 40, 9000);
@@ -184,10 +194,12 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   const MODE = { n: o.night ? 1 : 0 };
   const VEIL = { o: 0 };
   const FOCUS = new THREE.Vector3();
-  const PTR = { on: false, p: new THREE.Vector3() };
+  const PTR = { on: false, p: new THREE.Vector3(), t: 0 };
   const CANDLE = new THREE.Vector3(), CT = new THREE.Vector3();
   let hover = -1, reading = -1, lastPointer = 'mouse', busy: gsap.core.Timeline | null = null, tPrev = 0;
+  let lastActive = 0, lastRender = -1, lastShadow = -1;
   let items: Item[] = [];
+  let drawSheet: (it: Item) => void = () => {};   // 素材到齐后 boot 换成真的
 
   const ray = new THREE.Raycaster(), PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   const _v = new THREE.Vector3(), _n = new THREE.Vector2();
@@ -296,6 +308,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   const setHover = (i: number) => {
     if (reading >= 0 || busy) return;
     const prev = hover; hover = i;
+    if (i >= 0) drawSheet(items[i]);
     items.forEach((it, j) => {
       const on = j === i, was = j === prev;
       if (on === was) return;
@@ -319,6 +332,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (busy || !items[i]) return;
     if (reading >= 0) { if (reading !== i) close(() => open(i), true); return; }
     const it = items[i]; reading = i; hover = -1;
+    drawSheet(it);
     items.forEach((x) => {
       if (x === it) return;
       x.tl?.kill();
@@ -393,6 +407,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (e.pointerType === 'touch' && hover >= 0 && !(e.target as Element).closest?.('.lt-hits')) setHover(-1);
   });
   on<PointerEvent>(root, 'pointermove', (e) => {
+    PTR.t = performance.now();
     if (e.pointerType !== 'mouse') return;
     const r = root.getBoundingClientRect();
     PTR.on = true; toDesk(e.clientX - r.left, e.clientY - r.top, PTR.p);
@@ -484,6 +499,15 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     veilMat.color.lerpColors(C_DAY.veil, C_NIGHT.veil, n);
     veilMat.opacity = VEIL.o * lerp(0.5, 0.62, n);
     veil.visible = VEIL.o > 0.001;
+    // 闲时降帧：指针 1.2 s 没动、也没有补间在走，就只画 30 帧、阴影图 15 次/秒；一有动静当帧回满
+    const now = performance.now();
+    if (busy || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st))) lastActive = now;
+    const idle = now - lastActive > 600;
+    if (idle && t - lastRender < 1 / 30 - 0.003) return;
+    renderer.shadowMap.autoUpdate = !idle;
+    if (idle && t - lastShadow >= 1 / 15 - 0.003) renderer.shadowMap.needsUpdate = true;
+    if (renderer.shadowMap.autoUpdate || renderer.shadowMap.needsUpdate) lastShadow = t;
+    lastRender = t;
     renderer.render(scene, camera);
   };
 
@@ -569,14 +593,26 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       return { map: ctex(c), rough: ctex(rc, false) };
     };
 
-    /* 骑缝印：口袋面与封舌各画一份，口袋面挖掉封舌盖住的三角——拆开时一分为二 */
-    const sealLayer = (w: number, h: number, apexY: number, triClip: boolean) => {
-      const s = IMG.seal, sh = 42 * EK, sw = (sh * s.width) / s.height;
+    /* 骑缝印：封舌与口袋面各一份，口袋面挖掉封舌盖住的三角——拆开时一分为二 */
+    const SEAL = { h: 42 * EK, w: (42 * EK * IMG.seal.width) / IMG.seal.height };
+    const sealLayer = (w: number, h: number, apexY: number) => {   // 上半：画进封舌那张贴图
       const c = mk(w, h), x = ctx2d(c);
-      x.globalAlpha = 0.9; x.drawImage(s, w / 2 - sw / 2, apexY - sh * 0.52, sw, sh);
-      if (triClip) { x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w / 2, apexY); x.closePath(); x.fill(); }
+      x.globalAlpha = 0.9; x.drawImage(IMG.seal, w / 2 - SEAL.w / 2, apexY - SEAL.h * 0.52, SEAL.w, SEAL.h);
       return c;
     };
+    /* 下半：只取印周围一小块当贴花，各封共用一份（原先为一方 77×98 px 的印，每封挂一张 512×768 的透明层）。
+       坐标是口袋面贴图（512×768）上的像素；挖三角那一刀与原先同，连 0.9 的不透明度一起（三角里留一成，像印泥渗下去） */
+    const sealDecal = (() => {
+      const apexY = FH * EK, ox = 256 - SEAL.w / 2 - 2, oy = apexY - SEAL.h * 0.52 - 2;
+      const w = Math.ceil(SEAL.w + 4), h = Math.ceil(SEAL.h + 4), c = mk(w, h), x = ctx2d(c);
+      x.globalAlpha = 0.9; x.drawImage(IMG.seal, 2, 2, SEAL.w, SEAL.h);
+      x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.moveTo(-ox, -oy); x.lineTo(512 - ox, -oy); x.lineTo(256 - ox, apexY - oy); x.closePath(); x.fill();
+      return {
+        geo: own(new THREE.PlaneGeometry(w / EK, h / EK)),
+        mat: own(new THREE.MeshStandardMaterial({ map: ctex(c), transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 })),
+        x: ((ox + w / 2) / 512 - 0.5) * W, y: (0.5 - (oy + h / 2) / 768) * H,
+      };
+    })();
 
     /* 封舌：外面（纸 + 印的上半）与里子 */
     const drawFlap = (it: Letter, inner: boolean) => {
@@ -586,7 +622,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(70,50,25,.22)'); g.addColorStop(0.5, 'rgba(70,50,25,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
       } else {
         paperFill(x, w, h, '#F1E6CC', { alpha: 0.55, scale: 0.9, edge: 0.08 });
-        if (it.kind === 'friend') x.drawImage(sealLayer(w, h + 60, h, false), 0, 0);
+        if (it.kind === 'friend') x.drawImage(sealLayer(w, h + 60, h), 0, 0);
       }
       x.strokeStyle = inner ? 'rgba(90,66,36,.35)' : 'rgba(110,84,48,.42)'; x.lineWidth = 2.2;   // 两道斜边：纸的切口
       x.beginPath(); x.moveTo(0, 1); x.lineTo(w / 2, h - 1); x.lineTo(w, 1); x.stroke();
@@ -679,6 +715,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const GEO = { pocket: own(new THREE.PlaneGeometry(W, H)), R: panelGeo('R'), L: panelGeo('L'), back: own(new THREE.PlaneGeometry(LW, LH)), blob: own(new THREE.PlaneGeometry(1, 1)) };
     const backMat = own(new THREE.MeshStandardMaterial({ map: T.back, color: '#F2EADB', roughness: 0.95, side: THREE.BackSide }));
     const mat = <M extends THREE.Material>(m: M) => own(m);
+    /* 占位贴图：笺画好之前先挂上（笺这时藏在封里看不见），换真图时着色器不用重编 */
+    const solid = (col: string) => { const c = mk(2, 2), x = ctx2d(c); x.fillStyle = col; x.fillRect(0, 0, 2, 2); return c; };
+    const PH = { map: ctex(solid('#FBF8F1')), normal: ctex(solid('rgb(128,128,255)'), false) };
 
     items = o.letters.map((L0, idx): Item => {
       const r = rnd(hash(L0.name) + 17);
@@ -688,8 +727,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       const pm = new THREE.Mesh(GEO.pocket, mat(new THREE.MeshStandardMaterial({ map: pocket.map, roughnessMap: pocket.rough, roughness: 1, normalMap: T.laidN, normalScale: new THREE.Vector2(0.7, 0.7) })));
       pm.position.z = Z_POCKET; pm.castShadow = pm.receiveShadow = true; env.add(pm);
       if (L0.kind === 'friend') {   // 印的下半盖在口袋面上
-        const sm = new THREE.Mesh(GEO.pocket, mat(new THREE.MeshStandardMaterial({ map: ctex(sealLayer(512, 768, FH * EK, true)), transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 })));
-        sm.position.z = Z_POCKET + 0.05; sm.receiveShadow = true; env.add(sm);
+        const sm = new THREE.Mesh(sealDecal.geo, sealDecal.mat);
+        sm.position.set(sealDecal.x, sealDecal.y, Z_POCKET + 0.05); sm.receiveShadow = true; env.add(sm);
       }
       const flapPivot = new THREE.Group(); flapPivot.position.y = H / 2; env.add(flapPivot);
       const fo = new THREE.Mesh(triGeo, mat(new THREE.MeshStandardMaterial({ map: drawFlap(L0, false), normalMap: T.laidN2, normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92 })));
@@ -698,7 +737,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       flapPivot.add(fo, fi);
 
       // 笺：letter（整体位姿）→ sheet（摊开时整体右移半页，让中缝居中）→ 右半页 R ＋ 铰链 → 左半页 L
-      const lmat = mat(new THREE.MeshStandardMaterial({ map: ctex(drawLetter(L0, r)), normalMap: letterNormal(L0), roughness: 0.9 }));
+      // 笺第一次移近才画（drawSheet）：先挂占位贴图，r 在这里分一支留给它，画出来与当场画一模一样
+      const lmat = mat(new THREE.MeshStandardMaterial({ map: PH.map, normalMap: PH.normal, roughness: 0.9 }));
+      const paper = r.fork();
       const letter = new THREE.Group(), sheet = new THREE.Group(); letter.add(sheet); scene.add(letter);
       const R = new THREE.Mesh(GEO.R, lmat), Rb = new THREE.Mesh(GEO.back, backMat);
       const hinge = new THREE.Group(); hinge.position.set(-LW / 2, 0, -0.2);
@@ -716,9 +757,14 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         ...L0, idx, el: o.hits[idx], rot, enterRot, x: 0, y: 0, s: 1,
         st: { enter: RM ? 1 : 0, lift: 0, flap: L0.kind === 'vacant' ? 1 : 0, peek: 0, out: 0, fly: 0, unfold: 0 },
         tilt: { x: 0, y: 0, tx: 0, ty: 0 },
-        env, flapPivot, letter, sheet, hinge, panels, blob, cast: true,
+        env, flapPivot, letter, sheet, hinge, panels, blob, cast: true, lmat, paper,
       };
     });
+    drawSheet = (it) => {
+      if (!it.paper) return;
+      it.lmat.map = ctex(drawLetter(it, it.paper)); it.lmat.normalMap = letterNormal(it);
+      it.paper = undefined;
+    };
     items.forEach(bindHit);
 
     layout();

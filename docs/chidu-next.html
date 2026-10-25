@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="zh-CN" data-time="day">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>尺牍 · 下一版实验台</title>
+<meta name="description" content="尺牍之后的梳理与实验台：现网引擎原样移植，加上纸会弯、洒金会闪、读信景深、一阵风、信多了怎么摆、闲时降帧、省显存、纸声八项，可逐项开关对照。须在 npm run dev 下打开 /docs/chidu-next.html。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Homemade+Apple&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Noto+Serif+SC:wght@400;600&family=Zhi+Mang+Xing&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@free-fonts/zhuque-fangsong@1.0.0/zhuque-fangsong.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css" rel="stylesheet" />
+<style>
+/* 尺牍 · 下一版实验台
+   桌上那几封信的引擎是现网 lights/letterScene.ts 的移植（全按现网时像素级一致），
+   右侧实验台把八项改动逐项开关；「梳理全文」是对整个站点的判断与建议。外壳（⌘K、昼夜、Dock、Miku）只作示意。 */
+@font-face { font-family: "Qiji Chidu"; src: url("/lights/qiji.woff2") format("woff2"); font-display: block; unicode-range: U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF; }
+
+:root {
+  --paper: #EEE7D8; --ink: #1E1A15; --ink-2: #4A4236; --ink-3: #7D735F; --ink-4: #AFA48D;
+  --rule: rgba(40, 32, 22, .16); --zhu: #A8392B; --on-zhu: #F8EFE2;
+  --teal: #39C5BB; --teal-ink: #0E8C85;
+  --glass: rgba(255, 255, 255, .55); --glass2: rgba(255, 255, 255, .86); --edge: rgba(255, 255, 255, .72); --line: rgba(100, 116, 139, .17);
+  --shadow: 0 18px 44px -20px rgba(15, 23, 42, .32);
+  --f-song: "Zhuque Fangsong", "Noto Serif SC", "Songti SC", "STSong", serif;
+  --f-kai: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif;
+  --f-lat: "IM Fell English", "EB Garamond", Georgia, serif;
+  --f-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --f-ke: "Qiji Chidu", var(--f-song);
+  --e-out: cubic-bezier(.16, 1, .3, 1); --e-io: cubic-bezier(.65, 0, .35, 1);
+  --gut: clamp(16px, 5vw, 72px);
+  color-scheme: light;
+}
+:root[data-time="night"] {
+  --paper: #121314; --ink: #E9E2D2; --ink-2: #BDB4A2; --ink-3: #888170; --ink-4: #585349;
+  --rule: rgba(233, 226, 210, .14); --zhu: #D06A52; --on-zhu: #15120E; --teal-ink: #66DED5;
+  --glass: rgba(10, 15, 29, .7); --glass2: rgba(14, 20, 36, .92); --edge: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .09);
+  --shadow: 0 20px 48px -20px rgba(0, 0, 0, .75);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font: 400 15px/1.75 var(--f-kai); overflow: hidden; -webkit-font-smoothing: antialiased; transition: background-color 1.2s var(--e-io), color 1.2s var(--e-io); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 1.5px solid var(--zhu); outline-offset: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+#stage { position: fixed; inset: 0; z-index: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--e-out); }
+body[data-ready] #stage canvas { opacity: 1; }
+
+.head { position: fixed; left: var(--gut); top: 96px; z-index: 5; pointer-events: none; max-width: 36em; transition: opacity .6s var(--e-out); }
+body.reading .head { opacity: 0; }
+.head .kick { display: flex; align-items: center; gap: 12px; font: 400 14px/1 var(--f-sc); letter-spacing: .16em; color: var(--ink-3); }
+.head .kick b { font: 600 13px/1 var(--f-song); letter-spacing: .3em; color: var(--ink-2); }
+.head .kick i { width: 36px; height: 1px; background: var(--rule); }
+.head .kick em { font: 600 12px/1 var(--f-song); font-style: normal; letter-spacing: .24em; color: var(--zhu); }
+.head h1 { margin: 18px 0 14px; font: 400 54px/1 var(--f-ke); letter-spacing: .08em; color: var(--ink); }
+.head p { font: 400 16px/1.9 var(--f-song); color: var(--ink-2); letter-spacing: .06em; }
+.head p small { display: block; margin-top: 4px; font: 400 13px/1.7 var(--f-kai); color: var(--ink-3); }
+.head kbd { font: 500 11px/1 var(--f-lat); padding: 2px 5px; border: 1px solid var(--rule); border-radius: 2px; color: var(--ink-2); }
+
+/* 现网外壳（示意） */
+.hud-l { position: fixed; top: 26px; left: 26px; z-index: 30; display: flex; gap: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 999px; font: 500 9px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: color .4s, border-color .4s, background-color 1.2s; }
+.pill svg { width: 13px; height: 13px; }
+.pill.sw { padding: 3px; gap: 0; }
+.pill.sw button { height: 26px; padding: 0 11px; border-radius: 999px; font: 500 12px/1 var(--f-song); letter-spacing: .2em; color: var(--ink-3); transition: color .3s, background-color .3s; }
+.pill.sw button[aria-pressed="true"] { color: var(--teal-ink); background: rgba(57, 197, 187, .13); }
+.demo-r { position: fixed; top: 30px; right: 28px; z-index: 36; display: flex; gap: 22px; font: 600 12.5px/1 var(--f-song); letter-spacing: .22em; }
+.demo-r button { color: var(--ink-3); padding: 6px 0; border-bottom: 1px solid transparent; transition: color .3s, border-color .3s; }
+.demo-r button:hover, .demo-r button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
+.demo-r #openNotes { color: var(--zhu); border-color: var(--zhu); }
+.dock-wrap { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; z-index: 30; display: flex; align-items: center; gap: 12px; }
+.dock { display: inline-flex; align-items: center; gap: 10px; padding: 10px; border-radius: 26px; background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(24px) saturate(1.2); -webkit-backdrop-filter: blur(24px) saturate(1.2); box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .42); transition: background-color 1.2s; }
+.dock .it { width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; color: color-mix(in srgb, var(--ink-2) 85%, transparent); }
+.dock .it.on { color: var(--teal-ink); background: rgba(57, 197, 187, .11); border: 1px solid rgba(57, 197, 187, .2); }
+.dock .it svg, .pendant svg { width: 22px; height: 22px; }
+.pendant { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 14px 34px -18px rgba(15, 23, 42, .42), inset 0 1px 0 rgba(255, 255, 255, .44); }
+
+/* 热区：真正可点、可聚焦的是这层 DOM */
+#hits { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+#hits a, #hits button { position: absolute; pointer-events: auto; border-radius: 2px; -webkit-tap-highlight-color: transparent; }
+#hits a:focus-visible, #hits button:focus-visible { outline-offset: 6px; }
+body.reading #hits { visibility: hidden; }
+
+/* 展读 */
+#reader { position: fixed; inset: 0; z-index: 20; visibility: hidden; }
+#reader.on { visibility: visible; }
+#reader .scrim { position: absolute; inset: 0; cursor: zoom-out; }
+#reader .acts { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 14px; translate: -50% 8px; opacity: 0; transition: opacity .5s var(--e-out), translate .6s var(--e-out); pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+#reader.shown .acts { opacity: 1; translate: -50% 0; pointer-events: auto; }
+.acts .row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; justify-content: center; }
+.acts .go { display: inline-flex; align-items: center; gap: 10px; padding-bottom: 5px; border-bottom: 1px solid var(--ink); font: 600 15px/1 var(--f-song); letter-spacing: .3em; color: var(--ink); transition: color .3s, border-color .3s; }
+.acts .go small { font: italic 400 15px/1 var(--f-lat); letter-spacing: .02em; color: var(--ink-3); }
+.acts .go:hover { color: var(--zhu); border-color: var(--zhu); }
+.acts .ghost { font: 500 13px/1 var(--f-song); letter-spacing: .24em; color: var(--ink-3); padding: 6px 0; transition: color .3s; }
+.acts .ghost:hover { color: var(--ink); }
+#reader .side { position: absolute; translate: -50% -50%; white-space: nowrap; writing-mode: vertical-rl; padding: 14px 8px; font: 400 14px/1 var(--f-kai); letter-spacing: .3em; color: var(--ink-3); opacity: 0; transition: opacity .5s var(--e-out), color .3s; pointer-events: none; }
+#reader.shown .side:not(:disabled) { opacity: 1; pointer-events: auto; }
+#reader .side:hover { color: var(--ink); }
+.mingtie { display: none; max-width: min(780px, calc(100vw - 32px)); text-align: center; font: 400 13px/1.8 var(--f-kai); color: var(--ink-2); }
+.mingtie b { font: 600 12px/1 var(--f-song); letter-spacing: .3em; color: var(--zhu); margin-right: 10px; }
+.mingtie code { font: italic 400 14px/1 var(--f-lat); color: var(--ink-3); }
+#reader.vacant .mingtie { display: block; }
+#reader.vacant .go small { display: none; }
+
+/* 实验台：一张夹在桌边的签条 */
+#lab { position: fixed; top: 78px; right: 20px; width: 300px; max-height: calc(100vh - 190px); overflow-y: auto; z-index: 35; padding: 18px 20px 16px; background: color-mix(in oklab, var(--paper) 88%, transparent); border: 1px solid var(--rule); border-radius: 2px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font: 400 13px/1.6 var(--f-song); color: var(--ink-2); box-shadow: 0 26px 50px -34px rgba(40, 28, 10, .5); transition: translate .6s var(--e-out), opacity .4s, background-color 1.2s; scrollbar-width: thin; }
+#lab.off { translate: calc(100% + 40px) 0; opacity: 0; pointer-events: none; }
+#lab .t { display: flex; align-items: baseline; gap: 10px; }
+#lab .t b { font: 600 15px/1 var(--f-song); letter-spacing: .32em; color: var(--ink); }
+#lab .t span { font: 400 13px/1 var(--f-sc); letter-spacing: .14em; color: var(--ink-3); }
+#lab .presets { display: flex; gap: 18px; margin: 14px 0 2px; }
+#lab .presets button, #lab .seg button { font: 600 12.5px/1 var(--f-song); letter-spacing: .18em; padding: 4px 0; border-bottom: 1px solid transparent; color: var(--ink-3); transition: color .3s, border-color .3s; }
+#lab .presets button[aria-pressed="true"], #lab .seg button[aria-pressed="true"] { color: var(--zhu); border-color: var(--zhu); }
+#lab .presets small { font: 400 11.5px/1.5 var(--f-kai); color: var(--ink-3); display: block; margin-top: 6px; }
+#lab h4 { margin: 16px 0 4px; font: 400 12px/1 var(--f-sc); letter-spacing: .3em; color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+#lab h4::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+#lab label { display: grid; grid-template-columns: 14px 1fr; gap: 1px 10px; padding: 5px 0; cursor: pointer; }
+#lab input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 12px; height: 12px; margin-top: 5px; border: 1px solid var(--ink-3); border-radius: 1px; cursor: pointer; transition: background-color .2s, border-color .2s; }
+#lab input[type="checkbox"]:checked { background: var(--zhu); border-color: var(--zhu); box-shadow: inset 0 0 0 2px var(--paper); }
+#lab label b { font-weight: 600; color: var(--ink); letter-spacing: .1em; }
+#lab label b i { font: 400 10.5px/1 var(--f-mono); font-style: normal; color: var(--ink-4); letter-spacing: .04em; margin-left: 6px; }
+#lab label small { grid-column: 2; font: 400 12px/1.6 var(--f-kai); color: var(--ink-3); }
+#lab .seg { display: flex; align-items: baseline; gap: 14px; padding: 6px 0 2px 24px; }
+#lab .seg > span { font: 400 12px/1 var(--f-kai); color: var(--ink-3); }
+#lab .act { margin: 4px 0 0 24px; font: 600 12px/1 var(--f-song); letter-spacing: .2em; color: var(--ink-2); padding-bottom: 3px; border-bottom: 1px solid var(--rule); }
+#lab .act:disabled { opacity: .35; cursor: default; }
+#lab .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 10px 0 0 24px; }
+#lab .hud div { display: flex; flex-direction: column; gap: 3px; }
+#lab .hud dt { font: 400 11px/1 var(--f-kai); color: var(--ink-3); }
+#lab .hud dd { font: 500 14px/1 var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+#lab .hud dd small { font-size: 10px; color: var(--ink-3); margin-left: 2px; }
+#lab .foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule); font: 400 11.5px/1.7 var(--f-kai); color: var(--ink-3); }
+
+/* 梳理全文：一张长纸 */
+#notes { position: fixed; top: 0; right: 0; bottom: 0; width: min(860px, 100vw); z-index: 60; overflow: hidden; background: color-mix(in oklab, var(--paper) 96%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-left: 1px solid var(--rule); translate: 100% 0; transition: translate .7s var(--e-out), background-color 1.2s; font: 400 15px/2 var(--f-song); color: var(--ink-2); box-shadow: -30px 0 60px -40px rgba(30, 20, 5, .4); }
+#notes.on { translate: 0 0; }
+#notes .sc { height: 100%; overflow-y: auto; padding: 76px clamp(22px, 6vw, 72px) 140px; }
+#notes .x { position: absolute; top: 18px; right: 22px; z-index: 2; font: 600 12.5px/1 var(--f-song); letter-spacing: .24em; color: var(--ink-3); padding: 10px 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; transition: color .3s, background-color 1.2s; }
+#notes .x:hover { color: var(--zhu); }
+#notes .kick { font: 400 14px/1 var(--f-sc); letter-spacing: .16em; color: var(--ink-3); }
+#notes h2 { font: 600 34px/1.25 var(--f-song); letter-spacing: .12em; color: var(--ink); margin: 14px 0 18px; }
+#notes .lede { font: 400 16px/2 var(--f-kai); color: var(--ink-2); padding-left: 16px; border-left: 2px solid var(--zhu); }
+#notes h3 { margin: 46px 0 12px; padding-top: 20px; border-top: 1px solid var(--rule); font: 600 17px/1.4 var(--f-song); letter-spacing: .24em; color: var(--ink); }
+#notes h3 small { font: 400 13px/1 var(--f-sc); letter-spacing: .12em; color: var(--ink-3); margin-left: 12px; }
+#notes ol, #notes ul { padding-left: 1.4em; }
+#notes li { margin: 10px 0; }
+#notes li::marker { color: var(--ink-3); font-family: var(--f-mono); font-size: 12px; }
+#notes b { color: var(--ink); font-weight: 600; }
+#notes code { font: 400 12.5px/1 var(--f-mono); color: var(--ink-3); }
+#notes .ev { display: block; margin-top: 4px; font: 400 13.5px/1.85 var(--f-kai); color: var(--ink-3); }
+#notes .ev::before { content: "〔据〕"; color: var(--zhu); margin-right: 4px; font-family: var(--f-song); }
+#notes .an { display: block; margin-top: 2px; font: 400 13.5px/1.85 var(--f-kai); color: var(--ink-2); }
+#notes .an::before { content: "〔按〕"; color: var(--teal-ink); margin-right: 4px; font-family: var(--f-song); }
+#notes table { width: 100%; border-collapse: collapse; font: 400 13px/1.7 var(--f-song); margin: 8px 0 4px; border-top: 2px solid var(--ink-3); border-bottom: 1px solid var(--ink-3); }
+#notes th { text-align: left; font: 600 12px/1.4 var(--f-song); letter-spacing: .2em; color: var(--ink-3); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); }
+#notes td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+#notes td:first-child { color: var(--ink); width: 26%; }
+#notes tr.sub td { padding-top: 16px; font: 600 12px/1 var(--f-song); letter-spacing: .3em; color: var(--zhu); border-bottom: 0; }
+#notes .tag { display: inline-block; font: 600 11px/1 var(--f-song); letter-spacing: .14em; padding: 3px 6px; border: 1px solid currentColor; border-radius: 2px; margin-right: 6px; }
+#notes .p0 { color: var(--teal-ink); } #notes .p1 { color: var(--ink-2); } #notes .p2 { color: var(--zhu); } #notes .p3 { color: var(--ink-3); }
+#notes a { color: var(--ink); border-bottom: 1px solid var(--rule); }
+#notes a:hover { border-color: var(--zhu); }
+#notes .src { font: 400 12.5px/1.9 var(--f-kai); color: var(--ink-3); }
+
+#msg { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; padding: 40px; text-align: center; font: 400 16px/2 var(--f-song); color: var(--ink-2); background: var(--paper); }
+body.nofile #msg, body.nogl #msg { display: grid; }
+
+@media (max-width: 760px) {
+  .head { top: 76px; }
+  .head h1 { font-size: 38px; margin: 12px 0 8px; }
+  .head p { font-size: 13.5px; }
+  .head p small { display: none; }
+  .hud-l { top: 18px; left: 16px; }
+  .pill .t { display: none; }
+  .demo-r { top: 24px; right: 16px; gap: 14px; font-size: 12px; }
+  .dock-wrap { bottom: 14px; }
+  .dock { gap: 4px; padding: 7px; }
+  #lab { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-height: 58vh; border-radius: 0; border-width: 1px 0 0; }
+  #lab.off { translate: 0 calc(100% + 20px); }
+  #reader .side { writing-mode: horizontal-tb; padding: 8px 4px; font-size: 13px; letter-spacing: .2em; }
+  #prevBtn::before { content: "← "; } #nextBtn::after { content: " →"; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+
+<header class="hud-l">
+  <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="t">⌘K</span></span>
+  <span class="pill sw" role="group" aria-label="昼夜"><button data-time="day" aria-pressed="true">昼</button><button data-time="night" aria-pressed="false">夜</button></span>
+</header>
+<div class="demo-r"><button id="replay">重播进场</button><button id="labBtn" aria-pressed="true">实验台</button><button id="openNotes">梳理全文</button></div>
+
+<section class="head" id="head">
+  <div class="kick"><b>尺牍</b><i></i><span>Letters from Neighbors</span><em>下一版</em></div>
+  <h1>邻家尺牍</h1>
+  <p><span id="lede">凡二封，虚一席以待。信封移近会自己拆开，点一下抽出来读。</span><small>熟客：<kbd>⌘</kbd> / <kbd>Ctrl</kbd> 点信封，直接登门。</small></p>
+</section>
+
+<nav id="hits" aria-label="邻家来信"></nav>
+
+<div id="reader" role="dialog" aria-modal="true" aria-labelledby="readerTitle">
+  <div class="scrim" data-close></div>
+  <div class="acts" id="acts">
+    <p class="mingtie"><b>名帖</b><span id="mtLine"></span></p>
+    <div class="row">
+      <a class="go" id="goLink" target="_blank" rel="noopener"><span id="goTxt">登门拜访</span><small id="goHost"></small><span aria-hidden="true">↗</span></a>
+      <button class="ghost" id="copyBtn" hidden>复制名帖</button>
+      <button class="ghost" data-close>放回信封</button>
+    </div>
+  </div>
+  <button class="side" id="prevBtn">上一封</button>
+  <button class="side" id="nextBtn">下一封</button>
+  <div class="sr" id="readerTitle" aria-live="polite"></div>
+</div>
+
+<aside id="lab" aria-label="实验台">
+  <div class="t"><b>实验台</b><span>Bench</span></div>
+  <div class="presets" role="group" aria-label="一键对照">
+    <button data-preset="live" aria-pressed="false">全按现网</button>
+    <button data-preset="next" aria-pressed="true">全按提案</button>
+  </div>
+  <div class="presets"><small>「全按现网」＝生产里的 letterScene.ts，一模一样；再逐项打开看差别。</small></div>
+
+  <h4>Paper · 纸</h4>
+  <label><input type="checkbox" data-f="bend" checked><b>纸会弯</b><small>折痕是个小圆弧；摊开时边角慢半拍再回弹；读时整张微拱，影子也跟着弯</small></label>
+  <label><input type="checkbox" data-f="gold" checked><b>洒金会闪</b><small>每片金箔各有朝向。昼里斜看有反光；夜里挪烛，金点一粒粒亮</small></label>
+
+  <h4>Light · 光</h4>
+  <label><input type="checkbox" data-f="dof" checked><b>读信景深</b><small>桌面退成烛光里的虚影，替代那层幕</small></label>
+  <label><input type="checkbox" data-f="wind" checked><b>一阵风</b><small>竹影、没封口的封舌、烛焰、手里的笺，同一阵风</small></label>
+  <button class="act" id="gust">吹一阵</button>
+
+  <h4>Many · 多</h4>
+  <div class="seg" role="group" aria-label="邻居数"><span>邻居</span><button data-n="2" aria-pressed="true">二（现在）</button><button data-n="4" aria-pressed="false">四</button><button data-n="9" aria-pressed="false">九</button></div>
+  <label><input type="checkbox" data-f="scatter" checked><b>错落叠放</b><small>超过四封才生效：互压不过三分之一、越新越在上；移近一封，右边的让开；上面的信给下面的投影</small></label>
+
+  <h4>Thrift · 省</h4>
+  <label><input type="checkbox" data-f="idle" checked><b>闲时降帧</b><small>没人动时 30 帧、阴影图 15 次／秒；一动立刻回满帧</small></label>
+  <label><input type="checkbox" data-f="mem" checked><b>省显存</b><small>骑缝印改小贴花；笺第一次移近才画；阴影图 1024</small></label>
+  <dl class="hud" aria-live="off">
+    <div><dt>画面 帧／秒</dt><dd id="hFps">–</dd></div>
+    <div><dt>阴影图 次／秒</dt><dd id="hSh">–</dd></div>
+    <div><dt>贴图与离屏</dt><dd id="hMem">–</dd></div>
+    <div><dt>其中阴影图</dt><dd id="hShMem">–</dd></div>
+    <div><dt>绘制调用</dt><dd id="hCalls">–</dd></div>
+    <div><dt>此刻</dt><dd id="hState">–</dd></div>
+  </dl>
+
+  <h4>Sound · 声</h4>
+  <label><input type="checkbox" data-f="sound"><b>纸声</b><small>拆封几粒脆响，抽出一段沙沙，摊开一声闷响；WebAudio 现合成，不用音频文件</small></label>
+
+  <p class="foot">四、九位邻居里有演示用的假邻居（名字、地址都是编的），只为看信多了怎么摆。显存是按贴图尺寸估的，连还没传上显卡的也算了（three 第一次画到才上传），偏大；实测见「梳理全文」贰·七。</p>
+</aside>
+
+<div class="dock-wrap" aria-hidden="true"><nav class="dock" id="dock"></nav><span class="pendant" id="pendant"></span></div>
+
+<div id="msg"><p>这一页要在开发服务器下打开：<br><code>npm run dev</code> 之后访问 <code>/docs/chidu-next.html</code><br>（素材取自 public/lights 与 public/yuantu，直接双击打开读不到。）</p></div>
+
+<aside id="notes" aria-label="梳理全文">
+  <button class="x" id="closeNotes">合上</button>
+  <div class="sc">
+  <p class="kick">Notes · 尺牍之后</p>
+  <h2>尺牍立下的规矩，<br>和下一步往哪走</h2>
+  <p class="lede">判断：尺牍是全站第一处把「真材实料、画归画点归点、昼夜换光源」三件事同时做齐的地方，这几条值得各处照办。它自身还有八处能更好（实验台逐项可开关，「全按现网」就是生产代码）。借给别处只取「质」——声音、风、纸的工具箱、贴图预算——不换任何一处的相。</p>
+
+  <h3>壹 · 尺牍立下的规矩<small>以后各处照此</small></h3>
+  <ol>
+    <li><b>真材实料、有出处。</b>每张图有馆藏号与许可（<code>public/lights/CREDITS.md</code>）：克利夫兰 1625 年《花鸟》木刻作花笺淡印与拱花法线，雪窗《风竹图》作竹影，ambientCG 帘纹作信封。不画「像纸的渐变」。</li>
+    <li><b>画归画，点归点。</b>WebGL 只负责好看；可点、可聚焦、能 <code>⌘</code> 直达、读屏能念的是跟着信封走的 DOM 热区。这一条让 3D 页面不丢键盘和无障碍。</li>
+    <li><b>昼夜换的是光源，不是调暗。</b>昼是窗与竹影（<code>SpotLight.map</code> 当遮光片），夜是秉烛、烛跟指针、读信时挪到信边。</li>
+    <li><b>动有来由。</b>封舌先被纸的硬挺拖住再翻（<code>paperFlip</code>）；防穿模三条（铰链过竖直才下沉、封舌不回弹、封舌躺平前笺不出封口）写在文件头。</li>
+    <li><b>引擎不进 React，画布自建自拆。</b>与砂与星、园图同一种做法，开发模式挂两次也不坏。</li>
+    <li><b>有退路。</b>建不起 WebGL 退 DOM 信封；reduced-motion 不演进场、竹影不摇、烛不闪。</li>
+  </ol>
+
+  <h3>贰 · 尺牍自身：八处能更好<small>实验台逐项对照</small></h3>
+  <ol>
+    <li><b>纸会弯。</b>
+      <span class="ev">八行笺是两块 1×1 分段的平板，摊开是绕铰链的刚体转动（<code>letterScene.ts:436</code> 的 <code>hinge.rotation.y</code>），折痕只是一条线。</span>
+      <span class="an">顶点着色器里按弧长积分出纸的截面：静时折痕是一个小圆弧；摊开途中边角按角速度滞后、停下再回弹两下；读信时整张微拱，像捏在手里。同一段代码挂到 <code>customDepthMaterial</code>，影子也跟着弯。关掉时同一着色器退化成原来的刚体转动。代价：每封多三百来个顶点、每顶点 20 步积分，可忽略。</span></li>
+    <li><b>洒金会闪。</b>
+      <span class="ev">红签上的 110 片金点只是粗糙度低（.22），没有金属度、也没有环境可反射，昼里看就是黄点。</span>
+      <span class="an">金箔单成一层小贴片，金属度 1，每片的法线随机偏 ±25°（金箔本来就皱）。环境光不下载 HDR：在离屏摆一间「左上开窗」的屋子，PMREM 生成——窗与竹影的天光同向。夜里环境压暗，只剩烛的高光，挪烛就一粒粒亮。代价：每封两张 136×378 小贴图（约 0.5 MB），环境图一张约 7 MB（全桌共用）。</span></li>
+    <li><b>读信景深。</b>
+      <span class="ev">读信时桌面盖一层不透明度 .5–.62 的幕，桌面被「压扁」成一块灰。</span>
+      <span class="an">桌面渲到离屏、两遍可分离高斯、略压暗，笺另画在上面——像对焦在手上的信。只在读信那一会儿多三张离屏（1× 分辨率，1440×900 约 21 MB），合上就还。这一项改的是读信的「相」，要你看过再定。</span></li>
+    <li><b>一阵风。</b>
+      <span class="ev">现网的风只摇竹影。</span>
+      <span class="an">同一阵风同时掀动没封口的封舌（虚席那只；封了口的、或笺正躺在上面的不动，守住「封舌不回弹」）、让烛焰偏一点摇得勤一点、让手里的笺微颤。实验台「吹一阵」可试。几行三角函数。</span></li>
+    <li><b>信多了怎么摆。</b>
+      <span class="ev">桌面网格每行至多四封、信封高取屏高 40%。邻居到第四位（连虚席五封）就排成两行：1440×900、实验台收起时实测第一排顶到 y = −15 px，压在页头上；九位时在 −464 px，整排出屏。地址后加 <code>?n=4&amp;p=live&amp;lab=0</code> 即可复现。</span>
+      <span class="an">超过四封改错落叠放：两行（十四封以上三行）、互压不过三分之一（红签在正中，压不住名字）、越新越在上；移近一封，右边的信整体让开，像摊开一手牌。第一排按页头的实际底边让开，行距留出一只敞开封舌的高度（虚席那只常开，不能盖住上一排的名字）。顺带让口袋面真的投影——three 默认往阴影图里画材质的背面，单面的口袋面因此从不投影，现网只靠影子垫；叠起来以后上面的信要压出影子才分得清层次。手机仍两列缩小，另议。</span></li>
+    <li><b>闲时降帧。</b>
+      <span class="ev">GSAP ticker 每帧都 render，ProMotion 屏上是 120 帧；昼里太阳的目标跟着竹影摇，阴影图每帧重画。</span>
+      <span class="an">没人动、没有补间时降到 30 帧，阴影图 15 次／秒；指针一动、补间一起，当帧回满。看实验台的「画面」「阴影图」两栏。</span></li>
+    <li><b>省显存。</b>
+      <span class="ev">按尺寸估，每封邻居信：笺 1280×980 约 6.7 MB、笺法线 1.7、信封面 2.1、骑缝印一整张 512×768 的透明层 2.1（印本身只有 77×98 px）、封舌两面 1.5、粗糙度 0.5，合计约 14.6 MB；九封约 130 MB。另有阴影图：2048² 的颜色＋深度每盏约 33.5 MB。这在 iOS Safari 上吃紧。</span>
+      <span class="an">骑缝印改成一小块贴花；笺在第一次移近时才画（材质先挂 1×1 占位贴图，换图不重编着色器）；阴影图降到 1024（烛的影边本来就虚，半径 7）。未移近的信每封约 4.7 MB。台上实测（九位邻居，按尺寸估）：全按现网 165 MB 贴图＋34 MB 阴影图，全按提案 74 MB＋8 MB（已含洒金那张 6 MB 的环境图）。代价：第一次移近某封时现画笺，实测 16–48 ms，落地可挪进 Worker。</span>
+      <span class="ev">已落地（10-25，与「闲时降帧」一起进了 <code>letterScene.ts</code>）。钩住 WebGL 从外面量现网（两位邻居，1440×900，昼夜同）：闲时 60 → 30 帧、阴影图 60 → 15 次／秒，一动回 59；显卡上的贴图＋渲染缓冲 66.0 → 36.6 MB，移近一封后 79.9 → 50.6 MB；页面就绪 2.49 → 2.25 s。实验台「只开省显存与闲时降帧」量出来与现网移近后一字不差（46.4＋4.2 MB）。</span>
+      <span class="an">更正上面的估法：three 本来就等贴图第一次被画到才传上显卡，所以「笺移近才画」省的是内存里那张画布和进场时约 0.24 s 的绘制，不是显存；按尺寸估的数把还没上传的也算进去了。显存的大头其实是阴影图（2048 时一盏 33.5 MB），其次是骑缝印那张透明层。</span></li>
+    <li><b>纸声（默认关）。</b>
+      <span class="an">WebAudio 现合成：拆封几粒脆响，抽出一段摩擦的沙沙，摊开一串细碎再一声闷响。不用音频文件——找过，没找到确认 CC0 的拆信声；要更真就自己录一张八行笺（opus 约 20 KB）。落地时放歌要让位、⌘K 里给一项开关。</span></li>
+  </ol>
+  <p class="an" style="margin-top:14px">还有一处不是工程问题：<b>八行笺八行只写了四行</b>（见字如面、一句话、两行落款），读信时左半张是空的。三条路：①园主朱批（上一版演示稿提过，还没定）；②「又及」读邻居的 RSS 最新一篇——查过两位邻居常见的六个订阅路径都没有，眼下做不了；③交换友链时请邻居写一句给园子的话。</p>
+
+  <h3>叁 · 借给别处<small>只取质，不换相，每项可一键退回</small></h3>
+  <ol>
+    <li><b>纸声成为纸类场所的共同声音。</b>工坊册页展开（FLIP）、园图解带展卷、尺牍拆信共用一个 <code>lib/paperSound.ts</code>；默认关，放歌时让位。</li>
+    <li><b>一只风钟。</b><code>lib/wind.ts</code> 给出同一个 <code>gust(t)</code>：花园的樱瓣、尺牍的竹影与封舌、园图的浮尘一起起风；从尺牍切去花园，风不断。看不出来也无妨，看出来的人会觉得这是一座园子。</li>
+    <li><b>纸的工具箱。</b><span class="ev"><code>yuantu/scrollScene.ts</code> 与 <code>lights/letterScene.ts</code> 各写了一份 <code>loadImg</code>、<code>mk</code>、纸色叠印、贴图设置。</span><span class="an">收进 <code>lib/paper/</code>（paperFill、printOf、法线合成、弯纸着色片段、贴图预算），往后再做实物直接用。</span></li>
+    <li><b>园图贴图压成 KTX2。</b><span class="ev">卷切 20 片 2048×1100，显卡里最多常驻 9 片，未压缩约 9 × 12 MB ≈ 108 MB。</span><span class="an">UASTC 约四分之一、ETC1S 约八分之一。three 自带 <code>KTX2Loader</code>，basis 转码器 515 KB（gzip 约 240 KB），只进园图那一包。</span></li>
+    <li><b>不建议：</b>入口页、文章列表、音乐页换成纸的相——三次在精修与原版之间选了原版，记录在案；音乐页的水不动。</li>
+  </ol>
+
+  <h3>肆 · 可引入的包与素材<small>许可核过才列</small></h3>
+  <table>
+    <tr><th>名称</th><th>用在哪</th><th>许可 · 状态</th></tr>
+    <tr class="sub"><td colspan="3">已在 node_modules，零下载</td></tr>
+    <tr><td>GSAP 3.15 全部插件</td><td><b>CustomWiggle</b>：封舌被风掀的抖；<b>Flip</b>：工坊手写的 FLIP 可换掉；<b>SplitText</b>：页头逐字，自带读屏处理；<b>InertiaPlugin</b>：若做「挪信」，拖完惯性滑行；<b>GSDevTools</b>：只在开发期，拖时间轴调开合手感</td><td>3.13 起全部插件免费、随 npm 包发（node_modules 里已有）</td></tr>
+    <tr><td>three 0.170 自带</td><td><b>PMREMGenerator</b>（本台的洒金已用）；<b>KTX2Loader</b>（园图）；<b>RoomEnvironment</b>（备选，本台改为自摆一间开窗的屋，更对得上光向）</td><td>MIT</td></tr>
+    <tr class="sub"><td colspan="3">要下载，等你点头</td></tr>
+    <tr><td>大都会《十竹斋》书画谱页</td><td>清代多色木刻，作花笺淡印——眼下只有三块木刻、邻居信只轮用两块，信多了会重样</td><td>Open Access，如 <a href="https://www.metmuseum.org/art/collection/search/63459" target="_blank" rel="noopener">Met 63459</a></td></tr>
+    <tr><td>大都会、克利夫兰的砚与镇纸照片</td><td>桌上若要一件文房，至多一件：信多了压一方镇纸</td><td>Open Access，如 <a href="https://www.metmuseum.org/art/collection/search/41871" target="_blank" rel="noopener">Met 41871 带盖长方砚</a></td></tr>
+    <tr><td>Poly Haven HDRI</td><td>只在自摆的屋子光不够自然时</td><td>CC0</td></tr>
+    <tr class="sub"><td colspan="3">不建议</td></tr>
+    <tr><td>《十竹斋笺谱》1952 荣宝斋复刻本</td><td>最对题的花笺来源</td><td>RISD 藏本标为在版权内（<a href="https://risdmuseum.org/art-design/collection/models-letter-paper-ten-bamboo-studio-shizhuzhai-jianpu-20051" target="_blank" rel="noopener">记录</a>）</td></tr>
+    <tr><td>three 升 r18x ／ WebGPU</td><td>—</td><td>眼下没有非它不可的功能，三处引擎都要回归；等要用 TSL 再说</td></tr>
+    <tr><td>Theatre.js</td><td>可视化关键帧</td><td>核心 Apache-2.0，编辑器 Studio 是 AGPL；GSDevTools 已够调手感</td></tr>
+    <tr><td>Rapier ／ cannon-es 做纸</td><td>—</td><td>解析弯曲确定、可测、零依赖，够用</td></tr>
+    <tr><td>商用音效包</td><td>纸声</td><td>Soundstripe、Artlist 等要订阅；不如合成或自己录</td></tr>
+  </table>
+
+  <h3>伍 · 建议的顺序</h3>
+  <ul>
+    <li><span class="tag p0">P0</span><b>看不见、纯更好：</b>省显存、闲时降帧。改动只在 <code>letterScene.ts</code>，实验台的数字就是验收。<b>10-25 已落地</b>，数字见贰·七。</li>
+    <li><span class="tag p1">P1</span><b>尺牍里看得见、不改相：</b>纸会弯、洒金会闪、一阵风。</li>
+    <li><span class="tag p2">P2</span><b>要你拍板：</b>读信景深（替代幕）、纸声、错落叠放——第四位邻居来之前必须定一个。</li>
+    <li><span class="tag p3">P3</span><b>别处：</b>纸的工具箱 → 园图 KTX2 → 风钟 → 纸声扩到工坊与园图。</li>
+  </ul>
+
+  <h3>待你定</h3>
+  <ol>
+    <li>读信时：幕，还是景深？</li>
+    <li>纸声要不要（默认关的前提下）？</li>
+    <li>信多了：错落叠放，还是按结邻年份成摞？</li>
+    <li>八行笺空着的四行写什么？</li>
+  </ol>
+
+  <h3>出处</h3>
+  <p class="src">素材全部沿用 <code>public/lights</code>、<code>public/yuantu</code>、<code>public/textures</code>，本页没有新下载任何文件。库：three.js 0.170（MIT，jsDelivr）、GSAP 3.13 + CustomEase（免费商用，jsDelivr）。字：齐伋体子集、志莽行书、Homemade Apple、IM Fell English、朱雀仿宋、霞鹜文楷（均 OFL / Apache）。核对许可用到的页面：<a href="https://www.metmuseum.org/art/collection/search/63459" target="_blank" rel="noopener">Met 63459</a>、<a href="https://www.metmuseum.org/art/collection/search/41871" target="_blank" rel="noopener">Met 41871</a>、<a href="https://risdmuseum.org/art-design/collection/models-letter-paper-ten-bamboo-studio-shizhuzhai-jianpu-20051" target="_blank" rel="noopener">RISD 2005.1</a>、<a href="https://stormwave-audio.itch.io/paper-sound-effects-vol-i" target="_blank" rel="noopener">Stormwave 纸声包（付费）</a>。</p>
+  </div>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+const G = window.gsap;
+G.registerPlugin(CustomEase);
+CustomEase.create('paperFlip', 'M0,0 C0.32,0 0.22,1.08 0.56,1.035 0.7,1.012 0.84,1 1,1');
+CustomEase.create('unfold', 'M0,0 C0.22,0 0.28,1.07 0.6,1.03 0.72,1.012 0.86,1 1,1');
+
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const K = RM ? 0.35 : 1;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), lerp = (a, b, t) => a + (b - a) * t;
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const ctx2d = (c, read = false) => c.getContext('2d', read ? { willReadFrequently: true } : undefined);
+const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src; });
+const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
+// 可分叉的随机：fork() 从当前状态接着走——笺晚画时也与现网同一串随机
+const rnd = (seed) => { let s = seed >>> 0 || 1; const f = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); f.fork = () => rnd(s); return f; };
+const hash = (str) => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const mixHex = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+const CN = '〇一二三四五六七八九十';
+
+if (location.protocol === 'file:') { document.body.classList.add('nofile'); throw new Error('须在开发服务器下打开'); }
+
+/* ═════════════ 开关 ═════════════ */
+const LIVE = { bend: false, gold: false, dof: false, wind: false, scatter: false, idle: false, mem: false };
+const NEXT = { bend: true, gold: true, dof: true, wind: true, scatter: true, idle: true, mem: true };
+const F = { ...NEXT, sound: false };
+let NUM = 2;
+
+/* ═════════════ 数据（与 src/data/friends.ts、lights/letters.ts 同形） ═════════════ */
+const FRIENDS = [
+  { name: 'Evan Lin', url: 'https://evanlin.site/', desc: 'UNSW Builder', color: '#39C5BB', since: '2026-10-10' },
+  { name: 'hejiac', url: 'https://hejiac.com', desc: 'Made with curiosity.', color: '#7DD3FC', since: '2026-10-24' },
+];
+// 演示用的假邻居：只为看信多了怎么摆（地址都是 .example）
+const FAKE = [
+  { name: 'Aster', url: 'https://aster.example/', desc: '写字的人，也种花', color: '#FFB7C5', since: '2026-03-20' },
+  { name: '听雨', url: 'https://tingyu.example/', desc: '夜里听雨，白天写码', color: '#A78BFA', since: '2026-04-05' },
+  { name: 'Kumo', url: 'https://kumo.example/', desc: 'Clouds & compilers.', color: '#60A5FA', since: '2026-05-21' },
+  { name: '青苔', url: 'https://moss.example/', desc: '慢慢长', color: '#A7F3D0', since: '2026-06-21' },
+  { name: 'Lumen', url: 'https://lumen.example/', desc: 'Small lights, kept.', color: '#FDE047', since: '2026-08-07' },
+  { name: '南枝', url: 'https://nanzhi.example/', desc: '向阳的那一枝', color: '#FDBA74', since: '2026-09-07' },
+  { name: 'Nori', url: 'https://nori.example/', desc: 'Field notes.', color: '#39C5BB', since: '2026-09-23' },
+];
+const SELF = { name: 'Oasis · Bob Lee 的小站', url: 'https://oasis-five-blush.vercel.app/', desc: '一处温柔疗愈、带着禅意的数字花园。', mail: 'lb15058460816@gmail.com', color: '#FFB7C5' };
+const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+const TERMS = [[1,5,'小寒'],[1,20,'大寒'],[2,4,'立春'],[2,18,'雨水'],[3,5,'惊蛰'],[3,20,'春分'],[4,5,'清明'],[4,20,'谷雨'],[5,5,'立夏'],[5,21,'小满'],[6,5,'芒种'],[6,21,'夏至'],[7,7,'小暑'],[7,22,'大暑'],[8,7,'立秋'],[8,23,'处暑'],[9,7,'白露'],[9,23,'秋分'],[10,8,'寒露'],[10,23,'霜降'],[11,7,'立冬'],[11,22,'小雪'],[12,7,'大雪'],[12,21,'冬至']];
+const termOf = (d) => { const m = d.getMonth() + 1, day = d.getDate(); let t = '冬至'; for (const [tm, td, n] of TERMS) if (m > tm || (m === tm && day >= td)) t = n; return t; };
+const ganzhi = (d) => { let y = d.getFullYear(); if (d.getMonth() === 0 || (d.getMonth() === 1 && d.getDate() < 4)) y--; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
+const dateLine = (iso) => { const d = iso ? new Date(`${iso}T12:00:00`) : new Date(); return `${ganzhi(d)}${termOf(d)}`; };
+const MOTIFS = ['bird', 'spray'];
+const buildLetters = (n) => {
+  const fr = n <= 2 ? FRIENDS : [...FAKE.slice(0, n - 2), ...FRIENDS];
+  return [
+    ...fr.map((f, i) => ({ kind: 'friend', name: f.name, url: f.url, host: hostOf(f.url), desc: f.desc, color: f.color, since: f.since, motif: MOTIFS[i % 2], demo: f.url.includes('.example'),
+      cols: [{ t: '见字如面' }, { t: f.desc }, {}, {}, {}, {}, { t: f.name, at: 'end' }, { t: dateLine(f.since), at: 'end', small: true }] })),
+    { kind: 'vacant', name: '虚席以待', url: SELF.url, host: hostOf(SELF.url), desc: SELF.desc, color: SELF.color, motif: 'blossom',
+      cols: [{ t: '园门常开' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: '绿洲园丁 Bob Lee', at: 'end' }, { t: dateLine(), at: 'end', small: true }] },
+  ];
+};
+
+/* ═════════════ 外壳：Dock 四格（尺牍亮着） ═════════════ */
+const IC = {
+  sound: '<path d="M4 13.6v-1.9a8 8 0 0 1 16 0v1.9"/><rect x="2" y="12.8" width="4.6" height="7.4" rx="2.3"/><rect x="17.4" y="12.8" width="4.6" height="7.4" rx="2.3"/>',
+  garden: '<path d="M12 20.3V10.1"/><path d="M12 11.5C12 7.3 8.9 3.7 3.9 3.7c0 5 3.4 7.8 8.1 7.8Z"/><path d="M12 15.3c0-3.6 3-6.2 8.1-6.2 0 4.2-3.4 6.2-8.1 6.2Z"/>',
+  atelier: '<path d="M9.6 13.6v-3a2.4 2.4 0 1 1 4.8 0v3"/><rect x="4.5" y="13.6" width="15" height="4.6" rx="1.6"/><path d="M6.5 21h11"/>',
+  letters: '<rect x="6" y="3.5" width="12" height="17" rx="1.2"/><path d="M6 4.2 12 9.6l6-5.4"/><path d="M12 12.2v5.6"/>',
+  miku: '<path d="M8.8 8.2C6 8.8 4.3 11.4 4.1 14.4c-.1 2 .5 3.9 1.7 5.5.4-3.2 1.5-6.1 3.4-8.4"/><path d="M15.2 8.2c2.8.6 4.5 3.2 4.7 6.2.1 2-.5 3.9-1.7 5.5-.4-3.2-1.5-6.1-3.4-8.4"/><path d="M8.7 7.8c.7-2.2 5.9-2.2 6.6 0l.9 4.1c.4 2.3-1.5 4.3-4.2 4.3s-4.6-2-4.2-4.3l.9-4.1Z"/>',
+};
+const svg = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
+$('#dock').innerHTML = ['sound', 'garden', 'atelier', 'letters'].map((k) => `<span class="it${k === 'letters' ? ' on' : ''}">${svg(k)}</span>`).join('');
+$('#pendant').innerHTML = svg('miku');
+
+/* ═════════════ 尺寸（与现网同） ═════════════ */
+const W = 220, H = 330, FH = 118;
+const LW = 196, LH = 300;
+const Z_POCKET = 1.2, Z_LETTER = 0.6;
+const Y_IN = -H / 2 + 10 + LH / 2;
+const PEEK = LH * 0.42;
+const OUT = H / 2 + 10 - (Y_IN - LH / 2) - PEEK;
+const EK = 512 / W;
+const CW = 1280, CH = Math.round(CW * LH / (LW * 2));
+const LM = { x: 54, top: 118, bottom: 72 };
+const HAND = { gap: 1.06, size: 1.16, latStyle: '400', latSize: 0.62 };
+const KAI = '"Zhi Mang Xing", "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif';
+const LAT = '"Homemade Apple", "IM Fell English", Georgia, serif';
+const PRINT_LAT = '"IM Fell English", Georgia, serif';
+
+/* 竖排一列（与现网同） */
+const PUNC_TR = '，。、；：';
+const tokens = (str) => {
+  const out = []; let lat = '';
+  for (const ch of str) {
+    if (/[\x20-\x7E·]/.test(ch) && !(ch === '·' && !lat)) { lat += ch; continue; }
+    if (lat.trim()) out.push({ ch: '', lat: lat.trim() });
+    lat = '';
+    out.push({ ch, lat: null });
+  }
+  if (lat.trim()) out.push({ ch: '', lat: lat.trim() });
+  return out;
+};
+const vcol = (x, str, cx, y0, y1, o) => {
+  const size = o.size * HAND.size, gap = o.gap ?? HAND.gap, rand = o.rand;
+  const latFont = o.print ? `italic 400 ${size * 0.92}px ${PRINT_LAT}` : `${HAND.latStyle} ${size * HAND.latSize}px ${LAT}`;
+  const toks = tokens(str);
+  const adv = toks.map((t) => {
+    if (t.lat !== null) { x.font = latFont; return x.measureText(t.lat).width + size * 0.3; }
+    return PUNC_TR.includes(t.ch) ? size * 0.7 : size * gap;
+  });
+  const total = adv.reduce((a, b) => a + b, 0);
+  let y = o.at === 'end' ? y1 - total : y0;
+  x.save(); x.fillStyle = o.color; x.textBaseline = 'middle';
+  toks.forEach((t, i) => {
+    const jx = rand ? (rand() - 0.5) * size * 0.05 : 0, jr = rand ? (rand() - 0.5) * 0.035 : 0;
+    x.globalAlpha = rand ? 0.86 + rand() * 0.14 : 1;
+    if (t.lat !== null) {
+      x.font = latFont; x.textAlign = 'left';
+      x.save(); x.translate(cx + jx - size * 0.04, y + size * 0.12); x.rotate(Math.PI / 2); x.fillText(t.lat, 0, 0); x.restore();
+    } else {
+      x.font = `400 ${size}px ${KAI}`; x.textAlign = 'center';
+      const tr = PUNC_TR.includes(t.ch);
+      x.save(); x.translate(tr ? cx + size * 0.32 : cx + jx, tr ? y + size * 0.12 : y + adv[i] / 2); x.rotate(jr);
+      x.shadowColor = o.color; x.shadowBlur = size * 0.03;
+      x.fillText(t.ch, 0, 0); x.restore();
+    }
+    y += adv[i];
+  });
+  x.restore();
+};
+
+/* ═════════════ 渲染器 ═════════════ */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+} catch (e) { document.body.classList.add('nogl'); $('#msg p').textContent = '这台机器建不起 WebGL，现网会退回 DOM 信封。'; throw e; }
+$('#stage').appendChild(renderer.domElement);
+renderer.domElement.classList.add('lt-gl');   // 与现网同名：外部量显存的脚本按这个认画布
+renderer.setPixelRatio(Math.min(devicePixelRatio, COARSE ? 1.75 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.info.autoReset = false;
+const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 40, 9000);
+
+/* 贴图记账：按尺寸估显存（RGBA8，含 mip 约 4/3） */
+const MEM = new Map();
+const SHARED = [];
+const ctex = (src, bag, { srgb = true, repeat = null } = {}) => {
+  const t = src instanceof HTMLCanvasElement ? new THREE.CanvasTexture(src) : new THREE.Texture(src);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = ANISO;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
+  t.needsUpdate = true;
+  MEM.set(t, src.width * src.height * 4 * 4 / 3);
+  bag.push(t);
+  return t;
+};
+const drop = (bag) => { for (const x of bag) { x.dispose(); MEM.delete(x); } bag.length = 0; };
+const solid = (col) => { const c = mk(2, 2), x = ctx2d(c); x.fillStyle = col; x.fillRect(0, 0, 2, 2); return c; };
+const PH = { map: ctex(solid('#F6F1E6'), SHARED), n: ctex(solid('rgb(128,128,255)'), SHARED, { srgb: false }) };
+
+/* ═════════════ 状态 ═════════════ */
+const V = { w: 1, h: 1, D: 1, phone: false, tilt: 0.15, enterDY: 0, padR: 0 };
+const READ = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), scale: 1 };
+const MODE = { n: 0 };
+const VEIL = { o: 0 };
+const WIND = { g: 0, burst: 0, flap: 0 };
+const FOCUS = new THREE.Vector3();
+const PTR = { on: false, p: new THREE.Vector3(), t: 0 };
+const CANDLE = new THREE.Vector3(), CT = new THREE.Vector3();
+let hover = -1, reading = -1, lastPointer = 'mouse', busy = null, tPrev = 0, started = false;
+let items = [], letters = [], hitEls = [];
+
+const ray = new THREE.Raycaster(), PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const _v = new THREE.Vector3(), _n = new THREE.Vector2();
+const toDesk = (sx, sy, out = new THREE.Vector3()) => { _n.set((sx / V.w) * 2 - 1, -(sy / V.h) * 2 + 1); ray.setFromCamera(_n, camera); ray.ray.intersectPlane(PLANE, out); return out; };
+const toScreen = (v) => { _v.copy(v).project(camera); return { x: ((_v.x + 1) / 2) * V.w, y: ((1 - _v.y) / 2) * V.h }; };
+
+/* ═════════════ 灯（与现网同；多开一层给「景深」时单画笺） ═════════════ */
+const SHADOW_HI = COARSE ? 1024 : 2048;
+const hemi = new THREE.HemisphereLight('#F7F5EF', '#DCD6CA', 1.2);
+hemi.position.set(0, -0.25, 1);
+const sun = new THREE.SpotLight('#FFF6EA', 2.6, 0, 0.4, 0.55, 0);
+sun.castShadow = true; sun.shadow.camera.near = 2000; sun.shadow.camera.far = 5200;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.8; sun.shadow.focus = 1; sun.shadow.radius = 2.5;
+const candle = new THREE.SpotLight('#FFC690', 0, 0, 1.1, 1, 2);
+candle.castShadow = true; candle.shadow.camera.near = 20; candle.shadow.camera.far = 2400;
+candle.shadow.bias = -0.0006; candle.shadow.normalBias = 0.8; candle.shadow.focus = 1; candle.shadow.radius = 7;
+for (const l of [hemi, sun, candle]) l.layers.enable(1);
+scene.add(hemi, sun, sun.target, candle, candle.target);
+const setShadowSize = (S) => { for (const l of [sun, candle]) { if (l.shadow.mapSize.x === S) continue; l.shadow.map?.dispose(); l.shadow.map = null; l.shadow.mapSize.set(S, S); } };
+const C_DAY = { sky: new THREE.Color('#F7F5EF'), ground: new THREE.Color('#DCD6CA'), veil: new THREE.Color('#EDE6D6') };
+const C_NIGHT = { sky: new THREE.Color('#25304A'), ground: new THREE.Color('#0B0B0C'), veil: new THREE.Color('#050506') };
+
+const veilMat = new THREE.MeshBasicMaterial({ color: '#EDE6D6', transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+const veil = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), veilMat);
+veil.renderOrder = 5; scene.add(veil);
+let ground = null;
+
+/* ═════════════ 洒金的环境：离屏摆一间左上开窗的屋（与竹影的天光同向；+z 朝上） ═════════════ */
+let ENV = null;
+const getEnv = () => {
+  if (ENV) return ENV;
+  const s = new THREE.Scene(), junk = [];
+  const add = (geo, col, k, side) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side })); junk.push(geo, m.material); s.add(m); return m; };
+  add(new THREE.BoxGeometry(10, 10, 10), '#5A5044', 1, THREE.BackSide);
+  const win = add(new THREE.PlaneGeometry(3.2, 2.4), '#FFF3E0', 9, THREE.DoubleSide); win.position.set(-2.2, 2.6, 4.6); win.lookAt(0, 0, 0);
+  const sill = add(new THREE.PlaneGeometry(6, 1.2), '#FFE2B8', 1.3, THREE.DoubleSide); sill.position.set(0, -4.6, 2.2); sill.lookAt(0, 0, 0);
+  const lamp = add(new THREE.PlaneGeometry(1.4, 1.4), '#FFF1DE', 2.4, THREE.DoubleSide); lamp.position.set(3.5, 1, 4.5); lamp.lookAt(0, 0, 0);
+  const pm = new THREE.PMREMGenerator(renderer);
+  ENV = pm.fromScene(s, 0.035).texture;
+  pm.dispose(); junk.forEach((x) => x.dispose());
+  return ENV;
+};
+const envBytes = () => (ENV ? ENV.image.width * ENV.image.height * 8 : 0);
+
+/* ═════════════ 纸会弯：按弧长积分出笺的截面（关掉时退化为原来的刚体转动） ═════════════
+   uRole 0＝右半页（离折痕的距离 d，整张同一曲率 κ）；1＝左半页（弧长 s 处的切角 ψ(s)）。
+   ψ(s) = θ·min(1, s/w)  折痕是宽 w 的圆弧
+        + lag·(s/LW)^1.6 边角按角速度滞后
+        + κ·s·cosθ       整张微拱（对折时朝向跟着翻，两层才套得住） */
+const BEND = /* glsl */`
+uniform float uRole, uTheta, uW, uLag, uKappa, uLW;
+float ltPsi(float s) {
+  float ramp = uW > 0.001 ? min(1.0, s / uW) : 1.0;
+  return uTheta * ramp + uLag * pow(s / uLW, 1.6) + uKappa * s * cos(uTheta);
+}
+void ltBend(inout vec3 p, out vec3 n) {
+  if (uRole < 0.5) {
+    float d = p.x + uLW * 0.5, c = uKappa * d;
+    if (abs(uKappa) > 1e-6) { p.x = sin(c) / uKappa - uLW * 0.5; p.z += (1.0 - cos(c)) / uKappa; }
+    n = vec3(-sin(c), 0.0, cos(c));
+  } else {
+    float s = max(0.0, uLW * 0.5 - p.x), ds = s / 20.0;
+    vec2 P = vec2(0.0);
+    for (int i = 0; i < 20; i++) { float q = ltPsi((float(i) + 0.5) * ds); P += vec2(-cos(q), sin(q)) * ds; }
+    float q = ltPsi(s);
+    p.x = P.x + uLW * 0.5; p.z += P.y;
+    n = vec3(sin(q), 0.0, cos(q));
+  }
+}`;
+const bendify = (mat, U, role) => {
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U, { uRole: { value: role } });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + BEND)
+      .replace('#include <beginnormal_vertex>', 'vec3 objectNormal; { vec3 q0 = position; ltBend(q0, objectNormal); }\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3( tangent.xyz );\n#endif')
+      .replace('#include <begin_vertex>', 'vec3 transformed = position; { vec3 n0; ltBend(transformed, n0); }');
+  };
+  return mat;
+};
+
+/* ═════════════ 景深：桌面离屏 → 两遍可分离高斯 → 合成，笺另画在上面 ═════════════ */
+const DOF = { rt: null, a: null, b: null, w: 0, h: 0 };
+const freeDof = () => { for (const k of ['rt', 'a', 'b']) { DOF[k]?.dispose(); DOF[k] = null; } DOF.w = DOF.h = 0; };
+const dofTargets = () => {
+  const w = Math.max(2, Math.round(V.w)), h = Math.max(2, Math.round(V.h));
+  if (DOF.rt && DOF.w === w && DOF.h === h) return;
+  freeDof();
+  DOF.rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType });
+  DOF.a = new THREE.WebGLRenderTarget(w >> 1, h >> 1, { type: THREE.HalfFloatType, depthBuffer: false });
+  DOF.b = new THREE.WebGLRenderTarget(w >> 1, h >> 1, { type: THREE.HalfFloatType, depthBuffer: false });
+  DOF.w = w; DOF.h = h;
+};
+const dofBytes = () => (DOF.rt ? DOF.w * DOF.h * 12 + 2 * (DOF.w >> 1) * (DOF.h >> 1) * 8 : 0);
+const quadScene = new THREE.Scene(), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); quad.frustumCulled = false; quadScene.add(quad);
+const VQ = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+const blurMat = new THREE.ShaderMaterial({
+  uniforms: { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: VQ, depthTest: false, depthWrite: false, toneMapped: false,
+  fragmentShader: `uniform sampler2D tSrc; uniform vec2 uDir; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tSrc, vUv) * 0.2270270270;
+      vec2 o1 = uDir * 1.3846153846, o2 = uDir * 3.2307692308;
+      c += (texture2D(tSrc, vUv + o1) + texture2D(tSrc, vUv - o1)) * 0.3162162162;
+      c += (texture2D(tSrc, vUv + o2) + texture2D(tSrc, vUv - o2)) * 0.0702702703;
+      gl_FragColor = c;
+    }`,
+});
+const compMat = new THREE.ShaderMaterial({
+  uniforms: { tSharp: { value: null }, tBlur: { value: null }, uMix: { value: 0 }, uDim: { value: 0 }, uDimColor: { value: new THREE.Color() } }, vertexShader: VQ, depthTest: false, depthWrite: false,
+  fragmentShader: `uniform sampler2D tSharp, tBlur; uniform float uMix, uDim; uniform vec3 uDimColor; varying vec2 vUv;
+    void main() {
+      vec3 c = mix(texture2D(tSharp, vUv).rgb, texture2D(tBlur, vUv).rgb, uMix);
+      gl_FragColor = vec4(mix(c, uDimColor, uDim), 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const pass = (mat, target) => { quad.material = mat; renderer.setRenderTarget(target); renderer.render(quadScene, quadCam); };
+
+/* ═════════════ 纸声：WebAudio 现合成（默认关） ═════════════ */
+const SFX = (() => {
+  let ac = null, noise = null, out = null;
+  const init = () => {
+    if (ac) { ac.resume?.(); return; }
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    out = ac.createGain(); out.gain.value = 0.55;
+    const comp = ac.createDynamicsCompressor(); out.connect(comp).connect(ac.destination);
+    noise = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+    const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  };
+  const burst = (t0, dur, f0, f1, q, g, type = 'bandpass') => {
+    const src = ac.createBufferSource(); src.buffer = noise;
+    const bp = ac.createBiquadFilter(); bp.type = type; bp.Q.value = q;
+    bp.frequency.setValueAtTime(f0, t0); bp.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const gn = ac.createGain();
+    gn.gain.setValueAtTime(0.0001, t0); gn.gain.exponentialRampToValueAtTime(g, t0 + Math.min(0.02, dur * 0.25)); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(gn).connect(out); src.start(t0, Math.random() * 1.5, dur + 0.05);
+  };
+  const crackle = (t0, dur, n, g) => { for (let i = 0; i < n; i++) burst(t0 + Math.random() * dur, 0.006 + Math.random() * 0.03, 2400 + Math.random() * 4200, 1600 + Math.random() * 2400, 1.4, g * (0.35 + Math.random() * 0.65)); };
+  const P = {
+    flap: (t) => { crackle(t, 0.24, 7, 0.09); burst(t, 0.2, 2000, 900, 0.7, 0.025); },
+    slide: (t, d = 0.5) => { burst(t, d, 1100, 3400, 0.55, 0.045); crackle(t + 0.05, d, 3, 0.03); },
+    unfold: (t) => { crackle(t, 0.4, 12, 0.1); burst(t + 0.34, 0.1, 520, 170, 0.8, 0.14, 'lowpass'); },
+    tuck: (t) => { burst(t, 0.42, 2900, 1200, 0.6, 0.035); crackle(t, 0.3, 4, 0.05); },
+  };
+  return { init, play(k, ...a) { if (!F.sound || !ac) return; P[k](ac.currentTime + 0.01, ...a); } };
+})();
+
+/* ═════════════ 版面：屏幕像素里排，再落到桌面 ═════════════ */
+const scatterOn = () => F.scatter && !V.phone && items.length > 4;
+const layout = () => {
+  V.w = Math.max(1, innerWidth); V.h = Math.max(1, innerHeight); V.phone = V.w < 760;
+  V.padR = !$('#lab').classList.contains('off') && !V.phone ? 336 : 0;
+  renderer.setSize(V.w, V.h, false);
+  camera.aspect = V.w / V.h;
+  V.tilt = V.phone ? 0.07 : 0.15;
+  V.D = V.h / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  camera.position.set(0, -V.D * Math.sin(V.tilt), V.D * Math.cos(V.tilt)); camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  if (!items.length) return;
+
+  const n = items.length, availW = V.w - V.padR, sc = scatterOn();
+  let bandH, y0, hs;
+  if (sc) {
+    // 错落：两行（十四封以上三行），互压不过三分之一，越新越在上
+    const rows = n > 14 ? 3 : 2, per = Math.ceil(n / rows);
+    // 第一排让开页头（现网的网格没算这一条，信一多就压上去）
+    const top = Math.max(V.h * 0.3, 250, $('#head').getBoundingClientRect().bottom + 28), availB = V.h - 120, availH = availB - top;
+    // 行距要容得下一只敞着的封舌（约 0.36 个信封高）：虚席那只常开，不能盖住上一排的名字
+    const GY = (FH / H) * 0.95;
+    hs = Math.min(clamp(V.h * 0.4, 240, 380), availH / (rows + GY * (rows - 1)));
+    const ws = (hs * W) / H, maxSpan = availW - 2 * Math.max(40, availW * 0.06), gy = hs * GY;
+    const step = Math.min(ws * 1.22, Math.max(ws * 0.66, (maxSpan - ws) / Math.max(1, per - 1)));
+    bandH = rows * hs + (rows - 1) * gy; y0 = top + Math.max(0, (availH - bandH) / 2);
+    const s = hs / H;
+    items.forEach((it, i) => {
+      const row = Math.floor(i / per), col = i % per, inRow = Math.min(per, n - row * per);
+      const rowW = ws + (inRow - 1) * step, r = rnd(hash(it.name) + 5);
+      const sx = (availW - rowW) / 2 + ws / 2 + col * step + (row % 2 ? 1 : -1) * step * 0.16 + (r() - 0.5) * 14;
+      const sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 16;
+      const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
+      it.row = row; it.stepW = step / s; it.stackZ = i * 1.4;
+    });
+  } else {
+    // 现网的网格（原样）
+    const cols = V.phone ? 2 : Math.min(n, 4), rows = Math.ceil(n / cols);
+    let gx, gy, top;
+    if (V.phone) {
+      gx = 22; const ws0 = (V.w - 32 - gx) / 2;
+      top = $('#head').getBoundingClientRect().bottom + 64;
+      hs = Math.min((ws0 * H) / W, (V.h - 104 - top - 18 * (rows - 1)) / (rows + ((rows - 1) * FH) / H));
+      gy = (hs * FH) / H + 18;
+    } else {
+      hs = clamp(V.h * 0.4, 240, 380); const ws = (hs * W) / H; gx = ws * 0.5;
+      const span = cols * ws + (cols - 1) * gx, maxSpan = availW - 2 * Math.max(40, availW * 0.06);
+      if (span > maxSpan) { const k = maxSpan / span; hs *= k; gx *= k; }
+      gy = hs * 0.3;
+      top = Math.max(V.h * 0.3, 250);
+    }
+    const ws = (hs * W) / H, s = hs / H;
+    bandH = rows * hs + (rows - 1) * gy; const availBottom = V.h - (V.phone ? 104 : 120);
+    y0 = V.phone ? top + Math.max(0, (availBottom - top - bandH) / 2) : Math.min(top + Math.max(0, (availBottom - top - bandH) / 2), availBottom - bandH);
+    items.forEach((it, i) => {
+      const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
+      const rowW = inRow * ws + (inRow - 1) * gx, r = rnd(hash(it.name) + 3);
+      const sx = (availW - rowW) / 2 + col * (ws + gx) + ws / 2 + (r() - 0.5) * 10, sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 10;
+      const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
+      it.row = row; it.stepW = W * 2; it.stackZ = 0;
+    });
+  }
+  window.__firstRowTop = Math.round(y0);
+  for (const it of items) { it.sp.x = 0; it.px = it.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot; it.pocket.material.shadowSide = sc ? THREE.FrontSide : null; }
+  toDesk(availW / 2, y0 + bandH / 2, FOCUS);
+  V.enterDY = toDesk(availW / 2, -V.h * 0.15).y - FOCUS.y + H * (hs / H);
+
+  const d = 0.6 * V.D, sheetAR = (2 * LW) / LH;
+  const targetH = Math.min(V.h * (V.phone ? 0.4 : 0.56), (availW * (V.phone ? 0.92 : 0.72)) / sheetAR);
+  _n.set((availW / 2 / V.w) * 2 - 1, V.phone ? 0.22 : 0.12); ray.setFromCamera(_n, camera);
+  const fwd = camera.getWorldDirection(new THREE.Vector3());
+  READ.pos.copy(camera.position).addScaledVector(ray.ray.direction, d / ray.ray.direction.dot(fwd));
+  READ.quat.copy(camera.quaternion); READ.scale = (targetH * d) / (LH * V.D);
+  veil.position.copy(camera.position).addScaledVector(fwd, d + 80); veil.quaternion.copy(camera.quaternion);
+  veil.scale.setScalar(4 * (d + 80) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.max(1, camera.aspect));
+  placeHits(); placeActs();
+};
+
+/* ═════════════ 热区 ═════════════ */
+const placeHits = () => {
+  for (const it of items) {
+    const c = Math.cos(it.pr), sn = Math.sin(it.pr), pts = [];
+    const ext = H / 2 + (it.st.peek > 0.01 || hover === it.idx ? PEEK + 10 : 0) + (it.st.flap > 0.5 ? FH : 0);
+    for (const [ax, ay] of [[-W / 2, -H / 2], [W / 2, -H / 2], [W / 2, ext], [-W / 2, ext]]) {
+      const lx = ax * it.s, ly = ay * it.s;
+      pts.push(toScreen(new THREE.Vector3(it.px + lx * c - ly * sn, it.py + lx * sn + ly * c, 2)));
+    }
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    Object.assign(it.el.style, { left: `${Math.min(...xs)}px`, top: `${Math.min(...ys)}px`, width: `${Math.max(...xs) - Math.min(...xs)}px`, height: `${Math.max(...ys) - Math.min(...ys)}px` });
+  }
+};
+const placeActs = () => {
+  if (reading < 0) return;
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(READ.quat), right = new THREE.Vector3(1, 0, 0).applyQuaternion(READ.quat);
+  const b = toScreen(READ.pos.clone().addScaledVector(up, (-LH / 2) * READ.scale)), c = toScreen(READ.pos);
+  const l = toScreen(READ.pos.clone().addScaledVector(right, -LW * READ.scale)), r = toScreen(READ.pos.clone().addScaledVector(right, LW * READ.scale));
+  const acts = $('#acts');
+  Object.assign(acts.style, { left: `${c.x}px`, top: `${b.y + (V.phone ? 20 : 26)}px` });
+  const sideY = V.phone ? acts.getBoundingClientRect().bottom + 22 : c.y, inset = V.phone ? 36 : -34;
+  Object.assign($('#prevBtn').style, { left: `${l.x + inset}px`, top: `${sideY}px` });
+  Object.assign($('#nextBtn').style, { left: `${r.x - inset}px`, top: `${sideY}px` });
+};
+
+/* ═════════════ 窥信 / 展读 / 收回 ═════════════ */
+const setHover = (i) => {
+  if (reading >= 0 || busy) return;
+  const prev = hover; hover = i;
+  if (i >= 0) ensureSheet(items[i]);
+  const sc = scatterOn();
+  items.forEach((it, j) => {
+    if (sc) {   // 错落：右边同一行的信整体让开，像摊开一手牌
+      const ov = W - it.stepW;
+      const x = i >= 0 && j > i && it.row === items[i].row && ov > -12 ? (ov + 18) * it.s : 0;
+      G.to(it.sp, { x, duration: 0.55 * K, ease: 'power3.out', overwrite: true });
+    }
+    it.el.style.zIndex = j === i ? '50' : '';
+    const on = j === i, was = j === prev;
+    if (on === was) return;
+    it.tl?.kill();
+    it.tl = G.timeline();
+    if (on) {
+      it.tl.to(it.st, { lift: 1, duration: 0.6 * K, ease: 'power3.out' }, 0);
+      if (it.kind === 'friend') it.tl.to(it.st, { flap: 1, duration: 0.75 * K, ease: 'paperFlip' }, 0);
+      it.tl.to(it.st, { peek: 1, duration: 0.8 * K, ease: 'expo.out' }, it.kind === 'friend' ? 0.42 * K : 0);
+      if (it.kind === 'friend') { SFX.play('flap'); it.tl.call(() => SFX.play('slide', 0.5), null, 0.42 * K); } else SFX.play('slide', 0.45);
+    } else {
+      it.tl.to(it.st, { peek: 0, duration: 0.45 * K, ease: 'power2.in' }, 0);
+      if (it.kind === 'friend') it.tl.to(it.st, { flap: 0, duration: 0.6 * K, ease: 'power2.inOut' }, 0.42 * K);
+      it.tl.to(it.st, { lift: 0, duration: 0.7 * K, ease: 'power2.out' }, 0.35 * K);
+      it.tilt.tx = it.tilt.ty = 0;
+    }
+  });
+  placeHits();
+};
+
+const open = (i) => {
+  if (busy || !items[i]) return;
+  if (reading >= 0) { if (reading !== i) close(() => open(i), true); return; }
+  const it = items[i]; reading = i; hover = -1;
+  ensureSheet(it);
+  items.forEach((x) => {
+    if (x === it) return;
+    x.tl?.kill();
+    x.tl = G.timeline().to(x.st, { peek: 0, flap: x.kind === 'vacant' ? 1 : 0, lift: 0, duration: 0.5 * K, ease: 'power2.inOut' });
+    G.to(x.sp, { x: 0, duration: 0.5 * K, ease: 'power2.inOut', overwrite: true });
+  });
+  onRead(i);
+  it.tl?.kill();
+  const tl = G.timeline({ onComplete: () => { busy = null; onShown(true); requestAnimationFrame(placeActs); } });
+  busy = it.tl = tl;
+  tl.to(it.st, { lift: 1, flap: 1, duration: 0.5 * K, ease: 'power2.out' }, 0)
+    .to(it.st, { peek: 1, duration: 0.45 * K, ease: 'power2.out' }, 0.4 * K)
+    .to(it.st, { out: 1, duration: 0.62 * K, ease: 'power2.inOut' }, '>-.06')
+    .to(it.st, { fly: 1, duration: 1.05 * K, ease: 'expo.inOut' }, '>-.28')
+    .to(it.st, { lift: 0, duration: 0.8 * K, ease: 'power2.out' }, '<.25')
+    .to(VEIL, { o: 1, duration: 0.9 * K, ease: 'power2.out' }, '<-.25')
+    .addLabel('uf', '>-.4')
+    .to(it.st, { unfold: 1, duration: 1.05 * K, ease: 'unfold' }, 'uf')
+    // 声音最后挂，免得挪动上面那些相对位置（'>' 指最近加入的一段）
+    .call(() => SFX.play('slide', 0.9), null, 0.4 * K)
+    .call(() => SFX.play('unfold'), null, 'uf');
+};
+const close = (after, quick = false) => {
+  if (reading < 0 || (busy && !quick)) return;
+  const it = items[reading], k = (quick ? 0.6 : 1) * K;
+  onShown(false);
+  busy?.kill();
+  const tl = G.timeline({
+    onComplete: () => {
+      busy = null; reading = -1; onRead(-1); freeDof();
+      it.el.dataset.quiet = '1'; it.el.focus({ preventScroll: true }); delete it.el.dataset.quiet;
+      placeHits(); after?.();
+    },
+  });
+  busy = it.tl = tl;
+  SFX.play('tuck');
+  tl.to(it.st, { unfold: 0, duration: 0.6 * k, ease: 'power2.inOut' }, 0)
+    .to(VEIL, { o: 0, duration: 0.8 * k, ease: 'power2.inOut' }, 0.3 * k)
+    .to(it.st, { fly: 0, duration: 0.95 * k, ease: 'expo.inOut' }, 0.45 * k)
+    .to(it.st, { lift: 1, duration: 0.4 * k, ease: 'power2.out' }, '<.4')
+    .addLabel('in', '>-.15')
+    .to(it.st, { out: 0, duration: 0.55 * k, ease: 'power2.inOut' }, 'in')
+    .to(it.st, { peek: 0, duration: 0.4 * k, ease: 'power2.in' }, '>-.05')
+    .to(it.st, { flap: it.kind === 'vacant' ? 1 : 0, duration: 0.6 * k, ease: 'power2.inOut' }, '>.02')
+    .to(it.st, { lift: 0, duration: 0.6 * k, ease: 'power2.out' }, '<.2')
+    .call(() => SFX.play('slide', 0.5), null, 'in');
+};
+
+/* ═════════════ 页面上的读信控件 ═════════════ */
+const onRead = (i) => {
+  document.body.classList.toggle('reading', i >= 0);
+  $('#reader').classList.toggle('on', i >= 0);
+  if (i < 0) return;
+  const L = letters[i], vac = L.kind === 'vacant';
+  $('#reader').classList.toggle('vacant', vac);
+  $('#goTxt').textContent = vac ? '来信' : '登门拜访';
+  $('#goHost').textContent = vac ? '' : L.host;
+  $('#goLink').href = vac ? `mailto:${SELF.mail}?subject=${encodeURIComponent('交换友链')}` : L.url;
+  $('#copyBtn').hidden = !vac;
+  $('#mtLine').innerHTML = `${SELF.name} ／ <code>${L.host}</code> ／ ${SELF.desc}`;
+  $('#prevBtn').disabled = i <= 0; $('#nextBtn').disabled = i >= letters.length - 1;
+  $('#readerTitle').textContent = vac ? '回帖。园门常开，想把你的花园连过来？来信。' : `${L.name} 的来信。见字如面。${L.desc}。${dateLine(L.since)}结邻，寄自 ${L.host}。`;
+};
+const onShown = (s) => { $('#reader').classList.toggle('shown', s); if (s) requestAnimationFrame(() => $('#goLink').focus({ preventScroll: true })); };
+$$('#reader [data-close]').forEach((b) => b.addEventListener('click', () => close()));
+$('#prevBtn').addEventListener('click', () => open(reading - 1));
+$('#nextBtn').addEventListener('click', () => open(reading + 1));
+$('#copyBtn').addEventListener('click', async () => {
+  const b = $('#copyBtn');
+  try { await navigator.clipboard.writeText(`站名：${SELF.name}\n地址：${SELF.url}\n简介：${SELF.desc}`); b.textContent = '已复制'; } catch { b.textContent = '复制不了，请手抄'; }
+  setTimeout(() => { b.textContent = '复制名帖'; }, 1800);
+});
+
+/* ═════════════ 事件 ═════════════ */
+const bindHit = (it) => {
+  const el = it.el, i = it.idx;
+  el.addEventListener('pointerenter', (e) => { lastPointer = e.pointerType; if (e.pointerType === 'mouse') setHover(i); });
+  el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hover === i) setHover(-1); });
+  el.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType; });
+  el.addEventListener('pointermove', (e) => { const r = el.getBoundingClientRect(); it.tilt.tx = -((e.clientY - r.top) / r.height - 0.5); it.tilt.ty = (e.clientX - r.left) / r.width - 0.5; });
+  el.addEventListener('focus', () => { if (lastPointer !== 'touch' && !el.dataset.quiet) setHover(i); });
+  el.addEventListener('blur', () => { if (hover === i && reading < 0) setHover(-1); });
+  el.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (lastPointer === 'touch' && hover !== i) { setHover(i); return; }
+    open(i);
+  });
+};
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('#notes').classList.contains('on')) { $('#notes').classList.remove('on'); return; }
+  if (reading < 0) return;
+  if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+  if (busy) return;
+  if (e.key === 'ArrowLeft' && reading > 0) open(reading - 1);
+  if (e.key === 'ArrowRight' && reading < items.length - 1) open(reading + 1);
+});
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && hover >= 0 && !e.target.closest?.('#hits')) setHover(-1); });
+addEventListener('pointermove', (e) => {
+  PTR.t = performance.now();
+  if (e.pointerType !== 'mouse') return;
+  PTR.on = true; toDesk(e.clientX, e.clientY, PTR.p);
+});
+document.documentElement.addEventListener('pointerleave', () => { PTR.on = false; });
+addEventListener('resize', () => { if (started) layout(); });
+
+/* ═════════════ 每帧 ═════════════ */
+const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
+const camRight = new THREE.Vector3(), camUp = new THREE.Vector3(), camBack = new THREE.Vector3();
+const pose = (it, t, dt) => {
+  const st = it.st, s = it.s, e = st.enter, sc = scatterOn();
+  const arc = Math.sin(clamp(e, 0, 1) * Math.PI) * 60 * s;
+  it.tilt.x += (it.tilt.tx * st.lift - it.tilt.x) * 0.12; it.tilt.y += (it.tilt.ty * st.lift - it.tilt.y) * 0.12;
+  it.px = it.x + it.sp.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot;
+  const liftH = 16 + (sc ? items.length * 1.4 + 6 : 0);
+  it.env.position.set(it.px, it.py + (1 - e) * V.enterDY, it.stackZ * s + st.lift * liftH * s + arc);
+  it.env.rotation.set(it.tilt.x * 0.07, it.tilt.y * 0.09, it.pr + (1 - e) * it.enterRot);
+  it.env.scale.setScalar(s);
+  const a = Math.PI * clamp(st.flap, 0, 1);
+  // 一阵风：只掀没封口、上面也没躺着笺的封舌（守住「封舌不回弹」）
+  const free = st.flap > 0.97 && st.peek < 0.02 && st.out <= 0 && st.fly <= 0;
+  const flift = F.wind && !RM && free ? WIND.flap * (0.62 + 0.38 * Math.sin(t * 5.3 + it.idx * 1.7)) : 0;
+  it.flapPivot.rotation.x = -a + flift;
+  const fall = clamp((a / Math.PI - 0.5) / 0.5, 0, 1);
+  it.flapPivot.position.z = lerp(Z_POCKET + 0.5, 0.1, fall * fall * (3 - 2 * fall));
+
+  it.env.updateMatrixWorld();
+  let rise = PEEK * st.peek + OUT * st.out;
+  if (st.fly <= 0) {
+    const room = H / 2 - (Y_IN + LH / 2) - 2, flat = clamp((a / Math.PI - 0.86) / 0.12, 0, 1);
+    rise = Math.min(rise, room + flat * (PEEK + OUT));
+  }
+  _m.makeTranslation(0, Y_IN + rise, Z_LETTER).premultiply(it.env.matrixWorld);
+  _m.decompose(_p, _q, _s);
+  if (st.fly > 0) {
+    const f = clamp(st.fly, 0, 1);
+    _p.lerp(READ.pos, f); _p.z += Math.sin(f * Math.PI) * 50;
+    _q.slerp(READ.quat, f); _s.setScalar(lerp(s, READ.scale, f));
+  }
+  it.letter.position.copy(_p); it.letter.quaternion.copy(_q); it.letter.scale.copy(_s);
+  const u = st.unfold, uc = clamp(u, 0, 1);
+  it.sheet.position.x = (LW / 2) * clamp(u, 0, 1.05);
+  // 折：θ 与现网铰链同；弯曲关掉时 w = lag = κ = 0，着色器里就是原来的刚体转动
+  const theta = -Math.PI * (1 - u) - 0.07 * uc, U = it.U, B = it.bend;
+  U.uTheta.value = theta;
+  if (F.bend) {
+    const vTh = dt > 0 ? (theta - B.prev) / dt : 0; B.prev = theta;
+    const lagT = clamp(-vTh * 0.085, -0.7, 0.7);
+    B.lagV += (110 * (lagT - B.lag) - 12 * B.lagV) * dt; B.lag += B.lagV * dt;
+    const f = clamp(st.fly, 0, 1);
+    const kT = 0.001 * Math.sin(Math.PI * f) + 0.00045 * uc + (F.wind ? WIND.g * 0.00024 * Math.sin(t * 1.9) * f : 0);
+    B.kV += (140 * (kT - B.k) - 7 * B.kV) * dt; B.k += B.kV * dt;
+    // 笺还有一截在信封里时不许弯：拱起的边会顶穿口袋面（弹簧的余振也一并压住）
+    const clear = clamp((f - 0.04) / 0.2, 0, 1);
+    U.uW.value = lerp(1.2, 24, Math.sin(Math.PI * uc)); U.uLag.value = B.lag * clear; U.uKappa.value = B.k * clear;
+  } else {
+    B.prev = theta; B.lag = B.lagV = B.k = B.kV = 0;
+    U.uW.value = 0; U.uLag.value = 0; U.uKappa.value = 0;
+  }
+  // 进场头几帧让笺也画出来（藏在信封里看不见）：弯纸、背面、阴影三套着色器趁这时编好，第一次移近不卡
+  it.letter.visible = it.warm > 0 || st.peek > 0.001 || st.out > 0 || st.fly > 0;
+  const cast = st.fly < 0.4;
+  if (it.cast !== cast) { it.cast = cast; for (const m of it.panels) m.castShadow = cast; }
+  if (it.gold) { it.gold.visible = F.gold; it.gold.material.envMapIntensity = lerp(1.15, 0.1, MODE.n); }
+  // 「在动」只算有人碰过的动；风掀封舌、竹影、烛闪是背景里的动，闲时 30 帧画它们就够
+  it.moving = G.isTweening(it.st) || G.isTweening(it.sp) || Math.abs(B.lagV) > 0.01 || Math.abs(B.kV) > 1e-5;
+
+  const h = st.lift * liftH + arc / s;
+  const dirX = lerp(0.55, (it.px - CANDLE.x) / 600, MODE.n), dirY = lerp(-0.62, (it.py - CANDLE.y) / 600, MODE.n);
+  it.blob.position.set(it.px + dirX * h * s * 0.9, it.py + (1 - e) * V.enterDY + dirY * h * s * 0.9, 0.25 + it.stackZ * s * 0.5);
+  it.blob.rotation.z = it.pr + (1 - e) * it.enterRot;
+  it.blob.scale.set(W * s * 1.12 * (1 + h * 0.006), H * s * 1.1 * (1 + h * 0.005), 1);
+  it.blob.material.opacity = lerp(0.34, 0.42, MODE.n) * (1 - 0.45 * clamp(h / 24, 0, 1)) * e * e;
+};
+
+const STAT = { renders: 0, shadows: 0, calls: 0, t0: performance.now(), idle: false };
+let lastRender = -1, lastShadow = -1, lastActive = 0;
+const render = () => {
+  renderer.info.reset();
+  const it = reading >= 0 ? items[reading] : null;
+  const dof = F.dof && it ? VEIL.o : 0;
+  veil.visible = !F.dof && VEIL.o > 0.001;
+  if (dof < 0.003) {
+    camera.layers.set(0); renderer.setRenderTarget(null); renderer.render(scene, camera);
+    STAT.calls = renderer.info.render.calls;
+    return;
+  }
+  dofTargets();
+  it.letter.traverse((o) => o.layers.set(1));
+  camera.layers.set(0);
+  renderer.setRenderTarget(DOF.rt); renderer.render(scene, camera);   // 桌面（阴影图在这一遍更新）
+  const auto = renderer.shadowMap.autoUpdate;
+  renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = false;
+  const r = 0.6 + dof * 2.6, iw = 1 / (DOF.w >> 1), ih = 1 / (DOF.h >> 1);
+  const B = blurMat.uniforms;
+  B.tSrc.value = DOF.rt.texture; B.uDir.value.set(r * iw, 0); pass(blurMat, DOF.a);
+  B.tSrc.value = DOF.a.texture; B.uDir.value.set(0, r * ih); pass(blurMat, DOF.b);
+  B.tSrc.value = DOF.b.texture; B.uDir.value.set(r * 2 * iw, 0); pass(blurMat, DOF.a);
+  B.tSrc.value = DOF.a.texture; B.uDir.value.set(0, r * 2 * ih); pass(blurMat, DOF.b);
+  const C = compMat.uniforms;
+  C.tSharp.value = DOF.rt.texture; C.tBlur.value = DOF.b.texture;
+  C.uMix.value = Math.min(1, dof * 1.6); C.uDim.value = dof * lerp(0.2, 0.4, MODE.n);
+  C.uDimColor.value.lerpColors(C_DAY.veil, C_NIGHT.veil, MODE.n);
+  pass(compMat, null);
+  renderer.autoClear = false; renderer.clearDepth();
+  camera.layers.set(1); renderer.render(scene, camera);   // 手里的笺
+  renderer.autoClear = true; camera.layers.set(0);
+  renderer.shadowMap.autoUpdate = auto;
+  it.letter.traverse((o) => o.layers.set(0));
+  STAT.calls = renderer.info.render.calls;
+};
+
+const tick = (time, dms) => {
+  if (!started || !ground) return;
+  const dt = Math.min(dms / 1000, 0.05), t = time, n = MODE.n;
+  // 风：现网的阵风；开「一阵风」后再叠上手动吹的一阵
+  const base = RM ? 0 : (Math.sin(t * 0.37) * 0.5 + 0.5) * (Math.sin(t * 0.11 + 1) * 0.5 + 0.5);
+  const g = F.wind ? clamp(base + WIND.burst, 0, 1.5) : base;
+  WIND.g = g; WIND.flap = Math.pow(clamp(g, 0, 1.5), 1.6) * 0.2 * lerp(1, 0.4, n);
+  const sway = RM ? 0 : Math.sin(t * 0.9) * (6 + 12 * g) + Math.sin(t * 2.3 + 1) * 3 * g;
+  sun.position.set(FOCUS.x - 1500, FOCUS.y + 1750, 2600);
+  sun.target.position.set(FOCUS.x + sway, FOCUS.y + sway * 0.4, 0);
+  sun.intensity = 3.1 * (1 - n);
+  hemi.color.lerpColors(C_DAY.sky, C_NIGHT.sky, n); hemi.groundColor.lerpColors(C_DAY.ground, C_NIGHT.ground, n);
+  hemi.intensity = lerp(1.25, 0.42, n);
+  const readingNear = reading >= 0 && items[reading].st.fly > 0.3;
+  if (readingNear) {
+    camRight.set(1, 0, 0).applyQuaternion(READ.quat); camUp.set(0, 1, 0).applyQuaternion(READ.quat); camBack.set(0, 0, 1).applyQuaternion(READ.quat);
+    CT.copy(READ.pos).addScaledVector(camRight, -LW * READ.scale * 1.1).addScaledVector(camUp, LH * READ.scale * 0.45).addScaledVector(camBack, 300);
+  } else if (PTR.on) {
+    const dx = PTR.p.x - FOCUS.x, dy = PTR.p.y - FOCUS.y, k = Math.min(1, 1 / Math.hypot(dx / (V.w * 0.42), dy / (V.h * 0.3)));
+    CT.set(FOCUS.x + dx * k - 60, FOCUS.y + dy * k + 90, 430);
+  } else CT.set(FOCUS.x - 260, FOCUS.y + 220, 430);
+  if (!tPrev) CANDLE.copy(CT);
+  CANDLE.lerp(CT, 1 - Math.exp(-dt * 3.2)); tPrev = t;
+  const amp = F.wind ? 0.55 + 1.1 * g : 1;
+  const fl = RM ? 1 : 1 + amp * (0.05 * Math.sin(t * 9.1 + Math.sin(t * 2.3) * 2) + 0.03 * Math.sin(t * 23.7) + 0.02 * Math.sin(t * 4.1 + 1.3));
+  const jit = RM ? 0 : 1.6, lean = F.wind && !RM ? g * 16 : 0;
+  candle.position.set(CANDLE.x + Math.sin(t * 7.3) * jit + lean, CANDLE.y + Math.sin(t * 5.1 + 1) * jit - lean * 0.3, CANDLE.z);
+  if (readingNear) candle.target.position.copy(READ.pos);
+  else candle.target.position.set(CANDLE.x + 40, CANDLE.y - 60, 0);
+  candle.intensity = 5.6e5 * n * fl * (reading >= 0 ? lerp(1, 0.72, items[reading].st.fly) : 1);
+  sun.shadow.autoUpdate = n < 0.995; candle.shadow.autoUpdate = n > 0.005;
+  renderer.toneMappingExposure = lerp(1, 1.12, n);
+  ground.material.color.setScalar(lerp(1, 0.9, n));
+
+  for (const it of items) pose(it, t, dt);
+  if (scatterOn()) placeHits();
+  veilMat.color.lerpColors(C_DAY.veil, C_NIGHT.veil, n);
+  veilMat.opacity = VEIL.o * lerp(0.5, 0.62, n);
+
+  // 闲时降帧：没人动、没有补间时 30 帧，阴影图 15 次／秒
+  const now = performance.now();
+  if (busy || G.isTweening(MODE) || G.isTweening(VEIL) || WIND.burst > 0.01 || now - PTR.t < 1200 || items.some((it) => it.moving)) lastActive = now;
+  const idle = F.idle && !RM && now - lastActive > 600;
+  STAT.idle = idle;
+  if (idle && t - lastRender < 1 / 30 - 0.003) return;
+  if (idle) {
+    renderer.shadowMap.autoUpdate = false;
+    if (t - lastShadow >= 1 / 15 - 0.003) { renderer.shadowMap.needsUpdate = true; lastShadow = t; STAT.shadows++; }
+  } else { renderer.shadowMap.autoUpdate = true; lastShadow = t; STAT.shadows++; }
+  lastRender = t; STAT.renders++;
+  render();
+  for (const it of items) if (it.warm > 0) it.warm--;
+};
+
+/* ═════════════ 素材与字 ═════════════ */
+const IMG = {};
+const SRC = {
+  yinshou: '/yuantu/tex/yinshou-paper.webp', paperN: '/yuantu/tex/paper-n.webp',
+  laidN: '/lights/tex/laid-n.webp', fleck: '/lights/tex/fleck.webp', bamboo: '/lights/tex/bamboo-shadow.webp',
+  seal: '/lights/seal.webp', specks: '/textures/inkpad-specks.webp',
+  bird: '/lights/motif/bird.webp', spray: '/lights/motif/spray.webp', blossom: '/lights/motif/blossom.webp',
+};
+
+const paperFill = (x, w, h, baseCol, p = {}) => {
+  const { alpha = 0.6, scale = 1, fleck = 0, edge = 0.1 } = p;
+  x.fillStyle = baseCol; x.fillRect(0, 0, w, h);
+  x.save(); x.globalCompositeOperation = 'multiply';
+  const pat = x.createPattern(IMG.yinshou, 'repeat'); pat.setTransform(new DOMMatrix().scale(scale)); x.globalAlpha = alpha; x.fillStyle = pat; x.fillRect(0, 0, w, h);
+  if (fleck) { const q = x.createPattern(IMG.fleck, 'repeat'); q.setTransform(new DOMMatrix().scale(scale * 0.7)); x.globalAlpha = fleck; x.fillStyle = q; x.fillRect(0, 0, w, h); }
+  if (edge) {
+    x.globalAlpha = 1;
+    const m = Math.min(w, h) * 0.09;
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, m, 0, 0, w, m], [0, h, 0, h - m, 0, h - m, w, m], [0, 0, m, 0, 0, 0, m, h], [w, 0, w - m, 0, w - m, 0, m, h]]) {
+      const g = x.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, `rgba(120,90,50,${edge})`); g.addColorStop(1, 'rgba(120,90,50,0)'); x.fillStyle = g; x.fillRect(rx, ry, rw, rh);
+    }
+  }
+  x.restore();
+};
+const printOf = (img, color) => {
+  const c = mk(img.width, img.height), x = ctx2d(c, true);
+  x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data, col = new THREE.Color(color);
+  const r = col.r * 255, g = col.g * 255, b = col.b * 255;
+  for (let i = 0; i < p.length; i += 4) { const a = p[i]; p[i] = r; p[i + 1] = g; p[i + 2] = b; p[i + 3] = a; }
+  x.putImageData(d, 0, 0);
+  return c;
+};
+
+/* 信封正面：与现网同；多记下每片金箔，好给「洒金会闪」单做一层 */
+const drawPocket = (it, r, bag) => {
+  const w = 512, h = 768, c = mk(w, h), x = ctx2d(c);
+  const rc = mk(256, 384), rx = ctx2d(rc);
+  paperFill(x, w, h, '#EFE3C8', { alpha: 0.55, scale: 0.9, edge: 0.16 });
+  rx.fillStyle = 'rgb(235,235,235)'; rx.fillRect(0, 0, 256, 384);
+  x.strokeStyle = 'rgba(110,84,48,.38)'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2);
+  const lw = 58 * EK, lx = (w - lw) / 2, ly = 146 * EK, lh = (H - 22 - 146) * EK;
+  const flakes = [];
+  if (it.kind === 'friend') {
+    x.save();
+    x.fillStyle = '#A3322A'; x.fillRect(lx, ly, lw, lh);
+    x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.35; x.drawImage(IMG.specks, lx, ly, lw, lh);
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    x.strokeStyle = 'rgba(247,236,218,.5)'; x.lineWidth = 1.6; x.strokeRect(lx + 7, ly + 7, lw - 14, lh - 14);
+    rx.fillStyle = 'rgb(178,178,178)'; rx.fillRect(lx / 2, ly / 2, lw / 2, lh / 2);
+    for (let i = 0; i < 110; i++) {
+      const fx = lx + r() * lw, fy = ly + r() * lh, s = 0.7 + r() * r() * 3, a = r() * Math.PI;
+      flakes.push({ x: fx, y: fy, s, a });
+      x.save(); x.translate(fx, fy); x.rotate(a); x.fillStyle = `hsla(${38 + r() * 8},${48 + r() * 16}%,${52 + r() * 16}%,${0.7 + r() * 0.25})`;
+      x.beginPath(); x.moveTo(-s, -s * 0.6); x.lineTo(s * 0.9, -s * 0.8); x.lineTo(s, s * 0.7); x.lineTo(-s * 0.7, s); x.closePath(); x.fill(); x.restore();
+      rx.fillStyle = 'rgb(55,55,55)'; rx.fillRect(fx / 2 - s * 0.5, fy / 2 - s * 0.5, s, s);
+    }
+    x.restore();
+    vcol(x, it.name, w / 2, ly + 30, ly + lh - 70, { size: 46, color: '#F6EBD6' });
+    vcol(x, '缄', w / 2, ly + lh - 64, ly + lh - 18, { size: 26, color: 'rgba(246,235,214,.82)', at: 'end' });
+    vcol(x, `寄自 ${it.host}`, 30 * EK, H * 0.6 * EK, (H - 18) * EK, { size: 24, color: '#6F6250', at: 'end', rand: r, print: true });
+  } else {
+    x.save(); x.setLineDash([7, 6]); x.strokeStyle = 'rgba(168,53,42,.7)'; x.lineWidth = 2; x.strokeRect(lx + 2, ly + 2, lw - 4, lh - 4); x.restore();
+    vcol(x, '虚席以待', w / 2, ly + 40, ly + lh - 30, { size: 32, color: 'rgba(168,53,42,.85)', gap: 1.4 });
+  }
+  return { map: ctex(c, bag), rough: ctex(rc, bag, { srgb: false }), flakes, label: { lx, ly, lw, lh } };
+};
+
+/* 骑缝印：现网是整张 512×768 的透明层；「省显存」改成只包住印的一小块贴花（裁法一样） */
+const sealLayer = (w, h, apexY, triClip) => {
+  const s = IMG.seal, sh = 42 * EK, sw = (sh * s.width) / s.height;
+  const c = mk(w, h), x = ctx2d(c);
+  x.globalAlpha = 0.9; x.drawImage(s, w / 2 - sw / 2, apexY - sh * 0.52, sw, sh);
+  if (triClip) { x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w / 2, apexY); x.closePath(); x.fill(); }
+  return c;
+};
+const sealDecal = (bag) => {
+  const s = IMG.seal, sh = 42 * EK, sw = (sh * s.width) / s.height, apexY = FH * EK;
+  const ox = 256 - sw / 2 - 2, oy = apexY - sh * 0.52 - 2, dw = Math.ceil(sw + 4), dh = Math.ceil(sh + 4);
+  const c = mk(dw, dh), x = ctx2d(c);
+  x.globalAlpha = 0.9; x.drawImage(s, 2, 2, sw, sh);
+  x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.moveTo(-ox, -oy); x.lineTo(512 - ox, -oy); x.lineTo(256 - ox, apexY - oy); x.closePath(); x.fill();
+  const geo = new THREE.PlaneGeometry(dw / EK, dh / EK); bag.push(geo);
+  const mat = new THREE.MeshStandardMaterial({ map: ctex(c, bag), transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }); bag.push(mat);
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(((ox + dw / 2) / 512 - 0.5) * W, (0.5 - (oy + dh / 2) / 768) * H, Z_POCKET + 0.05);
+  return m;
+};
+
+const drawFlap = (it, inner, bag) => {
+  const w = 512, h = Math.round((512 * FH) / W), c = mk(w, h), x = ctx2d(c);
+  if (inner) {
+    paperFill(x, w, h, '#DFD0AE', { alpha: 0.55, scale: 0.9, edge: 0 });
+    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(70,50,25,.22)'); g.addColorStop(0.5, 'rgba(70,50,25,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  } else {
+    paperFill(x, w, h, '#F1E6CC', { alpha: 0.55, scale: 0.9, edge: 0.08 });
+    if (it.kind === 'friend') x.drawImage(sealLayer(w, h + 60, h, false), 0, 0);
+  }
+  x.strokeStyle = inner ? 'rgba(90,66,36,.35)' : 'rgba(110,84,48,.42)'; x.lineWidth = 2.2;
+  x.beginPath(); x.moveTo(0, 1); x.lineTo(w / 2, h - 1); x.lineTo(w, 1); x.stroke();
+  return ctex(c, bag);
+};
+
+const MOTIF_AT = { bird: [30, 70, 600, 480], spray: [24, 110, 620, 505], blossom: [40, 60, 560, 553] };
+const drawLetter = (it, r) => {
+  const c = mk(CW, CH), x = ctx2d(c);
+  paperFill(x, CW, CH, mixHex('#FDFAF3', it.color, 0.11), { alpha: 0.12, scale: 1.3, fleck: 0.07, edge: 0.06 });
+  const [px, py, pw, ph] = MOTIF_AT[it.motif];
+  x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.3;
+  x.drawImage(printOf(IMG[it.motif], mixHex(it.color, '#5D5041', 0.45)), px, py, pw, ph); x.restore();
+  const cw = (CW - LM.x * 2) / 8, top = LM.top, bot = CH - LM.bottom;
+  const line = (x0, y0, x1, y1, wdt, a) => {
+    const n = 26;
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 1) / n;
+      x.strokeStyle = `rgba(168,56,42,${a * (0.72 + r() * 0.28)})`; x.lineWidth = wdt * (0.85 + r() * 0.3);
+      x.beginPath(); x.moveTo(lerp(x0, x1, t0) + (r() - 0.5) * 0.8, lerp(y0, y1, t0)); x.lineTo(lerp(x0, x1, t1) + (r() - 0.5) * 0.8, lerp(y0, y1, t1)); x.stroke();
+    }
+  };
+  for (let j = 0; j <= 8; j++) line(LM.x + cw * j, top, LM.x + cw * j, bot, j === 0 || j === 8 ? 3 : 1.8, 0.62);
+  line(LM.x - 2, top, CW - LM.x + 2, top, 3, 0.62); line(LM.x - 2, bot, CW - LM.x + 2, bot, 3, 0.62);
+  line(LM.x - 12, top - 10, CW - LM.x + 12, top - 10, 1.2, 0.45); line(LM.x - 12, bot + 10, CW - LM.x + 12, bot + 10, 1.2, 0.45);
+  it.cols.forEach((col, i) => {
+    if (!col.t) return;
+    vcol(x, col.t, CW - LM.x - cw * (i + 0.5), top + 30, bot - 26, { size: col.small ? 38 : 52, color: col.small ? '#6E6151' : '#2A231B', at: col.at ?? 'start', rand: r });
+  });
+  return c;
+};
+const letterNormal = (it) => {
+  const w = CW / 2, h = CH / 2, c = mk(w, h), x = ctx2d(c, true);
+  const pat = x.createPattern(IMG.paperN, 'repeat'); pat.setTransform(new DOMMatrix().scale(0.6)); x.fillStyle = pat; x.fillRect(0, 0, w, h);
+  const N = x.getImageData(0, 0, w, h), n = N.data;
+  const hc = mk(w, h), hx = ctx2d(hc, true);
+  hx.fillStyle = '#000'; hx.fillRect(0, 0, w, h); hx.filter = 'blur(2.2px)';
+  const [px, py, pw, ph] = MOTIF_AT[it.motif]; hx.drawImage(IMG[it.motif], px / 2, py / 2, pw / 2, ph / 2);
+  const hd = hx.getImageData(0, 0, w, h).data, H8 = (i, j) => hd[(clamp(j, 0, h - 1) * w + clamp(i, 0, w - 1)) * 4];
+  const KN = 1.05 / 255, mid = w / 2;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const q = (j * w + i) * 4;
+    let nx = n[q] / 127.5 - 1, ny = n[q + 1] / 127.5 - 1;
+    const nz = n[q + 2] / 127.5 - 1;
+    nx += -(H8(i + 1, j) - H8(i - 1, j)) * KN;
+    ny += (H8(i, j + 1) - H8(i, j - 1)) * KN;
+    const dc = i - mid; if (Math.abs(dc) < 9) nx += -Math.sign(dc) * 0.14 * (1 - Math.abs(dc) / 9);
+    const l = Math.hypot(nx, ny, nz) || 1;
+    n[q] = (nx / l + 1) * 127.5; n[q + 1] = (ny / l + 1) * 127.5; n[q + 2] = (nz / l + 1) * 127.5;
+  }
+  x.putImageData(N, 0, 0);
+  return c;
+};
+
+/* 笺：「省显存」时第一次移近才画；材质一开始就挂占位贴图，换图不重编着色器 */
+const SHEET_MS = [];
+const ensureSheet = (it) => {
+  if (it.sheetReady) return;
+  it.sheetReady = true;
+  const t0 = performance.now();
+  const map = ctex(drawLetter(it, it.rSheet), it.bag), nrm = ctex(letterNormal(it), it.bag, { srgb: false });
+  for (const m of it.fronts) { m.map = map; m.normalMap = nrm; }
+  SHEET_MS.push(Math.round(performance.now() - t0));
+};
+
+/* 洒金：金箔单成一层，金属度 1、各片法线随机偏，环境是那间开窗的屋 */
+const ensureGold = (it) => {
+  if (it.kind !== 'friend' || it.gold) return;
+  const { lx, ly, lw, lh } = it.label, r = rnd(hash(it.name) + 91);
+  const cw = Math.ceil(lw), ch = Math.ceil(lh);
+  const c = mk(cw, ch), x = ctx2d(c), nc = mk(cw, ch), nx = ctx2d(nc);
+  nx.fillStyle = 'rgb(128,128,255)'; nx.fillRect(0, 0, cw, ch);
+  for (const f of it.flakes) {
+    const tx = (r() - 0.5) * 0.95, ty = (r() - 0.5) * 0.95, tz = Math.sqrt(Math.max(0.1, 1 - tx * tx - ty * ty));
+    const path = (gx) => { gx.save(); gx.translate(f.x - lx, f.y - ly); gx.rotate(f.a); const s = f.s * 1.15; gx.beginPath(); gx.moveTo(-s, -s * 0.6); gx.lineTo(s * 0.9, -s * 0.8); gx.lineTo(s, s * 0.7); gx.lineTo(-s * 0.7, s); gx.closePath(); gx.fill(); gx.restore(); };
+    x.fillStyle = `hsl(${40 + r() * 10},${45 + r() * 20}%,${70 + r() * 16}%)`; path(x);
+    nx.fillStyle = `rgb(${Math.round((tx * 0.5 + 0.5) * 255)},${Math.round((ty * 0.5 + 0.5) * 255)},${Math.round((tz * 0.5 + 0.5) * 255)})`; path(nx);
+  }
+  const geo = new THREE.PlaneGeometry(cw / EK, ch / EK);
+  const mat = new THREE.MeshStandardMaterial({ map: ctex(c, it.bag), normalMap: ctex(nc, it.bag, { srgb: false }), color: '#EBC77E', metalness: 1, roughness: 0.3, envMap: getEnv(), envMapIntensity: 1, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  it.bag.push(geo, mat);
+  it.gold = new THREE.Mesh(geo, mat);
+  it.gold.position.set(((lx + cw / 2) / 512 - 0.5) * W, (0.5 - (ly + ch / 2) / 768) * H, Z_POCKET + 0.08);
+  it.gold.renderOrder = 2; it.gold.receiveShadow = true;
+  it.env.add(it.gold);
+};
+
+/* ═════════════ 桌（共用）与信（每封） ═════════════ */
+let T, GEO, blobTex, triGeo;
+const buildShared = () => {
+  blobTex = (() => { const c = mk(256, 320), x = ctx2d(c); x.filter = 'blur(16px)'; x.fillStyle = 'rgba(40,26,10,1)'; x.fillRect(34, 34, 188, 252); return ctex(c, SHARED); })();
+  sun.map = (() => {
+    const s = 1024, c = mk(s, s), x = ctx2d(c);
+    x.fillStyle = '#fff'; x.fillRect(0, 0, s, s);
+    const b = IMG.bamboo, t = mk(b.width, b.height), tx = ctx2d(t);
+    tx.drawImage(b, 0, 0); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = 'rgb(58,66,86)'; tx.fillRect(0, 0, b.width, b.height);
+    x.filter = 'blur(2.5px)'; x.globalAlpha = 0.74;
+    x.drawImage(t, 150, 120, b.width * 1.05, b.height * 1.05);
+    x.save(); x.translate(s - 60, 60); x.scale(-1, 1); x.globalAlpha = 0.45; x.drawImage(t, 0, 0, b.width * 0.8, b.height * 0.8); x.restore();
+    return ctex(c, SHARED);
+  })();
+  const groundPaper = (() => { const c = mk(1024, 1024), x = ctx2d(c); x.fillStyle = '#F3F0E9'; x.fillRect(0, 0, 1024, 1024); x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.42; x.drawImage(IMG.yinshou, 0, 0); return c; })();
+  T = {
+    ground: ctex(groundPaper, SHARED, { repeat: [11, 7.5] }), paperN: ctex(IMG.paperN, SHARED, { srgb: false, repeat: [32, 22] }), back: ctex(IMG.yinshou, SHARED),
+    laidN: ctex(IMG.laidN, SHARED, { srgb: false, repeat: [2, 3] }), laidN2: ctex(IMG.laidN, SHARED, { srgb: false, repeat: [2, 1] }),
+  };
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 6000), new THREE.MeshStandardMaterial({ map: T.ground, normalMap: T.paperN, normalScale: new THREE.Vector2(0.55, 0.55), roughness: 1 }));
+  ground.receiveShadow = true; scene.add(ground);
+  triGeo = new THREE.BufferGeometry();
+  triGeo.setAttribute('position', new THREE.Float32BufferAttribute([-W / 2, 0, 0, 0, -FH, 0, W / 2, 0, 0], 3));
+  triGeo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  triGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 0.5, 0, 1, 1], 2));
+  const panelGeo = (half, segs) => {
+    const g = new THREE.PlaneGeometry(LW, LH, segs, 1), uv = g.attributes.uv;
+    if (half) for (let i = 0; i < uv.count; i++) uv.setX(i, half === 'R' ? 0.5 + uv.getX(i) * 0.5 : uv.getX(i) * 0.5);
+    return g;
+  };
+  // 右半页 24 段、左半页 64 段（折痕与边角滞后都在左半页上）
+  GEO = { pocket: new THREE.PlaneGeometry(W, H), R: panelGeo('R', 24), L: panelGeo('L', 64), bR: panelGeo(null, 24), bL: panelGeo(null, 64), blob: new THREE.PlaneGeometry(1, 1) };
+};
+
+const makeItem = (L0, idx, el) => {
+  const bag = [], r = rnd(hash(L0.name) + 17);
+  const rot = (r() - 0.5) * 0.07, enterRot = (idx % 2 ? 1 : -1) * (0.18 + r() * 0.14);
+  const rotS = (rnd(hash(L0.name) + 29)() - 0.5) * 0.17;
+  const it = { ...L0, idx, el, bag, rot, rotS, enterRot, x: 0, y: 0, s: 1, px: 0, py: 0, pr: rot, row: 0, stepW: W * 2, stackZ: 0, sp: { x: 0 },
+    st: { enter: RM ? 1 : 0, lift: 0, flap: L0.kind === 'vacant' ? 1 : 0, peek: 0, out: 0, fly: 0, unfold: 0 },
+    tilt: { x: 0, y: 0, tx: 0, ty: 0 }, cast: true, moving: false, sheetReady: false, gold: null, warm: 3,
+    bend: { prev: -Math.PI, lag: 0, lagV: 0, k: 0, kV: 0 },
+    U: { uTheta: { value: -Math.PI }, uW: { value: 0 }, uLag: { value: 0 }, uKappa: { value: 0 }, uLW: { value: LW } } };
+  const pocket = drawPocket(L0, r, bag);
+  it.flakes = pocket.flakes; it.label = pocket.label;
+  it.rSheet = r.fork();
+  const env = new THREE.Group(); scene.add(env);
+  const pmat = new THREE.MeshStandardMaterial({ map: pocket.map, roughnessMap: pocket.rough, roughness: 1, normalMap: T.laidN, normalScale: new THREE.Vector2(0.7, 0.7) }); bag.push(pmat);
+  const pm = new THREE.Mesh(GEO.pocket, pmat);
+  pm.position.z = Z_POCKET; pm.castShadow = pm.receiveShadow = true; env.add(pm);
+  if (L0.kind === 'friend') {
+    let sm;
+    if (F.mem) sm = sealDecal(bag);
+    else {
+      const smat = new THREE.MeshStandardMaterial({ map: ctex(sealLayer(512, 768, FH * EK, true), bag), transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }); bag.push(smat);
+      sm = new THREE.Mesh(GEO.pocket, smat); sm.position.z = Z_POCKET + 0.05;
+    }
+    sm.receiveShadow = true; env.add(sm);
+  }
+  const flapPivot = new THREE.Group(); flapPivot.position.y = H / 2; env.add(flapPivot);
+  const fom = new THREE.MeshStandardMaterial({ map: drawFlap(L0, false, bag), normalMap: T.laidN2, normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92 });
+  const fim = new THREE.MeshStandardMaterial({ map: drawFlap(L0, true, bag), roughness: 0.95, side: THREE.BackSide });
+  bag.push(fom, fim);
+  const fo = new THREE.Mesh(triGeo, fom), fi = new THREE.Mesh(triGeo, fim);
+  fo.castShadow = fo.receiveShadow = fi.castShadow = true;
+  flapPivot.add(fo, fi);
+
+  // 笺：letter → sheet → 右半页 R ＋ 铰链（不再转，折由着色器算）→ 左半页 L
+  const U = it.U;
+  const fR = bendify(new MeshStd({ map: PH.map, normalMap: PH.n, roughness: 0.9 }), U, 0), fL = bendify(new MeshStd({ map: PH.map, normalMap: PH.n, roughness: 0.9 }), U, 1);
+  const bR = bendify(new MeshStd({ map: T.back, color: '#F2EADB', roughness: 0.95, side: THREE.BackSide }), U, 0), bL = bendify(new MeshStd({ map: T.back, color: '#F2EADB', roughness: 0.95, side: THREE.BackSide }), U, 1);
+  const dR = bendify(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), U, 0), dL = bendify(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), U, 1);
+  bag.push(fR, fL, bR, bL, dR, dL);
+  it.fronts = [fR, fL];
+  const letter = new THREE.Group(), sheet = new THREE.Group(); letter.add(sheet); scene.add(letter);
+  const R = new THREE.Mesh(GEO.R, fR), Rb = new THREE.Mesh(GEO.bR, bR);
+  const hinge = new THREE.Group(); hinge.position.set(-LW / 2, 0, -0.2);
+  const Lm = new THREE.Mesh(GEO.L, fL), Lb = new THREE.Mesh(GEO.bL, bL);
+  Lm.position.x = Lb.position.x = -LW / 2;
+  R.customDepthMaterial = Rb.customDepthMaterial = dR; Lm.customDepthMaterial = Lb.customDepthMaterial = dL;
+  const panels = [R, Rb, Lm, Lb];
+  for (const m of panels) m.castShadow = m.receiveShadow = true;
+  sheet.add(R, Rb, hinge); hinge.add(Lm, Lb);
+  letter.visible = false;
+
+  const bm = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: 0.3 }); bag.push(bm);
+  const blob = new THREE.Mesh(GEO.blob, bm);
+  blob.position.z = 0.25; blob.renderOrder = 1; scene.add(blob);
+
+  Object.assign(it, { env, pocket: pm, flapPivot, letter, sheet, hinge, panels, blob });
+  if (!F.mem) ensureSheet(it);
+  if (F.gold) ensureGold(it);
+  return it;
+};
+function MeshStd(o) { return new THREE.MeshStandardMaterial(o); }
+
+const buildHits = () => {
+  const nav = $('#hits'); nav.innerHTML = '';
+  return letters.map((L) => {
+    const el = document.createElement(L.kind === 'friend' ? 'a' : 'button');
+    if (L.kind === 'friend') { el.href = L.url; el.target = '_blank'; el.rel = 'noopener'; el.setAttribute('aria-label', `${L.name} 的来信：${L.desc}。寄自 ${L.host}。回车展读，⌘ 点击直接登门`); }
+    else { el.type = 'button'; el.setAttribute('aria-label', '虚席以待：一只空信封。展读回帖，交换友链'); }
+    nav.appendChild(el);
+    return el;
+  });
+};
+
+const rebuild = () => {
+  for (const it of items) { it.tl?.kill(); G.killTweensOf([it.st, it.sp]); scene.remove(it.env, it.letter, it.blob); drop(it.bag); }
+  G.killTweensOf(VEIL); VEIL.o = 0; busy = null; reading = -1; hover = -1; onShown(false); onRead(-1); freeDof();
+  setShadowSize(F.mem ? Math.min(1024, SHADOW_HI) : SHADOW_HI);
+  letters = buildLetters(NUM);
+  const nf = letters.length - 1, fake = letters.filter((l) => l.demo).length;
+  $('#lede').textContent = `凡${CN[nf] ?? nf}封，虚一席以待。信封移近会自己拆开，点一下抽出来读。`;
+  $('#head small').innerHTML = fake ? `演示：其中${CN[fake]}封是编出来的假邻居。` : '熟客：<kbd>⌘</kbd> / <kbd>Ctrl</kbd> 点信封，直接登门。';
+  hitEls = buildHits();
+  items = letters.map((L, i) => makeItem(L, i, hitEls[i]));
+  items.forEach(bindHit);
+  layout();
+  if (!RM) items.forEach((it, i) => { G.to(it.st, { enter: 1, duration: 1.25, delay: 0.2 + i * 0.12, ease: 'expo.out' }); });
+  lastActive = performance.now();
+};
+
+/* ═════════════ 实验台 ═════════════ */
+const syncLab = () => {
+  $$('#lab [data-f]').forEach((cb) => { cb.checked = !!F[cb.dataset.f]; });
+  const isLive = Object.keys(LIVE).every((k) => F[k] === LIVE[k]), isNext = Object.keys(NEXT).every((k) => F[k] === NEXT[k]);
+  $('#lab [data-preset="live"]').setAttribute('aria-pressed', String(isLive));
+  $('#lab [data-preset="next"]').setAttribute('aria-pressed', String(isNext));
+  $$('#lab [data-n]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === NUM)));
+  $('#gust').disabled = !F.wind || RM;
+};
+const apply = (key, prevMem) => {
+  if (key === 'gold' && F.gold) items.forEach(ensureGold);
+  if (key === 'scatter' && started) { items.forEach((it) => { G.killTweensOf(it.sp); it.sp.x = 0; it.el.style.zIndex = ''; }); layout(); }
+  if (key === 'dof' && !F.dof) freeDof();
+  if (key === 'sound' && F.sound) SFX.init();
+  if (key === 'mem' && prevMem !== F.mem && started) rebuild();
+};
+$$('#lab [data-f]').forEach((cb) => cb.addEventListener('change', () => {
+  const k = cb.dataset.f, prevMem = F.mem; F[k] = cb.checked; apply(k, prevMem); syncLab();
+}));
+$$('#lab [data-preset]').forEach((b) => b.addEventListener('click', () => {
+  const P = b.dataset.preset === 'live' ? LIVE : NEXT, prevMem = F.mem;
+  Object.assign(F, P);
+  for (const k of Object.keys(P)) if (k !== 'mem') apply(k);
+  apply('mem', prevMem);
+  syncLab();
+}));
+$$('#lab [data-n]').forEach((b) => b.addEventListener('click', () => { NUM = +b.dataset.n; syncLab(); if (started) rebuild(); }));
+$('#gust').addEventListener('click', () => { G.timeline().to(WIND, { burst: 1, duration: 0.9, ease: 'power2.out', overwrite: true }).to(WIND, { burst: 0, duration: 2.8, ease: 'power2.inOut' }); });
+$('#labBtn').addEventListener('click', () => {
+  const off = $('#lab').classList.toggle('off');
+  $('#labBtn').setAttribute('aria-pressed', String(!off));
+  if (started && reading < 0) layout();
+});
+if (innerWidth < 760 || new URLSearchParams(location.search).get('lab') === '0') { $('#lab').classList.add('off'); $('#labBtn').setAttribute('aria-pressed', 'false'); }
+$('#replay').addEventListener('click', () => { if (started) rebuild(); });
+$('#openNotes').addEventListener('click', () => { $('#notes').classList.add('on'); $('#closeNotes').focus({ preventScroll: true }); });
+$('#closeNotes').addEventListener('click', () => $('#notes').classList.remove('on'));
+
+// 昼夜
+const setTime = (night, instant = false) => {
+  document.documentElement.dataset.time = night ? 'night' : 'day';
+  $$('.pill.sw button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.time === 'night') === night)));
+  if (instant) MODE.n = night ? 1 : 0;
+  else G.to(MODE, { n: night ? 1 : 0, duration: 1.6, ease: 'power2.inOut', overwrite: true });
+};
+$$('.pill.sw button').forEach((b) => b.addEventListener('click', () => setTime(b.dataset.time === 'night')));
+const q = new URLSearchParams(location.search);
+setTime(q.get('t') === 'night', true);
+if (q.get('n')) NUM = +q.get('n') === 4 ? 4 : +q.get('n') === 9 ? 9 : 2;
+if (q.get('p') === 'live') Object.assign(F, LIVE);
+syncLab();
+
+// 记账
+const shadowBytes = () => [sun, candle].reduce((a, l) => a + (l.shadow.map ? l.shadow.mapSize.x * l.shadow.mapSize.y * 8 : 0), 0);
+setInterval(() => {
+  if (!started) return;
+  const sec = (performance.now() - STAT.t0) / 1000;
+  const tex = [...MEM.values()].reduce((a, b) => a + b, 0) + envBytes() + dofBytes(), sh = shadowBytes();
+  $('#hFps').textContent = Math.round(STAT.renders / sec);
+  $('#hSh').textContent = Math.round(STAT.shadows / sec);
+  $('#hMem').innerHTML = `${((tex + sh) / 1e6).toFixed(1)}<small>MB</small>`;
+  $('#hShMem').innerHTML = `${(sh / 1e6).toFixed(1)}<small>MB</small>`;
+  $('#hCalls').textContent = STAT.calls;
+  $('#hState').textContent = reading >= 0 ? '读信' : STAT.idle ? '闲' : '动';
+  window.__stat = { fps: Math.round(STAT.renders / sec), shadows: Math.round(STAT.shadows / sec), texMB: +(tex / 1e6).toFixed(1), shadowMB: +(sh / 1e6).toFixed(1), envMB: +(envBytes() / 1e6).toFixed(1), calls: STAT.calls, idle: STAT.idle, firstRowTop: window.__firstRowTop, sheetMs: SHEET_MS.slice(-4) };
+  STAT.renders = STAT.shadows = 0; STAT.t0 = performance.now();
+}, 500);
+
+/* ═════════════ 启动 ═════════════ */
+(async () => {
+  const allText = [...FRIENDS, ...FAKE].map((f) => f.name + f.desc).join('') + '见字如面园门常开想把你的花园连过来？来信绿洲园丁寄自缄虚席以待' + '甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥' + TERMS.map((t) => t[2]).join('');
+  const latText = allText.replace(/[^\x20-\x7E]/g, '') + [...FRIENDS, ...FAKE].map((f) => hostOf(f.url)).join(' ') + ' oasis-five-blush.vercel.app';
+  await Promise.all([
+    ...Object.keys(SRC).map((k) => loadImg(SRC[k]).then((im) => { IMG[k] = im; })),
+    withTimeout(Promise.all([
+      document.fonts.load(`400 52px ${KAI}`, allText),
+      document.fonts.load(`400 40px ${LAT}`, latText),
+      document.fonts.load(`italic 400 40px ${PRINT_LAT}`, latText),
+    ]), 4000),
+  ]);
+  buildShared();
+  // 景深的两道着色器先编好，免得第一次读信时卡一下
+  for (const m of [blurMat, compMat]) { quad.material = m; renderer.compile(quadScene, quadCam); }
+  rebuild();
+  started = true;
+  G.ticker.add(tick);
+  document.body.dataset.ready = '';
+  window.__chidu = { F, open, close, setHover, items: () => items, setTime, VEIL, rebuild, setNum: (n) => { NUM = n; syncLab(); rebuild(); } };
+})().catch((err) => { console.warn('[chidu-next] 没能摆上桌', err); $('#msg p').textContent = '素材没读到：' + err.message; document.body.classList.add('nofile'); });
+</script>
+</body>
+</html>
