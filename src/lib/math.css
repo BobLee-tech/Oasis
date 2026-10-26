@@ -1,0 +1,9 @@
+/* 公式与正文同色；块级公式过宽时横向滚动，不撑破阅读舱（手机上尤其要紧） */
+.katex { font-size: 1.05em; color: inherit; }
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+  margin: 1.4em 0;
+}
+.katex-error { color: #e11d48; font-family: ui-monospace, monospace; font-size: 0.85em; }

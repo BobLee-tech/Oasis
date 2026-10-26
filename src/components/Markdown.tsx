@@ -2,7 +2,7 @@
 // ✍️ 统一 Markdown 渲染：GFM（表格 / 删除线 / 任务列表 / 自动链接 / 脚注）
 //    + 代码语法高亮 + 受控的裸 HTML，并集中处理明暗排版与交互细节。
 //    Gallery（阅读舱 / 预览）与 Orchard（星点全文）共用同一套渲染，杜绝重复与漂移。
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -147,20 +147,46 @@ export const PROSE_CLASS =
   'prose-img:rounded-2xl prose-img:shadow-xl prose-img:mx-auto ' +
   'prose-hr:border-slate-200/70 dark:prose-hr:border-white/10';
 
-export const Markdown: React.FC<MarkdownProps> = ({ children, className, sourceLine = false }) => (
-  <div className={className ?? PROSE_CLASS}>
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
-      rehypePlugins={[
-        ...(sourceLine ? [rehypeSourceLine] : []),
-        rehypeRaw,
-        [rehypeSanitize, SANITIZE_SCHEMA],
-        rehypeHeadingIds,
-        [rehypeHighlight, { detect: true, ignoreMissing: true }],
-      ]}
-      components={MD_COMPONENTS}
-    >
-      {children}
-    </ReactMarkdown>
-  </div>
-);
+// ∑ 公式按需加载：正文里像有 $$…$$ 或 $…$ 才去拉 lib/math（KaTeX 插件 + CSS + 字体，自成 chunk）。
+//    探测宽一点无妨——误判只是多下一次，不影响渲染；整站共用一个 promise，只拉一次。
+const MATH_HINT = /\$\$[\s\S]+?\$\$|\$[^\s$][^$\n]*?\$/;
+type MathPlugins = typeof import('../lib/math');
+let mathPlugins: MathPlugins | null = null;
+let mathLoading: Promise<MathPlugins> | null = null;
+const loadMath = () => (mathLoading ??= import('../lib/math').then((m) => (mathPlugins = m)));
+
+const useMathPlugins = (source: string): MathPlugins | null => {
+  const wanted = MATH_HINT.test(source);
+  const [plugins, setPlugins] = useState(mathPlugins);
+  useEffect(() => {
+    if (!wanted || plugins) return;
+    let alive = true;
+    loadMath().then((m) => alive && setPlugins(m), () => {});
+    return () => { alive = false; };
+  }, [wanted, plugins]);
+  return wanted ? plugins : null;
+};
+
+export const Markdown: React.FC<MarkdownProps> = ({ children, className, sourceLine = false }) => {
+  const math = useMathPlugins(children);
+  return (
+    <div className={className ?? PROSE_CLASS}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, ...(math ? [math.remarkMath] : []), remarkBreaks]}
+        rehypePlugins={[
+          ...(sourceLine ? [rehypeSourceLine] : []),
+          rehypeRaw,
+          [rehypeSanitize, SANITIZE_SCHEMA],
+          // KaTeX 必须在白名单之后：它生成的 MathML（<math>/<semantics>…）不在白名单里，先渲染会被剥掉；
+          // 也要在 highlight 之前，免得公式的 <code class="language-math"> 被当成代码块上色。
+          ...(math ? [math.rehypeKatex] : []),
+          rehypeHeadingIds,
+          [rehypeHighlight, { detect: true, ignoreMissing: true }],
+        ]}
+        components={MD_COMPONENTS}
+      >
+        {children}
+      </ReactMarkdown>
+    </div>
+  );
+};
