@@ -8,7 +8,9 @@
 //   · 昼＝窗下天光 + 雪窗《风竹图》竹影（SpotLight.map 作遮光片）；夜＝秉烛，烛跟指针，读信时挪到信边。
 //   · 软影要用 PCFShadowMap（PCFSoft 不认 radius）；笺举到眼前就不再往桌上投影。
 //   · 画布每次自建自拆：React 开发模式会挂载两次，复用画布会拿到已丢失的上下文。
-//   · 省：阴影图 1024；骑缝印的下半是各封共用的一小块贴花；笺第一次移近才画（材质先挂占位贴图，换图不重编着色器）。
+//   · 省：阴影图 1024；骑缝印的下半是各封共用的一小块贴花；笺不随信封一起画（材质先挂占位贴图，换图不重编着色器）：
+//     桌面上开画后趁空闲一封封画好、传进显卡，手机等第一次点开才画。
+//   · 不卡：信封一封一帧地摆；开画前贴图分帧上传、着色器（画布 / 离屏 / 阴影图三套）并行编好；慢机器自动降像素比（lib/paper/pace.ts）。
 //     没人动、也没有补间时只画 30 帧、阴影图 15 次/秒（竹影、烛闪是背景里的动，30 帧够），一有动静当帧回满。
 //     验收数字与对照见 docs/chidu-next.html 的实验台。
 //   · 纸会弯：笺的截面在顶点着色器里按弧长积分（BEND），折痕是小圆弧、摊开时边角滞后再回弹、拿在手里整张微拱；
@@ -25,6 +27,7 @@ import type { Letter } from './letters';
 import { ctx2d, loadImg, mk, paperFill as fillPaper, printOf, withTimeout, type PaperOpts } from '../../lib/paper/canvas';
 import { hash, rnd, type Rand } from '../../lib/paper/rand';
 import { bendify, type BendU } from '../../lib/paper/bend';
+import { dprGovernor, nextFrame, texturesOf, uploadSpread, warmPrograms, whenIdle } from '../../lib/paper/pace';
 import { playPaper } from '../../lib/paperSound';
 import { gust as windGust } from '../../lib/wind';
 
@@ -173,11 +176,14 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   } catch (err) { canvas.remove(); throw err; }
-  renderer.setPixelRatio(Math.min(devicePixelRatio, o.coarse ? 1.75 : 2));
+  const DPR = Math.min(devicePixelRatio, o.coarse ? 1.75 : 2);
+  renderer.setPixelRatio(DPR);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;   // PCF 才认 radius：烛焰有大小，影边是软的
+  // 线上不查着色器报错：每个程序第一次用时 getProgramInfoLog 会同步等编译收尾，二十来个程序叠起来卡第一帧 60 多 ms
+  renderer.debug.checkShaderErrors = import.meta.env.DEV;
   const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   // 2048 时一盏灯的阴影图（颜色＋深度）约 33 MB；影边本来就靠 PCF 半径做虚，1024 只要 8 MB
   const SHADOW = 1024;
@@ -207,7 +213,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
   const CANDLE = new THREE.Vector3(), CT = new THREE.Vector3();
   let hover = -1, reading = -1, lastPointer = 'mouse', busy: gsap.core.Timeline | null = null, tPrev = 0;
   let lastActive = 0, lastRender = -1, lastShadow = -1;
-  let items: Item[] = [];
+  const items: Item[] = [];
   let drawSheet: (it: Item) => void = () => {};   // 素材到齐后 boot 换成真的
 
   const ray = new THREE.Raycaster(), PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
@@ -590,6 +596,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     it.blob.material.opacity = lerp(0.34, 0.42, MODE.n) * (1 - 0.45 * clamp(h / 24, 0, 1)) * e * e;
   };
 
+  // 慢机器（或 5K 屏）连着画都赶不上 42 帧，就一档档降像素比（见 lib/paper/pace.ts）
+  const gov = dprGovernor(DPR, (d) => { renderer.setPixelRatio(d); layout(); });
   const tick = (time: number, dms: number) => {
     if (!started || !ground) return;
     const dt = Math.min(dms / 1000, 0.05), t = time, n = MODE.n;
@@ -631,7 +639,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const now = performance.now();
     if (busy || spreading || now - PTR.t < 1200 || gsap.isTweening(MODE) || gsap.isTweening(VEIL) || items.some((it) => gsap.isTweening(it.st) || Math.abs(it.bend.lagV) > 0.01 || Math.abs(it.bend.kV) > 1e-5)) lastActive = now;
     const idle = now - lastActive > 600;
-    if (idle && t - lastRender < 1 / 30 - 0.003) return;
+    if (idle && t - lastRender < 1 / 30 - 0.003) { gov.skip(); return; }
+    if (idle) gov.skip(); else gov.frame(now);   // 只拿连着画的帧量快慢
     renderer.shadowMap.autoUpdate = !idle;
     if (idle && t - lastShadow >= 1 / 15 - 0.003) renderer.shadowMap.needsUpdate = true;
     if (renderer.shadowMap.autoUpdate || renderer.shadowMap.needsUpdate) lastShadow = t;
@@ -865,7 +874,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const solid = (col: string) => { const c = mk(2, 2), x = ctx2d(c); x.fillStyle = col; x.fillRect(0, 0, 2, 2); return c; };
     const PH = { map: ctex(solid('#FBF8F1')), normal: ctex(solid('rgb(128,128,255)'), false) };
 
-    items = o.letters.map((L0, idx): Item => {
+    const build = async (L0: Letter, idx: number): Promise<Item> => {
       const r = rnd(hash(L0.name) + 17);
       const rot = (r() - 0.5) * 0.07, enterRot = (idx % 2 ? 1 : -1) * (0.18 + r() * 0.14);
       const pocket = drawPocket(L0, r);
@@ -879,6 +888,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         sm.position.set(sealDecal.x, sealDecal.y, Z_POCKET + 0.05); sm.receiveShadow = true; env.add(sm);
       }
       const flapPivot = new THREE.Group(); flapPivot.position.y = H / 2; env.add(flapPivot);
+      await nextFrame();   // 口袋面、洒金画完先让一帧，再画封舌
       const fo = new THREE.Mesh(triGeo, mat(new THREE.MeshStandardMaterial({ map: drawFlap(L0, false), normalMap: T.laidN2, normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92 })));
       const fi = new THREE.Mesh(triGeo, mat(new THREE.MeshStandardMaterial({ map: drawFlap(L0, true), roughness: 0.95, side: THREE.BackSide })));
       fo.castShadow = fo.receiveShadow = fi.castShadow = true;   // 里子不接影：笺贴着它滑出，偏置会把影子描成一道黑边
@@ -915,22 +925,62 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         U, bend: { prev: -Math.PI, lag: 0, lagV: 0, k: 0, kV: 0 }, gold, pocket: pm,
         rotS: (rnd(hash(L0.name) + 29)() - 0.5) * 0.17, row: 0, stepW: W * 2, stackZ: 0, sp: { x: 0 }, px: 0, py: 0, pr: rot,
       };
-    });
+    };
+    // 一封一帧地摆：每封信封要画好几张纸，一口气画完正好卡住转场
+    for (const [idx, L0] of o.letters.entries()) {
+      await nextFrame(); if (!alive) return;
+      items.push(await build(L0, idx));
+    }
+    if (!alive) return;
+    // 笺的正面可以先画好搁着（桌面上趁空闲），法线与上贴图留到下一次空闲；用 fork 画，先画后画都是同一张
+    const sheetFront = new Map<Item, HTMLCanvasElement>();
     drawSheet = (it) => {
       if (!it.paper) return;
-      const map = ctex(drawLetter(it, it.paper)), normal = letterNormal(it);
+      const map = ctex(sheetFront.get(it) ?? drawLetter(it, it.paper.fork())), normal = letterNormal(it);
       for (const m of it.fronts) { m.map = map; m.normalMap = normal; }
-      it.paper = undefined;
+      it.paper = undefined; sheetFront.delete(it);
     };
     items.forEach(bindHit);
 
     layout();
     ro.observe(root);
+    // 开画前把功夫做在前头：贴图分帧传进显卡；着色器按三套目标并行编好——画布、读信景深的离屏（线性、不做色调映射）、
+    //   阴影图（弯纸与 three 自己的深度材质；PCF 画背面，正反两面都要）。第一帧、第一次展读都不再同步等编译
+    await uploadSpread(renderer, [...texturesOf(scene), sun.map], () => alive);
+    if (!alive) return;
+    {
+      const rt = new THREE.WebGLRenderTarget(4, 4, { type: HDR ? THREE.HalfFloatType : THREE.UnsignedByteType });
+      const geo = new THREE.PlaneGeometry(1, 1), depth = new THREE.Scene(), mats: THREE.Material[] = [];
+      const U0: BendU = { uTheta: { value: 0 }, uW: { value: 0 }, uLag: { value: 0 }, uKappa: { value: 0 }, uLW: { value: LW } };
+      for (const side of [THREE.FrontSide, THREE.BackSide]) {
+        mats.push(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side }));
+        mats.push(bendify(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side }), U0, 0));
+      }
+      for (const m of mats) depth.add(new THREE.Mesh(geo, m));
+      const pass = (m: THREE.Material) => new THREE.Scene().add(new THREE.Mesh(geo, m));
+      await warmPrograms(renderer, [
+        { scene, camera }, { scene, camera, target: rt }, { scene: depth, camera, target: rt, lights: scene },
+        { scene: pass(blurMat), camera: quadCam, target: rt }, { scene: pass(compMat), camera: quadCam },
+      ]);
+      rt.dispose(); geo.dispose(); mats.forEach(own);   // 材质留到拆时再放：放早了，编好的程序跟着被回收
+      if (!alive) return;
+    }
     started = true;
     gsap.ticker.add(tick);
     o.onReady?.();
-    // 笺藏在封里还没露过面：趁进场把弯纸的着色器编好（不传贴图），免得第一次移近卡一下
-    renderer.compileAsync(scene, camera).catch(() => {});
+    // 笺本来第一次移近才画（~60 ms，移近那一下会顿）；桌面上等信落定、趁空闲分三步画好传进显卡。手机省显存，仍等点开再画
+    if (!o.coarse) void (async () => {
+      await new Promise((r) => setTimeout(r, RM ? 300 : 1800 + items.length * 140));
+      for (const it of items) {
+        await whenIdle(); if (!alive) return;
+        if (!it.paper) continue;
+        if (!sheetFront.has(it)) sheetFront.set(it, drawLetter(it, it.paper.fork()));
+        await whenIdle(); if (!alive) return;
+        drawSheet(it);
+        await whenIdle(); if (!alive) return;
+        await uploadSpread(renderer, [it.fronts[0].map, it.fronts[0].normalMap], () => alive);
+      }
+    })();
     // 进场：信一封封落到桌上（每次进来都演；reduced-motion 直接摆好）
     if (!RM) items.forEach((it, i) => { gsap.to(it.st, { enter: 1, duration: 1.25, delay: 0.25 + i * 0.14, ease: 'expo.out' }); });
   };

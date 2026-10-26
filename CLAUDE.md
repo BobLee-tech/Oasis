@@ -32,7 +32,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 
 ### 尺牍 · 邻家来信(友链,原名灯火)
 - [OasisLights.tsx](src/components/OasisLights.tsx) — 一位邻居一封信：移近拆封窥信、点击抽出摊开读、⌘/Ctrl 点击直达（热区就是普通链接）；末尾一只「虚席以待」空信封，回帖里有可复制名帖与来信。数据 `src/data/friends.ts`（`color`=笺色，`since`=结邻日，落款写成干支节气），别再放占位邻居。演示稿 `docs/chidu-demo.html`。
-  - [lights/letterScene.ts](src/components/lights/letterScene.ts) — 引擎，**全程不进 React**：three.js 信封/封舌/对折八行笺 + GSAP 时间线；昼=竹影天光、夜=秉烛跟指针。可点之物是 React 渲染的 DOM，引擎只写位置、挂事件。防穿模三条（铰链过竖直才下沉、封舌不回弹、封舌躺平前笺不出封口）写在文件头，改开合时别破。画布每次自建自拆。省电省显存：阴影图 1024、骑缝印下半是共用贴花、笺第一次移近才画（`drawSheet`，随机数 `fork` 保证与当场画一样）、闲时 30 帧＋阴影 15 次/秒；纸会弯（顶点着色器 `BEND` 按弧长积分，customDepthMaterial 让影子同弯；笺还有一截在封里时不许弯）、洒金会闪（金箔层 + 离屏开窗屋 PMREM）、一阵风（风钟 `lib/wind.ts` 的 gust 摇竹影、掀没封口的封舌、吹烛、颤笺）；读信景深（桌面离屏两遍高斯，笺在 layer 1 另画，替代原来的幕）；超过四封（非手机）错落叠放（两行、让开页头、行距容得下敞开的封舌、移近时同排右边让开、口袋面投影）。验收数字与提案在实验台 `docs/chidu-next.html`。
+  - [lights/letterScene.ts](src/components/lights/letterScene.ts) — 引擎，**全程不进 React**：three.js 信封/封舌/对折八行笺 + GSAP 时间线；昼=竹影天光、夜=秉烛跟指针。可点之物是 React 渲染的 DOM，引擎只写位置、挂事件。防穿模三条（铰链过竖直才下沉、封舌不回弹、封舌躺平前笺不出封口）写在文件头，改开合时别破。画布每次自建自拆。省电省显存：阴影图 1024、骑缝印下半是共用贴花、笺不随信封画（`drawSheet`，随机数 `fork` 保证先画后画一样；桌面上信落定后趁空闲分三步画好传进显卡，手机等点开）、闲时 30 帧＋阴影 15 次/秒；纸会弯（顶点着色器 `BEND` 按弧长积分，customDepthMaterial 让影子同弯；笺还有一截在封里时不许弯）、洒金会闪（金箔层 + 离屏开窗屋 PMREM）、一阵风（风钟 `lib/wind.ts` 的 gust 摇竹影、掀没封口的封舌、吹烛、颤笺）；读信景深（桌面离屏两遍高斯，笺在 layer 1 另画，替代原来的幕）；超过四封（非手机）错落叠放（两行、让开页头、行距容得下敞开的封舌、移近时同排右边让开、口袋面投影）。验收数字与提案在实验台 `docs/chidu-next.html`。
   - 写什么在 [lights/letters.ts](src/components/lights/letters.ts)；样式 `lights/lights.css`；素材 `public/lights/`（出处见 CREDITS.md），纸色与纸面法线借园图的 `public/yuantu/tex/`。字随本 chunk 自托管（朱雀仿宋、志莽行书、Homemade Apple、IM Fell），`vite.config.ts` 里这两套中文字的切片不内联进 CSS。
 
 ### 园图(一图 · 四处 · 一伴)
@@ -44,7 +44,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - 借景(板块之间的串联):工坊作品在 `projects.ts` 的 `posts` 里记园中文章 id,工坊「出处」多一行「园中文章」,那篇读完的落款下也会指回册页(`OasisReader.tsx` 的 WorkshopNote);文章里写 `[歌名](#/resonance/<曲目 id>)` 就能借景到那首歌;文章侧栏的 Today's Resonance 本来就是借景。
 
 ### 其他
-- 纸类场所共用：[lib/paper/](src/lib/paper/)（画布工具、可分叉的种子随机、弯纸着色器 `bendify`，只被懒加载的 3D 场所引用）；[lib/paperSound.ts](src/lib/paperSound.ts)（纸声，WebAudio 现合成，默认关，⌘K 里开，放歌时让位；尺牍拆信、工坊翻册页、园图展卷/卷起/钤印）；[lib/wind.ts](src/lib/wind.ts)（风钟：全站同一阵风，樱瓣、尺牍、园图浮尘都读它）。
+- 纸类场所共用：[lib/paper/](src/lib/paper/)（画布工具、可分叉的种子随机、弯纸着色器 `bendify`、`pace.ts` 进场不卡：贴图分帧上传、着色器按画布/离屏/阴影图并行预编、像素比调速（连着慢就降档，有测试）；只被懒加载的 3D 场所引用。线上 `checkShaderErrors` 关着，不然第一帧同步等编译）；[lib/paperSound.ts](src/lib/paperSound.ts)（纸声，WebAudio 现合成，默认关，⌘K 里开，放歌时让位；尺牍拆信、工坊翻册页、园图展卷/卷起/钤印）；[lib/wind.ts](src/lib/wind.ts)（风钟：全站同一阵风，樱瓣、尺牍、园图浮尘都读它）。
 - [OasisBackground.tsx](src/components/OasisBackground.tsx) 全站樱瓣:按 DPR 建画布、渐变预渲成精灵、按秒积分;取向是真三维(正背两面 × 四档受光,窗在左上);尺牍、园图里 `covered` 淡出停画。园图引擎静止时不 render(frame() 末尾比状态签名,夜里烛闪 15 帧)。
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。
 

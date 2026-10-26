@@ -3,8 +3,11 @@ import * as THREE from 'three';
 
 export const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 export const ctx2d = (c: HTMLCanvasElement, read = false) => c.getContext('2d', read ? { willReadFrequently: true } : undefined)!;
+/** 读一张图，并在后台解码好再交出：不然第一次 drawImage / 传进显卡时才在主线程同步解码，正好卡在进场那几帧 */
 export const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
-  const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src;
+  const im = new Image(); im.decoding = 'async';
+  im.onload = () => { im.decode().catch(() => undefined).then(() => res(im)); };
+  im.onerror = () => rej(new Error(src)); im.src = src;
 });
 /** 等 p，最多等 ms（到点就当它好了：字没到齐也先画，宁可退回系统字） */
 export const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]);

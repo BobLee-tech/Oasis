@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SCENES, yStore, type Scene } from './scenes';
 import { loadImg, mk } from '../../lib/paper/canvas';   // 纸的工具箱：与尺牍共用
+import { dprGovernor, nextFrame, texturesOf, uploadSpread, warmPrograms } from '../../lib/paper/pace';
 import { playPaper } from '../../lib/paperSound';
 import { gust } from '../../lib/wind';
 
@@ -248,6 +249,13 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const { root, dust, band, track, mini, miniWin, base, reduce: RM, coarse } = o;
   // 画的节制：卷静止、没有补间、烛没挪时不 render（frame() 末尾比一串状态签名）；尺寸变了就记一笔
   let dirty = true;
+  const written = new WeakMap<HTMLElement, Record<string, string>>();
+  /** 值没变就不写：静止时每帧几十次同值写入会让样式整棵重算（--lx 挂在根上） */
+  const put = (el: HTMLElement, k: string, v: string) => {
+    let w = written.get(el); if (!w) written.set(el, (w = {}));
+    if (w[k] === v) return; w[k] = v;
+    if (k.startsWith('--')) el.style.setProperty(k, v); else (el.style as unknown as Record<string, string>)[k] = v;
+  };
   // 画布每次建卷都新开一块、拆卷时连同上下文一起丢掉：React 开发模式会「挂载 → 卸载 → 再挂载」，
   //   复用同一块画布会拿到已经 forceContextLoss 的上下文（three 读 precision 时直接崩）
   const canvas = document.createElement('canvas');
@@ -270,16 +278,19 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     }
   };
   // 墨：先画一层 3px 的晕，再画实字，最后用泼墨浓淡做遮罩；整层以正片叠底落到纸上
-  const inkLayer = (dst: CanvasRenderingContext2D, ox: number, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, color = '#191510') => {
-    const L = mk(w, h), c = L.getContext('2d')!;
+  //   span：dst 上有字的那一段横向范围——墨层只开这么宽（模糊与遮罩按面积算，整张切片开层是白花功夫）
+  const inkLayer = (dst: CanvasRenderingContext2D, ox: number, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, span: [number, number] = [0, w], color = '#191510') => {
+    const x0 = Math.max(0, Math.floor(span[0])), lw = Math.min(w, Math.ceil(span[1])) - x0;
+    if (lw <= 0) return;
+    const L = mk(lw, h), c = L.getContext('2d')!, dx = -ox - x0;
     c.fillStyle = color; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.save(); c.translate(-ox, 0); c.filter = 'blur(3px)'; c.globalAlpha = 0.32; draw(c); c.restore();
-    c.save(); c.translate(-ox, 0); c.filter = 'none'; c.globalAlpha = 1; draw(c); c.restore();
+    c.save(); c.translate(dx, 0); c.filter = 'blur(3px)'; c.globalAlpha = 0.32; draw(c); c.restore();
+    c.save(); c.translate(dx, 0); c.filter = 'none'; c.globalAlpha = 1; draw(c); c.restore();
     if (IMG.inkmask) {
       const pat = c.createPattern(IMG.inkmask, 'repeat');
-      if (pat) { pat.setTransform(new DOMMatrix().translate(-ox, 0).scale(1.6)); c.globalCompositeOperation = 'destination-in'; c.fillStyle = pat; c.fillRect(0, 0, w, h); }
+      if (pat) { pat.setTransform(new DOMMatrix().translate(dx, 0).scale(1.6)); c.globalCompositeOperation = 'destination-in'; c.fillStyle = pat; c.fillRect(0, 0, lw, h); }
     }
-    dst.save(); dst.globalCompositeOperation = 'multiply'; dst.drawImage(L, 0, 0); dst.restore();
+    dst.save(); dst.globalCompositeOperation = 'multiply'; dst.drawImage(L, x0, 0); dst.restore();
   };
   // 访客的「曾游」：先在小画布上刻好（白文：字处挖空），再整方钤到纸上，免得把纸也挖穿
   const drawSeal = (c: CanvasRenderingContext2D, x: number, y: number, s: number, rot: number) => {
@@ -297,7 +308,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     inkLayer(dst, ox, dst.canvas.width, dst.canvas.height, (c) => {
       c.font = '400 560px "Qiji Ink"'; c.fillText('绿', 36780, 560); c.fillText('洲', 36150, 560);
       c.font = '400 44px "LXGW WenKai Screen"'; c.fillStyle = '#2B241B'; vcol(c, '丙午寒露　园丁题于南半球', 35770, 215, 44, 1.14);
-    });
+    }, [FRONT_DECOR[0] - ox, FRONT_DECOR[1] - ox]);
     if (IMG.s00) { dst.save(); dst.globalCompositeOperation = 'multiply'; dst.globalAlpha = 0.92; dst.drawImage(IMG.s00, 35770 - ox - 44, 830, 88, 83); dst.restore(); }
   };
   // 拖尾纸：天地绫边、隔水、题跋与访客自己的印（只存在这台设备上，不编造别人的印）
@@ -320,7 +331,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
       vcol(cc, '走到卷尾的人，', 2230, 236, 46); vcol(cc, '在这里钤一方印。', 2160, 236, 46);
       if (stamped) vcol(cc, '这一方是你的。', 2090, 236, 46);
       cc.font = '400 36px "LXGW WenKai Screen"'; cc.fillStyle = '#6D5F49'; vcol(cc, '余纸虚以待跋', 700, 300, 36, 1.3);
-    });
+    }, [600, 2500]);
     if (stamped) drawSeal(c, TB_SEAL.Pt, TB_SEAL.ty, 118, -0.06);
     return cv;
   };
@@ -335,7 +346,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 6; c.shadowOffsetY = 2; c.fillStyle = '#EFE6CF'; c.fillRect(sx - sw / 2, y0, sw, y1 - y0); c.restore();
     if (IMG.paper) { c.globalCompositeOperation = 'multiply'; c.globalAlpha = 0.6; c.fillStyle = c.createPattern(IMG.paper, 'repeat')!; c.fillRect(sx - sw / 2, y0, sw, y1 - y0); }
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.strokeStyle = 'rgba(90,70,40,.45)'; c.lineWidth = 1.5; c.strokeRect(sx - sw / 2 + 7, y0 + 7, sw - 14, y1 - y0 - 14);
-    inkLayer(c, 0, W, H, (cc) => { cc.font = '400 76px "Qiji Ink"'; vcol(cc, '绿洲园图', sx, y0 + 74, 76, 1.04); });
+    inkLayer(c, 0, W, H, (cc) => { cc.font = '400 76px "Qiji Ink"'; vcol(cc, '绿洲园图', sx, y0 + 74, 76, 1.04); }, [sx - 100, sx + 100]);
     if (IMG.s07) { c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(IMG.s07, sx - 24, y1 - 72, 48, 35); c.restore(); }
     return cv;
   };
@@ -349,7 +360,10 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     throw err;
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio, coarse ? 1.5 : 2));
+  // 慢机器（或 5K 屏）卷动时连着画都赶不上 42 帧，就一档档降像素比（见 lib/paper/pace.ts）
+  const gov = dprGovernor(renderer.getPixelRatio(), (d) => { renderer.setPixelRatio(d); renderer.setSize(S.vw, S.vh, false); dirty = true; });
   renderer.setClearColor(0x000000, 0);
+  renderer.debug.checkShaderErrors = import.meta.env.DEV;   // 线上不查报错：第一次用时 getProgramInfoLog 会同步等编译收尾
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -4000, 4000);
   const MAXANISO = renderer.capabilities.getMaxAnisotropy();
@@ -422,7 +436,8 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const wantTile = (i: number) => {
     const t = tiles[i]; if (!t || t.st) return; t.st = 1;
     const stem = `${base}/scroll/t${String(i).padStart(2, '0')}`;
-    const viaKtx2 = needsDecor(t) ? Promise.reject(new Error('decor')) : ktx2Tex(`${stem}.ktx2`);
+    // 压缩贴图的宽要是 4 的倍数：末片（1765 宽）传进显卡会报 GL_INVALID_OPERATION、整片是空的，走 webp
+    const viaKtx2 = needsDecor(t) || t.w % 4 ? Promise.reject(new Error('decor')) : ktx2Tex(`${stem}.ktx2`);
     viaKtx2.then((tex) => {
       if (!alive) { tex.dispose(); return; }
       owned.push(tex); return tex;
@@ -444,7 +459,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   };
 
   /* ───── 卷的状态 ───── */
-  const S = { open: 0, vw: 0, vh: 0, Hs: 0, Bt: 0, k: 1, trackW: 0, Lc: 0, Rc: 0, Lr: 0, Rr: 0, rmax: 0, r0L: 0, r0R: 0, rk: 0, hk: 0, L: 0, R: 0, rL: 0, rR: 0, trackX: 0 };
+  const S = { mw: 0, open: 0, vw: 0, vh: 0, Hs: 0, Bt: 0, k: 1, trackW: 0, Lc: 0, Rc: 0, Lr: 0, Rr: 0, rmax: 0, r0L: 0, r0R: 0, rk: 0, hk: 0, L: 0, R: 0, rL: 0, rR: 0, trackX: 0 };
   const P = { p: 0, tp: 0, v: 0, max: 0, locked: false, drag: null as null | { x: number; p: number; t: number; lx: number; moved: number; vel: number } };
   let state: RollState = 'closed';
   let instantOpen = false;   // 解带只给第一次来的人：再来时直接展开
@@ -518,6 +533,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     rigs.forEach((r) => { r.slip.Pt = TUO + F2T(r.s.fx) + Math.min(r.s.slip, (S.vw * 0.3) / S.k); });
     ovs.forEach(placeOv);
     const d = Math.min(devicePixelRatio, 2); dust.width = S.vw * d; dust.height = S.vh * d; dctx?.setTransform(d, 0, 0, d, 0, 0);
+    S.mw = mini.clientWidth;
     focus = null;
   };
   const LR = () => { S.L = S.Lc + (S.Lr - S.Lc) * S.open; S.R = S.Rc + (S.Rr - S.Rc) * S.open; P.max = Math.max(0, S.trackW - (S.R - S.L)); };
@@ -548,9 +564,9 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
         const da = 140 * (on - ph.drop) - 15 * ph.dv; ph.dv += da * dt; ph.drop += ph.dv * dt;
       }
       const len = (34 + 78 * ph.drop) * k * 2.2, sc = 0.5 + 0.5 * ph.drop;
-      r.sw.style.transform = `rotate(${ph.phi.toFixed(4)}rad)`;
-      r.str.style.transform = `scaleY(${(len / 100).toFixed(4)})`;
-      r.card.style.transform = `translate(-50%, ${len.toFixed(2)}px) scale(${sc.toFixed(4)})`;
+      put(r.sw, 'transform', `rotate(${ph.phi.toFixed(4)}rad)`);
+      put(r.str, 'transform', `scaleY(${(len / 100).toFixed(4)})`);
+      put(r.card, 'transform', `translate(-50%, ${len.toFixed(2)}px) scale(${sc.toFixed(4)})`);
     }
   };
   const nudge = (r: SceneRig | null | undefined) => { if (!RM && r) r.ph.w += (Math.random() < 0.5 ? -1 : 1) * (1.1 + Math.random() * 0.6); };
@@ -559,6 +575,12 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
   const dctx = dust.getContext('2d');
   const motes = Array.from({ length: coarse ? 18 : 46 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), s: Math.random() * 6.28, v: 0.2 + Math.random() * 0.8 }));
   let dustT = 0, dustOn = false;
+  // 尘粒是同一团暖白的径向渐变：预渲成精灵、按透明度贴，不再每 30 帧新建几十个渐变（这一项占了静止时主线程的大头）
+  const mote = (() => {
+    const n = 64, c = mk(n, n), x = c.getContext('2d')!, g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    g.addColorStop(0, 'rgba(255,248,230,1)'); g.addColorStop(1, 'rgba(255,248,230,0)'); x.fillStyle = g; x.fillRect(0, 0, n, n);
+    return c;
+  })();
   const drawDust = (dt: number) => {
     if (!dctx) return;
     if (RM || U.uNight.value > 0.98) { if (dustOn) { dctx.clearRect(0, 0, S.vw, S.vh); dustOn = false; } return; }
@@ -579,11 +601,10 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
       const tY = (Y - ay) / (by - ay), cx = ax + 90 + (bx + 120 - ax - 90) * tY, dd = Math.abs(X - cx) / 230;
       const vis = Math.max(0, 1 - dd * dd) * day;   // 只在光柱里看得见
       if (vis <= 0.01) continue;
-      const r = 0.6 + m.z * 2.4, blur = m.z > 0.7 ? 3 : 1;
-      const gr = dctx.createRadialGradient(X, Y, 0, X, Y, r * blur + 1);
-      gr.addColorStop(0, `rgba(255,248,230,${(0.55 * vis * (1.2 - m.z * 0.6)).toFixed(3)})`); gr.addColorStop(1, 'rgba(255,248,230,0)');
-      dctx.fillStyle = gr; dctx.beginPath(); dctx.arc(X, Y, r * blur + 1, 0, 6.283); dctx.fill();
+      const r = 0.6 + m.z * 2.4, blur = m.z > 0.7 ? 3 : 1, R = r * blur + 1;
+      dctx.globalAlpha = 0.55 * vis * (1.2 - m.z * 0.6); dctx.drawImage(mote, X - R, Y - R, R * 2, R * 2);
     }
+    dctx.globalAlpha = 1;
   };
 
   /* ───── 主按钮的字 ───── */
@@ -636,11 +657,11 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     const t = now / 1000; U.uTime.value = t;
     U.uFlick.value = 1 + 0.045 * Math.sin(t * 9.1) + 0.03 * Math.sin(t * 15.7 + 1.2) + 0.02 * Math.sin(t * 27.3 + 2.1) + flickN * 0.5;
     U.uLight.value.set(lx, -ly, S.Hs * 0.8);
-    root.style.setProperty('--lx', `${lx.toFixed(1)}px`); root.style.setProperty('--ly', `${ly.toFixed(1)}px`);
+    put(root, '--lx', `${lx.toFixed(1)}px`); put(root, '--ly', `${ly.toFixed(1)}px`);
     const hi = U.uHi.value; hi.x += (hiT.x - hi.x) * 0.2; hi.y += (hiT.y - hi.y) * 0.2; hi.z += (hiT.r - hi.z) * 0.2; hi.w += (hiT.w - hi.w) * (1 - Math.exp(-dt * 6));
     // 卷面 DOM
-    track.style.transform = `translate3d(${S.trackX.toFixed(2)}px,0,0)`;
-    band.style.setProperty('--wl', `${(S.L + S.rL).toFixed(1)}px`); band.style.setProperty('--wr', `${(S.R - S.rR).toFixed(1)}px`);
+    put(track, 'transform', `translate3d(${S.trackX.toFixed(2)}px,0,0)`);
+    put(band, '--wl', `${(S.L + S.rL).toFixed(1)}px`); put(band, '--wr', `${(S.R - S.rR).toFixed(1)}px`);
     // 焦点景：视口中央最近的那一景，签条落下来
     const c = centerT(); let best: SceneRig | null = null, bd = 1800;
     if (state === 'open') for (const r of rigs) { const d = Math.abs(F2T(r.s.fx) - c); if (d < bd) { bd = d; best = r; } }
@@ -654,16 +675,16 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     goLabel();
     stepSlips(dt);
     // 缩略窗
-    const mw = mini.clientWidth;
-    miniWin.style.left = `${((S.L + S.rL - S.trackX) / S.trackW) * mw}px`;
-    miniWin.style.width = `${((S.R - S.rR - S.L - S.rL) / S.trackW) * mw}px`;
+    const mw = S.mw;   // 在 layout 里量好：每帧读 clientWidth 会逼出一次同步布局
+    put(miniWin, 'left', `${(((S.L + S.rL - S.trackX) / S.trackW) * mw).toFixed(1)}px`);
+    put(miniWin, 'width', `${(((S.R - S.rR - S.L - S.rL) / S.trackW) * mw).toFixed(1)}px`);
     // 画的节制：卷、烛、高亮、切片都没变就不画——昼里静着是 0 帧；夜里烛闪降到 15 帧（看不出差别）
     const sig = [S.trackX, S.rL, S.rR, S.L, S.R, U.uCord.value, U.uNight.value, hi.x, hi.y, hi.z, hi.w, lx, ly,
       U.uSlotI.value.x, U.uSlotOn.value.x, U.uSlotOn.value.y, U.uSlotOn.value.z, U.uSlotOn.value.w].map((v) => v.toFixed(2)).join();
     const flickDue = U.uNight.value > 0.02 && now - lastRender > 1000 / 15;
-    if (dirty || tweens.length > 0 || sig !== lastSig || flickDue) {
-      renderer.render(scene, camera); lastSig = sig; lastRender = now; dirty = false;
-    }
+    const moving = dirty || tweens.length > 0 || sig !== lastSig;
+    if (moving || flickDue) { renderer.render(scene, camera); lastSig = sig; lastRender = now; dirty = false; }
+    if (moving) gov.frame(now); else gov.skip();   // 夜里 15 帧的烛闪不算「连着画」
     drawDust(dt);
   };
 
@@ -809,11 +830,12 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     const c = state === 'open' ? centerT() : null;
     layout(); LR(); if (c != null) goTo(c, true);
   });
+  const miniRo = new ResizeObserver(() => { S.mw = mini.clientWidth; });
 
   /* ───── 启动 ───── */
   const boot = async () => {
     layout(); LR(); onLeave(); lx = LX; ly = LY;
-    ro.observe(root);
+    ro.observe(root); miniRo.observe(mini);
     const qiji = new FontFace('Qiji Ink', `url(${base}/fonts/qiji.woff2)`);
     fontsReady = Promise.race([
       Promise.all([
@@ -834,8 +856,16 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     if (IMG.paper) U.uPaperC.value = texOf(IMG.paper, true);
     await fontsReady;
     if (!alive) return;
-    U.uTail.value = texOf(paintTail()); U.uBack.value = texOf(paintBack());
+    // 拖尾纸、包首锦各占一帧画；贴图分帧传进显卡、着色器并行编好再开画——不然转场正卡在这几帧上
+    await nextFrame(); if (!alive) return;
+    U.uTail.value = texOf(paintTail());
+    await nextFrame(); if (!alive) return;
+    U.uBack.value = texOf(paintBack());
     [17, 18, 19].forEach(wantTile);
+    await uploadSpread(renderer, texturesOf(scene), () => alive);
+    if (!alive) return;
+    await warmPrograms(renderer, [{ scene, camera }]);
+    if (!alive) return;
     raf = requestAnimationFrame(frame);
     o.onReady?.();
     // 解带只给第一次来的人；再来时卷已经展开
@@ -852,7 +882,7 @@ export const createScrollScene = (o: ScrollSceneOptions): ScrollScene => {
     destroy() {
       alive = false;
       cancelAnimationFrame(raf);
-      ro.disconnect();
+      ro.disconnect(); miniRo.disconnect();
       root.removeEventListener('wheel', onWheel);
       band.removeEventListener('pointerdown', onDown);
       root.removeEventListener('pointermove', onMove);
