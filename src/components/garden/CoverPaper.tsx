@@ -84,29 +84,49 @@ const rgbOf = (hex: string): [number, number, number] => {
   const v = parseInt(m[1], 16); return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
 };
 
-/** 逐像素打光：昼＝左上平行光（悬停时随指针偏）；夜里悬停时是指针处的烛（点光、高出纸面），不悬停是淡冷的天光 */
-const light = (ctx: CanvasRenderingContext2D, P: Prepared, kind: Kind, color: string, night: boolean, hover: { x: number; y: number } | null) => {
+/** 灯：x、y 是指针（已缓动），s 是烛的强弱 0–1（移入点亮、移出熄灭都渐变） */
+interface Lamp { x: number; y: number; s: number }
+
+/** 高光处软肩：不再一刀切到 255，亮处留层次 */
+const shoulder = (v: number) => (v < 200 ? v : 200 + 55 * (1 - Math.exp((200 - v) / 55)));
+
+/** 逐像素打光：昼＝左上平行光（悬停时随指针偏）；夜＝淡冷的天光，悬停时再叠一支指针处的烛。
+ *  烛照的是纸本来的白（夜里暗是因为没光，不是纸变黑），所以光圈里是暖的纸色而不是发灰的褐；
+ *  衰减按点光高出纸面的平方反比，中心不削顶、没有圈边，离烛越远色温越低。 */
+const light = (ctx: CanvasRenderingContext2D, P: Prepared, kind: Kind, color: string, night: boolean, lamp: Lamp) => {
   const { w, h, n: N, print: pr, grain: gr, dpr } = P, out = ctx.createImageData(w, h), o = out.data;
-  const c = rgbOf(color), paper = night ? [42, 46, 58] : [250, 247, 240];
-  const tint = kind === 'cloud' ? 0.26 : 0.13;
-  const base = paper.map((v, j) => v * (1 - tint) + c[j] * tint);
+  const c = rgbOf(color), tint = kind === 'cloud' ? 0.26 : 0.13;
+  const tinted = (paper: number[]) => paper.map((v, j) => v * (1 - tint) + c[j] * tint);
+  const base = tinted(night ? [42, 46, 58] : [250, 247, 240]), albedo = tinted([250, 247, 240]);
   const ink = c.map((v) => v * 0.62), inkA = kind === 'blossom' ? 0.26 : kind === 'cloud' ? 0.16 : 0.2;
+  const s = lamp.s;
   let Ld = [-0.5, -0.56, 0.66];
-  if (!night && hover) Ld = [-0.5 + (hover.x / w - 0.5) * 0.7, -0.56 + (hover.y / h - 0.5) * 0.5, 0.66];
+  if (!night && s > 0) Ld = [-0.5 + (lamp.x / w - 0.5) * 0.7 * s, -0.56 + (lamp.y / h - 0.5) * 0.5 * s, 0.66];
   const ln = Math.hypot(Ld[0], Ld[1], Ld[2]); Ld = Ld.map((v) => v / ln);
-  const candle = night && !!hover;
-  const cx = hover ? hover.x : 0, cy = hover ? hover.y : 0, cz = 150 * dpr;
-  const lc = candle ? [1, 0.78, 0.52] : night ? [0.78, 0.84, 0.96] : [1, 0.985, 0.96];
-  const amb = candle ? 0.2 : night ? 0.34 : 0.52, kd = candle ? 1.05 : night ? 0.5 : 0.62;
+  const lc = night ? [0.78, 0.84, 0.96] : [1, 0.985, 0.96];
+  const amb = night ? 0.34 * (1 - 0.3 * s) : 0.52, kd = night ? 0.5 : 0.62;
+  const candle = night && s > 0.002, cz = 150 * dpr, cz2 = cz * cz, I = 0.44 * s;
   for (let i = 0, y = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
-    let lx = Ld[0], ly = Ld[1], lz = Ld[2], fall = 1;
-    if (candle) { lx = cx - x; ly = cy - y; lz = cz; const d = Math.hypot(lx, ly, lz); lx /= d; ly /= d; lz /= d; fall = Math.min(1.25, (cz * 1.9) / d) ** 2; }
     const nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
-    const diff = Math.max(0, nx * lx + ny * ly + nz * lz);
-    const hz = lz + 1, hl = Math.hypot(lx, ly, hz), spec = Math.max(0, (nx * lx + ny * ly + nz * hz) / hl) ** 40 * 0.1;
-    const li = (amb + diff * kd) * fall + gr[i];
+    const diff = Math.max(0, nx * Ld[0] + ny * Ld[1] + nz * Ld[2]);
+    const hz = Ld[2] + 1, hl = Math.hypot(Ld[0], Ld[1], hz), spec = Math.max(0, (nx * Ld[0] + ny * Ld[1] + nz * hz) / hl) ** 40 * 0.1;
+    const li = amb + diff * kd + gr[i];
     const a = Math.min(1, pr[i] * inkA * 2.2);
-    for (let j = 0; j < 3; j++) o[i * 4 + j] = Math.min(255, (base[j] * (1 - a) + ink[j] * a) * li * lc[j] + spec * 255 * fall);
+    if (!candle) {
+      for (let j = 0; j < 3; j++) o[i * 4 + j] = Math.min(255, (base[j] * (1 - a) + ink[j] * a) * li * lc[j] + spec * 255);
+    } else {
+      let lx = lamp.x - x, ly = lamp.y - y;
+      const d2 = lx * lx + ly * ly + cz2, d = Math.sqrt(d2); lx /= d; ly /= d; const lz = cz / d;
+      const fall = (cz2 / d2) ** 1.3;                                    // 正下方 1，向外平滑落下
+      const cd = Math.max(0, nx * lx + ny * ly + nz * lz) * 0.85 + 0.15;  // 留一点包裹光，凹处不至于死黑
+      const ch = lz + 1, cl = Math.hypot(lx, ly, ch), cs = Math.max(0, (nx * lx + ny * ly + nz * ch) / cl) ** 48 * 0.09;
+      const E = I * cd * fall * (1 + gr[i] * 2), sp = cs * fall * s * 255;
+      const warm = [1, 0.6 + 0.22 * fall, 0.28 + 0.28 * fall];           // 近处偏金白，远处偏橙
+      for (let j = 0; j < 3; j++) {
+        const sky = (base[j] * (1 - a) + ink[j] * a) * li * lc[j] + spec * 255 * (1 - s);
+        o[i * 4 + j] = shoulder(sky + ((albedo[j] * (1 - a) + ink[j] * a) * E + sp) * warm[j]);
+      }
+    }
     o[i * 4 + 3] = 255;
   }
   ctx.putImageData(out, 0, 0);
@@ -120,8 +140,35 @@ export const CoverPaper: React.FC<{ kind: Kind; color: string }> = ({ kind, colo
     const canvas = ref.current, card = canvas?.closest('.oasis-post-card') as HTMLElement | null;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    let P: Prepared | null = null, visible = false, hover: { x: number; y: number } | null = null, raf = 0, dead = false;
-    const paint = () => { raf = 0; if (!dead && P && visible) light(ctx, P, kind, color, isNight(), hover); };
+    let P: Prepared | null = null, visible = false, hover: { x: number; y: number } | null = null, raf = 0, dead = false, last = 0;
+    const lamp: Lamp = { x: 0, y: 0, s: 0 };
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // 烛跟手有一点点迟（像火苗被带着走），点亮约 0.25s、熄灭约 0.4s；减少动态时直接到位
+    const step = (now: number) => {
+      const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60; last = now;
+      const ts = hover ? 1 : 0;
+      if (hover && lamp.s < 0.01) { lamp.x = hover.x; lamp.y = hover.y; }
+      if (still.matches) { if (hover) { lamp.x = hover.x; lamp.y = hover.y; } lamp.s = ts; return false; }
+      const kp = 1 - Math.exp(-dt / 0.07), ks = 1 - Math.exp(-dt / (hover ? 0.09 : 0.14));
+      if (hover) { lamp.x += (hover.x - lamp.x) * kp; lamp.y += (hover.y - lamp.y) * kp; }
+      lamp.s += (ts - lamp.s) * ks;
+      if (Math.abs(ts - lamp.s) < 0.004) lamp.s = ts;
+      return lamp.s !== ts || (!!hover && Math.hypot(hover.x - lamp.x, hover.y - lamp.y) > 0.5);
+    };
+    const paint = (now: number) => {
+      raf = 0;
+      if (dead || !P || !visible) { last = 0; return; }
+      const more = step(now), night = isNight();
+      light(ctx, P, kind, color, night, lamp);
+      // 光圈不止于封面条：卡身上再铺一层同心的暖晕（index.css 的 .oasis-post-card::after）
+      if (card) {
+        const k = 1 / (P.w / (canvas.offsetWidth || 1));
+        card.style.setProperty('--candle-x', `${lamp.x * k}px`);
+        card.style.setProperty('--candle-y', `${lamp.y * k}px`);
+        card.style.setProperty('--candle', night ? lamp.s.toFixed(3) : '0');
+      }
+      if (more) raf = requestAnimationFrame(paint); else last = 0;
+    };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(paint); };
     const build = () => {
       const r = canvas.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
