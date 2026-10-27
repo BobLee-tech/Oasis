@@ -19,7 +19,8 @@ export const OasisTerminal: React.FC<OasisTerminalProps> = ({ onSuccess }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), [logs]);
+  // ⚠️ 必须是语句块：新版 Chrome 的 scrollIntoView 返回 Promise，简写会把它当清理函数交给 React，卸载时整页崩掉
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
