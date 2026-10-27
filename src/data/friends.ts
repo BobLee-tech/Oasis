@@ -29,6 +29,14 @@ export const FRIENDS: FriendLink[] = [
     color: "#7DD3FC",
     since: "2026-10-24",
   },
+  {
+    name: "Garry Yuan",
+    url: "https://garryyuan.com",
+    desc: "My life goal is to explore the potentialities of intelligence.",
+    lines: ["人生如同一盒巧克力，", "不必急于寻找意义，", "先去品尝每一种滋味。"],
+    color: "#A78BFA",
+    since: "2026-10-27",
+  },
   // {
   //   name: "Moonlit Terminal",
   //   url: "https://example.net",
