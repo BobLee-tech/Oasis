@@ -38,6 +38,14 @@ export const FRIENDS: FriendLink[] = [
     color: "#A78BFA",
     since: "2026-10-27",
   },
+  {
+    name: "客服小陈",
+    url: "https://xiaomiao.kdns.fr/",
+    desc: "长风破浪会有时，",
+    lines: ["直挂云帆济沧海。"],
+    color: "#A7F3D0",
+    since: "2026-10-28",
+  },
   // {
   //   name: "Moonlit Terminal",
   //   url: "https://example.net",
