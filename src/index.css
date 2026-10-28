@@ -51,6 +51,10 @@ html, body {
     overflow: hidden;
 }
 
+/* 文档底色与 App 外壳同色：iOS 回弹、安全区、整页截图露出的边不再是白的（夜里尤其刺眼） */
+html { background-color: #FAF8F3; }
+html.dark { background-color: #0A0F1D; }
+
 /* 🌿 全局基底：更柔和的字体渲染与触感 */
 html {
     -webkit-font-smoothing: antialiased;

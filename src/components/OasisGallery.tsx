@@ -6,6 +6,7 @@ import { useGarden, filterVisible, makeExcerpt, type BlogPost, type Growth, type
 import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
+import { usePullToClose } from '../hooks/usePullToClose';
 import { PLAYLIST, switchTrack } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
 import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter, WorkshopNote } from './OasisReader';
@@ -681,12 +682,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       prevPost: idx >= 0 && idx < listedPosts.length - 1 ? listedPosts[idx + 1] : null, // 更早的一篇
     };
   }, [activePost, listedPosts]);
-  const [readerAtTop, setReaderAtTop] = useState(true);
   const openPost = (p: BlogPost) => {
     setActivePost(p);
     readerRef.current?.scrollTo({ top: 0 });
-    setReaderAtTop(true);
   };
+  // 手机上在顶部往下拉够远就收起阅读舱（不用 drag：见 usePullToClose 文件头）
+  usePullToClose(readerRef, !!activePost && !isEditing, () => setActivePost(null));
 
   // 🧭 直链 ⇄ 阅读舱双向同步：
   //   · 地址含 #/garden/:id（分享 / 刷新 / 后退到某篇）→ 打开对应文章
@@ -761,7 +762,6 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     // 退出进度覆盖回 0。
     if (activePost) {
       readerRef.current?.scrollTo({ top: 0 });
-      requestAnimationFrame(() => setReaderAtTop(true));
       const pct = getReadProgress(activePost.id);
       if (pct > 0.02 && pct < 0.92) {
         const postId = activePost.id;
@@ -794,7 +794,6 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
   // 📍 阅读进度持久化：滚动时防抖记录百分比，供列表「续读」标记与下次自动跳转使用
   const handleReaderScroll = () => {
-    setReaderAtTop((readerRef.current?.scrollTop ?? 0) < 4);
     const post = activePost;
     const el = readerRef.current;
     if (!post || !el || restoringRef.current) return;
@@ -1777,15 +1776,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             key="reader-overlay"
             ref={readerRef}
             onScroll={handleReaderScroll}
-            drag={readerAtTop ? 'y' : false}
-            dragDirectionLock
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.35 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 96 || info.velocity.y > 700) setActivePost(null);
-            }}
             // ✨ 核心修复一：强制将背景色在日夜间与最外层壳体同步，拒绝卡顿断层
-            className="fixed inset-0 z-[105] overflow-y-auto no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
+            className="fixed inset-0 z-[105] overflow-y-auto overscroll-contain no-scrollbar bg-[#FAF8F3] dark:bg-[#0A0F1D] transition-colors duration-[1500ms] ease-in-out"
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
