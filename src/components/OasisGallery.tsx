@@ -11,6 +11,8 @@ import { PLAYLIST, switchTrack } from '../hooks/useSoundscape';
 import { readingTimeLabel, readingMinutes, extractToc, getReadProgress, readProgressStore, setReadProgress } from '../lib/reading';
 import { ReaderProgress, ReaderToc, ReaderExit, Lightbox, Colophon, PostFooter, WorkshopNote } from './OasisReader';
 import { CoverPaper } from './garden/CoverPaper';
+import { CoverImage } from './garden/CoverImage';
+import { CoverPicker } from './garden/CoverPicker';
 import { coverKindOf } from './garden/paperKind';
 import { useHashRoute } from '../lib/route';
 import { termNoteOfDay, currentSolarTerm } from '../lib/solarTerms';
@@ -21,6 +23,7 @@ import { countWords, emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
 import { tagKey, buildTagCanonicalMap } from '../lib/tags';
 import { AURA_COLORS } from '../lib/aura';
+import { resolveCover } from '../lib/coverImage';
 
 // 📝 默认写作模板：内置类型的温柔骨架，可被自定义模板覆盖；自定义分类默认无骨架
 const DEFAULT_TEMPLATES: Record<string, string> = {
@@ -140,6 +143,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 📋 listedPosts 才是「会被主动摆出来」的集合：网格 / 标签 / 归档 / 站内搜索 / 「继续漫游」类推荐面板
   //   都从这里取数据，非 admin 视角下排除 unlisted（admin 自己仍能看到，便于管理）。
   const listedPosts = useMemo(() => isAdmin ? posts : posts.filter(p => p.status !== 'unlisted'), [posts, isAdmin]);
+  // 🖼️ 卡片封面图：写作抽屉里手选的（文末 [oasis-cover]）优先；没选就从正文里先挑插画、再挑无图注的、再挑别人的照片，
+  //    图解不上（lib/coverImage.ts）；只在正文变了才重挑
+  const coverSrcOf = useMemo(() => new Map(posts.map(p => [p.id, resolveCover(p.content)])), [posts]);
   // ☁️ 本地 → 云端一键迁移状态：idle / syncing / 结果文案
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
   const [syncMsg, setSyncMsg] = useState('');
@@ -1438,8 +1444,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                           // 📍 续读进度：2%~92% 之间视为「读到一半」，读完或未读都不打扰
                           const progress = readProgressByPost[post.id]?.pct ?? 0;
                           const isOngoing = progress > 0.02 && progress < 0.92;
-                          // 📜 封面条是一条纸（随笔＝花笺、学习笔记＝帘纹界格、项目复盘＝云纹缎，见 garden/CoverPaper.tsx）；
+                          // 🖼️ 手选了封面、或正文里有能上封面的图（插画优先），封面就是那幅画，按取景框排（garden/CoverImage.tsx），卡里留一圈衬纸；
+                          // 📜 没有就是一条纸（随笔＝花笺、学习笔记＝帘纹界格、项目复盘＝云纹缎，见 garden/CoverPaper.tsx）；
                           //    自定义分类没有对应的纸，仍是情绪色渐变 + 图标。这一月只有一篇就占满两列，右列不再空着
+                          const coverSrc = coverSrcOf.get(post.id) ?? null;
                           const paper = coverKindOf(post.type);
                           const wide = group.posts.length === 1;
                           return (
@@ -1448,8 +1456,8 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                             //    提亮即分层）；浅色靠投影 + 更饱和的底色——白边在暖纸白背景上几乎隐形，
                             //    只提高透明度不够，边框改极淡墨色、配一层克制的静态阴影，卡片才立得起来。
                             <motion.div key={post.id} className={`oasis-post-card relative rounded-3xl ${wide ? 'xl:col-span-2' : ''} cursor-pointer overflow-hidden border transition-colors duration-[1500ms] ease-in-out shadow-[0_1px_2px_rgba(30,41,59,0.04),0_10px_28px_-14px_rgba(30,41,59,0.12)] dark:shadow-none bg-white/[0.82] dark:bg-white/[0.06] ${post.status === 'draft' ? 'border-dashed border-slate-300/70 dark:border-white/20 opacity-80' : post.status === 'unlisted' ? 'border-dashed border-[#60A5FA]/40 dark:border-[#60A5FA]/30' : 'border-slate-900/[0.06] dark:border-white/10 hover:dark:bg-white/[0.08]'}`} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: post.status === 'draft' ? 0.8 : 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 25 }} whileHover={{ y: -6, scale: 1.02, boxShadow: `0 20px 40px rgba(0,0,0,0.05), 0 0 30px ${post.color}15` }} whileTap={{ scale: 0.96 }}>
-                              <div className={`${wide ? 'h-28 xl:h-32' : 'h-28'} w-full relative overflow-hidden`}>
-                                {paper ? <CoverPaper kind={paper} color={post.color} /> : <>
+                              <div className={coverSrc ? `${wide ? 'h-[164px] xl:h-[200px]' : 'h-[164px]'} m-2 mb-0 rounded-[17px] relative overflow-hidden bg-[#f3efe7] dark:bg-white/[0.04]` : `${wide ? 'h-28 xl:h-32' : 'h-28'} w-full relative overflow-hidden`}>
+                                {coverSrc ? <CoverImage src={coverSrc} /> : paper ? <CoverPaper kind={paper} color={post.color} /> : <>
                                   {/* 情绪色柔渐变背景：替代空头图，给卡片质感与归属感 */}
                                   <div className="absolute inset-0 transition-all duration-[1500ms] ease-in-out" style={{ background: `linear-gradient(135deg, ${post.color}29, ${post.color}0a 55%, transparent)` }} />
                                   {/* 大类型图标水印：淡化的情绪色，去占位感 */}
@@ -1679,6 +1687,12 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                            <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14 pt-1.5">Excerpt</span>
                            <textarea rows={2} placeholder={editContent.trim() ? makeExcerpt(editContent) : '留空 · 自动截断正文前 110 字'} value={editExcerpt} onChange={e => setEditExcerpt(e.target.value)}
                              className="flex-1 max-w-2xl bg-transparent border-b border-slate-300/60 dark:border-white/15 font-serif text-sm text-slate-600 dark:text-slate-300 outline-none pb-1 resize-none placeholder:text-slate-400/50 dark:placeholder:text-slate-600 transition-colors" />
+                         </div>
+
+                         {/* 🖼️ 封面：用哪张（自动 / 文中 / 本地 / 资源包 / 不用图）、框住哪里，见 garden/CoverPicker.tsx */}
+                         <div className="flex items-start gap-3">
+                           <span className="font-mono text-[9px] tracking-[0.25em] uppercase text-slate-400 dark:text-slate-500 select-none shrink-0 w-14 pt-1.5">Cover</span>
+                           <div className="flex-1 min-w-0"><CoverPicker content={editContent} onChange={setEditContent} /></div>
                          </div>
 
                          {/* 🌱🌿🌳 生长度：自述性质，花园会长大 */}

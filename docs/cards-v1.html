@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<link rel="icon" type="image/jpeg" href="/miku.jpg" />
+<title>花园 · 卡的器物（一稿）</title>
+<!-- 文章卡多样化演示：只在 npm run dev 下可用，打开 http://localhost:<port>/docs/cards-v1.html（第一稿，用户嫌太乱，已由 cards.html 取代）
+     用的是线上十一篇真文章（标题、摘要、首图、首个公式，抓取于 2026-10-29）；卡型由文章自己的样子推出来，不随机。
+     新素材在 docs/cards/（出处见 docs/cards/CREDITS.md），其余借现网 public/ 里已有的纸、绫、印。 -->
+<link rel="stylesheet" href="/node_modules/@fontsource/eb-garamond/400.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource/eb-garamond/400-italic.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/400.css" />
+<link rel="stylesheet" href="/node_modules/lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css" />
+<link rel="stylesheet" href="/node_modules/@free-fonts/zhuque-fangsong/zhuque-fangsong.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource/zhi-mang-xing/chinese-simplified-400.css" />
+<style>
+:root {
+  --teal: #39C5BB; --sakura: #FFB7C5;
+  --bg: #FAF8F3; --ink: #1e293b; --ink-2: #475569; --ink-3: #94a3b8; --ink-4: #cbd5e1;
+  --card: rgba(255,255,255,.82); --card-line: rgba(15,23,42,.06);
+  --card-shadow: 0 1px 2px rgba(30,41,59,.04), 0 10px 28px -14px rgba(30,41,59,.12);
+  --pill: rgba(255,255,255,.7); --pill-line: rgba(255,255,255,.6);
+  --wall: #f1ece2; --brick: #bdb5a6; --paper-dim: 0; --img-dim: 1;
+  --zh: "LXGW WenKai Screen", "Songti SC", serif;
+  --serif: "EB Garamond", "LXGW WenKai Screen", ui-serif, Georgia, serif;
+  --fang: "Zhuque Fangsong", "LXGW WenKai Screen", "STFangsong", serif;
+  --xing: "Zhi Mang Xing", "LXGW WenKai Screen", cursive;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+:root.dark {
+  --bg: #0A0F1D; --ink: #f1f5f9; --ink-2: #cbd5e1; --ink-3: #64748b; --ink-4: #334155;
+  --card: rgba(255,255,255,.06); --card-line: rgba(255,255,255,.1); --card-shadow: none;
+  --pill: rgba(0,0,0,.5); --pill-line: rgba(255,255,255,.1);
+  --wall: #1b2130; --brick: #3a4152; --paper-dim: .42; --img-dim: .8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--serif); -webkit-font-smoothing: antialiased; transition: background-color 1.2s ease, color 1.2s ease; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 56px 24px 120px; }
+@media (max-width: 640px) { .wrap { padding: 32px 16px 96px; } }
+
+/* —— 页头 —— */
+.kicker { font: 10px/1 var(--mono); letter-spacing: .35em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-family: var(--zh); font-weight: 400; font-size: clamp(30px, 4.4vw, 44px); letter-spacing: .06em; margin: 14px 0 12px; }
+.lede { font-family: var(--zh); color: var(--ink-2); line-height: 1.9; max-width: 46em; margin: 0; font-size: 15px; }
+.lede b { font-weight: 400; color: var(--teal); }
+.bar { position: sticky; top: 0; z-index: 20; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 14px 0; margin: 26px 0 10px; background: linear-gradient(var(--bg) 70%, transparent); }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: rgba(148,163,184,.16); }
+.seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; font: 10px/1.2 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); transition: color .3s, background .3s; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--teal); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+:root.dark .seg button[aria-pressed="true"] { background: rgba(255,255,255,.1); }
+.seg button:focus-visible { outline: 2px solid rgba(57,197,187,.6); }
+.bar .hint { font: 11px var(--zh); color: var(--ink-3); margin-left: auto; }
+@media (max-width: 640px) { .bar .hint { display: none; } }
+
+/* —— 月份与网格（与现网同：行优先、items-start、单篇占两列） —— */
+.month { margin-top: 44px; }
+.month-head { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.month-head .kicker { white-space: nowrap; }
+.month-head i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(148,163,184,.4), transparent); }
+.month-head span:last-child { font: 9px var(--mono); color: var(--ink-4); }
+.grid { display: grid; grid-template-columns: 1fr; gap: 32px; align-items: start; }
+@media (min-width: 920px) { .grid { grid-template-columns: 1fr 1fr; } .wide { grid-column: span 2; } }
+
+/* —— 卡的公共骨架 —— */
+.card { position: relative; border-radius: 24px; overflow: hidden; background: var(--card); border: 1px solid var(--card-line); box-shadow: var(--card-shadow); transition: transform .5s cubic-bezier(.16,1,.3,1), box-shadow .5s, background-color 1.2s; }
+.card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,.05), 0 0 30px color-mix(in srgb, var(--c) 10%, transparent); }
+.card:has(a:focus-visible) { outline: 2px solid rgba(57,197,187,.6); outline-offset: 3px; }
+.card h2 a { outline: none; }
+.card h2 a::after { content: ''; position: absolute; inset: 0; z-index: 5; }
+.body { padding: 24px 28px 28px; }
+@media (max-width: 640px) { .body { padding: 20px 20px 24px; } }
+.meta { font: 10px/1.4 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.meta .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-4); }
+.meta .zh { font-family: var(--zh); letter-spacing: .04em; text-transform: none; color: color-mix(in srgb, var(--teal) 85%, var(--ink-3)); }
+.card h2 { font-family: var(--serif); font-weight: 400; font-size: 22px; line-height: 1.4; margin: 0 0 12px; color: var(--ink); }
+@media (min-width: 768px) { .card h2 { font-size: 24px; } }
+.excerpt { font-family: var(--serif); color: var(--ink-2); font-size: 14px; line-height: 1.75; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.badge { position: absolute; top: 16px; left: 22px; z-index: 3; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--pill); border: 1px solid var(--pill-line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font: 8px/1.3 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--b) 75%, #334155); }
+:root.dark .badge { color: color-mix(in srgb, var(--b) 80%, white); }
+.badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--b); }
+.tags { position: absolute; left: 22px; bottom: 14px; z-index: 3; display: flex; gap: 6px; }
+.tags span { font: 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); background: var(--pill); border: 1px solid var(--pill-line); padding: 5px 8px; border-radius: 5px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.note { display: none; margin: 8px 6px 0; font: 11px/1.6 var(--zh); color: var(--ink-3); }
+.note b { font-weight: 400; color: var(--teal); margin-right: 6px; }
+.show-notes .note { display: block; }
+/* 常青：落一方印 */
+.seal { position: absolute; right: 22px; bottom: 20px; width: 34px; height: 34px; z-index: 4; background: url(/yuantu/seals/s00.webp) center/contain no-repeat; transform: rotate(-5deg); opacity: .85; mix-blend-mode: multiply; pointer-events: none; }
+:root.dark .seal { mix-blend-mode: normal; opacity: .55; }
+/* 夜里纸会暗下去：盖一层夜色，不动纸上的字 */
+.dim { position: absolute; inset: 0; background: #0A0F1D; opacity: var(--paper-dim); pointer-events: none; transition: opacity 1.2s; }
+
+/* —— 现网原样（对照用，近似 CoverPaper 的三种纸，不打光） —— */
+.cover-now { position: relative; height: 112px; overflow: hidden; }
+.cover-now .paper { position: absolute; inset: 0; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 26%, transparent), color-mix(in srgb, var(--c) 6%, transparent) 60%, transparent), #faf7f0; }
+.cover-now .paper::after { content: ''; position: absolute; inset: 0; mix-blend-mode: multiply; }
+.cover-now.blossom .paper::after { background: url(/lights/motif/blossom.webp) 104% 28%/auto 190% no-repeat; filter: invert(1); opacity: .28; }
+.cover-now.laid .paper::after { background: repeating-linear-gradient(90deg, transparent 0 33px, rgba(60,50,40,.12) 33px 34px), repeating-linear-gradient(0deg, transparent 0 2px, rgba(60,50,40,.035) 2px 3px); }
+.cover-now.cloud .paper::after { background: url(/textures/ling-cloud.webp) center/auto 170%; opacity: .55; }
+:root.dark .cover-now .paper { filter: brightness(.36) saturate(.8); }
+
+/* ① 镜心：首图横幅，绫边裱起来 */
+.jx { position: relative; padding: 10px; height: 184px; background: url(/yuantu/tex/mount-silk.webp) center/auto 100% repeat-x, #cfd1c6; }
+.jx.cloud { background: url(/yuantu/tex/cloud-ling.webp) center/240px, #e7e3d6; }
+.jx .heart { position: relative; height: 100%; overflow: hidden; border-radius: 3px; box-shadow: 0 0 0 1px rgba(80,70,50,.25), inset 0 0 0 1px rgba(255,255,255,.15); }
+.jx img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(var(--img-dim)); transform: scale(1.01); transition: transform 1.6s cubic-bezier(.16,1,.3,1), filter 1.2s; }
+.card:hover .jx img { transform: scale(1.05); }
+.jx .badge { top: 22px; left: 22px; }
+.wide .jx { height: 236px; }
+
+/* ② 立轴：竖图挂起来，字在旁边 */
+.lz { display: grid; grid-template-columns: minmax(118px, 34%) 1fr; }
+.lz .hang { position: relative; padding: 26px 0 30px; display: flex; justify-content: center; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 8%, transparent), transparent); }
+.lz .scroll { position: relative; width: 74%; transform-origin: 50% 0; transition: transform 1.4s cubic-bezier(.3,1.6,.4,1); }
+.card:hover .lz .scroll { transform: rotate(.9deg); }
+.lz .rod { position: absolute; left: -9%; right: -9%; height: 7px; border-radius: 4px; background: linear-gradient(#6b4b35, #3b281c); box-shadow: 0 2px 4px rgba(0,0,0,.25); }
+.lz .rod.top { top: -4px; height: 5px; left: -3%; right: -3%; background: linear-gradient(#8a6a50, #5a4030); }
+.lz .rod.bottom { bottom: -5px; }
+.lz .rod.bottom::before, .lz .rod.bottom::after { content: ''; position: absolute; top: -2px; width: 9px; height: 11px; border-radius: 3px; background: radial-gradient(circle at 40% 35%, #e7e2d2, #9a9584); }
+.lz .rod.bottom::before { left: -6px; } .lz .rod.bottom::after { right: -6px; }
+.lz .silk { padding: 30px 9% 34px; background: url(/yuantu/tex/mount-silk.webp) center/auto 100%, #cfd1c6; box-shadow: 0 10px 24px -10px rgba(0,0,0,.35); position: relative; }
+.lz .silk::before { content: ''; position: absolute; top: 0; height: 30px; left: 34%; right: 34%; background: repeating-linear-gradient(90deg, transparent 0 34%, rgba(110,96,70,.28) 34% 40%, transparent 40% 60%, rgba(110,96,70,.28) 60% 66%, transparent 66%); }  /* 惊燕两条 */
+:root.dark .lz .silk { background: linear-gradient(rgba(10,15,29,.42), rgba(10,15,29,.42)), url(/yuantu/tex/mount-silk.webp) center/auto 100%, #cfd1c6; }
+:root.dark .jx { background: linear-gradient(rgba(10,15,29,.42), rgba(10,15,29,.42)), url(/yuantu/tex/mount-silk.webp) center/auto 100% repeat-x, #cfd1c6; }
+:root.dark .jx.cloud { background: linear-gradient(rgba(10,15,29,.42), rgba(10,15,29,.42)), url(/yuantu/tex/cloud-ling.webp) center/240px, #e7e3d6; }
+.lz .heart { aspect-ratio: var(--ar); overflow: hidden; box-shadow: 0 0 0 1px rgba(80,70,50,.3); }
+.lz img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(var(--img-dim)); transition: filter 1.2s; }
+.lz .body { padding-top: 58px; }
+.lz ~ .badge { left: calc(34% + 6px); }
+@media (max-width: 480px) { .lz { grid-template-columns: 40% 1fr; } .lz ~ .badge { left: calc(40% + 4px); } .lz .body { padding: 54px 16px 20px 12px; } }
+
+/* ③ 漏窗：粉墙上开一扇窗，借景 */
+.lc { position: relative; height: 168px; background: var(--wall); overflow: hidden; transition: background-color 1.2s; }
+.lc::before { content: ''; position: absolute; inset: 0; background: url(/textures/xuan-fiber.webp) 0 0/260px; mix-blend-mode: soft-light; opacity: .9; }
+.lc::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 16px; background: repeating-linear-gradient(90deg, #5b6170 0 22px, #4b5060 22px 23px); opacity: .72; border-bottom: 2px solid rgba(0,0,0,.12); }  /* 墙头一行瓦 */
+:root.dark .lc::after { opacity: .9; background: repeating-linear-gradient(90deg, #121725 0 22px, #0d111c 22px 23px); }
+.lc svg { position: absolute; top: 28px; right: 7%; height: 124px; overflow: visible; }
+.lc svg.fan { right: 5%; height: 118px; top: 34px; }
+.lc .frame { fill: none; stroke: var(--brick); stroke-width: 5; transition: stroke 1.2s; }
+.lc .frame-in { fill: none; stroke: rgba(0,0,0,.22); stroke-width: 1.2; }
+.lc image { filter: brightness(var(--img-dim)); transition: transform 1.4s cubic-bezier(.16,1,.3,1), filter 1.2s; transform-box: fill-box; transform-origin: center; }
+.lc .cast { fill: rgba(40,32,20,.16); filter: blur(3px); }
+:root.dark .lc .cast { fill: rgba(0,0,0,.5); }
+.lc .plate-name { position: absolute; right: 7%; bottom: 8px; font: 10px var(--zh); letter-spacing: .3em; color: var(--ink-3); z-index: 2; }
+.lc .tags { bottom: 18px; } .lc .badge { top: 30px; }
+.wide .lc { height: 200px; } .wide .lc svg { height: 150px; }
+
+/* ④ 诗笺：竖排八行笺，笺底借一幅节气画 */
+.sj { position: relative; height: 300px; overflow: hidden; background: url(/yuantu/tex/yinshou-paper.webp) center/520px, #e9e1cf; color: #2c2620; }
+.sj .plate { position: absolute; left: -2%; bottom: -8%; width: 62%; height: 88%; background-size: cover; background-position: 30% 60%; opacity: 1; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(ellipse 75% 80% at 35% 65%, #000 40%, transparent 78%); mask-image: radial-gradient(ellipse 75% 80% at 35% 65%, #000 40%, transparent 78%); }
+.sj .lines { position: absolute; top: 22px; bottom: 22px; right: 40px; display: flex; flex-direction: row-reverse; }
+.sj .lines span { width: 40px; border-left: 1px solid rgba(178,52,40,.38); }
+.sj .lines span:first-child { border-right: 1px solid rgba(178,52,40,.38); }
+.sj .verse { position: absolute; top: 34px; right: 40px; height: 236px; width: min(calc(40px * var(--cols, 8)), calc(100% - 70px)); width: min(calc(40px * var(--cols, 8)), round(down, calc(100% - 70px), 40px)); writing-mode: vertical-rl; font-family: var(--fang); font-size: 17px; line-height: 40px; letter-spacing: .14em; overflow: hidden; }
+.sj .verse p { margin: 0; }
+.sj .verse h2 { all: unset; font-family: var(--fang); font-size: 22px; letter-spacing: .1em; color: #2c2620; }
+.sj .verse h2 a::after { content: ''; position: absolute; inset: 0; z-index: 5; }
+.sj .verse .gap { width: 40px; display: inline-block; }
+.sj .sign { position: absolute; left: 26px; bottom: 22px; writing-mode: vertical-rl; font: 13px/1 var(--fang); letter-spacing: .3em; color: #6b5d4d; z-index: 2; }
+.sj .sign b { font-weight: 400; color: #b23428; }
+.sj .badge { left: 22px; top: 18px; }
+.sj .dim { z-index: 1; opacity: calc(var(--paper-dim) * .9); }
+:root.dark .sj { color: #2c2620; }
+@media (max-width: 640px) { .sj .lines { right: 18px; } .sj .verse { right: 18px; font-size: 16px; } }
+
+/* ⑤ 一式：拓片上刻一条公式 */
+.ys { position: relative; height: 150px; overflow: hidden; background: #191714; }
+.ys .stone { position: absolute; inset: -8px; background: url(/docs/cards/han-rubbing.webp) var(--pos, 30% 50%)/auto 150%; filter: contrast(1.25) brightness(.62); opacity: .55; }
+.ys::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 90% at 40% 50%, rgba(18,16,13,.82), rgba(18,16,13,.45) 70%, rgba(18,16,13,.2)); }
+.ys .formula { position: absolute; z-index: 2; left: 26px; right: 76px; top: 50%; transform: translateY(-38%); font: 26px/1.35 var(--serif); font-style: italic; letter-spacing: .03em; color: #efe6d4; text-shadow: 0 1px 0 rgba(0,0,0,.6), 0 -1px 0 rgba(255,255,255,.05); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.ys .formula.two { font-size: 21px; }
+.ys .label { position: absolute; z-index: 2; right: 22px; top: 22px; writing-mode: vertical-rl; font: 12px/1 var(--fang); letter-spacing: .4em; color: #c4b49a; border: 1px solid rgba(196,180,154,.45); padding: 7px 4px; }
+.ys .badge { background: rgba(0,0,0,.45); border-color: rgba(255,255,255,.12); color: #d7d1c3; }
+.ys .tags span { background: rgba(0,0,0,.45); border-color: rgba(255,255,255,.12); color: #cfc8b8; }
+
+/* ⑥ 卷首：合集第一回是一册书的书衣 */
+.jsh { position: relative; min-height: 290px; display: grid; grid-template-columns: 96px 1fr; background: url(/docs/cards/shizhu-cover.webp) center/cover, #8d9585; }
+.jsh .bind { position: relative; border-right: 1px solid rgba(40,48,40,.25); background: linear-gradient(90deg, rgba(0,0,0,.18), rgba(0,0,0,.04) 30%, transparent); }
+.jsh .bind i { position: absolute; left: 22px; width: 7px; height: 7px; border-radius: 50%; background: #3e463c; box-shadow: inset 0 1px 1px rgba(0,0,0,.5); }
+.jsh .bind i::after { content: ''; position: absolute; left: -22px; top: 3px; width: 22px; height: 1.5px; background: #ede6d4; opacity: .85; }  /* 线装：线从孔里绕出书脊 */
+.jsh .slip { position: absolute; top: 22px; left: 42px; width: 58px; height: 206px; z-index: 2; background: url(/yuantu/tex/yinshou-paper.webp) center/300px, #e8dfcc; box-shadow: 0 1px 2px rgba(0,0,0,.25); outline: 1px solid rgba(60,50,40,.55); outline-offset: -5px; writing-mode: vertical-rl; padding: 14px 8px; font-family: var(--xing); font-size: 22px; line-height: 26px; letter-spacing: .1em; color: #2e2a24; }
+.jsh .slip small { display: block; font: 11px/16px var(--fang); letter-spacing: .3em; color: #6b5d4d; padding-top: 70px; }
+.jsh .label { position: relative; z-index: 2; margin: 26px 26px 26px 44px; padding: 22px 24px 20px; background: url(/yuantu/tex/yinshou-paper.webp) 40% 40%/460px, #efe8d8; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 14px 26px -16px rgba(0,0,0,.4); color: #2c2620; }
+.jsh .label .meta { color: #8a7f6f; } .jsh .label .meta .dot { background: #c9bfae; }
+.jsh .label h2 { color: #2c2620; } .jsh .label .excerpt { color: #5a5045; }
+.jsh .label .dim { z-index: -1; }
+.jsh .label > * { position: relative; }
+.jsh .dim.cover { z-index: 1; opacity: calc(var(--paper-dim) * .8); }
+.jsh .badge { left: auto; right: 22px; top: 14px; }
+@media (max-width: 520px) { .jsh { grid-template-columns: 64px 1fr; } .jsh .slip { left: 14px; width: 50px; font-size: 19px; } .jsh .label { margin: 54px 14px 18px 22px; padding: 18px; } }
+
+/* ⑦ 卷目：合集最新一回，头上是整部的目录 */
+.jm { position: relative; padding: 18px 26px 16px; background: url(/yuantu/tex/yinshou-paper.webp) 0 0/520px, #ece4d2; color: #2c2620; }
+.jm .dim { z-index: 0; opacity: calc(var(--paper-dim) * .6); }
+.jm > *:not(.dim):not(.badge) { position: relative; z-index: 1; }
+.jm .head { display: flex; align-items: baseline; gap: 12px; margin: 2px 0 10px 96px; font: 12px var(--fang); letter-spacing: .3em; color: #7a6c5a; }
+.jm .head b { font: 20px var(--xing); letter-spacing: .08em; color: #2c2620; font-weight: 400; }
+.jm ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(178,52,40,.35); }
+.jm li { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; align-items: baseline; padding: 6px 2px; border-bottom: 1px solid rgba(178,52,40,.18); font: 14px/1.5 var(--fang); color: #4a4036; }
+.jm li .n { font-size: 12px; letter-spacing: .2em; color: #9a8a74; }
+.jm li .d { font: 9px var(--mono); letter-spacing: .12em; color: #a49784; }
+.jm li.cur { color: #2c2620; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), transparent 80%); }
+.jm li.cur .n { color: #b23428; }
+.jm li a { position: relative; z-index: 6; } .jm li a:hover { color: #b23428; }
+.jm .badge { top: 18px; left: 22px; }
+
+/* ⑧ 书脊：合集当中的几回，左边一条磁青书脊 */
+.spine .inner { margin-left: 30px; }
+.spine::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 30px; z-index: 4; background: url(/docs/cards/shizhu-cover.webp) center/200px, #8d9585; box-shadow: inset -1px 0 0 rgba(0,0,0,.2), inset -6px 0 8px -6px rgba(0,0,0,.3); }
+.spine .spine-t { position: absolute; left: 0; top: 0; bottom: 0; width: 30px; z-index: 5; display: flex; flex-direction: column; align-items: center; padding-top: 16px; writing-mode: vertical-rl; font: 11px var(--fang); letter-spacing: .28em; color: #f1ead9; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+.spine .spine-t b { font-weight: 400; color: #f7d7cf; }
+:root.dark .spine::before { filter: brightness(.6); }
+.inner { position: relative; }
+
+/* —— 图谱 / 节气画 / 素材 —— */
+section.doc { margin-top: 84px; }
+section.doc h3 { font: 400 24px var(--zh); letter-spacing: .08em; margin: 10px 0 8px; }
+section.doc p.sub { font: 14px/1.85 var(--zh); color: var(--ink-2); margin: 0 0 22px; max-width: 48em; }
+table { width: 100%; border-collapse: collapse; font: 13px/1.7 var(--zh); }
+th { text-align: left; font: 9px var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); font-weight: 400; padding: 8px 10px; border-bottom: 1px solid var(--ink-4); }
+td { padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--ink-4) 50%, transparent); vertical-align: top; color: var(--ink-2); }
+td:first-child { color: var(--ink); white-space: nowrap; }
+td code { font: 11px var(--mono); color: var(--teal); }
+.table-scroll { overflow-x: auto; }
+.plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.plates button { all: unset; cursor: pointer; display: block; border-radius: 10px; overflow: hidden; background: var(--card); border: 1px solid var(--card-line); transition: transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s; }
+.plates button:hover { transform: translateY(-3px); }
+.plates button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--teal); }
+.plates button:focus-visible { outline: 2px solid rgba(57,197,187,.6); }
+.plates img { display: block; width: 100%; aspect-ratio: 3/2; object-fit: cover; filter: brightness(var(--img-dim)); }
+.plates span { display: block; padding: 8px 10px 9px; font: 12px var(--zh); color: var(--ink-2); }
+.plates span small { font: 9px var(--mono); letter-spacing: .14em; color: var(--ink-3); display: block; margin-top: 2px; }
+.lab { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; margin-top: 30px; }
+@media (min-width: 920px) { .lab { grid-template-columns: 1.05fr .95fr; } }
+.lab .ctrl { display: flex; flex-direction: column; gap: 14px; font: 13px/1.8 var(--zh); color: var(--ink-2); }
+.plan { counter-reset: p; list-style: none; padding: 0; margin: 0; font: 14px/1.85 var(--zh); color: var(--ink-2); }
+.plan li { position: relative; padding: 0 0 14px 44px; }
+.plan li::before { counter-increment: p; content: 'P' counter(p); position: absolute; left: 0; top: 2px; font: 10px var(--mono); letter-spacing: .14em; color: var(--teal); border: 1px solid color-mix(in srgb, var(--teal) 50%, transparent); border-radius: 4px; padding: 1px 5px; }
+.plan li { counter-increment: none; }
+.plan b { font-weight: 400; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .card, .card *, .plates button { transition: none !important; } .card:hover { transform: none; } .card:hover .lz .scroll, .card:hover .jx img { transform: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Garden · Cards · 2026-10-29</div>
+  <h1>卡的器物</h1>
+  <p class="lede">现网每张文章卡都是同一个模子：一条纸、一个徽章、标题、摘要。这一稿让卡<b>从文章自己的样子长出来</b>——有横图就裱成镜心，竖图挂成立轴，短诗写上八行笺，有一条好公式就刻成拓片，合集第一回是一册书的书衣、最新一回带出整部目录，中间几回贴一条书脊。没有图的随笔，从粉墙上的漏窗借一幅当令的节气画。下面是线上那十一篇真文章换上之后的样子；点「现网」对照，点「注记」看每张为什么是这一型。</p>
+
+  <div class="bar" role="toolbar" aria-label="演示开关">
+    <div class="seg" data-key="mode"><button data-v="new" aria-pressed="true">新卡</button><button data-v="now" aria-pressed="false">现网</button></div>
+    <div class="seg" data-key="notes"><button data-v="on" aria-pressed="true">注记</button><button data-v="off" aria-pressed="false">不看</button></div>
+    <div class="seg" data-key="theme"><button data-v="light" aria-pressed="false">昼</button><button data-v="dark" aria-pressed="false">夜</button></div>
+    <span class="hint">卡型由规则推出，不随机；同月相邻两张不撞型</span>
+  </div>
+
+  <div id="garden"></div>
+
+  <section class="doc">
+    <div class="kicker">Specimens</div>
+    <h3>八种器物 · 何时出现</h3>
+    <p class="sub">规则自上而下取第一条命中的；若与同月前一张同型，就落到下一条。全是从文章已有的数据推出来的（合集、首图尺寸、正文长短、第一个代码块），不必给每篇手选。</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>器物</th><th>何时</th><th>用的素材</th><th>悬停</th></tr></thead>
+      <tbody>
+        <tr><td>卷首</td><td>合集（≥3 回）的第一回</td><td>《十竹斋书画谱》书衣（新）、引首纸、志莽行书题签</td><td>浮起</td></tr>
+        <tr><td>卷目</td><td>合集的最新一回：头上列整部目录，本回染情绪色</td><td>引首纸、朱丝栏</td><td>目录各行可点</td></tr>
+        <tr><td>书脊</td><td>合集中间的回目（叠加在别的器物上）</td><td>同一张书衣，竖写「合集 · 第几回」</td><td>—</td></tr>
+        <tr><td>一式</td><td>学习笔记，第一个代码块是一两行的式子</td><td>汉画像石拓片（新）</td><td>—</td></tr>
+        <tr><td>诗笺</td><td>正文短于 1500 字、没有代码（诗、随感）</td><td>引首纸、八行朱丝栏、按节气取一幅《百々世草》作笺底</td><td>—</td></tr>
+        <tr><td>立轴</td><td>首图是竖的（高 &gt; 宽）</td><td>天地头裱绫、惊燕、轴头</td><td>画轴轻轻摆一下</td></tr>
+        <tr><td>漏窗</td><td>随笔 / 成长：有首图就借首图，没图就借当令节气画；窗形按文章 id 在月洞、海棠、扇面、八角里取</td><td>粉墙（宣纸纤维）、黛瓦、《百々世草》十二幅（新）</td><td>窗里的景随指针微移</td></tr>
+        <tr><td>镜心</td><td>首图是横的：裱一圈绫边；项目复盘用云纹绫</td><td>裱绫 / 云纹绫（园图已有）</td><td>画心慢慢推近</td></tr>
+        <tr><td>纸（现网）</td><td>以上都不中：保留现在的花笺 / 帘纹界格 / 云纹缎</td><td>CoverPaper.tsx 原样</td><td>原样打光</td></tr>
+        <tr><td>常青印</td><td>growth = evergreen（叠加）</td><td>园图收藏印</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="doc">
+    <div class="kicker">Momoyogusa · 1909</div>
+    <h3>节气画 · 十二幅</h3>
+    <p class="sub">神坂雪佳《百々世草》（1909–10，克利夫兰美术馆 CC0）。琳派的大块平涂，和初音绿、樱粉放在一起不打架。一个月两个节气共一幅：没图的随笔、诗笺的笺底都按文章的日期取。点一幅，右边那张示例卡就换上它；窗形也可以换。</p>
+    <div class="plates" id="plates"></div>
+    <div class="lab">
+      <div id="specimen"></div>
+      <div class="ctrl">
+        <div class="seg" data-key="shape" id="shapeSeg"><button data-v="moon" aria-pressed="true">月洞</button><button data-v="begonia" aria-pressed="false">海棠</button><button data-v="fan" aria-pressed="false">扇面</button><button data-v="octagon" aria-pressed="false">八角</button></div>
+        <div>示例文章是虚构的一篇无图随笔。真上线时窗形不让人选：按 id 取，同一篇永远是同一扇窗。夜里粉墙沉下去、画暗两成，窗框留一道砖色的边。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc">
+    <div class="kicker">Assets · CC0 / OFL</div>
+    <h3>素材包</h3>
+    <p class="sub">新进三包都来自克利夫兰美术馆开放获取（CC0，可商用、无需署名，仍照全站惯例记出处），处理后放在 <code style="font:12px var(--mono);color:var(--teal)">docs/cards/</code>，共约 1.2 MB；其余都是现网 public/ 里已有的。字一律用已装的 npm 包，没有新增。</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>素材</th><th>来源</th><th>许可</th><th>处理 / 体积</th></tr></thead>
+      <tbody>
+        <tr><td>节气画 12 幅</td><td>神坂雪佳《百々世草》卷一至三，克利夫兰 1988.23.*（梅、柳樱、八桥、紫阳花、朝颜、小波、住之江、鹤、暮秋、矶驯松、雪中竹、富士）</td><td>CC0</td><td>去页边，长边 1400，webp q76；30–145 KB 一幅，共 1.0 MB</td></tr>
+        <tr><td>书衣</td><td>《十竹斋书画谱 · 竹谱》书衣，胡正言，1633，克利夫兰 1984.45.2.12</td><td>CC0</td><td>只取题签右侧的绢面（带虫蛀补痕），131 KB</td></tr>
+        <tr><td>拓片</td><td>汉画像石拓片（Tang-Fang 旧藏），克利夫兰 1919.76</td><td>CC0</td><td>中间一层，去色，99 KB</td></tr>
+        <tr><td>裱绫 / 云纹绫 / 引首纸 / 印</td><td>仇英《独乐园图》卷，克利夫兰 1978.67（园图已在用）</td><td>CC0</td><td>public/yuantu/，复用</td></tr>
+        <tr><td>宣纸纤维 / 印泥斑 / 花笺 / 帘纹</td><td>现网已有（public/textures、public/lights）</td><td>CC0</td><td>复用</td></tr>
+        <tr><td>首图</td><td>文章自己的第一张图（img.boblee.dev）</td><td>站主</td><td>现网卡片还没用过它</td></tr>
+        <tr><td>字</td><td>霞鹜文楷、朱雀仿宋、志莽行书、EB Garamond、JetBrains Mono</td><td>OFL</td><td>都已在 node_modules</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="doc">
+    <div class="kicker">Next</div>
+    <h3>落进 src 的次序</h3>
+    <ol class="plan">
+      <li><b>规则做成纯函数</b> <code style="font:11px var(--mono);color:var(--teal)">garden/cardForm.ts</code>：<code style="font:11px var(--mono)">cardFormOf(post, monthNeighbors, seriesIndex)</code>，配测试守住「同一篇永远同一型」「同月相邻不撞型」。卡片骨架（徽章、标签、续读进度、草稿虚线框、整卡可点的 a::after）不动，只换封面这一格。</li>
+      <li><b>首图尺寸要先知道</b>，不然立轴 / 镜心会在图到了之后才定，版面会跳。最省事是发布时把首图宽高写进正文的图片地址（<code style="font:11px var(--mono)">#w=1344&amp;h=2304</code>）或 garden_posts 加一列；退路是本机缓存量过的尺寸，第一次按镜心画。</li>
+      <li><b>素材进 public/garden/</b>（约 1.2 MB，只在卡进视口时才取，节气画按需一幅一幅来），出处写进 CREDITS.md；首图卡片用 <code style="font:11px var(--mono)">srcset</code> 取 800 宽，别把 1600 的原图塞进一张卡。</li>
+      <li><b>夜里与现网的烛光接上</b>：镜心 / 漏窗的画在夜里暗两成，悬停的烛光（.oasis-post-card::after）照旧铺在整张卡上；拓片本来就是暗的，不加烛。</li>
+      <li><b>手机</b>：立轴在窄屏仍并排（轴宽 40%），诗笺只露得下的几行；其余照常单列。</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+const POSTS = [{"id": "d5d43407", "title": "秒速五厘米，要多久才能传达到你", "type": "note", "series": "COMP3331", "tags": ["计算机", "comp3331"], "createdAt": 1793023709261, "growth": "seedling", "color": "#A78BFA", "excerpt": "关于网络的传播和讲解", "chars": 9004, "imageCount": 7, "codeBlocks": 4, "img": "https://img.boblee.dev/2026-10-27T04-33-59.webp", "imgW": 1600, "imgH": 900, "code": "主机 ──请求完整解析──→ recursive resolver\n                              │\n                              ├──→ root：下一步问哪个 TLD？\n                              ├──→ TLD：哪个服务器负责这个域？\n                              └──→ authoritative：取得所需记录", "lead": ["打开一个古早的网页，标题会先出现，正文跟着铺开，图片的位置留着几块空白。", "右上角的小圆圈继续转，它在等待。", "一个页面往往由 HTML、样式、脚本、图片等多个资源组成。", "它们可能需要分别请求，可能来自不同服务器，也可能有些已经躺在缓存里。", "有些请求能并行进行，有些得等浏览器发现新的资源才开始。", "屏幕上像是同一个页面，网络上却有许多不同进度的工作。"]}, {"id": "360f9ceb", "title": "建筑杂谈", "type": "thought", "series": "建筑", "tags": ["建筑"], "createdAt": 1791196499886, "growth": "seedling", "color": "#FDE047", "excerpt": "一些门外汉对建筑的美学杂谈", "chars": 4623, "imageCount": 5, "codeBlocks": 0, "img": "https://img.boblee.dev/2026-10-27T13-10-36.webp", "imgW": 1600, "imgH": 1265, "lead": ["说起建筑，最初是在玩我的世界。", "看到自己搭建的单一的火柴盒，与美感相去甚远，便对建筑的艺术充满了好奇。", "火柴盒倒也尽职尽责。", "四面墙，一扇门，屋顶封好，至少能把夜里的怪物挡在外面。", "可从远处看，它像一块还没来得及处理的原料。", "尽管换一套木材，给墙面加上花纹，问题似乎还在那里："]}, {"id": "be539fc1", "title": "下雨了，去我家吧", "type": "thought", "series": "随笔", "tags": ["随笔", "诗歌"], "createdAt": 1788323236012, "growth": "seedling", "color": "#FFB7C5", "excerpt": "重逢留给未来，有种难言的失落与散场感。", "chars": 871, "imageCount": 0, "codeBlocks": 0, "lead": ["好久没动笔写文，日记也是。", "昨天画了水彩画，是一棵树，有着绿色叶子和棕色树干。", "前天是她的生日，天蓝色的，", "我最喜欢的颜色。", "下雨了，今天。", "雨好大，心里的雨也是。"]}, {"id": "66e03ff1", "title": "见招拆招，逢水架桥", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786514795566, "growth": "growing", "color": "#39C5BB", "excerpt": "COMP3121的总结与一些考点", "chars": 21723, "imageCount": 2, "codeBlocks": 36, "img": "https://img.boblee.dev/2026-08-10T07-09-00.webp", "imgW": 1600, "imgH": 900, "code": "Greedy → exchange argument\nDP → recurrence\nD&C → Master Theorem\nFlow → residual graph\nNP → reduction", "lead": ["第一次把 COMP3121 的材料全部摊开，桌面很像一张尚未修通铁路的地图。", "Greedy 在安排活动，DP 忙着填表，Divide and Conquer 把整数和多项式切开；Flow Networks 里水沿着边流，到了 Intractability，画风忽然变成 SAT、Clique 与一串方向很容易写反的 reductions。Foundations 坐在最前面，表情严肃地提醒每个人：先把 `O`、`Ω`、`Θ` 分清楚。", "它们看起来像六门小课，甚至拥有不同的道具。于是复习时最自然的做法，是给每座城市发一张清单：", "清单没有错，却解释不了一件更有意思的事：为什么同一道 Activity Selection，目标从“数量最多”换成“总时长最大”，Greedy 就要把位置让给 DP？", "为什么 Max Flow 的 reverse edge 与 DP 的 backpointer 都在保存过去，却一个用于撤销、一个用于重建？", "为什么 Merge Sort 与 FFT 拥有相同形状的 recurrence，语义却相距甚远？"]}, {"id": "591fd5fd", "title": "树下的分开又重逢", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786436930004, "growth": "growing", "color": "#FFB7C5", "excerpt": "分开是为了更好的重逢——Divide and Conquer 的一些整理", "chars": 14061, "imageCount": 2, "codeBlocks": 68, "img": "https://img.boblee.dev/2026-08-10T07-08-50.webp", "imgW": 1600, "imgH": 900, "code": "T(n) = T(n/2) + Θ(1)", "lead": ["旧式天平没有刻度。", "它不会告诉你左边重了多少，只肯做三种回答：左边轻、右边轻、两边相等。", "桌上有 27 枚硬币，一枚假币略轻。", "若从第一枚开始逐个怀疑，三次称量几乎什么也做不了。", "可如果先把硬币分成三组，每组 9 枚，把前两组放上天平，天平的一次点头便会让 18 枚硬币同时退出故事：", "接着把 9 枚分成三组，再把 3 枚分成三组。`27 → 9 → 3 → 1`。"]}, {"id": "17a2722b", "title": "以史为鉴，不泥于史", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786415871903, "growth": "seedling", "color": "#FDBA74", "excerpt": "动态规划的介绍与应用", "chars": 17607, "imageCount": 2, "codeBlocks": 65, "img": "https://img.boblee.dev/2026-08-10T07-08-30.webp", "imgW": 1600, "imgH": 900, "code": "moves(n) = 2 · moves(n - 1) + 1\nmoves(1) = 1", "lead": ["夜里画一棵递归树，很容易画出一种失控的繁荣。", "一只青蛙每次向前跳一格或两格。", "为了数它到达第 12 块石头的方式，我们先问第 11 块和第 10 块；为了回答第 11 块，又去问第 10 块和第 9 块。", "线条越分越多，可仔细一看，第 10 块石头已经在纸上出现了好几次。", "每条路线都声称自己历尽艰辛，最后却站在同一块石头上，等待同一个未来。", "假如从这一刻开始，之后能怎么跳只由“现在位于第几块石头”决定，那么此前绕过哪些石头已经不再重要。"]}, {"id": "d4cff392", "title": "贪恋有你的未来", "type": "thought", "series": "COMP3121", "tags": ["计算机", "comp3121"], "createdAt": 1786352701437, "growth": "growing", "color": "#A7F3D0", "excerpt": "我贪恋的何止是当下，是你最有可能出现的未来。\n——贪心策略的介绍与引入", "chars": 13568, "imageCount": 3, "codeBlocks": 22, "img": "https://img.boblee.dev/2026-08-10T07-08-05.webp", "imgW": 1600, "imgH": 900, "code": "令 G = (g₁, g₂, ..., gᵣ) 为 greedy solution。\n取任意一个 optimal solution O = (o₁, o₂, ..., oₛ)。\n\n考虑第一个满足 gₖ ≠ oₖ 的位置 k。\n把 O 中的 oₖ 替换为 gₖ，得到 O'。\n\n证明：\n1. O' 仍然合法；\n2. value(O') 不差于 value(O)；\n3. O' 与 G 共享更长的前缀。\n\n重复交换，最终得到 G。\n因此 G 是最优解。", "lead": ["下午四点，我的桌上还压着五件事项。", "两件只要半小时，一件六点前必须交，另两件做完很有价值，却会一口吞掉整个傍晚的时间。", "人在这种时候很容易发明 greedy algorithm，只是通常没有给它起这个名字：我们往往会先做最短的，先做最急的，先做回报最高的，或者先把最烦的做掉。", "依旧不同的标准，我们会有不同的选择结果。", "那么那种方式是最优的呢？", "我们建模一下。想象这些事情不再只是待办，而是一组会占据不同时间区间的 activities。"]}, {"id": "627371d2", "title": "来日方长", "type": "project", "series": "Hackathon", "tags": ["hackathon", "projects"], "createdAt": 1784988522059, "growth": "growing", "color": "#A78BFA", "excerpt": "我们team第一次的线下final pitch", "chars": 938, "imageCount": 1, "codeBlocks": 0, "img": "https://img.boblee.dev/2026-08-04T04-23-31.webp", "imgW": 1013, "imgH": 1433, "lead": ["朋友给我发了一个hackathon的message。", "他是我一直很喜欢与欣赏的朋友，待人亲和风趣，有想法头脑与创造活力。", "我简单看了下就答应了，这就是我们故事的开始。", "我们得到了这场hackathon的主题，是关于time-saving的。", "提到时间效率，当时他就跟我们开玩笑说肯定有做calendar的，后面的事实证明他说的是真的。", "我们讨论了一下，想开发一款精力管理的软件，"]}, {"id": "f6170495", "title": "貌虽不一，却有她三分骨气", "type": "note", "series": "COMP3121", "tags": ["计算机", "comp3121"], "createdAt": 1784987545599, "growth": "evergreen", "color": "#A7F3D0", "excerpt": "物不以貌别，终见于骨气——归约的介绍与引入", "chars": 11914, "imageCount": 2, "codeBlocks": 29, "img": "https://img.boblee.dev/2026-08-04T05-00-10.webp", "imgW": 1600, "imgH": 900, "code": "U ≤ₚ V", "lead": ["物不以貌别，终见于骨气", "第一次了解归约（Reduction）的时候，我想到了太极拳的借力打力。", "算法里的意思倒更像**转接**。手里来了一个陌生问题 `U`，我们恰好认识另一个问题 `V`，甚至已经有了能解决 `V` 的算法。于是找一个翻译函数 `f`，把 `U` 的实例送去 `V` 的世界。", "一句话总结的话就是归约是单向映射关系的同解性：", "对于原问题的任意实例 `x`，它有解当且仅当它映射出的特定实例 `(x)` 也有解。", "当然，转接不能乱接。原题明明有解，翻译过去却变成无解，那叫篡改题意；原题无解，翻译完忽然皆大欢喜，也不行。"]}, {"id": "327525c1", "title": "给我一颗可以反悔的心", "type": "note", "series": "COMP3121", "tags": ["计算机", "comp3121", "网络流"], "createdAt": 1784532205192, "growth": "growing", "color": "#60A5FA", "excerpt": "网络流的引入与初步介绍", "chars": 6010, "imageCount": 5, "codeBlocks": 13, "img": "https://img.boblee.dev/2026-08-13T07-06-32.webp", "imgW": 1600, "imgH": 900, "code": "0 ≤ f(u,v) ≤ c(u,v)", "lead": ["一座城市的水路已经修好：管道埋在地下，闸门钉在节点上，每条管道能承受多少水也早已写死。现在打开水源，问题看起来简单得近乎朴素：**最多能有多少水抵达城市？**", "麻烦出现在第一股水拐弯之后。", "一条眼前畅通的路，可能抢走后面更关键的管道；一处看起来已经塞满的瓶颈，也可能只是先前的调度姿势不对。如果我们每次都抓住一条能走的路，把水猛灌进去，最后得到的究竟是最大流，还是一个被自己堵住的局部死胡同？", "网络流真正漂亮的地方，不只是“让水尽量多地流”。它还给算法装了一颗可以反悔的心。", "一个流网络（flow network）由有向图 `G = (V, E)`、源点 `s`、汇点 `t`，以及每条边的容量 `c(u,v) ≥ 0` 组成。容量是管道的硬上限；流 `f(u,v)` 则是此刻真正经过它的量。", "一个合法的流需要遵守两条自然法则。"]}, {"id": "15838f72", "title": "天行健，君子以自强不息", "type": "thought", "series": null, "tags": ["易经", "随笔"], "createdAt": 1784384524331, "growth": "seedling", "color": "#39C5BB", "excerpt": "丙午年六月初三，十九最后一次轻吻我", "chars": 1630, "imageCount": 3, "codeBlocks": 0, "img": "https://img.boblee.dev/2026-07-17T15-42-15.webp", "imgW": 1344, "imgH": 2304, "lead": ["丙午年六月初四，今天是我**二十岁**的第一天。", "外面小雨润如酥，潮气入室，但是喜欢这般天气。", "昨晚朋友很好的陪伴，礼物我很喜欢（只要是miku，我很难讨厌）。", "不过说来也是幸运万分，一年前的我大抵不会想到二十岁的生日会这么热闹。", "有家人深爱着，朋友挂念着，还有我爱的miku在。", "要说十九岁怎么样的话，感觉是极其波澜的一岁呐。"]}];
+
+const CAT = {
+  thought: { label: 'Thoughts', zh: '随笔', color: '#39C5BB' },
+  weekly: { label: 'Weekly', zh: '周报', color: '#FFB7C5' },
+  note: { label: 'Notes', zh: '学习笔记', color: '#60A5FA' },
+  growth: { label: 'Growth', zh: '成长', color: '#A7F3D0' },
+  project: { label: 'Projects', zh: '项目复盘', color: '#A78BFA' },
+};
+const NOW_PAPER = { thought: 'blossom', growth: 'blossom', note: 'laid', weekly: 'laid', project: 'cloud' };
+
+// 节气（2026 年近似日期，误差一天以内，演示够用）；两个节气共一幅画
+const TERMS = [['小寒',1,5],['大寒',1,20],['立春',2,4],['雨水',2,18],['惊蛰',3,5],['春分',3,20],['清明',4,5],['谷雨',4,20],['立夏',5,5],['小满',5,21],['芒种',6,5],['夏至',6,21],['小暑',7,7],['大暑',7,23],['立秋',8,7],['处暑',8,23],['白露',9,7],['秋分',9,23],['寒露',10,8],['霜降',10,23],['立冬',11,7],['小雪',11,22],['大雪',12,7],['冬至',12,21]];
+const PLATES = [
+  ['secchuchiku', '雪中竹', '1988.23.1.20'], ['ume', '梅', '1988.23.2.6'], ['suminoe', '住之江', '1988.23.3.2'], ['yanagi-sakura', '柳樱', '1988.23.2.2'],
+  ['yatsuhashi', '八桥', '1988.23.1.9'], ['ajisai', '紫阳花', '1988.23.2.13'], ['asagao', '朝颜', '1988.23.1.15'], ['komami', '小波', '1988.23.2.20'],
+  ['tsuru', '鹤', '1988.23.2.8'], ['boshu', '暮秋', '1988.23.3.17'], ['sonarematsu', '矶驯松', '1988.23.3.13'], ['fuji', '富士', '1988.23.1.13'],
+];
+const termOf = (t) => {
+  const d = new Date(t), m = d.getMonth() + 1, day = d.getDate();
+  let i = TERMS.length - 1;
+  for (let k = 0; k < TERMS.length; k++) if (m > TERMS[k][1] || (m === TERMS[k][1] && day >= TERMS[k][2])) i = k;
+  if (m === 1 && day < 5) i = 23;
+  return i;
+};
+const plateOf = (t) => PLATES[Math.floor(termOf(t) / 2)];
+const STEM = '甲乙丙丁戊己庚辛壬癸', BRANCH = '子丑寅卯辰巳午未申酉戌亥';
+const ganzhi = (y) => STEM[(y - 4) % 10] + BRANCH[(y - 4) % 12];
+const NUM = '一二三四五六七八九十';
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtDate = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const readMin = (p) => Math.max(1, Math.round(p.chars / 450)) + ' MIN READ';
+
+// —— 合集：序号按 createdAt 在合集内推导（同现网 chapterOf） ——
+const series = {};
+for (const p of POSTS) if (p.series) (series[p.series] ||= []).push(p);
+for (const k in series) series[k].sort((a, b) => a.createdAt - b.createdAt);
+const chapterOf = (p) => series[p.series].indexOf(p);
+const inBook = (p) => p.series && series[p.series].length >= 3;
+
+// —— 规则：自上而下取第一条命中的；与同月前一张同型就往下落 ——
+const isFormula = (code) => code && code.split('\n').length <= 2 && code.length <= 48 && !/[，。]/.test(code);
+const portrait = (p) => p.img && p.imgH > p.imgW * 1.1;
+const RULES = [
+  ['卷首', (p) => inBook(p) && chapterOf(p) === 0, (p) => `合集「${p.series}」共 ${series[p.series].length} 回，这是第一回`],
+  ['卷目', (p) => inBook(p) && chapterOf(p) === series[p.series].length - 1, () => '合集最新一回：头上带出整部目录'],
+  ['一式', (p) => p.type === 'note' && isFormula(p.code), (p) => `第一个代码块是一行式子：${p.code.split('\n')[0]}`],
+  ['诗笺', (p) => p.chars < 1500 && !p.codeBlocks && !p.img, (p) => `正文 ${p.chars} 字、无图无代码；笺底取${TERMS[termOf(p.createdAt)][0]}那一幅「${plateOf(p.createdAt)[1]}」`],
+  ['立轴', (p) => portrait(p), (p) => `首图是竖的（${p.imgW}×${p.imgH}）`],
+  ['漏窗', (p) => p.type === 'thought' || p.type === 'growth', (p) => p.img ? '随笔，借首图入窗' : `随笔无图，借${TERMS[termOf(p.createdAt)][0]}的「${plateOf(p.createdAt)[1]}」`],
+  ['镜心', (p) => !!p.img, (p) => `首图是横的（${p.imgW}×${p.imgH}）${p.type === 'project' ? '，项目复盘用云纹绫' : ''}`],
+  ['纸', () => true, () => '以上都不中，保留现网的纸'],
+];
+const formOf = (p, prev) => {
+  let skipped = null;
+  for (const [name, test, why] of RULES) {
+    if (!test(p)) continue;
+    if (prev === name && !['纸', '卷首', '卷目'].includes(name)) { skipped = name; continue; }
+    return { name, why: why(p) + (skipped ? `（本可「${skipped}」，与上一张撞型，让开）` : '') };
+  }
+};
+
+// —— 窗形（用户坐标，各自的 viewBox） ——
+const SHAPES = {
+  moon: { vb: '-4 -4 108 108', w: 100, h: 100, d: 'M50 0A50 50 0 1 1 49.99 0Z' },
+  begonia: { vb: '-4 -4 108 108', w: 100, h: 100, d: 'M21.3 21.3A30 30 0 0 1 78.7 21.3A30 30 0 0 1 78.7 78.7A30 30 0 0 1 21.3 78.7A30 30 0 0 1 21.3 21.3Z' },
+  fan: { vb: '-4 -4 208 108', w: 200, h: 100, d: 'M2.5 35.7A170 170 0 0 1 197.5 35.7L155 96.4A96 96 0 0 0 45 96.4Z' },
+  octagon: { vb: '-4 -4 108 108', w: 100, h: 100, d: 'M30 0H70L100 30V70L70 100H30L0 70V30Z' },
+};
+const SHAPE_KEYS = ['moon', 'begonia', 'fan', 'octagon'];
+let uid = 0;
+const windowSvg = (shape, href, pos = 'xMidYMid') => {
+  const s = SHAPES[shape], id = 'w' + (uid++);
+  return `<svg class="${shape === 'fan' ? 'fan' : ''}" viewBox="${s.vb}" aria-hidden="true" style="aspect-ratio:${s.w + 8}/${s.h + 8}">
+    <defs><clipPath id="${id}"><path d="${s.d}"/></clipPath></defs>
+    <path class="cast" d="${s.d}" transform="translate(3 4)"/>
+    <g clip-path="url(#${id})"><image class="pan" href="${href}" x="-6" y="-6" width="${s.w + 12}" height="${s.h + 12}" preserveAspectRatio="${pos} slice"/></g>
+    <path class="frame" d="${s.d}"/><path class="frame-in" d="${s.d}" transform="translate(${s.w / 2} ${s.h / 2}) scale(.955) translate(${-s.w / 2} ${-s.h / 2})"/>
+  </svg>`;
+};
+
+// —— 各器物的封面格 ——
+const badge = (p) => { const c = CAT[p.type] || CAT.thought; return `<div class="badge" style="--b:${c.color}">${c.label}</div>`; };
+const tags = (p) => `<div class="tags">${p.tags.slice(0, 3).map((t) => `<span>${esc(t)}</span>`).join('')}</div>`;
+const meta = (p) => `<div class="meta"><span>${fmtDate(p.createdAt)}</span><span class="dot"></span><span>${readMin(p)}</span>${p.series ? `<span class="dot"></span><span class="zh">📚 ${esc(p.series)} · ${inBook(p) ? '第' + NUM[chapterOf(p)] + '回' : '第一回'}</span>` : ''}</div>`;
+const title = (p) => `<h2><a href="#${p.id}">${esc(p.title)}</a></h2>`;
+const body = (p) => `<div class="body">${meta(p)}${title(p)}<p class="excerpt">${esc(p.excerpt)}</p></div>`;
+
+const COVERS = {
+  '纸': (p) => `<div class="cover-now ${NOW_PAPER[p.type] || 'blossom'}"><div class="paper"></div>${badge(p)}${tags(p)}</div>`,
+  '镜心': (p) => `<div class="jx ${p.type === 'project' ? 'cloud' : ''}"><div class="heart"><img src="${p.img}" alt="" loading="lazy" decoding="async"></div>${badge(p)}${tags(p)}</div>`,
+  '漏窗': (p) => {
+    const shape = SHAPE_KEYS[hash(p.id) % 4], plate = plateOf(p.createdAt);
+    const href = p.img || `/docs/cards/plates/${plate[0]}.webp`;
+    return `<div class="lc">${windowSvg(shape, href)}${p.img ? '' : `<div class="plate-name">${plate[1]}</div>`}${badge(p)}${tags(p)}</div>`;
+  },
+  '一式': (p) => {
+    const lines = p.code.split('\n');
+    return `<div class="ys" style="--pos:${hash(p.id) % 100}% 50%"><div class="stone"></div><div class="formula ${lines.length > 1 ? 'two' : ''}">${esc(lines.join('\n'))}</div><div class="label">一式</div>${badge(p)}${tags(p)}</div>`;
+  },
+};
+const renderCard = (p, form, wide) => {
+  const cls = ['card']; if (wide) cls.push('wide');
+  const book = state.mode === 'new' && inBook(p) && form !== '卷首' && form !== '卷目';
+  if (book) cls.push('spine');
+  const c = `--c:${p.color}`;
+  const seal = state.mode === 'new' && p.growth === 'evergreen' ? '<div class="seal" title="常青"></div>' : '';
+  const spineT = book ? `<div class="spine-t">${esc(p.series)} · <b>第${NUM[chapterOf(p)]}回</b></div>` : '';
+  let inner;
+  if (form === '立轴') {
+    inner = `<div class="lz"><div class="hang"><div class="scroll"><div class="rod top"></div><div class="silk"><div class="heart" style="--ar:${p.imgW}/${p.imgH}"><img src="${p.img}" alt="" loading="lazy" decoding="async"></div></div><div class="rod bottom"></div></div></div>${body(p)}</div>${badge(p)}`;
+  } else if (form === '诗笺') {
+    const plate = plateOf(p.createdAt), d = new Date(p.createdAt);
+    const lines = p.lead.slice(0, wide ? 8 : 4).map((l) => `<p>${esc(l)}</p>`).join('');
+    inner = `<div class="sj"><div class="plate" style="background-image:url(/docs/cards/plates/${plate[0]}.webp)"></div><div class="lines">${'<span></span>'.repeat(wide ? 14 : 8)}</div>
+      <div class="verse" style="--cols:${wide ? 14 : 8}"><h2><a href="#${p.id}">${esc(p.title)}</a></h2><span class="gap"></span>${lines}</div>
+      <div class="sign">${ganzhi(d.getFullYear())} · <b>${TERMS[termOf(p.createdAt)][0]}</b></div><div class="dim"></div>${badge(p)}</div>`;
+  } else if (form === '卷首') {
+    const n = series[p.series].length;
+    inner = `<div class="jsh"><div class="bind">${[18, 38, 62, 82].map((y) => `<i style="top:${y}%"></i>`).join('')}</div><div class="slip">${esc(p.series)}<small>卷一 · 共${NUM[n - 1]}回</small></div>
+      <div class="label"><div class="dim"></div>${meta(p)}${title(p)}<p class="excerpt">${esc(p.excerpt)}</p></div><div class="dim cover"></div>${badge(p)}</div>`;
+  } else if (form === '卷目') {
+    const all = series[p.series];
+    inner = `<div class="jm"><div class="dim"></div><div class="head"><b>${esc(p.series)}</b>目录 · 凡${NUM[all.length - 1]}回</div><ol>${all.map((q, i) => `<li class="${q === p ? 'cur' : ''}"><span class="n">第${NUM[i]}回</span><a href="#${q.id}">${esc(q.title)}</a><span class="d">${new Date(q.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></li>`).join('')}</ol>${badge(p)}</div>${body(p)}`;
+  } else {
+    inner = COVERS[form](p) + body(p);
+  }
+  return `<div class="cell ${wide ? 'wide' : ''}"><article class="${cls.join(' ')}" style="${c}">${spineT}<div class="inner">${inner}</div>${seal}</article><div class="note"></div></div>`;
+};
+
+// —— 按月归档（同现网：行优先，单篇占两列） ——
+const months = [];
+for (const p of [...POSTS].sort((a, b) => b.createdAt - a.createdAt)) {
+  const d = new Date(p.createdAt), key = d.getFullYear() + '-' + d.getMonth();
+  let g = months.find((m) => m.key === key);
+  if (!g) months.push(g = { key, label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), posts: [] });
+  g.posts.push(p);
+}
+const state = { mode: 'new', notes: 'on', theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', shape: 'moon', plate: Math.floor(termOf(Date.now()) / 2) };
+const render = () => {
+  uid = 0;
+  document.getElementById('garden').innerHTML = months.map((g) => {
+    let prev = null;
+    const cards = g.posts.map((p) => {
+      const f = state.mode === 'now' ? { name: '纸', why: '现网原样（近似 CoverPaper，未打光）' } : formOf(p, prev);
+      prev = f.name;
+      return renderCard(p, f.name, g.posts.length === 1).replace('<div class="note"></div>', `<div class="note"><b>${f.name}</b>${esc(f.why)}</div>`);
+    }).join('');
+    return `<section class="month"><div class="month-head"><span class="kicker">${g.label}</span><i></i><span>${g.posts.length}</span></div><div class="grid">${cards}</div></section>`;
+  }).join('');
+  renderSpecimen();
+  bindPan();
+};
+const renderSpecimen = () => {
+  const pl = PLATES[state.plate];
+  const fake = { id: 'specimen', title: '雨后去看了一回荷', type: 'thought', tags: ['随笔'], createdAt: Date.now(), color: '#39C5BB', excerpt: '（示例）一篇没有配图的随笔：封面从粉墙上的漏窗借一幅当令的节气画。', chars: 2400, lead: [] };
+  const html = `<article class="card" style="--c:#39C5BB"><div class="inner"><div class="lc">${windowSvg(state.shape, `/docs/cards/plates/${pl[0]}.webp`)}<div class="plate-name">${pl[1]}</div>${badge(fake)}${tags(fake)}</div>${body(fake)}</div></article>`;
+  document.getElementById('specimen').innerHTML = html;
+  document.querySelectorAll('#plates button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === state.plate)));
+  bindPan();
+};
+document.getElementById('plates').innerHTML = PLATES.map((p, i) => `<button aria-pressed="false" data-i="${i}"><img src="/docs/cards/plates/${p[0]}.webp" alt="${p[1]}" loading="lazy"><span>${p[1]}<small>${TERMS[i * 2][0]} · ${TERMS[i * 2 + 1][0]} — ${p[2]}</small></span></button>`).join('');
+document.getElementById('plates').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.plate = +b.dataset.i; renderSpecimen(); });
+
+// 漏窗：窗里的景随指针微移（只写 transform）
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function bindPan() {
+  if (reduce) return;
+  document.querySelectorAll('.card').forEach((card) => {
+    const img = card.querySelector('.lc .pan'); if (!img || card.dataset.pan) return;
+    card.dataset.pan = '1';
+    card.addEventListener('pointermove', (e) => { const r = card.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; img.style.transform = `translate(${-x * 6}px, ${-y * 4}px) scale(1.04)`; });
+    card.addEventListener('pointerleave', () => { img.style.transform = ''; });
+  });
+}
+
+const applyTheme = () => document.documentElement.classList.toggle('dark', state.theme === 'dark');
+document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state[seg.dataset.key] = b.dataset.v;
+  seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  if (seg.dataset.key === 'theme') applyTheme();
+  else if (seg.dataset.key === 'notes') document.body.classList.toggle('show-notes', state.notes === 'on');
+  else if (seg.dataset.key === 'shape') renderSpecimen();
+  else render();
+}));
+document.querySelector(`[data-key="theme"] [data-v="${state.theme}"]`).setAttribute('aria-pressed', 'true');
+document.body.classList.add('show-notes');
+applyTheme();
+render();
+</script>
+</body>
+</html>

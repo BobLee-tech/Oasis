@@ -192,6 +192,29 @@ body {
         rgba(255, 196, 132, 0.13), rgba(255, 170, 100, 0.06) 40%, rgba(255, 150, 80, 0.018) 70%, transparent 100%);
 }
 
+/* 🖼️ 封面图（garden/CoverImage.tsx）：前景由 JS 按取景框写 left/top/width/height，排好才淡入；
+   装不下时（is-letterbox）两边垫同一幅画的虚影，前景左右淡开。夜里画暗两成。 */
+.oasis-cover-image img { position: absolute; left: 0; top: 0; max-width: none; }
+.oasis-cover-fg { opacity: 0; transition: opacity 0.5s ease, transform 1.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.oasis-cover-image.is-ready .oasis-cover-fg { opacity: 1; }
+.oasis-post-card:hover .oasis-cover-fg { transform: scale(1.03); }
+.oasis-cover-bg { display: none; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(22px) saturate(1.1) brightness(0.9); transform: scale(1.2); }
+.oasis-cover-image.is-letterbox .oasis-cover-bg { display: block; }
+.oasis-cover-image.is-letterbox .oasis-cover-fg {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+.oasis-cover-image.is-letterbox-y .oasis-cover-fg {
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+}
+.dark .oasis-cover-fg { filter: brightness(0.78); }
+.dark .oasis-cover-bg { filter: blur(22px) saturate(1.1) brightness(0.7); }
+@media (prefers-reduced-motion: reduce) {
+    .oasis-cover-fg { transition: opacity 0.5s ease; }
+    .oasis-post-card:hover .oasis-cover-fg { transform: none; }
+}
+
 /* 💿 黑胶旋转：CSS 驱动 + play-state 控制，暂停时原地停驻而非回卷 */
 @keyframes oasis-spin {
     to { transform: rotate(360deg); }

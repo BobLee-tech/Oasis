@@ -15,6 +15,7 @@ const escapeHtml = (s: string) =>
 const mdToParagraphs = (md: string): string[] =>
   (md ?? '')
     .replace(/```[\s\S]*?```/g, '')
+    .replace(/^[ \t]*\[oasis-cover\]:.*$/gm, '') // 卡片封面那一行（src/lib/coverImage.ts），不是正文
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')

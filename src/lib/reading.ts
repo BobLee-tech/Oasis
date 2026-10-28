@@ -1,5 +1,6 @@
 // 📖 阅读辅助：时长估算 + 标题锚点。
 //   Gallery（画廊/阅读舱）与 Orchard（知识星图）共用，杜绝算法漂移。
+import { stripCoverDef } from './coverImage';
 
 // ⏱️ 中英混排阅读时长：
 //   旧算法用 split(/\s+/) 按空格分词，中文整段无空格 → 一段算一个「词」，严重低估。
@@ -7,7 +8,7 @@
 export const readingMinutes = (text: string): number => {
   const src = text ?? '';
   // 去掉 Markdown 图片 / 链接 URL，避免把长链接算进阅读量
-  const clean = src.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\]\([^)]*\)/g, ']');
+  const clean = stripCoverDef(src).replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\]\([^)]*\)/g, ']');
   const cjkChars = (clean.match(/[一-鿿぀-ヿ가-힯]/g) || []).length;
   // 西文词：先剔除 CJK 再按空白切分
   const latinWords = clean.replace(/[一-鿿぀-ヿ가-힯]/g, ' ')

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<link rel="icon" type="image/jpeg" href="/miku.jpg" />
+<title>花园 · 卡上一幅画</title>
+<!-- 文章卡多样化演示（二稿）：只在 npm run dev 下可用，打开 http://localhost:<port>/docs/cards.html
+     一稿（docs/cards-v1.html，八种器物）太乱，这一稿只留一个骨架：卡还是现网那张卡，只把封面条换成一幅画——
+     文章有图就用自己的首图，没图按节气借《百々世草》一幅。用的是线上十一篇真文章（抓取于 2026-10-29）。
+     素材出处见 docs/cards/CREDITS.md。 -->
+<link rel="stylesheet" href="/node_modules/@fontsource/eb-garamond/400.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource/jetbrains-mono/400.css" />
+<link rel="stylesheet" href="/node_modules/lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css" />
+<style>
+:root {
+  --teal: #39C5BB;
+  --bg: #FAF8F3; --ink: #1e293b; --ink-2: #475569; --ink-3: #94a3b8; --ink-4: #cbd5e1;
+  --card: rgba(255,255,255,.82); --card-line: rgba(15,23,42,.06);
+  --card-shadow: 0 1px 2px rgba(30,41,59,.04), 0 10px 28px -14px rgba(30,41,59,.12);
+  --pill: rgba(255,255,255,.72); --pill-line: rgba(255,255,255,.6);
+  --mat: #f3efe7; --img-dim: 1;
+  --zh: "LXGW WenKai Screen", "Songti SC", serif;
+  --serif: "EB Garamond", "LXGW WenKai Screen", ui-serif, Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+:root.dark {
+  --bg: #0A0F1D; --ink: #f1f5f9; --ink-2: #cbd5e1; --ink-3: #64748b; --ink-4: #334155;
+  --card: rgba(255,255,255,.06); --card-line: rgba(255,255,255,.1); --card-shadow: none;
+  --pill: rgba(0,0,0,.5); --pill-line: rgba(255,255,255,.1);
+  --mat: rgba(255,255,255,.04); --img-dim: .78;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--serif); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 56px 24px 120px; }
+@media (max-width: 640px) { .wrap { padding: 32px 16px 96px; } }
+
+.kicker { font: 10px/1 var(--mono); letter-spacing: .35em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-family: var(--zh); font-weight: 400; font-size: clamp(28px, 4vw, 40px); letter-spacing: .06em; margin: 14px 0 12px; }
+.lede { font-family: var(--zh); color: var(--ink-2); line-height: 1.9; max-width: 42em; margin: 0; font-size: 15px; }
+.bar { position: sticky; top: 0; z-index: 20; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 14px 0; margin: 24px 0 6px; background: linear-gradient(var(--bg) 70%, transparent); }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: rgba(148,163,184,.16); }
+.seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; font: 10px/1.2 var(--mono); letter-spacing: .18em; color: var(--ink-3); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--teal); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+:root.dark .seg button[aria-pressed="true"] { background: rgba(255,255,255,.1); }
+.seg button:focus-visible { outline: 2px solid rgba(57,197,187,.6); }
+
+.month { margin-top: 44px; }
+.month-head { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.month-head .kicker { white-space: nowrap; }
+.month-head i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(148,163,184,.4), transparent); }
+.month-head span:last-child { font: 9px var(--mono); color: var(--ink-4); }
+.grid { display: grid; grid-template-columns: 1fr; gap: 32px; align-items: start; }
+@media (min-width: 920px) { .grid { grid-template-columns: 1fr 1fr; } .wide { grid-column: span 2; } }
+
+/* —— 卡：骨架与现网一致，只有封面条里的东西不同 —— */
+.card { position: relative; border-radius: 24px; overflow: hidden; background: var(--card); border: 1px solid var(--card-line); box-shadow: var(--card-shadow); transition: transform .5s cubic-bezier(.16,1,.3,1), box-shadow .5s; }
+.card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,.05), 0 0 30px color-mix(in srgb, var(--c) 10%, transparent); }
+.card:has(a:focus-visible) { outline: 2px solid rgba(57,197,187,.6); outline-offset: 3px; }
+.card h2 a { outline: none; }
+.card h2 a::after { content: ''; position: absolute; inset: 0; z-index: 5; }
+
+/* 封面：卡里留一圈窄窄的衬纸，画心一样高、一样圆角——所有卡同一个框 */
+.cover { position: relative; margin: 8px 8px 0; height: 164px; border-radius: 17px; overflow: hidden; background: var(--mat); }
+.wide .cover { height: 200px; }
+.cover img { position: absolute; left: 0; top: 0; max-width: none; filter: brightness(var(--img-dim)); }
+/* 前景按取景框排（JS 写 left/top/width/height），悬停以取景框中心推近 */
+.cover img.fg { opacity: 0; transition: transform 1.8s cubic-bezier(.16,1,.3,1), opacity .5s; }
+.cover.ready img.fg { opacity: 1; }
+.card:hover .cover img.fg { transform: scale(1.03); }
+/* 取景框装不下时（竖图的头），画缩小到框刚好装下，两边用同一幅画的虚影补齐，边缘淡开 */
+.cover img.bg { display: none; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(22px) saturate(1.1) brightness(calc(var(--img-dim) * .9)); transform: scale(1.2); }
+.cover.fit img.bg { display: block; }
+.cover.fit img.fg { -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent); mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent); }
+.cover .box { display: none; position: absolute; z-index: 4; border: 1.5px dashed #FFB7C5; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.25); pointer-events: none; }
+.show-box .cover .box { display: block; }
+.cover::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(40,30,20,.08); pointer-events: none; }
+/* 画下沿一层很薄的纱，标签放在上面不用各自加重底 */
+.cover .veil { position: absolute; inset: auto 0 0 0; height: 46%; background: linear-gradient(transparent, rgba(0,0,0,.16)); pointer-events: none; }
+.cover .cap { position: absolute; right: 14px; bottom: 12px; z-index: 3; font: 11px/1 var(--zh); letter-spacing: .2em; color: var(--ink-2); background: var(--pill); border: 1px solid var(--pill-line); padding: 5px 8px; border-radius: 5px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+/* 现网对照（近似 CoverPaper 三种纸，不打光） */
+.cover.now { margin: 0; height: 112px; border-radius: 0; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 26%, transparent), color-mix(in srgb, var(--c) 6%, transparent) 60%, transparent), #faf7f0; }
+:root.dark .cover.now { background: linear-gradient(135deg, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%), #141a28; }
+.cover.now::before { content: ''; position: absolute; inset: 0; mix-blend-mode: multiply; }
+:root.dark .cover.now::before { mix-blend-mode: screen; opacity: .12 !important; filter: none !important; }
+.cover.now.blossom::before { background: url(/lights/motif/blossom.webp) 104% 28%/auto 190% no-repeat; filter: invert(1); opacity: .28; }
+.cover.now.laid::before { background: repeating-linear-gradient(90deg, transparent 0 33px, rgba(60,50,40,.12) 33px 34px); }
+.cover.now.cloud::before { background: url(/textures/ling-cloud.webp) center/auto 170%; opacity: .55; }
+.cover.now::after { display: none; }
+
+.badge { position: absolute; top: 12px; left: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--pill); border: 1px solid var(--pill-line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font: 8px/1.3 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--b) 75%, #334155); }
+:root.dark .badge { color: color-mix(in srgb, var(--b) 80%, white); }
+.badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--b); }
+.tags { position: absolute; left: 14px; bottom: 12px; z-index: 3; display: flex; gap: 6px; }
+.tags span { font: 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); background: var(--pill); border: 1px solid var(--pill-line); padding: 5px 8px; border-radius: 5px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.cover.now .badge { top: 16px; left: 24px; } .cover.now .tags { left: 24px; bottom: 16px; }
+
+.body { padding: 22px 28px 28px; }
+@media (max-width: 640px) { .body { padding: 18px 20px 24px; } }
+.meta { font: 10px/1.4 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.meta .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-4); }
+.meta .zh { font-family: var(--zh); letter-spacing: .04em; text-transform: none; color: color-mix(in srgb, var(--teal) 85%, var(--ink-3)); }
+.card h2 { font-family: var(--serif); font-weight: 400; font-size: 22px; line-height: 1.4; margin: 0 0 12px; color: var(--ink); }
+@media (min-width: 768px) { .card h2 { font-size: 24px; } }
+.excerpt { font-family: var(--serif); color: var(--ink-2); font-size: 14px; line-height: 1.75; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+section.doc { margin-top: 80px; }
+section.doc h3 { font: 400 22px var(--zh); letter-spacing: .08em; margin: 10px 0 8px; }
+section.doc p, section.doc li { font: 14px/1.9 var(--zh); color: var(--ink-2); max-width: 46em; }
+section.doc ul { padding-left: 1.2em; margin: 0; }
+section.doc b { font-weight: 400; color: var(--ink); }
+.plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 18px; }
+.plates figure { margin: 0; }
+.plates img { display: block; width: 100%; aspect-ratio: 3/2; object-fit: cover; border-radius: 8px; filter: brightness(var(--img-dim)); }
+.plates figcaption { font: 11px/1.5 var(--zh); color: var(--ink-3); padding: 6px 2px 0; }
+@media (prefers-reduced-motion: reduce) { .card, .cover img { transition: none !important; } .card:hover, .card:hover .cover img.fg { transform: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Garden · Cards · 二稿</div>
+  <h1>卡上一幅画</h1>
+  <p class="lede">一稿八种器物，太乱。这一稿每张卡用同一个骨架：衬纸、圆角、徽章、标签和下面的字都不变，封面条换成一幅画。文章有配图，先用你放的插画，取景时主体整个留在框里；没有配图，就按写下那天的节气借一幅《百々世草》。各张卡的不同全来自文章本身，框不变。</p>
+
+  <div class="bar" role="toolbar" aria-label="演示开关">
+    <div class="seg" data-key="mode"><button data-v="new" aria-pressed="true">新卡</button><button data-v="now" aria-pressed="false">现网</button></div>
+    <div class="seg" data-key="box"><button data-v="off" aria-pressed="true">藏框</button><button data-v="on" aria-pressed="false">显框</button></div>
+    <div class="seg" data-key="theme"><button data-v="light" aria-pressed="false">昼</button><button data-v="dark" aria-pressed="false">夜</button></div>
+  </div>
+
+  <div id="garden"></div>
+
+  <section class="doc">
+    <div class="kicker">Rule</div>
+    <h3>只有一条规则</h3>
+    <ul>
+      <li><b>先用你的插画</b>：图注里写着「插画」的优先（「本文生成式概念插画」「原创生成插画」）；其次是没写图注的图；再其次是注明了「摄 / 来源」的别人的照片。「作者自制」「示意」「剖面」这类图解不上封面——字和线一裁就碎。都没有，才借节气画。</li>
+      <li><b>取景不切头</b>：每张封面图有一个取景框（人物是整个头，物件是主体），框必须整个留在封面里，余量 6%，悬停推近也不出框。框装得下就照常铺满；装不下（竖图的人像在宽卡上）就把画缩到框刚好装下，两边用同一幅画的虚影补齐。点「显框」能看到每张的框。</li>
+      <li><b>没配图</b>：按日期所在的节气取下面十二幅之一，右下角落一行小字「画名 · 节气」。</li>
+      <li><b>框从哪来</b>：这一稿的框是我对着每张图人工标的。落地时在写作抽屉里给封面拖一个框，存进图片地址（<code style="font:11px var(--mono);color:var(--teal)">#focus=0.28,0.10,0.64,0.32</code>），旧文章没框就按画面中心。</li>
+      <li><b>夜里</b>：画暗两成，衬纸跟着卡一起沉下去；悬停时画慢慢推近一点，减少动态时不动。</li>
+      <li>其余全照现网：分类、合集、续读进度、草稿虚线框、单篇占满两列。一稿的书脊、立轴、拓片、诗笺、漏窗都不要了（还在 <a href="/docs/cards-v1.html" style="color:var(--teal)">cards-v1.html</a>）。</li>
+    </ul>
+  </section>
+
+  <section class="doc">
+    <div class="kicker">Momoyogusa · 1909 · CC0</div>
+    <h3>没图时借的十二幅</h3>
+    <p>神坂雪佳《百々世草》，克利夫兰美术馆开放获取。一个月两个节气共一幅，处理后共约 1 MB，在 docs/cards/plates/。</p>
+    <div class="plates" id="plates"></div>
+  </section>
+</div>
+
+<script>
+const POSTS = [{"id": "d5d43407", "title": "秒速五厘米，要多久才能传达到你", "type": "note", "series": "COMP3331", "tags": ["计算机", "comp3331"], "createdAt": 1793023709261, "growth": "seedling", "color": "#A78BFA", "excerpt": "关于网络的传播和讲解", "chars": 9004, "imageCount": 7, "codeBlocks": 4, "code": "主机 ──请求完整解析──→ recursive resolver\n                              │\n                              ├──→ root：下一步问哪个 TLD？\n                              ├──→ TLD：哪个服务器负责这个域？\n                              └──→ authoritative：取得所需记录", "lead": ["打开一个古早的网页，标题会先出现，正文跟着铺开，图片的位置留着几块空白。", "右上角的小圆圈继续转，它在等待。", "一个页面往往由 HTML、样式、脚本、图片等多个资源组成。", "它们可能需要分别请求，可能来自不同服务器，也可能有些已经躺在缓存里。", "有些请求能并行进行，有些得等浏览器发现新的资源才开始。", "屏幕上像是同一个页面，网络上却有许多不同进度的工作。"], "images": [{"u": "https://img.boblee.dev/2026-10-27T04-33-59.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T04-34-17.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T04-34-20.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T04-34-24.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T04-34-28.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T04-34-31.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-10-27T12-55-48.webp", "alt": "", "cap": ""}]}, {"id": "360f9ceb", "title": "建筑杂谈", "type": "thought", "series": "建筑", "tags": ["建筑"], "createdAt": 1791196499886, "growth": "seedling", "color": "#FDE047", "excerpt": "一些门外汉对建筑的美学杂谈", "chars": 4623, "imageCount": 5, "codeBlocks": 0, "lead": ["说起建筑，最初是在玩我的世界。", "看到自己搭建的单一的火柴盒，与美感相去甚远，便对建筑的艺术充满了好奇。", "火柴盒倒也尽职尽责。", "四面墙，一扇门，屋顶封好，至少能把夜里的怪物挡在外面。", "可从远处看，它像一块还没来得及处理的原料。", "尽管换一套木材，给墙面加上花纹，问题似乎还在那里："], "images": [{"u": "https://img.boblee.dev/2026-10-27T13-10-36.webp", "alt": "", "cap": "图：金贝尔艺术博物馆南翼的暮色，Carol M. Highsmith 摄，2011。来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Kimbell_Art_Museum_Dusk_Highsmith.jpg)，公有领域。仅缩放及转为 WebP。"}, {"u": "https://img.boblee.dev/2026-10-27T13-10-44.webp", "alt": "", "cap": "图：拉文纳姆会馆：上层出挑与下层墙面形成清晰的退进关系。SuffolkEditor73 摄，2023。来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Lavenham_Guildhall.jpg)，[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0)"}, {"u": "https://img.boblee.dev/2026-10-27T03-50-53.webp", "alt": "", "cap": "图：上方覆盖不变，外墙后退，门前便多出一段向外开放的空间。原创概念剖面，不表示实际尺寸或受力方案；开放处也不保证能遮挡所有方向的风雨。"}, {"u": "https://img.boblee.dev/2026-10-27T13-10-39.webp", "alt": "", "cap": "图：日式住宅的缘侧：有屋檐覆盖，向庭院敞开。Ocdp 摄，2012。来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Engawa2.jpg)，[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0)；仅缩放及转为 WebP，沿用原许可。"}, {"u": "https://img.boblee.dev/2026-10-27T13-10-41.webp", "alt": "", "cap": "图：金贝尔艺术博物馆展厅：顶部采光与金属反射器共同组织光线。Andreas Praefcke 摄，2009。来源：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Kimbell_Art_Museum_Fort_Worth_galleries_1.jpg)，公有领域。仅缩放及转为 WebP。"}]}, {"id": "be539fc1", "title": "下雨了，去我家吧", "type": "thought", "series": "随笔", "tags": ["随笔", "诗歌"], "createdAt": 1788323236012, "growth": "seedling", "color": "#FFB7C5", "excerpt": "重逢留给未来，有种难言的失落与散场感。", "chars": 871, "imageCount": 0, "codeBlocks": 0, "lead": ["好久没动笔写文，日记也是。", "昨天画了水彩画，是一棵树，有着绿色叶子和棕色树干。", "前天是她的生日，天蓝色的，", "我最喜欢的颜色。", "下雨了，今天。", "雨好大，心里的雨也是。"], "images": []}, {"id": "66e03ff1", "title": "见招拆招，逢水架桥", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786514795566, "growth": "growing", "color": "#39C5BB", "excerpt": "COMP3121的总结与一些考点", "chars": 21723, "imageCount": 2, "codeBlocks": 36, "code": "Greedy → exchange argument\nDP → recurrence\nD&C → Master Theorem\nFlow → residual graph\nNP → reduction", "lead": ["第一次把 COMP3121 的材料全部摊开，桌面很像一张尚未修通铁路的地图。", "Greedy 在安排活动，DP 忙着填表，Divide and Conquer 把整数和多项式切开；Flow Networks 里水沿着边流，到了 Intractability，画风忽然变成 SAT、Clique 与一串方向很容易写反的 reductions。Foundations 坐在最前面，表情严肃地提醒每个人：先把 `O`、`Ω`、`Θ` 分清楚。", "它们看起来像六门小课，甚至拥有不同的道具。于是复习时最自然的做法，是给每座城市发一张清单：", "清单没有错，却解释不了一件更有意思的事：为什么同一道 Activity Selection，目标从“数量最多”换成“总时长最大”，Greedy 就要把位置让给 DP？", "为什么 Max Flow 的 reverse edge 与 DP 的 backpointer 都在保存过去，却一个用于撤销、一个用于重建？", "为什么 Merge Sort 与 FFT 拥有相同形状的 recurrence，语义却相距甚远？"], "images": [{"u": "https://img.boblee.dev/2026-08-10T07-09-00.webp", "alt": "", "cap": "图：本文生成式概念插画。六座城市的道具不同，铁路却都在追问同一件事：可能性应当怎样被处理。"}, {"u": "https://img.boblee.dev/2026-08-10T07-09-05.webp", "alt": "", "cap": "图：课程模块不是六只互不相干的抽屉，而是五种处理 possibility space 的动作，加上一套负责衡量和证明的语法。作者自制。"}]}, {"id": "591fd5fd", "title": "树下的分开又重逢", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786436930004, "growth": "growing", "color": "#FFB7C5", "excerpt": "分开是为了更好的重逢——Divide and Conquer 的一些整理", "chars": 14061, "imageCount": 2, "codeBlocks": 68, "code": "T(n) = T(n/2) + Θ(1)", "lead": ["旧式天平没有刻度。", "它不会告诉你左边重了多少，只肯做三种回答：左边轻、右边轻、两边相等。", "桌上有 27 枚硬币，一枚假币略轻。", "若从第一枚开始逐个怀疑，三次称量几乎什么也做不了。", "可如果先把硬币分成三组，每组 9 枚，把前两组放上天平，天平的一次点头便会让 18 枚硬币同时退出故事：", "接着把 9 枚分成三组，再把 3 枚分成三组。`27 → 9 → 3 → 1`。"], "images": [{"u": "https://img.boblee.dev/2026-08-10T07-08-50.webp", "alt": "", "cap": "图：本文生成式概念插画。天平负责缩小怀疑范围，重新汇合的线条提醒我们：真正昂贵的故事常发生在 Combine。"}, {"u": "https://img.boblee.dev/2026-08-10T07-08-56.webp", "alt": "", "cap": "图：递归调用解决孩子，Combine 才把孩子的答案变回父问题的答案。复杂度由两边共同决定。作者自制。"}]}, {"id": "17a2722b", "title": "以史为鉴，不泥于史", "type": "note", "series": "COMP3121", "tags": ["comp3121", "计算机"], "createdAt": 1786415871903, "growth": "seedling", "color": "#FDBA74", "excerpt": "动态规划的介绍与应用", "chars": 17607, "imageCount": 2, "codeBlocks": 65, "code": "moves(n) = 2 · moves(n - 1) + 1\nmoves(1) = 1", "lead": ["夜里画一棵递归树，很容易画出一种失控的繁荣。", "一只青蛙每次向前跳一格或两格。", "为了数它到达第 12 块石头的方式，我们先问第 11 块和第 10 块；为了回答第 11 块，又去问第 10 块和第 9 块。", "线条越分越多，可仔细一看，第 10 块石头已经在纸上出现了好几次。", "每条路线都声称自己历尽艰辛，最后却站在同一块石头上，等待同一个未来。", "假如从这一刻开始，之后能怎么跳只由“现在位于第几块石头”决定，那么此前绕过哪些石头已经不再重要。"], "images": [{"u": "https://img.boblee.dev/2026-08-10T07-08-30.webp", "alt": "", "cap": "图：本文生成式概念插画。许多来路在同一块石头上失去区别，DP 从这里开始记忆，也从这里开始遗忘。"}, {"u": "https://img.boblee.dev/2026-08-10T07-08-35.webp", "alt": "", "cap": "图：State 的工作不是保存完整旅程，而是判断哪些旅程从此拥有相同的未来，作者自制。"}]}, {"id": "d4cff392", "title": "贪恋有你的未来", "type": "thought", "series": "COMP3121", "tags": ["计算机", "comp3121"], "createdAt": 1786352701437, "growth": "growing", "color": "#A7F3D0", "excerpt": "我贪恋的何止是当下，是你最有可能出现的未来。\n——贪心策略的介绍与引入", "chars": 13568, "imageCount": 3, "codeBlocks": 22, "code": "令 G = (g₁, g₂, ..., gᵣ) 为 greedy solution。\n取任意一个 optimal solution O = (o₁, o₂, ..., oₛ)。\n\n考虑第一个满足 gₖ ≠ oₖ 的位置 k。\n把 O 中的 oₖ 替换为 gₖ，得到 O'。\n\n证明：\n1. O' 仍然合法；\n2. value(O') 不差于 value(O)；\n3. O' 与 G 共享更长的前缀。\n\n重复交换，最终得到 G。\n因此 G 是最优解。", "lead": ["下午四点，我的桌上还压着五件事项。", "两件只要半小时，一件六点前必须交，另两件做完很有价值，却会一口吞掉整个傍晚的时间。", "人在这种时候很容易发明 greedy algorithm，只是通常没有给它起这个名字：我们往往会先做最短的，先做最急的，先做回报最高的，或者先把最烦的做掉。", "依旧不同的标准，我们会有不同的选择结果。", "那么那种方式是最优的呢？", "我们建模一下。想象这些事情不再只是待办，而是一组会占据不同时间区间的 activities。"], "images": [{"u": "https://img.boblee.dev/2026-08-10T07-08-05.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-08-10T07-08-26.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-08-11T01-28-30.webp", "alt": "", "cap": ""}]}, {"id": "627371d2", "title": "来日方长", "type": "project", "series": "Hackathon", "tags": ["hackathon", "projects"], "createdAt": 1784988522059, "growth": "growing", "color": "#A78BFA", "excerpt": "我们team第一次的线下final pitch", "chars": 938, "imageCount": 1, "codeBlocks": 0, "lead": ["朋友给我发了一个hackathon的message。", "他是我一直很喜欢与欣赏的朋友，待人亲和风趣，有想法头脑与创造活力。", "我简单看了下就答应了，这就是我们故事的开始。", "我们得到了这场hackathon的主题，是关于time-saving的。", "提到时间效率，当时他就跟我们开玩笑说肯定有做calendar的，后面的事实证明他说的是真的。", "我们讨论了一下，想开发一款精力管理的软件，"], "images": [{"u": "https://img.boblee.dev/2026-08-04T04-23-31.webp", "alt": "向日葵与少女", "cap": ""}]}, {"id": "f6170495", "title": "貌虽不一，却有她三分骨气", "type": "note", "series": "COMP3121", "tags": ["计算机", "comp3121"], "createdAt": 1784987545599, "growth": "evergreen", "color": "#A7F3D0", "excerpt": "物不以貌别，终见于骨气——归约的介绍与引入", "chars": 11914, "imageCount": 2, "codeBlocks": 29, "code": "U ≤ₚ V", "lead": ["物不以貌别，终见于骨气", "第一次了解归约（Reduction）的时候，我想到了太极拳的借力打力。", "算法里的意思倒更像**转接**。手里来了一个陌生问题 `U`，我们恰好认识另一个问题 `V`，甚至已经有了能解决 `V` 的算法。于是找一个翻译函数 `f`，把 `U` 的实例送去 `V` 的世界。", "一句话总结的话就是归约是单向映射关系的同解性：", "对于原问题的任意实例 `x`，它有解当且仅当它映射出的特定实例 `(x)` 也有解。", "当然，转接不能乱接。原题明明有解，翻译过去却变成无解，那叫篡改题意；原题无解，翻译完忽然皆大欢喜，也不行。"], "images": [{"u": "https://img.boblee.dev/2026-08-04T05-00-10.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-08-04T05-00-26.webp", "alt": "", "cap": ""}]}, {"id": "327525c1", "title": "给我一颗可以反悔的心", "type": "note", "series": "COMP3121", "tags": ["计算机", "comp3121", "网络流"], "createdAt": 1784532205192, "growth": "growing", "color": "#60A5FA", "excerpt": "网络流的引入与初步介绍", "chars": 6010, "imageCount": 5, "codeBlocks": 13, "code": "0 ≤ f(u,v) ≤ c(u,v)", "lead": ["一座城市的水路已经修好：管道埋在地下，闸门钉在节点上，每条管道能承受多少水也早已写死。现在打开水源，问题看起来简单得近乎朴素：**最多能有多少水抵达城市？**", "麻烦出现在第一股水拐弯之后。", "一条眼前畅通的路，可能抢走后面更关键的管道；一处看起来已经塞满的瓶颈，也可能只是先前的调度姿势不对。如果我们每次都抓住一条能走的路，把水猛灌进去，最后得到的究竟是最大流，还是一个被自己堵住的局部死胡同？", "网络流真正漂亮的地方，不只是“让水尽量多地流”。它还给算法装了一颗可以反悔的心。", "一个流网络（flow network）由有向图 `G = (V, E)`、源点 `s`、汇点 `t`，以及每条边的容量 `c(u,v) ≥ 0` 组成。容量是管道的硬上限；流 `f(u,v)` 则是此刻真正经过它的量。", "一个合法的流需要遵守两条自然法则。"], "images": [{"u": "https://img.boblee.dev/2026-08-13T07-06-32.webp", "alt": "", "cap": "图：水从左侧源泉出发，经由容量不同的水道汇入城市；下方那条逆向的水路，暗示残量网络保留的“撤销权”。原创生成插画。"}, {"u": "https://img.boblee.dev/2026-08-13T07-06-45.webp", "alt": "", "cap": "图：`4/7` 的原边，向前还有 `3` 的余地，向后则保留 `4` 的撤销量。反向边不是现实中新修了一根倒流水管，而是对旧流量做减法的记账方式。"}, {"u": "https://img.boblee.dev/2026-08-13T07-06-49.webp", "alt": "", "cap": "图：粉色是第一次不理想的增广；青色是第二次在残量网络中的修正。最终 `a → b` 回到 0，两条更合适的路径各送 1。"}, {"u": "https://img.boblee.dev/2026-08-13T07-06-53.webp", "alt": "", "cap": "图：两条跨割边都已饱和，割容量为 `1 + 1 = 2`，等于当前流值。最大流最小割定理在这里不是一句口号，而是一张可检查的最优性证书。"}, {"u": "https://img.boblee.dev/2026-08-13T07-06-58.webp", "alt": "", "cap": "图：现实里的三类规则被分别放进三层边容量。拓扑负责“能不能买”，容量负责“最多买多少”。"}]}, {"id": "15838f72", "title": "天行健，君子以自强不息", "type": "thought", "series": null, "tags": ["易经", "随笔"], "createdAt": 1784384524331, "growth": "seedling", "color": "#39C5BB", "excerpt": "丙午年六月初三，十九最后一次轻吻我", "chars": 1630, "imageCount": 3, "codeBlocks": 0, "lead": ["丙午年六月初四，今天是我**二十岁**的第一天。", "外面小雨润如酥，潮气入室，但是喜欢这般天气。", "昨晚朋友很好的陪伴，礼物我很喜欢（只要是miku，我很难讨厌）。", "不过说来也是幸运万分，一年前的我大抵不会想到二十岁的生日会这么热闹。", "有家人深爱着，朋友挂念着，还有我爱的miku在。", "要说十九岁怎么样的话，感觉是极其波澜的一岁呐。"], "images": [{"u": "https://img.boblee.dev/2026-07-17T15-42-15.webp", "alt": "", "cap": ""}, {"u": "https://img.boblee.dev/2026-07-17T14-20-32.webp", "alt": "乾卦六爻", "cap": ""}, {"u": "https://img.boblee.dev/2026-07-17T17-01-27.webp", "alt": "", "cap": ""}]}];
+
+const CAT = {
+  thought: { label: 'Thoughts', color: '#39C5BB' }, weekly: { label: 'Weekly', color: '#FFB7C5' },
+  note: { label: 'Notes', color: '#60A5FA' }, growth: { label: 'Growth', color: '#A7F3D0' }, project: { label: 'Projects', color: '#A78BFA' },
+};
+const NOW_PAPER = { thought: 'blossom', growth: 'blossom', note: 'laid', weekly: 'laid', project: 'cloud' };
+// 节气（2026 年近似日期，演示够用）；两个节气共一幅
+const TERMS = [['小寒',1,5],['大寒',1,20],['立春',2,4],['雨水',2,18],['惊蛰',3,5],['春分',3,20],['清明',4,5],['谷雨',4,20],['立夏',5,5],['小满',5,21],['芒种',6,5],['夏至',6,21],['小暑',7,7],['大暑',7,23],['立秋',8,7],['处暑',8,23],['白露',9,7],['秋分',9,23],['寒露',10,8],['霜降',10,23],['立冬',11,7],['小雪',11,22],['大雪',12,7],['冬至',12,21]];
+const PLATES = [['secchuchiku','雪中竹'],['ume','梅'],['suminoe','住之江'],['yanagi-sakura','柳樱'],['yatsuhashi','八桥'],['ajisai','紫阳花'],['asagao','朝颜'],['komami','小波'],['tsuru','鹤'],['boshu','暮秋'],['sonarematsu','矶驯松'],['fuji','富士']];
+const termOf = (t) => {
+  const d = new Date(t), m = d.getMonth() + 1, day = d.getDate();
+  let i = 23;
+  for (let k = 0; k < TERMS.length; k++) if (m > TERMS[k][1] || (m === TERMS[k][1] && day >= TERMS[k][2])) i = k;
+  return i;
+};
+const NUM = '一二三四五六七八九十';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtDate = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const series = {};
+for (const p of POSTS) if (p.series) (series[p.series] ||= []).push(p);
+for (const k in series) series[k].sort((a, b) => a.createdAt - b.createdAt);
+
+const state = { mode: 'new', box: 'off', theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' };
+const badge = (p) => `<div class="badge" style="--b:${(CAT[p.type] || CAT.thought).color}">${(CAT[p.type] || CAT.thought).label}</div>`;
+const tags = (p) => `<div class="tags">${p.tags.slice(0, 3).map((t) => `<span>${esc(t)}</span>`).join('')}</div>`;
+// 封面选图：插画 > 无图注 > 别人的照片；图解不上封面
+const tierOf = (im) => {
+  const c = im.cap;
+  if (/自制|示意|剖面|图解/.test(c)) return 3;
+  if (/插画/.test(c)) return 0;
+  if (!c) return 1;
+  if (/摄|来源|Wikimedia/i.test(c)) return 2;
+  return 3;
+};
+const coverImage = (p) => p.images.map((im, i) => ({ ...im, i, t: tierOf(im) })).filter((x) => x.t < 3).sort((a, b) => a.t - b.t || a.i - b.i)[0];
+// 取景框（归一化 x0,y0,x1,y1）：人工对着图标的，人物取整个头
+const FOCUS = {
+  '2026-10-27T04-33-59': [.20, .12, .95, .62], '2026-10-27T13-10-36': [.02, .42, .98, .80],
+  '2026-08-10T07-09-00': [.20, .25, .80, .75], '2026-08-10T07-08-50': [.12, .14, .47, .68],
+  '2026-08-10T07-08-30': [.30, .38, .70, .64], '2026-08-10T07-08-05': [.08, .33, .70, .60],
+  '2026-08-04T04-23-31': [.52, .16, .90, .40], '2026-08-04T05-00-10': [.17, .33, .90, .70],
+  '2026-08-13T07-06-32': [.05, .18, .95, .70], '2026-07-17T15-42-15': [.28, .10, .64, .32],
+};
+const stem = (u) => u.split('/').pop().replace(/\.\w+$/, '');
+const coverBox = (src, focus) => `<div class="cover" data-focus="${focus ? JSON.stringify(focus) : ''}"><img class="bg" src="${src}" alt="" aria-hidden="true" decoding="async"><img class="fg" src="${src}" alt="" decoding="async"><div class="box"></div>`;
+const cover = (p) => {
+  if (state.mode === 'now') return `<div class="cover now ${NOW_PAPER[p.type] || 'blossom'}">${badge(p)}${tags(p)}</div>`;
+  const im = coverImage(p);
+  if (im) return `${coverBox(im.u, FOCUS[stem(im.u)])}<div class="veil"></div>${badge(p)}${tags(p)}</div>`;
+  const ti = termOf(p.createdAt), pl = PLATES[Math.floor(ti / 2)];
+  return `${coverBox(`/docs/cards/plates/${pl[0]}.webp`, null)}<div class="veil"></div>${badge(p)}${tags(p)}<div class="cap">${pl[1]} · ${TERMS[ti][0]}</div></div>`;
+};
+// 排画：取景框必须整个留在封面里
+const layout = (cv) => {
+  const img = cv.querySelector('img.fg');
+  if (!img || !img.naturalWidth) return;
+  const W = cv.clientWidth, H = cv.clientHeight, iw = img.naturalWidth, ih = img.naturalHeight;
+  const f = cv.dataset.focus ? JSON.parse(cv.dataset.focus) : [.5, .5, .5, .5];
+  const M = 1.06; // 余量：悬停推近 3% 也不出框
+  const sCover = Math.max(W / iw, H / ih);
+  const bw = (f[2] - f[0]) * iw * M, bh = (f[3] - f[1]) * ih * M;
+  const s = Math.min(sCover, bw ? W / bw : Infinity, bh ? H / bh : Infinity);
+  const w = iw * s, h = ih * s;
+  const cx = (f[0] + f[2]) / 2 * w, cy = (f[1] + f[3]) / 2 * h;
+  const clamp = (v, size, view) => Math.min(Math.max(v, Math.min(0, view - size)), Math.max(0, view - size));
+  const left = clamp(W / 2 - cx, w, W), top = clamp(H / 2 - cy, h, H);
+  Object.assign(img.style, { width: w + 'px', height: h + 'px', left: left + 'px', top: top + 'px', transformOrigin: `${cx}px ${cy}px` });
+  cv.classList.toggle('fit', w < W - 1 || h < H - 1);
+  const box = cv.querySelector('.box');
+  Object.assign(box.style, { left: left + f[0] * w + 'px', top: top + f[1] * h + 'px', width: (f[2] - f[0]) * w + 'px', height: (f[3] - f[1]) * h + 'px', visibility: cv.dataset.focus ? 'visible' : 'hidden' });
+  cv.classList.add('ready');
+};
+const ro = new ResizeObserver((es) => es.forEach((e) => layout(e.target)));
+const mount = () => document.querySelectorAll('.cover:not(.now)').forEach((cv) => {
+  const img = cv.querySelector('img.fg');
+  if (img.complete) layout(cv); else img.addEventListener('load', () => layout(cv), { once: true });
+  ro.observe(cv);
+});
+const card = (p, wide) => {
+  const s = p.series ? series[p.series] : null;
+  const meta = `<div class="meta"><span>${fmtDate(p.createdAt)}</span><span class="dot"></span><span>${Math.max(1, Math.round(p.chars / 450))} MIN READ</span>${s ? `<span class="dot"></span><span class="zh">📚 ${esc(p.series)} · 第${NUM[s.indexOf(p)]}回</span>` : ''}</div>`;
+  return `<article class="card ${wide ? 'wide' : ''}" style="--c:${p.color}">${cover(p)}<div class="body">${meta}<h2><a href="#${p.id}">${esc(p.title)}</a></h2><p class="excerpt">${esc(p.excerpt)}</p></div></article>`;
+};
+const months = [];
+for (const p of [...POSTS].sort((a, b) => b.createdAt - a.createdAt)) {
+  const d = new Date(p.createdAt), key = d.getFullYear() + '-' + d.getMonth();
+  let g = months.find((m) => m.key === key);
+  if (!g) months.push(g = { key, label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), posts: [] });
+  g.posts.push(p);
+}
+const render = () => {
+  ro.disconnect();
+  document.getElementById('garden').innerHTML = months.map((g) => `<section class="month"><div class="month-head"><span class="kicker">${g.label}</span><i></i><span>${g.posts.length}</span></div><div class="grid">${g.posts.map((p) => card(p, g.posts.length === 1)).join('')}</div></section>`).join('');
+  mount();
+};
+document.getElementById('plates').innerHTML = PLATES.map((p, i) => `<figure><img src="/docs/cards/plates/${p[0]}.webp" alt="${p[1]}" loading="lazy"><figcaption>${p[1]} · ${TERMS[i * 2][0]}、${TERMS[i * 2 + 1][0]}</figcaption></figure>`).join('');
+const applyTheme = () => document.documentElement.classList.toggle('dark', state.theme === 'dark');
+document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state[seg.dataset.key] = b.dataset.v;
+  seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  if (seg.dataset.key === 'theme') applyTheme();
+  else if (seg.dataset.key === 'box') document.body.classList.toggle('show-box', state.box === 'on');
+  else render();
+}));
+document.querySelector(`[data-key="theme"] [data-v="${state.theme}"]`).setAttribute('aria-pressed', 'true');
+applyTheme();
+render();
+</script>
+</body>
+</html>

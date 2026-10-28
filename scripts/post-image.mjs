@@ -11,29 +11,10 @@ import { readdir, stat, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir, homedir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import sharp from 'sharp';
+import { REMOTE, compressToWebp, uploadToR2 } from './lib/post-image-core.mjs';
 
-const REMOTE = 'r2:oasis-picture';
-const PUBLIC_BASE = 'https://img.boblee.dev';
 const DESKTOP = path.join(homedir(), 'Desktop');
 const EXTS = new Set(['.png', '.jpg', '.jpeg', '.heic', '.heif']);
-
-const run = (cmd, args) => new Promise((resolve, reject) => {
-  const p = spawn(cmd, args, { stdio: ['pipe', 'inherit', 'inherit'] });
-  p.on('error', reject);
-  p.on('close', code => (code === 0 ? resolve() : reject(new Error(`${cmd} 退出码 ${code}`))));
-  return p;
-});
-
-// sharp 背后的 libvips 没编译 HEVC 解码器，读不了 HEIC 像素数据（只能读 metadata）
-// 借道系统自带的 sips 先转成 PNG，兼容性最稳
-const normalizeToDecodable = async (input, tmp) => {
-  if (!['.heic', '.heif'].includes(path.extname(input).toLowerCase())) return input;
-  const converted = path.join(tmp, 'source.png');
-  console.log(`🔄 HEIC 转 PNG 中（sharp 读不了 HEVC 像素数据）...`);
-  await run('sips', ['-s', 'format', 'png', input, '--out', converted]);
-  return converted;
-};
 
 const copyToClipboard = (text) => new Promise((resolve, reject) => {
   const p = spawn('pbcopy');
@@ -77,23 +58,13 @@ const main = async () => {
   console.log(`📸 使用图片：${input}`);
 
   const tmp = await mkdtemp(path.join(tmpdir(), 'oasis-img-'));
-  const filename = `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.webp`;
-  const out = path.join(tmp, filename);
-
-  const before = (await stat(input)).size;
-  const decodable = await normalizeToDecodable(input, tmp);
-  await sharp(decodable)
-    .resize({ width: 1600, withoutEnlargement: true })
-    .webp({ quality: 82 })
-    .toFile(out);
-  const after = (await stat(out)).size;
+  const { out, filename, before, after } = await compressToWebp(input, tmp);
   console.log(`🗜️  压缩完成：${(before / 1024).toFixed(0)}KB → ${(after / 1024).toFixed(0)}KB`);
 
   console.log(`☁️  上传到 ${REMOTE}/${filename} ...`);
-  await run('rclone', ['copyto', out, `${REMOTE}/${filename}`, '--s3-no-check-bucket']);
+  const url = await uploadToR2(out, filename);
   await rm(tmp, { recursive: true, force: true });
 
-  const url = `${PUBLIC_BASE}/${filename}`;
   const markdown = `![](${url})`;
 
   console.log(`✅ 完成！`);
