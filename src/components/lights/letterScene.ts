@@ -18,8 +18,10 @@
 //   · 洒金会闪：金箔单成一层（金属度 1、每片法线随机偏），环境是离屏摆的一间左上开窗的屋（与竹影的天光同向），不下载 HDR。
 //   · 一阵风：同一个 gust 摇竹影、掀没封口的封舌（封了口、或笺正躺在上面的不动）、吹偏烛焰、让手里的笺微颤。
 //   · 读信景深：桌面渲到离屏、两遍可分离高斯、略压暗，手里的笺（layer 1）另画在上面；合上就还离屏。
-//   · 信多了（超过四封、非手机）错落叠放：两行、互压不过三分之一（红签在正中压不住名字）、越新越在上，
-//     第一排让开页头、行距容得下一只敞开的封舌；移近一封，同排右边的整体让开。口袋面这时也投影，上下才分得清。
+//   · 信多了（超过四封、非手机）品字形两排：上少下多、上排嵌在下排的缝上，越新越在上（一封比左邻高 STACK_DZ）；
+//     镜头尽量近，整组中轴尽量对着屏幕中线，只在上排碰到页头的字时往右让；七封以内不互压，再多至多压两成；
+//     行距容得下一只敞开的封舌；移近一封，同排压着它的左右分开让。口袋面这时也投影，上下才分得清。
+//     演示与各屏数字见 docs/chidu-many.html。
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
@@ -30,6 +32,7 @@ import { bendify, type BendU } from '../../lib/paper/bend';
 import { dprGovernor, nextFrame, texturesOf, uploadSpread, warmPrograms, whenIdle } from '../../lib/paper/pace';
 import { playPaper } from '../../lib/paperSound';
 import { gust as windGust } from '../../lib/wind';
+import { pyramid, type HeadBox } from './pyramid';
 
 gsap.registerPlugin(CustomEase);
 // 纸的手感：封舌先被纸的硬挺拖住一下再翻；笺摊开时回一点
@@ -94,6 +97,10 @@ const PRINT_LAT = '"IM Fell English", Georgia, serif';
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const mixHex = (a: string, b: string, t: number) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+
+// 叠放时一封比左邻高多少。合着的封舌离信封底 1.7（Z_POCKET + 0.5）、敞着的只离 0.1，
+// 差不过 1.6 时，互压的左邻的封舌会从虚席敞开的封舌中间穿出来
+const STACK_DZ = 2.2;
 
 /* 竖排一列：汉字直立、西文整段侧躺（同 vertical-rl），句读挪到右上 */
 const PUNC_TR = '，。、；：';
@@ -314,10 +321,19 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     camera.position.set(0, -V.D * Math.sin(V.tilt), V.D * Math.cos(V.tilt)); camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
 
-    const n = items.length, sc = scatterOn(), headBottom = o.head.getBoundingClientRect().bottom - root.getBoundingClientRect().top;
-    let hs: number, y0: number, bandH: number;
-    if (sc) {
-      // 错落：两行（十四封以上三行）；行距容得下一只敞开的封舌（虚席那只常开，不能盖住上一排的名字）
+    const n = items.length, sc = scatterOn(), rootTop = root.getBoundingClientRect().top;
+    const headBottom = o.head.getBoundingClientRect().bottom - rootTop;
+    let hs: number, y0: number, bandH: number, cx = V.w / 2;
+    const P = sc ? pyramid({ W, H, FH }, items.map((it) => it.name), V.w, V.h, headBox(rootTop)) : null;
+    if (P) {   // 品字形
+      ({ hs, y0, bandH, cx } = P);
+      const s = hs / H;
+      items.forEach((it, i) => {
+        const p = toDesk(P.pos[i].sx, P.pos[i].sy); it.x = p.x; it.y = p.y; it.s = s;
+        it.row = P.pos[i].row; it.stepW = P.step / s; it.stackZ = i * STACK_DZ;   // 越新（越靠后）越在上
+      });
+    } else if (sc) {
+      // 品字形摆不下（屏太小、或十几封）时的老办法：两行（十四封以上三行）错落，第一排让开页头
       const rows = n > 14 ? 3 : 2, per = Math.ceil(n / rows), GY = (FH / H) * 0.95;
       const top = Math.max(V.h * 0.3, 250, headBottom + 28), availH = V.h - 120 - top;
       hs = Math.min(clamp(V.h * 0.4, 240, 380), availH / (rows + GY * (rows - 1)));
@@ -332,7 +348,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
         const sx = (V.w - rowW) / 2 + ws / 2 + col * step + (row % 2 ? 1 : -1) * step * 0.16 + (r() - 0.5) * 14;
         const sy = y0 + row * (hs + gy) + hs / 2 + (r() - 0.5) * 16;
         const p = toDesk(sx, sy); it.x = p.x; it.y = p.y; it.s = s;
-        it.row = row; it.stepW = step / s; it.stackZ = i * 1.4;   // 越新（越靠后）越在上
+        it.row = row; it.stepW = step / s; it.stackZ = i * STACK_DZ;
       });
     } else {
       const cols = V.phone ? 2 : Math.min(n, 4), rows = Math.ceil(n / cols);
@@ -365,8 +381,8 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
       it.px = it.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot;
       it.pocket.material.shadowSide = sc ? THREE.FrontSide : null;   // 叠起来才要口袋面投影（three 默认往阴影图里画背面，单面纸就没了）
     }
-    toDesk(V.w / 2, y0 + bandH / 2, FOCUS);
-    V.enterDY = toDesk(V.w / 2, -V.h * 0.15).y - FOCUS.y + hs;
+    toDesk(cx, y0 + bandH / 2, FOCUS);
+    V.enterDY = toDesk(cx, -V.h * 0.15).y - FOCUS.y + hs;
 
     // 展读的位姿：笺正对相机，高约屏高一半多
     const d = 0.6 * V.D, sheetAR = (2 * LW) / LH;
@@ -378,6 +394,13 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     placeHits(); placeActs();
   };
   const scatterOn = () => !V.phone && items.length > 4;
+  // 页头的字实际占到哪儿（相对 root）：max-width 是 36em，字通常没那么宽
+  const headBox = (rootTop: number): HeadBox => {
+    const rg = document.createRange(); rg.selectNodeContents(o.head);
+    const rs = [...rg.getClientRects()].filter((b) => b.width > 0), hb = o.head.getBoundingClientRect(), rootLeft = root.getBoundingClientRect().left;
+    if (!rs.length) return { top: hb.top - rootTop, bottom: hb.bottom - rootTop, right: hb.right - rootLeft };
+    return { top: Math.min(...rs.map((b) => b.top)) - rootTop, bottom: Math.max(...rs.map((b) => b.bottom)) - rootTop, right: Math.max(...rs.map((b) => b.right)) - rootLeft };
+  };
 
   /* ───── 热区（DOM）：按信封此刻的投影摆，拆封时往上让出窥信与封舌的地方 ───── */
   const placeHits = () => {
@@ -415,8 +438,9 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     if (i >= 0) drawSheet(items[i]);
     const sc = scatterOn();
     items.forEach((it, j) => {
-      if (sc) {   // 错落：同排右边的信整体让开，像摊开一手牌（不压着才不用让）
-        const ov = W - it.stepW, x = i >= 0 && j > i && it.row === items[i].row && ov > -12 ? (ov + 18) * it.s : 0;
+      if (sc) {   // 错落：同排压着它的让开，像摊开一手牌（不压着才不用让）；左右各让一半，免得整组贴右时右边那几封挪出屏
+        const ov = W - it.stepW, k = j > i ? 0.5 : -0.5;
+        const x = i >= 0 && it.row === items[i].row && ov > -12 ? (ov + 18) * it.s * k : 0;
         gsap.to(it.sp, { x, duration: 0.55 * K, ease: 'power3.out', overwrite: true });
       }
       it.el.style.zIndex = j === i ? '1' : '';   // 拿起来的那封，热区也在最上
@@ -542,7 +566,7 @@ export const createLetterScene = (o: LetterSceneOptions): LetterScene => {
     const st = it.st, s = it.s, e = st.enter;
     const arc = Math.sin(clamp(e, 0, 1) * Math.PI) * 60 * s;
     it.tilt.x += (it.tilt.tx * st.lift - it.tilt.x) * 0.12; it.tilt.y += (it.tilt.ty * st.lift - it.tilt.y) * 0.12;
-    const sc = scatterOn(), liftH = 16 + (sc ? items.length * 1.4 + 6 : 0);   // 叠着时要抬过上面那几封
+    const sc = scatterOn(), liftH = 16 + (sc ? items.length * STACK_DZ + 6 : 0);   // 叠着时要抬过上面那几封
     it.px = it.x + it.sp.x; it.py = it.y; it.pr = sc ? it.rotS : it.rot;
     it.env.position.set(it.px, it.py + (1 - e) * V.enterDY, it.stackZ * s + st.lift * liftH * s + arc);
     it.env.rotation.set(it.tilt.x * 0.07, it.tilt.y * 0.09, it.pr + (1 - e) * it.enterRot);
