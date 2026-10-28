@@ -18,6 +18,7 @@ export const FRIENDS: FriendLink[] = [
     name: "Evan Lin",
     url: "https://evanlin.site/",
     desc: "UNSW Builder",
+    lines: ["前路尚远，", "幸与同行。"],
     color: "#39C5BB",
     since: "2026-10-10",
   },
