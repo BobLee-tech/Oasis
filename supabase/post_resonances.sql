@@ -36,7 +36,7 @@ returns boolean
 language sql
 stable
 as $$
-  select coalesce(auth.jwt() ->> 'email', '') = 'lb15058460816@gmail.com';
+  select coalesce(auth.jwt() ->> 'email', '') = 'gardener@example.com';  -- ← 换成你自己的登录邮箱
 $$;
 
 alter table public.post_resonances enable row level security;

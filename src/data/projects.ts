@@ -2,7 +2,7 @@
 // 🪵 工坊 Atelier 的展品：简历里的三件获奖 / 交付项目，一件一开册页。
 //   静态数据（与 friends.ts 同款），不建表。口径沿用简历 v8 第四节的证据边界：
 //   团队交付不写成个人、未验证的结论标明、私有仓库不放链接、页面不出现真名。
-//   设计稿与取舍见 docs/atelier-2026-10/ 与演示页（记忆：atelier-workshop-proposal）。
+//   设计稿与取舍见 docs/atelier-2026-10/ 与演示页（视频与静帧就是 public/atelier/ 那几份）（记忆：atelier-workshop-proposal）。
 
 /** 分工条上的一颗石头：人 / 模型 / 规则 */
 export type StoneKind = 'h' | 'm' | 'r';

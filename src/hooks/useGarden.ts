@@ -52,13 +52,13 @@ const TABLE = 'garden_posts';
 const CACHE_KEY = 'oasis_garden_posts';
 
 export const makeExcerpt = (content: string) =>
-  stripCoverDef(content).slice(0, 110).replace(/[#*`>!\[\]()]/g, '').replace(/\n+/g, '\n').trim() + '…';
+  stripCoverDef(content).slice(0, 110).replace(/[#*`>![\]()]/g, '').replace(/\n+/g, '\n').trim() + '…';
 
 // 🔗 slug 化：中文标题保留汉字直接进 URL（现代浏览器地址栏会自动解码，比强行转拼音/随机串更可读），
 //   只清掉标点符号、空白折成连字符。纯符号/纯 emoji 标题会滑出空串，交给调用方兜底。
 const slugify = (s: string) =>
   s.trim().toLowerCase()
-    .replace(/[「」『』《》〈〉【】〔〕（）()\[\]{}"'“”‘’、，,。.!！?？:：;；~～·`/\\]/g, '')
+    .replace(/[「」『』《》〈〉【】〔〕（）()[\]{}"'“”‘’、，,。.!！?？:：;；~～·`/\\]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
@@ -92,12 +92,14 @@ const DEFAULT_POSTS: BlogPost[] = [
 const sortByNewest = (arr: BlogPost[]) => [...arr].sort((a, b) => b.createdAt - a.createdAt);
 
 // 🩹 老数据迁移：为缺失字段的旧文章补齐 type / createdAt / tags / growth / status / updatedAt
-const hydrate = (raw: any[]): BlogPost[] =>
+type LegacyPost = Omit<Partial<BlogPost>, 'createdAt' | 'updatedAt'> & { createdAt?: unknown; updatedAt?: unknown };
+const hydrate = (raw: LegacyPost[]): BlogPost[] =>
   raw.map((p, i) => {
     const createdAt = typeof p.createdAt === 'number'
       ? p.createdAt
-      : (Date.parse(p.date) || (Date.now() - i * 86400000));
+      : (Date.parse(p.date ?? '') || (Date.now() - i * 86400000));
     return {
+      id: '', title: '', excerpt: '', color: '', content: '',
       type: 'thought' as PostType,
       growth: 'seedling' as Growth,
       status: 'published' as PostStatus,
@@ -130,7 +132,14 @@ const writeCache = (posts: BlogPost[]) => {
 // —— DB 行 ⇄ BlogPost 映射（snake_case ⇄ camelCase） ——
 // growth/status/updated_at 三列可能来自尚未跑迁移脚本（supabase/garden_posts.sql）的老库，
 // 缺失时兜底为 seedling / published / createdAt，与本地 hydrate() 的默认值保持一致。
-const fromRow = (r: any): BlogPost => {
+interface PostRow {
+  id: string; title: string; excerpt: string; date?: string | null;
+  created_at: number | string; updated_at?: number | string | null;
+  growth?: string | null; status?: string | null; type: PostType;
+  tags?: string[] | null; color: string; content: string;
+  series?: string | null; slug?: string | null; share_token?: string | null;
+}
+const fromRow = (r: PostRow): BlogPost => {
   const createdAt = typeof r.created_at === 'number' ? r.created_at : Number(r.created_at);
   return {
     id: r.id,
@@ -162,12 +171,13 @@ export const useGarden = () => {
   // 云端是否可用：失败一次即标记，后续写入只走本地，保持离线可用
   const cloudOk = useRef(true);
   // 始终持有最新 posts，供事件回调读取，避免把 posts 列进 useCallback 依赖造成订阅反复重建
+  //   只经 commit 改，所以不必在渲染期同步
   const postsRef = useRef(posts);
-  postsRef.current = posts;
 
   // 统一更新入口：写状态 + 同步本地缓存
   const commit = useCallback((next: BlogPost[]) => {
     const sorted = sortByNewest(next);
+    postsRef.current = sorted;
     setPosts(sorted);
     writeCache(sorted);
   }, []);
@@ -178,7 +188,7 @@ export const useGarden = () => {
       if (error) throw error;
       cloudOk.current = true;
       if (data && data.length > 0) {
-        commit(data.map(fromRow));
+        commit((data as PostRow[]).map(fromRow));
       } else if (!readCache()) {
         // 云端为空且本地也无缓存：植入默认首篇（并尝试上云）
         commit(DEFAULT_POSTS);
@@ -193,6 +203,8 @@ export const useGarden = () => {
   }, [commit]);
 
   useEffect(() => {
+    // fetchCloud 的 setState 都在 await 之后，不是同步级联渲染；编译器看不穿 async，这里放行
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCloud();
     // 🛰️ 实时订阅：任意端增删改 → 本地刷新，博客与星图同步。
     // ⚠️ 频道名必须每个 hook 实例唯一：博客与星图（OasisGallery / OasisOrchard）会在切换转场时

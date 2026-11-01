@@ -23,7 +23,8 @@ import { OasisGarden } from './components/OasisGarden';
 import { OasisBottomChrome } from './components/OasisBottomChrome';
 import { GardenViewSwitch } from './components/GardenViewSwitch';
 import { SCENE_OF } from './components/yuantu/scenes';
-import { OasisPalette, openPalette, type PaletteView } from './components/OasisPalette';
+import { OasisPalette, type PaletteView } from './components/OasisPalette';
+import { openPalette } from './lib/palette';
 
 // 🪷 次级场所懒加载：欢迎页首屏只需 OasisGarden 本体，其余四个场所（含各自的
 //    markdown/highlight.js/图表等重依赖）按需拆包，切换时才拉取，减轻首屏体积。
@@ -312,13 +313,15 @@ function App() {
 
 
   // ⬅️ 浏览器后退 / 前进：hash 变化时把场所切回对应视图（欢迎页除外，避免误触重播入场）
-  useEffect(() => {
+  //   渲染期比对上一次的 route.view，不在 effect 里 setState（省一轮级联渲染）
+  const [prevRouteView, setPrevRouteView] = useState(route.view);
+  if (route.view !== prevRouteView) {
+    setPrevRouteView(route.view);
     if (route.view !== 'welcome' && route.view !== appView) {
       setWaveKey(k => k + 1);
       setAppView(route.view);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.view]);
+  }
 
   // 🎵 借景到一首歌：#/resonance/<曲目 id>（文章里写 [歌名](#/resonance/y_23_04) 即可）
   //   选中那首；正在放就换过去接着放，没在放就只摆上唱机，不替读者按播放。
@@ -371,7 +374,7 @@ function App() {
       // 🌙 深夜到访：陪你把声音也一并压低，呼应 NightWhisper 的关怀感
       playBGM(isLateNight() ? 0.22 : 0.4, 2500);
     }
-  }, [appView, terminalStatus, playBGM]);
+  }, [appView, terminalStatus]);
 
   const handleTerminalSuccess = () => {
     setShowTerminal(false); setBgPhase('blooming');

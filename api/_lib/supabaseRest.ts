@@ -4,6 +4,21 @@
 //   "referencing unsupported modules" 并直接拒绝部署。
 //   这几个边缘函数都只做只读查询，一个 fetch 封装就够，行为（含 RLS）与官方客户端完全一致——
 //   同一把 anon key、同一张表，草稿依旧只对已登录会话可见。
+// garden_posts 的一行；select 只取了一部分列，所以全是可选
+export interface PostRow {
+  id: string;
+  title?: string;
+  excerpt?: string | null;
+  content?: string | null;
+  created_at?: number | string; // 存的是毫秒时间戳（bigint）
+  updated_at?: number | string | null;
+  color?: string | null;
+  tags?: string[] | null;
+  slug?: string | null;
+  status?: string | null;
+  share_token?: string | null;
+}
+
 export interface RestQuery {
   select: string;
   eq?: [string, string];
@@ -16,7 +31,7 @@ export const fetchGardenPosts = async (
   supabaseUrl: string,
   anonKey: string,
   query: RestQuery
-): Promise<any[]> => {
+): Promise<PostRow[]> => {
   const url = new URL(`${supabaseUrl}/rest/v1/garden_posts`);
   url.searchParams.set('select', query.select);
   if (query.eq) url.searchParams.set(query.eq[0], `eq.${query.eq[1]}`);
@@ -38,7 +53,7 @@ export const fetchPostByShareToken = async (
   supabaseUrl: string,
   anonKey: string,
   token: string
-): Promise<any | null> => {
+): Promise<PostRow | null> => {
   const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_post_by_share_token`, {
     method: 'POST',
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },

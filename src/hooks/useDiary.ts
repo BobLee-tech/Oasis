@@ -1,19 +1,17 @@
 // src/hooks/useDiary.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { DiaryEcho } from '../types/diary';
 
 let globalDraftContent = '';
 let globalDraftColor: string | null = null;
 
 export const useDiary = () => {
-  const [echoes, setEchoes] = useState<DiaryEcho[]>([]);
+  const [echoes, setEchoes] = useState<DiaryEcho[]>(() => {
+    const stored = localStorage.getItem('oasis_echoes');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [draftContent, _setDraftContent] = useState<string>(globalDraftContent);
   const [draftColor, _setDraftColor] = useState<string | null>(globalDraftColor);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('oasis_echoes');
-    if (stored) setEchoes(JSON.parse(stored));
-  }, []);
 
   const setDraft = useCallback((content: string, color: string | null) => {
     globalDraftContent = content; globalDraftColor = color;

@@ -12,12 +12,7 @@ import { emitMikuSignal } from '../lib/mikuSignal';
 import { emitRipple } from '../lib/rippleSignal';
 import { PLACE_NAME } from '../lib/places';
 import { paperSoundOn, setPaperSound } from '../lib/paperSound';
-
-// 🔔 跨组件唤起：与 Markdown.tsx 的 LIGHTBOX_EVENT 同一种约定——
-//   任何深处的组件（如 Gallery 的搜索图标）都能 dispatch 这个事件唤起面板，
-//   而不必把 open 状态一路 prop-drill 穿过懒加载的场所边界。
-export const PALETTE_EVENT = 'oasis:palette';
-export const openPalette = () => window.dispatchEvent(new CustomEvent(PALETTE_EVENT));
+import { PALETTE_EVENT } from '../lib/palette';
 
 export type PaletteView = 'soundscape' | 'garden' | 'orchard' | 'lights' | 'atelier' | 'yuantu';
 // 中文名取 lib/places.ts（树测试定名后只改那一处）；园图不是 Dock 上的场所，这里是它的两扇门之一
@@ -38,7 +33,7 @@ type Hit = PostHit | GoHit | DoHit;
 const hitKey = (h: Hit) => (h.kind === 'post' ? `p-${h.id}` : h.kind === 'go' ? `g-${h.view}` : `d-${h.label}`);
 
 // 极简 Markdown → 纯文本：只为搜索与摘句，不追求还原排版
-const stripMd = (s: string) => s.replace(/[#*`>!\[\]()]/g, '').replace(/\s+/g, ' ').trim();
+const stripMd = (s: string) => s.replace(/[#*`>![\]()]/g, '').replace(/\s+/g, ' ').trim();
 
 interface OasisPaletteProps {
   posts: BlogPost[];
@@ -78,12 +73,14 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
     return () => window.removeEventListener(PALETTE_EVENT, handler);
   }, []);
 
+  // 每次打开都从空白开始：在渲染期比对上一次的 open，而不是在 effect 里 setState 再多渲染一轮
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) { setQuery(''); setCursor(0); }
+  }
   useEffect(() => {
-    if (open) {
-      setQuery('');
-      setCursor(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+    if (open) requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
 
   useEffect(() => {
@@ -140,7 +137,13 @@ export const OasisPalette: React.FC<OasisPaletteProps> = ({ posts, currentView, 
     return [...postHits, ...filteredGo, ...filteredDo];
   }, [query, searchable, currentView, themeLabel, paperOn]);
 
-  useEffect(() => setCursor(0), [query, hits.length]);
+  // 查询或结果数一变，光标回到第一条（同上，渲染期调整）
+  const cursorKey = `${query}\u0000${hits.length}`;
+  const [prevCursorKey, setPrevCursorKey] = useState(cursorKey);
+  if (cursorKey !== prevCursorKey) {
+    setPrevCursorKey(cursorKey);
+    setCursor(0);
+  }
 
   const commit = (hit: Hit) => {
     if (hit.kind === 'post') onOpenPost(hit.id);

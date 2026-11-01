@@ -1,5 +1,5 @@
 // src/hooks/usePostResonance.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface PostResonance {
@@ -14,35 +14,37 @@ export interface PostResonance {
 
 export const usePostResonance = (postId: string | null) => {
   const [resonances, setResonances] = useState<PostResonance[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchResonances = useCallback(async () => {
-    if (!postId) return;
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('post_resonances')
-      .select('*')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      // ✨ 核心机制：无损拆包。将隐匿在 content 里的回复提取出来
-      const parsedData = data.map((item: any) => {
-        const str = item.content || '';
-        const parts = str.split('[_REPLY_]');
-        if (parts.length > 1) {
-          return { ...item, content: parts[0], reply: parts[1] };
-        }
-        return item;
-      });
-      setResonances(parsedData);
-    }
-    setIsLoading(false);
-  }, [postId]);
+  // 读完哪篇就记哪篇：isLoading 由此推出，不必在 effect 里同步 setState
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const isLoading = !!postId && loadedFor !== postId;
 
   useEffect(() => {
-    fetchResonances();
-  }, [fetchResonances]);
+    if (!postId) return;
+    let stale = false; // 读者翻到下一篇时，上一篇迟到的结果不许覆盖
+    (async () => {
+      const { data, error } = await supabase
+        .from('post_resonances')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      if (stale) return;
+
+      if (!error && data) {
+        // ✨ 核心机制：无损拆包。将隐匿在 content 里的回复提取出来
+        const parsedData = (data as PostResonance[]).map((item) => {
+          const str = item.content || '';
+          const parts = str.split('[_REPLY_]');
+          if (parts.length > 1) {
+            return { ...item, content: parts[0], reply: parts[1] };
+          }
+          return item;
+        });
+        setResonances(parsedData);
+      }
+      setLoadedFor(postId);
+    })();
+    return () => { stale = true; };
+  }, [postId]);
 
   const leaveResonance = async (rawAuthor: string, rawContent: string, rawColor: string) => {
     if (!postId) return;

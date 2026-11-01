@@ -9,8 +9,9 @@ import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
-import type { Element, Root } from 'hast';
+import type { Element, ElementContent, Root, RootContent } from 'hast';
 import { slugify } from '../lib/reading';
+import { openLightbox } from '../lib/lightbox';
 
 interface MarkdownProps {
   children: string;
@@ -19,21 +20,15 @@ interface MarkdownProps {
   sourceLine?: boolean;
 }
 
-// 🖼️ 图片点击 → 全屏灯箱。用自定义事件解耦：Markdown 只管派发，Reader 里的 Lightbox 负责呈现。
-export const LIGHTBOX_EVENT = 'oasis:lightbox';
-export const openLightbox = (src: string, alt?: string) =>
-  window.dispatchEvent(new CustomEvent(LIGHTBOX_EVENT, { detail: { src, alt } }));
-
 // 🔖 rehype 插件：为 h2/h3 注入锚点 id，与 lib/reading 的 extractToc 同一套 slugify + 去重规则，
 //    保证文中目录（TOC）点击能精确定位、直链可跳转。
-const nodeText = (node: any): string => {
-  if (!node) return '';
-  if (node.type === 'text') return node.value ?? '';
-  return (node.children || []).map(nodeText).join('');
+const nodeText = (node: Root | RootContent | ElementContent): string => {
+  if (node.type === 'text') return node.value;
+  return 'children' in node ? node.children.map(nodeText).join('') : '';
 };
-const rehypeHeadingIds = () => (tree: any) => {
+const rehypeHeadingIds = () => (tree: Root) => {
   const seen = new Map<string, number>();
-  const walk = (node: any) => {
+  const walk = (node: Root | RootContent) => {
     if (node.type === 'element' && (node.tagName === 'h2' || node.tagName === 'h3')) {
       let id = slugify(nodeText(node));
       const n = seen.get(id) ?? 0;
@@ -42,7 +37,7 @@ const rehypeHeadingIds = () => (tree: any) => {
       node.properties = node.properties || {};
       if (!node.properties.id) node.properties.id = id;
     }
-    (node.children || []).forEach(walk);
+    if ('children' in node) node.children.forEach(walk);
   };
   walk(tree);
 };
@@ -81,8 +76,10 @@ const SANITIZE_SCHEMA = {
 const CodeBlock: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
   const [copied, setCopied] = useState(false);
   // rehype-highlight 会给 <code> 加 language-xxx / hljs 类，取出语言名做水印
-  const codeChild: any = React.Children.toArray(children).find(
-    (c: any) => c?.props?.className?.includes('language-') || c?.props?.className?.includes('hljs')
+  const codeChild = React.Children.toArray(children).find(
+    (c): c is React.ReactElement<{ className?: string }> =>
+      React.isValidElement<{ className?: string }>(c) &&
+      !!(c.props.className?.includes('language-') || c.props.className?.includes('hljs'))
   );
   const lang = (codeChild?.props?.className?.match(/language-([\w-]+)/)?.[1] || '').toLowerCase();
   const handleCopy = (e: React.MouseEvent) => {

@@ -2,7 +2,7 @@
 //   Vercel 按文件路由自动挂载为 /api/sitemap，vercel.json 把 /sitemap.xml 重写到这里。
 //   与 api/rss.ts 同构：anon key 查询，RLS 挡掉了 draft，但 unlisted 对匿名可读（分享链接要能打开），
 //   所以这里必须显式再筛 status=published，否则 unlisted 会漏进搜索引擎收录。
-import { fetchGardenPosts } from './_lib/supabaseRest';
+import { fetchGardenPosts, type PostRow } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -15,7 +15,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Supabase credentials missing', { status: 500 });
   }
 
-  let data: any[];
+  let data: PostRow[];
   try {
     data = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
       select: 'id,slug,created_at,updated_at',

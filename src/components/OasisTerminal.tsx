@@ -47,8 +47,8 @@ export const OasisTerminal: React.FC<OasisTerminalProps> = ({ onSuccess }) => {
           await loginAdmin(parts[2], parts.slice(3).join(' '));
           setLogs(prev => [...prev, '> ACCESS GRANTED: WELCOME CREATOR', '> unlocking restricted sectors (Echoes)...']);
           setTimeout(() => onSuccess(), 1500); 
-        } catch (error: any) {
-          setLogs(prev => [...prev, `> AUTH FAILED: ${error.message}`]);
+        } catch (error) {
+          setLogs(prev => [...prev, `> AUTH FAILED: ${error instanceof Error ? error.message : String(error)}`]);
           setIsProcessing(false);
         }
       } else {

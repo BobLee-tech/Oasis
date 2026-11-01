@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useMotionValueEvent, useReducedMotion, useTransform, useScroll, useSpring, type MotionValue } from 'framer-motion';
 import type { TocItem } from '../lib/reading';
-import { LIGHTBOX_EVENT } from './Markdown';
+import { LIGHTBOX_EVENT } from '../lib/lightbox';
 import { colophonOf, HOU_ORDINAL } from '../lib/hou';
 import { PROJECTS } from '../data/projects';
 import type { Backlink } from '../lib/wikilinks';

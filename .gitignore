@@ -35,3 +35,7 @@ lyrics-src/
 *.njsproj
 *.sln
 *.sw?
+
+# 本机工作文件：生图草稿、博客配图底稿、GitHub 主页横幅，不随仓库发布
+/output/
+/profile-assets/

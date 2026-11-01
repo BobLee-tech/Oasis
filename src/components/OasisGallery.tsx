@@ -1,9 +1,11 @@
 // src/components/OasisGallery.tsx
-import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 import { useGarden, filterVisible, makeExcerpt, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
-import { useCategories, CategoryIcon, ICON_NAMES } from '../hooks/useCategories';
+import { useCategories } from '../hooks/useCategories';
+import { CategoryIcon } from './CategoryIcon';
+import { ICON_NAMES } from '../lib/categoryIcons';
 import { Markdown, PROSE_CLASS } from './Markdown';
 import { usePostResonance } from '../hooks/usePostResonance';
 import { usePullToClose } from '../hooks/usePullToClose';
@@ -143,6 +145,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 📋 listedPosts 才是「会被主动摆出来」的集合：网格 / 标签 / 归档 / 站内搜索 / 「继续漫游」类推荐面板
   //   都从这里取数据，非 admin 视角下排除 unlisted（admin 自己仍能看到，便于管理）。
   const listedPosts = useMemo(() => isAdmin ? posts : posts.filter(p => p.status !== 'unlisted'), [posts, isAdmin]);
+  // 🏷️ 归一化去重：大小写/全半角/首尾空白不同的写法（"Miku" / "miku" / "ＭＩＫＵ"）
+  //   曾各自当成独立标签，这里折成一个，展示名取出现次数最多的写法（见 lib/tags.ts）。
+  const allTags = useMemo(() => {
+    const canonicalOf = buildTagCanonicalMap(listedPosts.flatMap(p => p.tags));
+    return Array.from(new Set(canonicalOf.values())).sort((a, b) => a.localeCompare(b));
+  }, [listedPosts]);
+
   // 🖼️ 卡片封面图：写作抽屉里手选的（文末 [oasis-cover]）优先；没选就从正文里先挑插画、再挑无图注的、再挑别人的照片，
   //    图解不上（lib/coverImage.ts）；只在正文变了才重挑
   const coverSrcOf = useMemo(() => new Map(posts.map(p => [p.id, resolveCover(p.content)])), [posts]);
@@ -165,7 +174,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   // 供异步回调（图片加载完成后再定位续读位置）判断当前是否已经切走文章，避免过期跳转
   const activePostRef = useRef(activePost);
-  activePostRef.current = activePost;
+  useLayoutEffect(() => { activePostRef.current = activePost; });
   // 🚪 关闭编辑器的「最新实现」存一份在 ref 里：closeEditor 定义在组件靠后的位置（依赖一堆
   // 之后才声明的 editXxx 状态），但下面这个 isPresent 副作用要在组件顶部注册、且只想注册一次。
   // 每次渲染把最新闭包写进 ref，effect 永远通过 ref 调用，就不会读到过期的编辑器状态。
@@ -178,8 +187,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // ⚠️ 切走视图时编辑器若还开着，closeEditor() 会照常落定保存——不能让「切到别的视图」
   //   变成又一条静默丢字的路径（这正是本次要修的 bug）。
   const isPresent = useIsPresent();
+  if (!isPresent && activePost) setActivePost(null); // 渲染期就收，不等 effect 再多渲一轮
   useEffect(() => {
-    if (!isPresent) { setActivePost(null); closeEditorRef.current(); }
+    if (!isPresent) closeEditorRef.current();
   }, [isPresent]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -302,19 +312,20 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + prefix.length, s + prefix.length); });
   };
 
-  const FORMAT_TOOLS: { label: string; title: string; run: () => void }[] = [
-    { label: 'B', title: '粗体 **text**', run: () => applyFormat('**', '**', 'bold') },
-    { label: 'i', title: '斜体 *text*', run: () => applyFormat('*', '*', 'italic') },
-    { label: 'S̶', title: '删除线 ~~text~~', run: () => applyFormat('~~', '~~', 'strike') },
-    { label: 'H', title: '标题 ## ', run: () => applyLinePrefix('## ') },
-    { label: '❝', title: '引用 > ', run: () => applyLinePrefix('> ') },
-    { label: '•', title: '列表 - ', run: () => applyLinePrefix('- ') },
-    { label: '☑', title: '任务 - [ ] ', run: () => applyLinePrefix('- [ ] ') },
-    { label: '</>', title: '行内代码 `code`', run: () => applyFormat('`', '`', 'code') },
-    { label: '{ }', title: '代码块 ```', run: () => applyFormat('\n```\n', '\n```\n', 'code') },
-    { label: '🔗', title: '链接 [text](url)', run: () => applyFormat('[', '](https://)', 'text') },
-    { label: '🖼', title: '图片 ![alt](url)', run: () => applyFormat('![', '](/img/picture.jpg)', 'alt') },
-    { label: '—', title: '分割线', run: () => applyLinePrefix('\n---\n') },
+  // 工具栏只存数据，点击时再调 applyFormat / applyLinePrefix（它们读 editorRef，不能在渲染期备好闭包）
+  const FORMAT_TOOLS: { label: string; title: string; wrap?: [string, string, string]; prefix?: string }[] = [
+    { label: 'B', title: '粗体 **text**', wrap: ['**', '**', 'bold'] },
+    { label: 'i', title: '斜体 *text*', wrap: ['*', '*', 'italic'] },
+    { label: 'S̶', title: '删除线 ~~text~~', wrap: ['~~', '~~', 'strike'] },
+    { label: 'H', title: '标题 ## ', prefix: '## ' },
+    { label: '❝', title: '引用 > ', prefix: '> ' },
+    { label: '•', title: '列表 - ', prefix: '- ' },
+    { label: '☑', title: '任务 - [ ] ', prefix: '- [ ] ' },
+    { label: '</>', title: '行内代码 `code`', wrap: ['`', '`', 'code'] },
+    { label: '{ }', title: '代码块 ```', wrap: ['\n```\n', '\n```\n', 'code'] },
+    { label: '🔗', title: '链接 [text](url)', wrap: ['[', '](https://)', 'text'] },
+    { label: '🖼', title: '图片 ![alt](url)', wrap: ['![', '](/img/picture.jpg)', 'alt'] },
+    { label: '—', title: '分割线', prefix: '\n---\n' },
   ];
 
   // ⌨️ 编辑器键盘增强：Cmd/Ctrl+B/I/K 格式化、Tab 缩进、回车自动接续列表
@@ -698,17 +709,20 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 🧭 直链 ⇄ 阅读舱双向同步：
   //   · 地址含 #/garden/:id（分享 / 刷新 / 后退到某篇）→ 打开对应文章
   //   · 地址回到 #/garden（后退关闭）→ 收起阅读舱
+  //   只在地址或文章列表变了时对一次（渲染期比对上一次，首渲染也算一次），不在 effect 里 setState
   const { route: galleryRoute } = useHashRoute();
-  useEffect(() => {
-    if (galleryRoute.view !== 'garden') return;
-    if (galleryRoute.itemId) {
-      const p = posts.find(x => x.id === galleryRoute.itemId);
-      if (p && p.id !== activePost?.id) setActivePost(p);
-    } else if (activePost) {
-      setActivePost(null);
+  const [routeSynced, setRouteSynced] = useState<{ view: string; itemId?: string; posts: BlogPost[] } | null>(null);
+  if (!routeSynced || routeSynced.view !== galleryRoute.view || routeSynced.itemId !== galleryRoute.itemId || routeSynced.posts !== posts) {
+    setRouteSynced({ view: galleryRoute.view, itemId: galleryRoute.itemId, posts });
+    if (galleryRoute.view === 'garden') {
+      if (galleryRoute.itemId) {
+        const p = posts.find(x => x.id === galleryRoute.itemId);
+        if (p && p.id !== activePost?.id) setActivePost(p);
+      } else if (activePost) {
+        setActivePost(null);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [galleryRoute.view, galleryRoute.itemId, posts]);
+  }
 
   // 打开 / 关闭文章时回写地址（相等则跳过，杜绝与上面的 effect 往复抖动）
   //   hadPostRef 守卫：首次以 #/garden/:id 直达时，别在文章打开前就把 id 抹掉
@@ -724,7 +738,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }
   }, [activePost]);
 
-  const dailyIndex = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 60 * 24)), []);
+  // 挂载时刻：「今日」与「最近照料」都按进园那一刻算，渲染期不再读时钟
+  const [mountedAt] = useState(() => Date.now());
+  const dailyIndex = Math.floor(mountedAt / (1000 * 60 * 60 * 24));
   // 🌾 今日共鸣优先带上节气语录：随季节流转，每日在节气与手写箴言之间轮换
   const quotePool = useMemo(() => [termNoteOfDay(), ...DAILY_QUOTES], []);
   const solarTermName = useMemo(() => currentSolarTerm().name, []);
@@ -747,8 +763,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 它们各自排出的防抖保存即便没被 clearTimeout 逮到，触发时也会因世代号对不上而作废——
   // 比逐个排查「这次 scroll 事件到底是谁触发的」更可靠。
   const saveGenRef = useRef(0);
+  const activePostId = activePost?.id ?? null;
   useEffect(() => {
-    const newId = activePost?.id ?? null;
+    const newId = activePostId;
     if (processedIdRef.current === newId) return;
     processedIdRef.current = newId;
     saveGenRef.current += 1;
@@ -760,17 +777,17 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       const max = el.scrollHeight - el.clientHeight;
       setReadProgress(prevPostIdRef.current, max > 1 ? el.scrollTop / max : 0);
     }
-    prevPostIdRef.current = activePost?.id ?? null;
+    prevPostIdRef.current = activePostId;
     // 打开新篇目：默认回到顶部，否则从「下一篇」进来会停在上一篇的滚动位置；
     // 若有未读完的续读进度（2%~92% 之间），改为在布局落定后跳到对应位置。
     // ⚠️ 关闭阅读舱（activePost 变 null）时不要再归零：此刻 AnimatePresence 仍在播放
     // 退出动画、DOM 节点还没卸载，归零会触发一次多余的 scroll 事件，把上面刚存好的
     // 退出进度覆盖回 0。
-    if (activePost) {
+    if (activePostId) {
       readerRef.current?.scrollTo({ top: 0 });
-      const pct = getReadProgress(activePost.id);
+      const pct = getReadProgress(activePostId);
       if (pct > 0.02 && pct < 0.92) {
-        const postId = activePost.id;
+        const postId = activePostId;
         restoringRef.current = true;
         // 正文里的图片是异步加载的，此刻 scrollHeight 可能还没到最终高度，
         // 按半成品高度算出的位置会偏低。等图片都加载完（或 1.2s 超时兜底）再跳转。
@@ -796,7 +813,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
         }));
       }
     }
-  }, [activePost?.id]);
+  }, [activePostId]);
 
   // 📍 阅读进度持久化：滚动时防抖记录百分比，供列表「续读」标记与下次自动跳转使用
   const handleReaderScroll = () => {
@@ -813,13 +830,6 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       setReadProgress(post.id, pct);
     }, 400);
   };
-
-  // 🏷️ 归一化去重：大小写/全半角/首尾空白不同的写法（"Miku" / "miku" / "ＭＩＫＵ"）
-  //   曾各自当成独立标签，这里折成一个，展示名取出现次数最多的写法（见 lib/tags.ts）。
-  const allTags = useMemo(() => {
-    const canonicalOf = buildTagCanonicalMap(listedPosts.flatMap(p => p.tags));
-    return Array.from(new Set(canonicalOf.values())).sort((a, b) => a.localeCompare(b));
-  }, [listedPosts]);
 
   // 📚 合集索引（浏览用）：合集名 → 按时间正序的成员文章；「第 N 篇」由此推导，无需手工维护序号。
   //   基于 listedPosts——过滤面板的合集 chip、编辑器的合集联想都不该暴露 unlisted 成员。
@@ -909,13 +919,13 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   // 🌿 最近照料：花园在生长的可见证据——只在真被「更新」过（而非发完顺手改错别字）
   //   且在 30 天内照料过的文章里，横向列出至多 3 篇。48h 阈值滤掉误差性小编辑。
   const recentlyTended = useMemo(() => {
-    const now = Date.now();
+    const now = mountedAt;
     const DAY = 86400000;
     return listedPosts
       .filter(p => p.updatedAt - p.createdAt > 48 * 3600 * 1000 && now - p.updatedAt < 30 * DAY)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 3);
-  }, [listedPosts]);
+  }, [listedPosts, mountedAt]);
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1155,7 +1165,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     }
     setIsEditing(false);
   };
-  closeEditorRef.current = closeEditor;
+  useLayoutEffect(() => { closeEditorRef.current = closeEditor; });
 
   // ↺ 撤销：'update' 把关闭前的原文整篇回写（不再算一次照料）；'new-draft' 把刚落定的草稿拔掉
   const handleUndo = () => {
@@ -1567,7 +1577,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                    {/* ✍️ Markdown 格式工具栏：选中文字点按钮即插入对应语法 */}
                    {!isZen && <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-slate-200/60 dark:border-white/5">
                      {FORMAT_TOOLS.map(t => (
-                       <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={t.run} title={t.title}
+                       <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={() => (t.wrap ? applyFormat(...t.wrap) : applyLinePrefix(t.prefix ?? ''))} title={t.title}
                          className="min-w-[28px] h-6 px-2 flex items-center justify-center font-mono text-[11px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
                          {t.label}
                        </button>

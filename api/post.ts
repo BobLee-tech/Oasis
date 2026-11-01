@@ -3,7 +3,7 @@
 //   永远只是首页那一份通用 meta —— 这里补一条「真实存在」的服务端地址：
 //   完整渲染 meta / OG / JSON-LD / 纯文本正文（服务端爬虫可读），
 //   真人访客则由 head 里的一行脚本立即换乘回 SPA 的 #/garden/:id 阅读舱。
-import { fetchGardenPosts, fetchPostByShareToken } from './_lib/supabaseRest';
+import { fetchGardenPosts, fetchPostByShareToken, type PostRow } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -38,7 +38,7 @@ export default async function handler(req: Request): Promise<Response> {
   // 🔗 三段式解析：先按 id 精确查（老链接兼容），查不到再按 slug 查，
   //   都没有再当作 unlisted 的 share_token 走 RPC——这是唯一能读到 unlisted 行的口子，
   //   直接查表拿不到（RLS 的 public-read 策略只放行 published）。
-  let p: any =
+  let p: PostRow | null | undefined =
     (await fetchGardenPosts(supabaseUrl, supabaseAnonKey, { select: SELECT, eq: ['id', param] }).catch(() => []))[0];
   if (!p) {
     p = (await fetchGardenPosts(supabaseUrl, supabaseAnonKey, { select: SELECT, eq: ['slug', param] }).catch(() => []))[0];
@@ -60,7 +60,7 @@ export default async function handler(req: Request): Promise<Response> {
   const publicPath = p.status === 'unlisted' && p.share_token ? p.share_token : (p.slug || p.id);
   const canonical = `${origin}/p/${encodeURIComponent(publicPath)}`;
   const ogImage = `${origin}/api/og?id=${encodeURIComponent(p.id)}`;
-  const bodyHtml = mdToParagraphs(p.content).map((para) => `<p>${escapeHtml(para)}</p>`).join('\n');
+  const bodyHtml = mdToParagraphs(p.content ?? '').map((para) => `<p>${escapeHtml(para)}</p>`).join('\n');
 
   const jsonLd = {
     '@context': 'https://schema.org',

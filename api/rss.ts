@@ -3,7 +3,7 @@
 //   访问 https://<domain>/rss.xml 即可在任意阅读器订阅。
 //   ⚠️ unlisted 对匿名可读（分享链接要能打开），必须显式筛 status=published，
 //   否则 unlisted 会漏进订阅源推给所有订阅者——见 api/sitemap.ts 同款注释。
-import { fetchGardenPosts } from './_lib/supabaseRest';
+import { fetchGardenPosts, type PostRow } from './_lib/supabaseRest';
 
 export const config = { runtime: 'edge' };
 
@@ -22,7 +22,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Supabase credentials missing', { status: 500 });
   }
 
-  let data: any[];
+  let data: PostRow[];
   try {
     data = await fetchGardenPosts(supabaseUrl, supabaseAnonKey, {
       select: 'id,slug,title,excerpt,created_at,tags',
@@ -39,7 +39,7 @@ export default async function handler(req: Request): Promise<Response> {
     const link = `${origin}/p/${encodeURIComponent(p.slug || p.id)}`;
     const pubDate = new Date(Number(p.created_at)).toUTCString();
     return `    <item>
-      <title>${escapeXml(p.title)}</title>
+      <title>${escapeXml(p.title ?? '')}</title>
       <link>${link}</link>
       <guid isPermaLink="false">${p.id}</guid>
       <pubDate>${pubDate}</pubDate>

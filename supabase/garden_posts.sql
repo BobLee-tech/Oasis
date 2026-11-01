@@ -70,7 +70,7 @@ returns boolean
 language sql
 stable
 as $$
-  select coalesce(auth.jwt() ->> 'email', '') = 'lb15058460816@gmail.com';
+  select coalesce(auth.jwt() ->> 'email', '') = 'gardener@example.com';  -- ← 换成你自己的登录邮箱
 $$;
 
 -- 行级安全：published 对所有人可见；unlisted 不在这条策略里——
