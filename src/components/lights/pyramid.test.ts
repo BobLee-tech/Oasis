@@ -4,7 +4,7 @@ import { pyramid, type HeadBox } from './pyramid';
 const E = { W: 220, H: 330, FH: 118 };
 // 1440×900 下页头的字实际占的框（docs/chidu-many.html 里量的，与现网同一套 CSS）
 const HEAD: HeadBox = { top: 94, bottom: 252.49, right: 546.88 };
-const REAL = ['Evan Lin', 'hejiac', 'Garry Yuan', '客服小陈', '虚席以待'];
+const REAL = ['Evan Lin', '双月之海', 'Garry Yuan', '客服小陈', '虚席以待'];
 const FAKE = ['Aster', '听雨', 'Kumo', '青苔', 'Lumen', '南枝', 'Nori'];
 const lettersOf = (n: number) => [...FAKE.slice(0, Math.max(0, n - REAL.length)), ...REAL].slice(-n);
 const SCREENS: [number, number][] = [[1920, 1080], [1440, 900], [1280, 800], [1024, 768]];

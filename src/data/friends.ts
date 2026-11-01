@@ -23,7 +23,7 @@ export const FRIENDS: FriendLink[] = [
     since: "2026-10-10",
   },
   {
-    name: "hejiac",
+    name: "双月之海",
     url: "https://hejiac.com",
     desc: "Made with curiosity.",
     lines: ["你如何留下春天？", "过一个美好的春天。"],
