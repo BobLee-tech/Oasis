@@ -64,5 +64,5 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 ## 注意事项
 - 移动端性能敏感:噪点层 `hidden md:block`、触屏走轻量涟漪(pointer: coarse)、动画只用 opacity/transform;改动画时保持合成器友好并尊重 `prefers-reduced-motion`。
 - README 中的 Miku 图片(`public/image/Girl.jpg` / `Miku.jpg`)是主人心头好,不要动(见 git 历史 "Give my miku back!")。
-- Live2D Miku 样例模型不进 git(授权不许随源码分发):本地在 `public/live2d/miku/`(gitignored,只有重排过动作分组的 `model3.json` 进库),线上 `vercel.json` 把 `/live2d/miku/*` 反代到 `img.boblee.dev/live2d/miku/`(R2 `r2:oasis-picture`;R2 不回 CORS 头,所以走同源反代而不是直连)。改了模型文件要重新 `rclone copy` 上去。Cubism Core 是 Redistributable Code,留在 `public/live2d/core/`。
+- Live2D Miku 样例模型不进 git(授权不许随源码分发):本地在 `public/live2d/miku/`(gitignored,只有重排过动作分组的 `model3.json` 进库),线上 `vercel.json` 把 `/live2d/miku/*` 反代到 `img.boblee.dev/live2d/miku/`(R2 `r2:oasis-picture`;R2 不回 CORS 头,所以走同源反代而不是直连)。改了模型文件要重新 `rclone copy` 上去;这一路缓存头是浏览器 1 天、边缘 7 天,急着换就去 Vercel 后台清 CDN 缓存。Cubism Core 是 Redistributable Code,留在 `public/live2d/core/`。
 - 曲库路径与 R2 文件名必须严格一致(含空格/日文);改曲目 url 时同步检查实际文件。
