@@ -31,6 +31,9 @@ export const CoverPicker: React.FC<{ content: string; onChange: (next: string) =
   };
   const [tab, setTab] = useState<Tab | null>(null);
   const shown = tab ?? sourceOf();
+  // 资源包一次只摊开一包；默认是当前封面所在的那包
+  const [packId, setPackId] = useState<string | null>(null);
+  const shownPack = COVER_PACKS.find((p) => p.id === packId) ?? COVER_PACKS.find((p) => p.items.some((i) => i.src === chosen)) ?? COVER_PACKS[0];
   const [upload, setUpload] = useState<{ busy: boolean; error: string }>({ busy: false, error: '' });
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -100,20 +103,22 @@ export const CoverPicker: React.FC<{ content: string; onChange: (next: string) =
       )}
 
       {shown === 'pack' && (
-        <div className="flex flex-col gap-4">
-          {COVER_PACKS.map((pack) => (
-            <div key={pack.id}>
-              <div className="mb-2 flex items-baseline gap-2"><span className="font-serif text-sm text-slate-600 dark:text-slate-300">{pack.name}</span><span className="font-serif text-[11px] text-slate-400 dark:text-slate-500">{pack.note}</span></div>
-              <div className="flex flex-wrap gap-2">
-                {pack.items.map((it) => (
-                  <button key={it.id} type="button" onClick={() => choose({ kind: 'src', src: withFocus(it.src, it.focus ?? null) })} className={thumb(chosen === it.src)}>
-                    <img src={it.src} alt="" loading="lazy" decoding="async" className="block w-full h-[64px] object-cover" />
-                    <span className="block px-1.5 py-1 font-serif text-[10px] text-slate-500 dark:text-slate-400 truncate">{it.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline gap-x-4 gap-y-1 flex-wrap">
+            {COVER_PACKS.map((pack) => (
+              <button key={pack.id} type="button" onClick={() => setPackId(pack.id)}
+                className={`font-serif text-sm transition-colors ${pack === shownPack ? 'text-[#39C5BB]' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>{pack.name}</button>
+            ))}
+          </div>
+          <span className="font-serif text-[11px] text-slate-400 dark:text-slate-500">{shownPack.note} · CC0</span>
+          <div className="flex flex-wrap gap-2">
+            {shownPack.items.map((it) => (
+              <button key={it.id} type="button" onClick={() => choose({ kind: 'src', src: withFocus(it.src, it.focus ?? null) })} className={thumb(chosen === it.src)} title={it.name}>
+                <img src={it.thumb} alt="" loading="lazy" decoding="async" className="block w-full h-[64px] object-cover" />
+                <span className="block px-1.5 py-1 font-serif text-[10px] text-slate-500 dark:text-slate-400 truncate">{it.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
