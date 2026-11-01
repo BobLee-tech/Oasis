@@ -2,7 +2,8 @@
   "rewrites": [
     { "source": "/rss.xml", "destination": "/api/rss" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/p/:id", "destination": "/api/post?id=:id" }
+    { "source": "/p/:id", "destination": "/api/post?id=:id" },
+    { "source": "/live2d/miku/:path*", "destination": "https://img.boblee.dev/live2d/miku/:path*" }
   ],
   "headers": [
     {

@@ -46,7 +46,7 @@ npm run lyric:translate -- --track y_18_03 \
 嫌 `npm run song --` 长，可以在 `~/.zshrc` 里挂短别名：
 
 ```zsh
-alias song='node /Users/nai/Developer/Oasis/scripts/post-song.mjs'
+alias song='node /path/to/Oasis/scripts/post-song.mjs'   # 换成你的仓库路径
 ```
 
 **忘了用法就看脚本开头**——每个脚本前 20 行都是完整的用法注释：

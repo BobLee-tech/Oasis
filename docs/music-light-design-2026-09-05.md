@@ -17,7 +17,7 @@
 | 全局 ticker | 统一 rAF；不可见时跳过采样；触屏隔帧。 | 复用，并完善视觉休眠。触屏隔帧在 120Hz 屏上仍可能是 60 次/秒，若需明确 30Hz 应按时间限频。 |
 | prefers-reduced-motion | 当前 CSS 隐藏 oasis-ambient。 | 新方案保留静态底色，关闭连续光效与装饰旋转，同时停掉相应订阅。 |
 
-源码入口：[唱片与标题](/Users/nai/Developer/Oasis/src/components/OasisResonance.tsx:14)、[共享光场](/Users/nai/Developer/Oasis/src/components/resonance/StageGlow.tsx:1)、[歌词焦点](/Users/nai/Developer/Oasis/src/components/resonance/LyricField.tsx:367)、[频谱采样](/Users/nai/Developer/Oasis/src/hooks/useSoundscape.ts:348)、[全局 ticker](/Users/nai/Developer/Oasis/src/lib/ticker.ts:1)。这些是本轮源码核对结果，不代表新增的运行时测试。
+源码入口：[唱片与标题](../src/components/OasisResonance.tsx:14)、[共享光场](../src/components/resonance/StageGlow.tsx:1)、[歌词焦点](../src/components/resonance/LyricField.tsx:367)、[频谱采样](../src/hooks/useSoundscape.ts:348)、[全局 ticker](../src/lib/ticker.ts:1)。这些是本轮源码核对结果，不代表新增的运行时测试。
 
 **2．案例与素材如何转化为 Oasis 的设计**
 

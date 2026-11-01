@@ -21,8 +21,9 @@ import { mkdir, copyFile, readdir, stat, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const PROJECT_ROOT = '/Users/nai/Developer/Oasis';
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REMOTE = 'oasis-r2:oasis-audio';
 const PUBLIC_BASE = 'https://audio.boblee.dev';
 const SRC_DIR = path.join(PROJECT_ROOT, 'public/audio');   // flac 源，gitignored、不部署

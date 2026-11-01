@@ -28,6 +28,22 @@ Data Flow: 乐观更新
 ## 🌗 交互体验细节  
 等你慢慢发现 ~~其实是懒得写了~~  
 
+## 🌱 在本地跑起来
+需要 Node 20.19+ 或 22.12+（Vite 8 的要求）。
+
+```bash
+git clone https://github.com/BobLee-tech/Oasis.git
+cd Oasis
+npm install
+cp .env.example .env.local   # 可以全空着
+npm run dev                  # http://localhost:5173
+```
+
+- **不配 Supabase 也能逛**：文章、分类、留言会存在浏览器 localStorage 里。要接自己的库，就在 Supabase 的 SQL Editor 依次跑 `supabase/*.sql`，并把里面 `is_gardener()` 的邮箱换成你自己的（只有这个邮箱登录后能写）。登录入口是按 `` ` `` 唤起的终端。
+- **歌不在仓库里**：音频与歌词有版权，只托管在我自己的 R2 上。本地想听，把文件放进 `public/audio/`（路径要与 `src/hooks/useSoundscape.ts` 里 `PLAYLIST` 的 `url` 一致），或者设 `VITE_AUDIO_BASE`。
+- **Miku 不在仓库里**：她是 Live2D 官方的初音样例模型，按授权不随源码分发。没有她时角落会显示「她今天有点害羞」，其余一切照旧。想请她来，从 [Live2D 样例页](https://www.live2d.com/en/learn/sample/) 下载初音ミク样例，把其中的 `miku_sample_t04.moc3`、`.physics3.json`、`.cdi3.json`、`motion/` 和 `miku_sample_t04.2048/` 放进 `public/live2d/miku/`（仓库里那份 `model3.json` 是重排过动作分组的，别用样例自带的覆盖它），再跑 `npm run live2d:texture` 和 `npm run live2d:patch`。
+- 构建 `npm run build`，测试 `npm test`。其余脚本（加歌、配图、歌词）见 [scripts/README.md](scripts/README.md)。
+
 ## 📬 联络  
 如果你觉得有想对我说的话，或探讨技术架构，或是开发心得，或是闲聊一二，欢迎通过下方链接找到我。  
 

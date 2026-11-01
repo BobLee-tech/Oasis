@@ -31,7 +31,7 @@
 | P0 | **已复现：歌词左右键触发切歌。** 歌词区处理 ±5 秒后只 preventDefault；全局 keydown 仍执行上一首/下一首。 | 用户看到的快捷键说明与实际结果相反。 | 全局监听先检查 defaultPrevented；按焦点范围分配快捷键，局部播放器控件优先。歌词区处理后隔离冒泡，并保护按钮、输入框和弹层自身的键盘行为。 |
 | P0 | **已复现且源码确认：暂停时点选新歌不会播放。** 选中“カトレア”后回到唱片页，按钮仍为“播放”；但下一首会直接调用 play。 | 同样是选歌，结果取决于入口和之前状态；列表悬停播放图标与行为不一致。 | 明确区分“播放这首”和“仅选择”。建议点击曲目即播放；如确实需要预选，提供独立动作与明确状态。 |
 
-布局根源见 [OasisResonance.tsx](/Users/nai/Developer/Oasis/src/components/OasisResonance.tsx:420)，移动端分支见[同一组件](/Users/nai/Developer/Oasis/src/components/OasisResonance.tsx:271)。键盘冲突两端分别是[全局监听](/Users/nai/Developer/Oasis/src/components/OasisResonance.tsx:216)和[歌词局部监听](/Users/nai/Developer/Oasis/src/components/resonance/LyricField.tsx:496)。选歌语义见 [useSoundscape.ts](/Users/nai/Developer/Oasis/src/hooks/useSoundscape.ts:563)。
+布局根源见 [OasisResonance.tsx](../src/components/OasisResonance.tsx:420)，移动端分支见[同一组件](../src/components/OasisResonance.tsx:271)。键盘冲突两端分别是[全局监听](../src/components/OasisResonance.tsx:216)和[歌词局部监听](../src/components/resonance/LyricField.tsx:496)。选歌语义见 [useSoundscape.ts](../src/hooks/useSoundscape.ts:563)。
 
 桌面外层可采用 `minmax(0, 7fr) minmax(0, 5fr)` 一类两列结构，但比例仍需按内容验证。关键是只保留一道栏间距，并保证短视口下控制区不被唱机挤出。1024px 是当前桌面切换断点，不能单凭宽度认定设备既有足够高度、又适合重视觉。
 
@@ -61,13 +61,13 @@
 
 建议的规则是：切换分类只浏览；点击“播放此专辑”或在有明确范围的列表中启动播放时建立队列；后续切歌沿这个队列进行。界面以“正在播放：某专辑 · 随机”显示来源，列表中提供“定位当前曲目”。不要让用户靠猜测理解筛选是否影响下一首。
 
-随机模式现在正向、反向都进入 `getNextShuffleIndex`，所以曲首按上一首会再抽一首，并非返回刚才的歌。这是缺少历史栈的直接表现。保留洗牌袋，同时增加历史索引，即可兼顾不重复和可回退。[当前续播逻辑](/Users/nai/Developer/Oasis/src/hooks/useSoundscape.ts:434)
+随机模式现在正向、反向都进入 `getNextShuffleIndex`，所以曲首按上一首会再抽一首，并非返回刚才的歌。这是缺少历史栈的直接表现。保留洗牌袋，同时增加历史索引，即可兼顾不重复和可回退。[当前续播逻辑](../src/hooks/useSoundscape.ts:434)
 
 播放器还需要比 isPlaying 更完整的状态。当前仅从 play/pause/loadedmetadata 等事件更新状态，播放失败主要 console.warn，缺少加载、缓冲、失败与重试的界面。预览第一次直达音乐页时，浏览器日志出现自动播放被拦截，页面没有解释原因。建议至少表达“待播放、加载中、播放中、已暂停、缓冲中、失败”，提供“点击开始”“重试”“下一首”等对应动作。`play` 事件表示 paused 从 true 变为 false，并不足以证明已经稳定出声；应结合 playing、waiting、error 与 play() 的 Promise 结果。[MDN：play 事件](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/play_event)、[MDN：play()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/play)
 
 切歌入口应共用同一套流程，统一处理当前曲目、时间归零、旧时长清除、新时长未知、播放意图、失败回退。现有 advanceTrack、playTrack 和 switchTrack 对这些状态的处理不同，容易在新媒体元信息尚未到达时暂时显示旧进度或时长。
 
-音量渐变的审美价值可以保留，但应缩短操作等待感：暂停要等 650ms 渐出结束才触发 pause；播放中点新歌先等 800ms 才换源，再进行约 1000ms 淡入，且上一首/下一首走另一条更直接的路径。建议用户动作立即获得视觉反馈，音频渐变单独执行；“暂停/切歌意图”不依赖渐变回调才能完成。源码中 changeVolume 会 cancelFade，因而在暂停渐出期间调音量可能取消尚未执行的 pause；这属于需要补回归用例的并发控制风险，尚未在本次 UI 中专门复现。[渐变与暂停](/Users/nai/Developer/Oasis/src/hooks/useSoundscape.ts:550)、[音量变更](/Users/nai/Developer/Oasis/src/hooks/useSoundscape.ts:614)
+音量渐变的审美价值可以保留，但应缩短操作等待感：暂停要等 650ms 渐出结束才触发 pause；播放中点新歌先等 800ms 才换源，再进行约 1000ms 淡入，且上一首/下一首走另一条更直接的路径。建议用户动作立即获得视觉反馈，音频渐变单独执行；“暂停/切歌意图”不依赖渐变回调才能完成。源码中 changeVolume 会 cancelFade，因而在暂停渐出期间调音量可能取消尚未执行的 pause；这属于需要补回归用例的并发控制风险，尚未在本次 UI 中专门复现。[渐变与暂停](../src/hooks/useSoundscape.ts:550)、[音量变更](../src/hooks/useSoundscape.ts:614)
 
 静音和恢复也宜成为独立状态：当前恢复固定为 0.5，不会回到用户先前设置的音量。先保存偏好音量和静音状态，再处理实际音频增益。音量、播放模式、最后一首可以本地保存；回访时恢复选择并展示继续入口，首次访问的每日一曲仍可保留。恢复播放需要遵循浏览器的用户交互要求。
 
@@ -79,7 +79,7 @@
 
 第一阶段增加曲库内搜索，覆盖曲名、艺人、专辑及常用别名，进行大小写、全半角与空格归一化。现有 ⌘K 只搜文章、场所和动作，可随后加入曲目结果，共用检索逻辑。日文曲目可逐步添加常用中文名或罗马字别名，不必一开始做复杂的全语种搜索。
 
-专辑浏览应允许直接进入、整张播放、收起展开，并保留列表位置。当前从音频 URL 文件夹提取专辑名和年份，界面会受到归档文件名影响；合辑名称中的“2008~2012”还可能被当作发行年份的 2008。建议在曲目数据中显式补 albumId、albumTitle、releaseYear、trackNumber、duration、artwork、aliases。文件路径继续承担播放定位，显示元数据独立管理。[专辑推导](/Users/nai/Developer/Oasis/src/components/OasisResonance.tsx:148)
+专辑浏览应允许直接进入、整张播放、收起展开，并保留列表位置。当前从音频 URL 文件夹提取专辑名和年份，界面会受到归档文件名影响；合辑名称中的“2008~2012”还可能被当作发行年份的 2008。建议在曲目数据中显式补 albumId、albumTitle、releaseYear、trackNumber、duration、artwork、aliases。文件路径继续承担播放定位，显示元数据独立管理。[专辑推导](../src/components/OasisResonance.tsx:148)
 
 第二阶段可增加“最近听过”和本地收藏，以及少量站主策展歌单，例如“雨夜”“写作时”“初音旧梦”。每组配一句收录理由，比单纯再增加一个艺人分类更能表达个人花园的气质。单曲详情可以关联站内文章、画作或听歌笔记，让“共鸣”与花园、星图形成内容联系。
 
@@ -87,11 +87,11 @@
 
 现有歌词系统已包含双语、逐句定位、间奏、手动浏览与跟随状态。下一步重点是增强读者对它的控制。
 
-手动浏览后，代码固定在 4.2 秒无操作时恢复跟随，而且没有要求 isPlaying。阅读一段译文时，用户停下来并不意味着读完了。建议手动浏览期间保持阅读位置，点击“回到此刻”后恢复；或者允许选择自动恢复时机。暂停状态尤其不应自动拉回。[自动恢复逻辑](/Users/nai/Developer/Oasis/src/components/resonance/LyricField.tsx:413)
+手动浏览后，代码固定在 4.2 秒无操作时恢复跟随，而且没有要求 isPlaying。阅读一段译文时，用户停下来并不意味着读完了。建议手动浏览期间保持阅读位置，点击“回到此刻”后恢复；或者允许选择自动恢复时机。暂停状态尤其不应自动拉回。[自动恢复逻辑](../src/components/resonance/LyricField.tsx:413)
 
 语言切换已有偏好保存，应继续保留；可以增加两档字号、浏览态的稳定字色，以及放在次级设置中的歌词校准。前端没有可见的失败重试动作，useLyrics 的请求也没有显式超时，建议补齐，避免长期停留在“寻觅词迹”。纯器乐、尚未收录、网络失败应继续保持不同含义。
 
-“待校”与来源目前位于极小的来源行，sm 以下整行隐藏。由于双语译文会影响理解，手机也应能从简洁的信息入口看到来源及待校状态。项目文档说明 `machine` 同时包含机器初译与未经站主审校的导入译文，产品文案宜继续称“待校”，不能一律说成机器翻译。歌词内容质量需要逐首核对；本次没有审查完整曲库的译文或同步准确度。[歌词面板](/Users/nai/Developer/Oasis/src/components/resonance/LyricPanel.tsx:126)、[歌词流程](/Users/nai/Developer/Oasis/docs/lyrics-pipeline.md)
+“待校”与来源目前位于极小的来源行，sm 以下整行隐藏。由于双语译文会影响理解，手机也应能从简洁的信息入口看到来源及待校状态。项目文档说明 `machine` 同时包含机器初译与未经站主审校的导入译文，产品文案宜继续称“待校”，不能一律说成机器翻译。歌词内容质量需要逐首核对；本次没有审查完整曲库的译文或同步准确度。[歌词面板](../src/components/resonance/LyricPanel.tsx:126)、[歌词流程](../docs/lyrics-pipeline.md)
 
 **7．全站陪伴与系统控制**
 
@@ -99,7 +99,7 @@
 
 Media Session 可补上媒体元数据及系统播放、暂停、切歌动作，使支持它的浏览器能与系统媒体界面配合。需要按能力检测渐进增强，并在 Safari/iOS、Android 和桌面浏览器验证实际支持；它不能保证所有设备都具备相同的锁屏、后台续播行为。[MDN：Media Session](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API)
 
-后续功能可以从场景出发：夜间陪伴适合睡眠定时；与朋友分享适合单曲地址及可选时间点。当前路由没有将 soundscape 纳入 ITEM_VIEWS，因此 `#/resonance/<trackId>` 还不能定位曲目。实现时让音轨 id 和可选时间进入分享链接，并避免把每次自动切歌都写成浏览器历史。[路由](/Users/nai/Developer/Oasis/src/lib/route.ts:22)
+后续功能可以从场景出发：夜间陪伴适合睡眠定时；与朋友分享适合单曲地址及可选时间点。当前路由没有将 soundscape 纳入 ITEM_VIEWS，因此 `#/resonance/<trackId>` 还不能定位曲目。实现时让音轨 id 和可选时间进入分享链接，并避免把每次自动切歌都写成浏览器历史。[路由](../src/lib/route.ts:22)
 
 **8．可访问性与性能的具体落点**
 
